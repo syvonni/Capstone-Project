@@ -281,7 +281,9 @@ export default function PhilippineAddressFields({
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Form.Item
+          style={{ marginBottom: 12 }}
           name={fieldName('province')}
+          layout="vertical"
           label={required ? <span>Province<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'Province'}
           rules={required ? [{
             validator: (_, value) => {
@@ -309,12 +311,14 @@ export default function PhilippineAddressFields({
             ))}
           </Select>
         </Form.Item>
-        <Form.Item name={fieldName('provinceName')} hidden>
+        <Form.Item style={{ marginBottom: 12 }} name={fieldName('provinceName')} layout="vertical" hidden>
           <Input />
         </Form.Item>
 
         <Form.Item
+          style={{ marginBottom: 12 }}
           name={fieldName('city')}
+          layout="vertical"
           label={required ? <span>City/Municipality<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'City/Municipality'}
           rules={required ? [{
             validator: (_, value) => {
@@ -346,11 +350,13 @@ export default function PhilippineAddressFields({
             ))}
           </Select>
         </Form.Item>
-        <Form.Item name={fieldName('cityName')} hidden>
+        <Form.Item style={{ marginBottom: 12 }} name={fieldName('cityName')} layout="vertical" hidden>
           <Input />
         </Form.Item>
 
         <Form.Item
+          style={{ marginBottom: 12 }}
+          layout="vertical"
           name={fieldName('barangay')}
           label={required ? <span>Barangay<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'Barangay'}
           rules={required ? [{
@@ -383,13 +389,15 @@ export default function PhilippineAddressFields({
             ))}
           </Select>
         </Form.Item>
-        <Form.Item name={fieldName('barangayName')} hidden>
+        <Form.Item style={{ marginBottom: 12 }} name={fieldName('barangayName')} layout="vertical" hidden>
           <Input />
         </Form.Item>
 
         <Form.Item
+          style={{ marginBottom: 12 }}
           name={fieldName('streetAddress')}
-          label={required ? <span>House/Bldg No. & Street<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'House/Bldg No. & Street'}
+          layout="vertical"
+          label={required ? <span>House/Building Number & Street<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'House/Bldg No. & Street'}
           initialValue={initialStreet}
           rules={required ? [{
             validator: (_, value) => {
@@ -409,6 +417,8 @@ export default function PhilippineAddressFields({
 
         <Form.Item
           name={fieldName('postalCode')}
+          style={{ marginBottom: 12 }}
+          layout="vertical"
           label={required ? <span>Postal Code<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'Postal Code'}
           initialValue={initialPostalCode}
           rules={[
@@ -439,6 +449,8 @@ export default function PhilippineAddressFields({
       {/* Row 1: Province, City, Barangay — 3 per row */}
       <Col xs={24} sm={12} md={8}>
         <Form.Item
+          style={{ marginBottom: 12 }}
+          layout="vertical"
           name={fieldName('province')}
           label={required ? <span>Province<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'Province'}
           rules={required ? [{
@@ -467,13 +479,15 @@ export default function PhilippineAddressFields({
             ))}
           </Select>
         </Form.Item>
-        <Form.Item name={fieldName('provinceName')} hidden>
+        <Form.Item name={fieldName('provinceName')} layout="vertical" style={{ marginBottom: 12 }} hidden>
           <Input />
         </Form.Item>
       </Col>
 
       <Col xs={24} sm={12} md={8}>
         <Form.Item
+          style={{ marginBottom: 12 }}
+          layout="vertical"
           name={fieldName('city')}
           label={required ? <span>City/Municipality<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'City/Municipality'}
           rules={required ? [{
@@ -506,13 +520,15 @@ export default function PhilippineAddressFields({
             ))}
           </Select>
         </Form.Item>
-        <Form.Item name={fieldName('cityName')} hidden>
+        <Form.Item name={fieldName('cityName')} style={{ marginBottom: 12 }} hidden>
           <Input />
         </Form.Item>
       </Col>
 
       <Col xs={24} sm={12} md={8}>
         <Form.Item
+          style={{ marginBottom: 12 }}
+          layout="vertical"
           name={fieldName('barangay')}
           label={required ? <span>Barangay<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'Barangay'}
           rules={required ? [{
@@ -545,7 +561,7 @@ export default function PhilippineAddressFields({
             ))}
           </Select>
         </Form.Item>
-        <Form.Item name={fieldName('barangayName')} hidden>
+        <Form.Item name={fieldName('barangayName')} style={{ marginBottom: 12 }} hidden>
           <Input />
         </Form.Item>
       </Col>
@@ -553,6 +569,8 @@ export default function PhilippineAddressFields({
       {/* Row 2: Street (2/3), Postal Code (1/3) */}
       <Col xs={24} md={16}>
         <Form.Item
+          style={{ marginBottom: 12 }}
+          layout="vertical"
           name={fieldName('streetAddress')}
           label={required ? <span>House/Bldg No. & Street<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'House/Bldg No. & Street'}
           initialValue={initialStreet}
@@ -575,6 +593,7 @@ export default function PhilippineAddressFields({
 
       <Col xs={24} md={8}>
         <Form.Item
+          layout="vertical"
           name={fieldName('postalCode')}
           label={required ? <span>Postal Code<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'Postal Code'}
           initialValue={initialPostalCode}
@@ -589,6 +608,7 @@ export default function PhilippineAddressFields({
             }] : []),
             { pattern: /^\d{4}$/, message: 'Postal code must be 4 digits' }
           ]}
+          style={{ marginBottom: 12 }}
         >
           <Input
             placeholder="e.g., 2420"

@@ -27,7 +27,7 @@ async function migrateReviewers() {
       {
         reviewedBy: { $exists: true, $ne: null },
         reviewedByName: { $exists: true, $ne: null, $ne: "" },
-        reviewers: { $exists: false }
+        reviewers: { $exists: false },
       },
       [
         {
@@ -35,12 +35,12 @@ async function migrateReviewers() {
             reviewers: [
               {
                 officerId: "$reviewedBy",
-                officerName: "$reviewedByName"
-              }
-            ]
-          }
-        }
-      ]
+                officerName: "$reviewedByName",
+              },
+            ],
+          },
+        },
+      ],
     );
 
     updatedCount = result.modifiedCount || 0;
@@ -48,12 +48,16 @@ async function migrateReviewers() {
 
     // Count applications that already have reviewers or no reviewedBy
     const totalApps = await Application.countDocuments();
-    const withReviewers = await Application.countDocuments({ reviewers: { $exists: true, $ne: [] } });
+    const withReviewers = await Application.countDocuments({
+      reviewers: { $exists: true, $ne: [] },
+    });
     skippedCount = totalApps - updatedCount;
 
     console.log("\nMigration complete:");
     console.log(`- Updated: ${updatedCount} applications`);
-    console.log(`- Skipped: ${skippedCount} applications (already have reviewers or no reviewedBy)`);
+    console.log(
+      `- Skipped: ${skippedCount} applications (already have reviewers or no reviewedBy)`,
+    );
     console.log(`- Total applications: ${totalApps}`);
   } catch (err) {
     console.error("Migration error:", err);

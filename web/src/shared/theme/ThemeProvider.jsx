@@ -398,6 +398,7 @@ export function ThemeProvider({ children }) {
       setPreviewOverrides(null);
     });
     return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Derived overrides: disable overrides on public pages

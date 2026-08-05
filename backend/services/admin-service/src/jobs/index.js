@@ -8,9 +8,7 @@ const logger = require("../lib/logger");
 // Import job functions
 const finalizeAccountDeletions = require("./finalizeAccountDeletions");
 const sendDeletionReminders = require("./sendDeletionReminders");
-const notifyTamperIncidents = require("./notifyTamperIncidents");
 const expirePendingApprovals = require("./expirePendingApprovals");
-const executePendingActions = require("./executePendingActions");
 const {
   checkAndSendMaintenanceNotifications,
 } = require("../cron/maintenanceNotification");
@@ -40,8 +38,6 @@ function scheduleJob(cronExpression, jobFunction, description) {
       intervalMs = 24 * 60 * 60 * 1000; // Daily at 2 AM
     } else if (cronExpression === "0 9 * * *") {
       intervalMs = 24 * 60 * 60 * 1000; // Daily at 9 AM
-    } else if (cronExpression === "*/10 * * * *") {
-      intervalMs = 10 * 60 * 1000; // Every 10 minutes
     } else if (cronExpression === "0 * * * *") {
       intervalMs = 60 * 60 * 1000; // Every hour
     }
@@ -130,19 +126,6 @@ function startJobs() {
       }
     },
     "checkAndSendMaintenanceNotifications",
-  );
-
-  // Execute expired pending actions (run every minute)
-  scheduleJob(
-    "* * * * *",
-    async () => {
-      try {
-        await executePendingActions();
-      } catch (error) {
-        logger.error("Error in executePendingActions job", { error });
-      }
-    },
-    "executePendingActions",
   );
 
   logger.info("Admin Service background jobs started successfully");

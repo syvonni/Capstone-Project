@@ -19,12 +19,6 @@ export default function PanelCard({
     <Card
       size="small"
       onClick={onClick}
-      title={
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>{title}</span>
-          {isBookmarked && <StarFilled style={{ color: '#faad14' }} />}
-        </div>
-      }
       style={{
         cursor: 'pointer',
         background: token.colorBgContainer,
@@ -38,12 +32,18 @@ export default function PanelCard({
         e.currentTarget.style.borderColor = ''
       }}
     >
+      {title && (
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 8, color: token.colorText, display: 'flex', alignItems: 'center', gap: 8 }}>
+          {title}
+          {isBookmarked && <StarFilled style={{ color: token.colorWarning, fontSize: 12 }} />}
+        </div>
+      )}
       {description && (
         <div
           style={{
             fontSize: 13,
-            lineHeight: '1.3em',
-            maxHeight: '2.6em',
+            lineHeight: '1.5em',
+            maxHeight: '3em',
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -57,18 +57,18 @@ export default function PanelCard({
         </div>
       )}
       {metaInfo.length > 0 && (
-        <div style={{ marginTop: description ? 12 : 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ marginTop: description ? 12 : 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {metaInfo.map((meta, idx) => (
-            <Text key={idx} type="secondary" style={{ fontSize: 12 }}>
+            <Text key={idx} type="secondary" style={{ fontSize: 12, lineHeight: '1.2em' }}>
               {meta.label}: {meta.value}
             </Text>
           ))}
         </div>
       )}
       {tags.length > 0 && (
-        <div style={{ marginTop: (description || metaInfo.length > 0) ? 12 : 0, paddingTop: 12, borderTop: `1px solid ${token.colorBorderSecondary}`, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ marginTop: (description || metaInfo.length > 0) ? 12 : 0, paddingTop: 10, borderTop: `1px solid ${token.colorBorderSecondary}`, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {tags.map((tag, idx) => (
-            <Tag key={idx} color={tag.color} style={{ margin: 0, fontSize: 11, textTransform: 'capitalize' }}>
+            <Tag key={idx} color={tag.color} style={{ margin: 0, fontSize: 11, textTransform: tag.textTransform || 'none' }}>
               {tag.label}
             </Tag>
           ))}

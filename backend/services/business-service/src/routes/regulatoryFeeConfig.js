@@ -5,7 +5,7 @@ const {
   requireRole,
   requireAdminStepUp,
 } = require("../middleware/auth");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 
 const router = express.Router();
 const ID = RegulatoryFeeConfig.SINGLETON_ID;
@@ -207,20 +207,22 @@ router.put(
         { new: true, upsert: true },
       ).lean();
 
-      createAuditLog(
-        req._userId,
+      logAuditEvent(
         "regulatory_fee_config_updated",
-        "regulatory_fee_config",
-        previous ? JSON.stringify(previous) : "",
-        config ? JSON.stringify(config) : "",
-        "admin",
+        req._userId,
+        "RegulatoryFeeConfig",
+        ID,
         {
+          role: "admin",
+          fieldChanged: "regulatory_fee_config",
+          oldValue: previous ? JSON.stringify(previous) : "",
+          newValue: config ? JSON.stringify(config) : "",
           ip: req.ip,
           userAgent: req.get && req.get("user-agent"),
         },
       ).catch((err) =>
         console.error(
-          "Failed to create audit log for regulatory fee config update",
+          "Failed to log audit event for regulatory fee config update",
           err,
         ),
       );

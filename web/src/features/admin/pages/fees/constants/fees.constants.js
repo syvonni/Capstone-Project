@@ -1,12 +1,14 @@
 export const FEE_TYPES = [
-  { value: 'fee_groups', label: 'Fee Groups' },
-  { value: 'fees', label: 'Fee Library' },
-  { value: 'penalty_rules', label: 'Penalty Rules' },
+  { value: 'fees', label: 'Global Application Fees' },
+  { value: 'variables', label: 'Variables' },
+  { value: 'tax_brackets', label: 'Tax Brackets' },
+  { value: 'claimable_documents', label: 'Document Fees' },
   { value: 'appeal_fees', label: 'Appeal Fees' },
+  { value: 'penalties', label: 'Penalties' },
+  { value: 'application_fees', label: 'Application Fees' },
 ]
 
 export const STATUS_OPTIONS = [
-  { label: 'All Statuses', value: '' },
   { label: 'Active', value: 'active' },
   { label: 'Disabled', value: 'disabled' },
 ]

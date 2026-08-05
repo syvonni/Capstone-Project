@@ -2,11 +2,12 @@ const mongoose = require("mongoose");
 const BusinessProfile = require("../models/BusinessProfile");
 const User = require("../models/User");
 const Role = require("../models/Role"); // Ensure Role model is registered
-const blockchainService = require("../lib/blockchainService");
 const { logAuditEvent } = require("../lib/auditClient");
 const crypto = require("crypto");
 const sendEmail = require("../lib/mailer").sendEmail;
-const { buildNotificationEmailBody } = require("../../../../shared/lib/emailTemplateBuilder");
+const {
+  buildNotificationEmailBody,
+} = require("../../../../shared/lib/emailTemplateBuilder");
 
 // Import decryption utility for aggregation results (aggregation bypasses Mongoose hooks)
 let decrypt;
@@ -280,7 +281,7 @@ class PermitApplicationService {
           updatedAt: "$businesses.updatedAt",
           // Fields needed by AddBusinessForm for officer draft editing
           formType: "$businesses.formType",
-          formDefinitionId: "$businesses.formDefinitionId",
+          permitFormId: "$businesses.permitFormId",
           formData: "$businesses.formData",
           category: "$businesses.category",
           createdByOfficer: "$businesses.createdByOfficer",
@@ -392,7 +393,7 @@ class PermitApplicationService {
             updatedAt: app.updatedAt,
             // Fields needed by AddBusinessForm for officer draft editing
             formType: app.formType || "",
-            formDefinitionId: app.formDefinitionId || null,
+            permitFormId: app.permitFormId || null,
             formData: app.formData || {},
             category: app.category || "",
             createdByOfficer: app.createdByOfficer || false,
@@ -422,17 +423,19 @@ class PermitApplicationService {
             createdAt: app.createdAt,
             updatedAt: app.updatedAt,
             formType: app.formType || "",
-            formDefinitionId: app.formDefinitionId || null,
+            permitFormId: app.permitFormId || null,
             formData: app.formData || {},
             category: app.category || "",
             createdByOfficer: app.createdByOfficer || false,
           };
         }
-      })
+      }),
     );
 
     // Populate officer names for reviewedBy field
-    const officerIds = [...new Set(applications.map(app => app.reviewedBy).filter(Boolean))];
+    const officerIds = [
+      ...new Set(applications.map((app) => app.reviewedBy).filter(Boolean)),
+    ];
     const officersMap = new Map();
     if (officerIds.length > 0) {
       const officers = await User.find({ _id: { $in: officerIds } })
@@ -441,14 +444,21 @@ class PermitApplicationService {
       for (const officer of officers) {
         const decrypted = decryptObject(officer);
         const officerId = String(officer._id);
-        officersMap.set(officerId, `${decrypted.firstName || ''} ${decrypted.lastName || ''}`.trim() || decrypted.email || 'Unknown');
+        officersMap.set(
+          officerId,
+          `${decrypted.firstName || ""} ${decrypted.lastName || ""}`.trim() ||
+            decrypted.email ||
+            "Unknown",
+        );
       }
     }
 
     // Attach officer names to applications
-    const applicationsWithOfficerNames = applications.map(app => ({
+    const applicationsWithOfficerNames = applications.map((app) => ({
       ...app,
-      reviewedByName: app.reviewedBy ? officersMap.get(String(app.reviewedBy)) : null,
+      reviewedByName: app.reviewedBy
+        ? officersMap.get(String(app.reviewedBy))
+        : null,
     }));
 
     return {
@@ -603,9 +613,9 @@ class PermitApplicationService {
           ? business.fieldReviewDecisions
           : {},
       pendingAction: business.pendingAction || null,
-      // Form definition–driven application (for review UI)
+      // Permit form–driven application (for review UI)
       formType: business.formType || "",
-      formDefinitionId: business.formDefinitionId || null,
+      permitFormId: business.permitFormId || null,
       formData:
         business.formData && typeof business.formData === "object"
           ? business.formData
@@ -843,7 +853,9 @@ class PermitApplicationService {
     }
 
     // Use officer from verifyOfficerRole to get name for reviewedByName
-    const officerName = officer ? `${officer.firstName} ${officer.lastName}`.trim() : "Officer";
+    const officerName = officer
+      ? `${officer.firstName} ${officer.lastName}`.trim()
+      : "Officer";
 
     // Update status to under_review using findOneAndUpdate to bypass enum validation on encrypted fields
     const updateQuery = {
@@ -867,17 +879,18 @@ class PermitApplicationService {
 
       // Log audit event for claim
       await logAuditEvent(
-        "claim",
+        "application_claimed",
         officerId,
         "BusinessProfile",
         businessId || applicationId,
         {
-          claimedByName: officerName,
-          applicationStatus: oldStatus,
+          applicationId: businessId || applicationId,
           businessName: business.businessName,
+          applicationStatus: oldStatus,
           applicationReferenceNumber: business.applicationReferenceNumber,
+          officerName,
           role: roleSlug,
-        }
+        },
       );
 
       // Create notification for business owner
@@ -958,6 +971,7 @@ class PermitApplicationService {
       {
         applicationId: businessId || applicationId,
         businessId: businessId || applicationId,
+        businessName: business.businessName,
         officerId,
         officerName: `${officer.firstName} ${officer.lastName}`,
         applicationReferenceNumber:
@@ -1067,7 +1081,9 @@ class PermitApplicationService {
     }
 
     // Use officer from verifyOfficerRole to get name for reviewedByName
-    const officerName = officer ? `${officer.firstName} ${officer.lastName}`.trim() : "Officer";
+    const officerName = officer
+      ? `${officer.firstName} ${officer.lastName}`.trim()
+      : "Officer";
 
     // Update application status
     profile.businesses[businessIndex].applicationStatus = newStatus;
@@ -1168,7 +1184,7 @@ class PermitApplicationService {
           businessName: business.businessName,
           applicationReferenceNumber: business.applicationReferenceNumber,
           role: roleSlug,
-        }
+        },
       );
     }
 
@@ -1366,7 +1382,16 @@ class PermitApplicationService {
       officerId,
       "BusinessProfile",
       profile._id.toString(),
-      { businessId: businessId || applicationId, decision, newStatus },
+      {
+        applicationId: businessId || applicationId,
+        businessId: businessId || applicationId,
+        businessName: business.businessName,
+        applicationReferenceNumber: business.applicationReferenceNumber,
+        oldStatus,
+        newStatus,
+        decision,
+        officerName: `${officer.firstName} ${officer.lastName}`,
+      },
     );
 
     // Send notification email
@@ -1408,7 +1433,7 @@ class PermitApplicationService {
     businessId,
     officerId,
     appealId,
-    rejectionReason
+    rejectionReason,
   ) {
     if (!appealId) {
       throw new Error("Appeal ID is required");
@@ -1449,25 +1474,19 @@ class PermitApplicationService {
     };
     await BusinessProfile.updateOne(
       { _id: profile._id },
-      { $set: updateFields }
+      { $set: updateFields },
     );
 
     // Log audit event for appeal rejection
-    await logAuditEvent(
-      "appeal_rejected",
-      officerId,
-      "Appeal",
-      appealId,
-      {
-        rejectedByName: officer.name,
-        rejectionReason: rejectionReason,
-        oldStatus: appeal.status,
-        newStatus: "rejected",
-        businessName: business.businessName,
-        applicationReferenceNumber: business.applicationReferenceNumber,
-        role: roleSlug,
-      }
-    );
+    await logAuditEvent("appeal_rejected", officerId, "Appeal", appealId, {
+      rejectedByName: officer.name,
+      rejectionReason: rejectionReason,
+      oldStatus: appeal.status,
+      newStatus: "rejected",
+      businessName: business.businessName,
+      applicationReferenceNumber: business.applicationReferenceNumber,
+      role: roleSlug,
+    });
 
     // Create notification for business owner
     try {
@@ -1481,12 +1500,12 @@ class PermitApplicationService {
         appealId,
         {
           rejectionReason: rejectionReason,
-        }
+        },
       );
     } catch (notifError) {
       console.error(
         `[rejectAppeal] Failed to create notification:`,
-        notifError
+        notifError,
       );
     }
 
@@ -1547,9 +1566,25 @@ class PermitApplicationService {
         intro: `We are pleased to inform you that your permit application <strong>${application.applicationReferenceNumber}</strong> for <strong>${application.businessName}</strong> has been <strong style="color:#52C41A;">APPROVED</strong>. Your application has been reviewed and meets all requirements. You can now proceed with the next steps in your business registration process.`,
         fields: {
           fields: [
-            { label: "Reference Number", value: application.applicationReferenceNumber, color: "#0039AF", fontSize: "14px", fontWeight: "700" },
-            { label: "Business Name", value: application.businessName, fontSize: "14px" },
-            { label: "Status", value: "Approved", color: "#52C41A", fontSize: "14px", fontWeight: "700" },
+            {
+              label: "Reference Number",
+              value: application.applicationReferenceNumber,
+              color: "#0039AF",
+              fontSize: "14px",
+              fontWeight: "700",
+            },
+            {
+              label: "Business Name",
+              value: application.businessName,
+              fontSize: "14px",
+            },
+            {
+              label: "Status",
+              value: "Approved",
+              color: "#52C41A",
+              fontSize: "14px",
+              fontWeight: "700",
+            },
           ],
         },
         appUrl,
@@ -1582,11 +1617,39 @@ class PermitApplicationService {
         intro: `Your permit application <strong>${application.applicationReferenceNumber}</strong> for <strong>${application.businessName}</strong> has been <strong style="color:#FF4D4F;">REJECTED</strong>. Please review the requirements and submit a new application if needed. You may also file an appeal if you believe this decision was made in error.`,
         fields: {
           fields: [
-            { label: "Reference Number", value: application.applicationReferenceNumber, color: "#0039AF", fontSize: "14px", fontWeight: "700" },
-            { label: "Business Name", value: application.businessName, fontSize: "14px" },
-            { label: "Status", value: "Rejected", color: "#FF4D4F", fontSize: "14px", fontWeight: "700" },
-            { label: "Rejection Reason", value: application.rejectionReason || "Not specified", fontSize: "14px" },
-            ...(application.comments ? [{ label: "Additional Comments", value: application.comments, fontSize: "14px" }] : []),
+            {
+              label: "Reference Number",
+              value: application.applicationReferenceNumber,
+              color: "#0039AF",
+              fontSize: "14px",
+              fontWeight: "700",
+            },
+            {
+              label: "Business Name",
+              value: application.businessName,
+              fontSize: "14px",
+            },
+            {
+              label: "Status",
+              value: "Rejected",
+              color: "#FF4D4F",
+              fontSize: "14px",
+              fontWeight: "700",
+            },
+            {
+              label: "Rejection Reason",
+              value: application.rejectionReason || "Not specified",
+              fontSize: "14px",
+            },
+            ...(application.comments
+              ? [
+                  {
+                    label: "Additional Comments",
+                    value: application.comments,
+                    fontSize: "14px",
+                  },
+                ]
+              : []),
           ],
         },
         appUrl,
@@ -1616,10 +1679,32 @@ class PermitApplicationService {
         intro: `Your permit application <strong>${application.applicationReferenceNumber}</strong> for <strong>${application.businessName}</strong> requires corrections before it can be approved. Please make the necessary corrections and resubmit your application for review.`,
         fields: {
           fields: [
-            { label: "Reference Number", value: application.applicationReferenceNumber, color: "#0039AF", fontSize: "14px", fontWeight: "700" },
-            { label: "Business Name", value: application.businessName, fontSize: "14px" },
-            { label: "Status", value: "Corrections Required", color: "#FAAD14", fontSize: "14px", fontWeight: "700" },
-            { label: "Required Corrections", value: application.comments || "Please review and correct the indicated items.", fontSize: "14px" },
+            {
+              label: "Reference Number",
+              value: application.applicationReferenceNumber,
+              color: "#0039AF",
+              fontSize: "14px",
+              fontWeight: "700",
+            },
+            {
+              label: "Business Name",
+              value: application.businessName,
+              fontSize: "14px",
+            },
+            {
+              label: "Status",
+              value: "Corrections Required",
+              color: "#FAAD14",
+              fontSize: "14px",
+              fontWeight: "700",
+            },
+            {
+              label: "Required Corrections",
+              value:
+                application.comments ||
+                "Please review and correct the indicated items.",
+              fontSize: "14px",
+            },
           ],
         },
         appUrl,
@@ -1645,8 +1730,12 @@ class PermitApplicationService {
    */
   async updateFieldDecisions(applicationId, businessId, officerId, payload) {
     // Fetch officer name for audit trail
-    const officer = await User.findById(officerId).select("firstName lastName").lean();
-    const officerName = officer ? `${officer.firstName} ${officer.lastName}`.trim() : "Officer";
+    const officer = await User.findById(officerId)
+      .select("firstName lastName")
+      .lean();
+    const officerName = officer
+      ? `${officer.firstName} ${officer.lastName}`.trim()
+      : "Officer";
     const targetId = businessId || applicationId;
     const profile = await findProfileByBusinessId(targetId);
     if (!profile) throw new Error("Application not found");
@@ -1654,7 +1743,13 @@ class PermitApplicationService {
     if (idx === -1) throw new Error("Application not found");
     const business = profile.businesses[idx];
     const status = business.applicationStatus || "draft";
-    const reviewableStatuses = ['submitted', 'resubmit', 'under_review', 'pending_review', 'appeal_pending'];
+    const reviewableStatuses = [
+      "submitted",
+      "resubmit",
+      "under_review",
+      "pending_review",
+      "appeal_pending",
+    ];
     if (!reviewableStatuses.includes(status)) {
       throw new Error("Application is not in a reviewable status");
     }
@@ -1686,9 +1781,13 @@ class PermitApplicationService {
       decisions[fieldKey] = {
         status: decisionStatus,
         requestCode:
-          decisionStatus === "request_changes" ? (reasonCode || requestCode || null) : undefined,
+          decisionStatus === "request_changes"
+            ? reasonCode || requestCode || null
+            : undefined,
         requestOther:
-          decisionStatus === "request_changes" ? (reasonOther || requestOther || null) : undefined,
+          decisionStatus === "request_changes"
+            ? reasonOther || requestOther || null
+            : undefined,
         decidedAt: new Date(),
         decidedBy: officerId,
         decidedByName: officerName,
@@ -1705,16 +1804,15 @@ class PermitApplicationService {
 
     // Preserve reviewedBy and reviewedByName to prevent them from being cleared
     if (business.reviewedBy) {
-      updateOperation.$set[`businesses.${idx}.reviewedBy`] = business.reviewedBy;
+      updateOperation.$set[`businesses.${idx}.reviewedBy`] =
+        business.reviewedBy;
     }
     if (business.reviewedByName) {
-      updateOperation.$set[`businesses.${idx}.reviewedByName`] = business.reviewedByName;
+      updateOperation.$set[`businesses.${idx}.reviewedByName`] =
+        business.reviewedByName;
     }
 
-    await BusinessProfile.updateOne(
-      { _id: profile._id },
-      updateOperation,
-    );
+    await BusinessProfile.updateOne({ _id: profile._id }, updateOperation);
     return this.getApplicationById(applicationId, businessId);
   }
 
@@ -1761,7 +1859,8 @@ class PermitApplicationService {
       updateFields[`businesses.${idx}.reviewedBy`] = business.reviewedBy;
     }
     if (business.reviewedByName) {
-      updateFields[`businesses.${idx}.reviewedByName`] = business.reviewedByName;
+      updateFields[`businesses.${idx}.reviewedByName`] =
+        business.reviewedByName;
     }
 
     await BusinessProfile.updateOne(
@@ -1780,7 +1879,13 @@ class PermitApplicationService {
    * @param {number} delayMinutes - Delay before execution (default: 10)
    * @returns {Promise<object>} Updated application
    */
-  async createPendingAction(applicationId, businessId, actionType, payload, delayMinutes = 10) {
+  async createPendingAction(
+    applicationId,
+    businessId,
+    actionType,
+    payload,
+    delayMinutes = 10,
+  ) {
     const targetId = businessId || applicationId;
     const profile = await findProfileByBusinessId(targetId);
     if (!profile) throw new Error("Application not found");
@@ -1872,7 +1977,7 @@ class PermitApplicationService {
           businessId,
           officerId,
           "approve",
-          payload.comments || ""
+          payload.comments || "",
         );
         break;
       case "reject":
@@ -1882,7 +1987,7 @@ class PermitApplicationService {
           officerId,
           "reject",
           payload.comments || "",
-          payload.rejectionReason || payload.decision || ""
+          payload.rejectionReason || payload.decision || "",
         );
         break;
       case "return":
@@ -1891,7 +1996,7 @@ class PermitApplicationService {
           businessId,
           officerId,
           "request_changes",
-          payload.requestOther || payload.requestType || ""
+          payload.requestOther || payload.requestType || "",
         );
         break;
       case "reject_appeal":
@@ -1900,7 +2005,7 @@ class PermitApplicationService {
           businessId,
           officerId,
           payload.appealId,
-          payload.rejectionReason || ""
+          payload.rejectionReason || "",
         );
         break;
       default:

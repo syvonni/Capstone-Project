@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Form, Input, Button, Typography, message, theme, Space, Tooltip, Card, Grid, Tag, Dropdown, Popconfirm } from 'antd'
 import { SaveOutlined, PlusOutlined, MinusCircleOutlined, HistoryOutlined, UndoOutlined, RedoOutlined, RollbackOutlined, MoreOutlined, DeleteOutlined } from '@ant-design/icons'
-import CmsAuditHistoryModal from './CmsAuditHistoryModal'
-import CmsAuditHistoryDrawer from './CmsAuditHistoryDrawer'
-import CmsAuditDetailDrawer from './CmsAuditDetailDrawer'
+import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
+import CmsAuditDetailPanel from './CmsAuditDetailPanel'
 import useCmsUndoRedo from '../hooks/useCmsUndoRedo'
 import useCmsAutosave from '../hooks/useCmsAutosave'
+import { useCmsAudit } from '../hooks/useCmsAudit'
+import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -23,9 +24,8 @@ export default function PageChapterEditor({ selected, onSave, onDelete }) {
   const isMobile = !screens.md
 
   const [auditModalOpen, setAuditModalOpen] = useState(false)
-  const [auditDrawerOpen, setAuditDrawerOpen] = useState(false)
-  const [auditDetailOpen, setAuditDetailOpen] = useState(false)
-  const [selectedAudit, setSelectedAudit] = useState(null)
+
+  const { audits } = useCmsAudit(selected?._id)
 
   const initialData = {
     title: selected?.title || '',
@@ -153,7 +153,7 @@ export default function PageChapterEditor({ selected, onSave, onDelete }) {
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <Space>
             <Tooltip title="View audit history">
-              <Button icon={<HistoryOutlined />} onClick={() => (isMobile ? setAuditDrawerOpen(true) : setAuditModalOpen(true))}>
+              <Button icon={<HistoryOutlined />} onClick={() => setAuditModalOpen(true)}>
                 History
               </Button>
             </Tooltip>
@@ -296,26 +296,13 @@ export default function PageChapterEditor({ selected, onSave, onDelete }) {
         </Form>
       </div>
 
-      <CmsAuditHistoryModal
+      <AuditHistoryModal
         open={auditModalOpen}
         onClose={() => setAuditModalOpen(false)}
-        slotId={`${selected.pageSlotId}:${selected._id}`}
-      />
-
-      <CmsAuditHistoryDrawer
-        open={auditDrawerOpen}
-        onClose={() => setAuditDrawerOpen(false)}
-        slotId={`${selected.pageSlotId}:${selected._id}`}
-        onAuditSelect={(audit) => {
-          setSelectedAudit(audit)
-          setAuditDetailOpen(true)
-        }}
-      />
-
-      <CmsAuditDetailDrawer
-        open={auditDetailOpen}
-        onClose={() => setAuditDetailOpen(false)}
-        audit={selectedAudit}
+        auditLogs={audits}
+        loading={false}
+        DetailPanelComponent={CmsAuditDetailPanel}
+        eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('faq') || e.event.startsWith('instruction'))}
       />
     </div>
   )

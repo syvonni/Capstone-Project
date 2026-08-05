@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Typography, Space, Button, Select, Input, Divider } from 'antd'
+import { Typography, Space, Button, Select, Input, Divider, Spin, Alert } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
-import { LINE_OF_BUSINESS } from '@/constants/lineOfBusiness'
+import { getLobs } from '@/shared/services/lobService'
+import { getTaxCodeOptions, getLobsByCategory, mapTaxCodeToCategory } from '@/shared/utils/lobApiUtils'
 import FieldDecisionControl from './ApplicationFieldDecisionControl'
 
 const { Text } = Typography
@@ -24,6 +25,9 @@ export default function LobReviewBlock({
     lineOfBusiness: a.lineOfBusiness ?? '',
     detailedLineOfBusiness: a.detailedLineOfBusiness ?? a.detailedLine ?? '',
   })))
+  const [lobs, setLobs] = useState([])
+  const [lobsLoading, setLobsLoading] = useState(true)
+  const [lobsError, setLobsError] = useState(null)
 
   useEffect(() => {
     setLocalActivities(activities.map((a) => ({
@@ -32,6 +36,24 @@ export default function LobReviewBlock({
       detailedLineOfBusiness: a.detailedLineOfBusiness ?? a.detailedLine ?? '',
     })))
   }, [activities])
+
+  useEffect(() => {
+    const loadLobs = async () => {
+      setLobsLoading(true)
+      setLobsError(null)
+      try {
+        const response = await getLobs({ isActive: true })
+        setLobs(response || [])
+      } catch (error) {
+        console.error('Failed to load LOBs:', error)
+        setLobsError('Failed to load line of business data')
+        setLobs([])
+      } finally {
+        setLobsLoading(false)
+      }
+    }
+    loadLobs()
+  }, [])
 
   const handleAccept = (fieldKey, payload) => {
     console.log('[LobReviewBlock] handleAccept called:', { fieldKey, payload })
@@ -85,133 +107,148 @@ export default function LobReviewBlock({
     })
   }
 
-  const taxCodeOptions = (LINE_OF_BUSINESS || []).map((l) => ({ value: l.taxCode, label: `${l.taxCode} — ${l.label || l.lineOfBusiness}` }))
+  const taxCodeOptions = useMemo(() => getTaxCodeOptions(lobs), [lobs])
   const getDetailedForTaxCode = (taxCode) => {
-    const lob = (LINE_OF_BUSINESS || []).find((l) => l.taxCode === taxCode)
-    return (lob?.detailedLines || []).map((d) => ({ value: d, label: d }))
+    const category = mapTaxCodeToCategory(lobs, taxCode)
+    const detailedLines = getLobsByCategory(lobs, category)
+    return detailedLines.map((d) => ({ value: d.name, label: d.name }))
   }
 
   return (
     <Space direction="vertical" size={0} style={{ width: '100%' }}>
-      {/* Business description - read-only */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '12px 0',
-        gap: 8
-      }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>Business description</Text>
-          <Text strong>{desc || '—'}</Text>
+      {lobsLoading ? (
+        <div style={{ textAlign: 'center', padding: 24 }}>
+          <Spin size="large" />
         </div>
-        {(onFieldDecision || reviewLocked) && (
-          <div style={{ width: 'auto', alignSelf: 'flex-start' }}>
-            <FieldDecisionControl
-              fieldKey="businessDescriptionText"
-              decision={fieldReviewDecisions["businessDescriptionText"]}
-              onAccept={handleAccept}
-              onReject={handleReject}
-              _token={_token}
-              disabled={reviewLocked}
-              hideRequest={true}
-              isFinalState={isFinalState}
-            />
+      ) : lobsError ? (
+        <Alert
+          message="Error"
+          description={lobsError}
+          type="error"
+          showIcon
+        />
+      ) : (
+        <>
+          {/* Business description - read-only */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '12px 0',
+            gap: 8
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>Business description</Text>
+              <Text strong>{desc || '—'}</Text>
+            </div>
+            {(onFieldDecision || reviewLocked) && (
+              <div style={{ width: 'auto', alignSelf: 'flex-start' }}>
+                <FieldDecisionControl
+                  fieldKey="businessDescriptionText"
+                  decision={fieldReviewDecisions["businessDescriptionText"]}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                  _token={_token}
+                  disabled={reviewLocked}
+                  hideRequest={true}
+                  isFinalState={isFinalState}
+                />
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      <Divider style={{ margin: 0 }} />
+          <Divider style={{ margin: 0 }} />
 
-      {/* Lines of business - editable */}
-      {localActivities.length === 0 && !primaryLineOfBusiness && (
-        <>
-          <div style={{ padding: '12px 0' }}>
-            <Text type="secondary">No activities. Add a row or they will be filled from primary line of business.</Text>
-          </div>
-          {!reviewLocked && (
-            <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow}>
-              Add line of business
-            </Button>
+          {/* Lines of business - editable */}
+          {localActivities.length === 0 && !primaryLineOfBusiness && (
+            <>
+              <div style={{ padding: '12px 0' }}>
+                <Text type="secondary">No activities. Add a row or they will be filled from primary line of business.</Text>
+              </div>
+              {!reviewLocked && (
+                <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow}>
+                  Add line of business
+                </Button>
+              )}
+            </>
           )}
-        </>
-      )}
-      {localActivities.length > 0 && (
-        <>
-          {localActivities.map((row, i) => (
-            <div key={i}>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                padding: '12px 0',
-                gap: 8
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                    {i === 0 ? 'Line of business' : ''}
-                  </Text>
-                  <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                    <Select
-                      placeholder="Tax code"
-                      options={taxCodeOptions}
-                      value={row.taxCode || undefined}
-                      onChange={(v) => {
-                        const lob = (LINE_OF_BUSINESS || []).find((l) => l.taxCode === v)
-                        updateRow(i, 'taxCode', v)
-                        updateRow(i, 'lineOfBusiness', lob?.lineOfBusiness ?? '')
-                      }}
-                      style={{ width: '100%' }}
-                      allowClear
-                      disabled={reviewLocked}
-                    />
-                    <Input
-                      placeholder="Line of business"
-                      value={row.lineOfBusiness}
-                      onChange={(e) => updateRow(i, 'lineOfBusiness', e.target.value)}
-                      style={{ width: '100%' }}
-                      disabled={reviewLocked}
-                    />
-                    <Select
-                      placeholder="Detailed line"
-                      options={getDetailedForTaxCode(row.taxCode)}
-                      value={row.detailedLineOfBusiness || undefined}
-                      onChange={(v) => updateRow(i, 'detailedLineOfBusiness', v)}
-                      style={{ width: '100%' }}
-                      allowClear
-                      disabled={reviewLocked}
-                    />
-                  </Space>
-                </div>
-                {(onFieldDecision || reviewLocked) && (
-                  <div style={{ width: 'auto', alignSelf: 'flex-start' }}>
-                    <Space.Compact>
-                      <FieldDecisionControl
-                        fieldKey={`businessActivities.${i}`}
-                        decision={fieldReviewDecisions[`businessActivities.${i}`]}
-                        onAccept={handleAccept}
-                        onReject={handleReject}
-                        _token={_token}
-                        disabled={reviewLocked}
-                        hideRequest={true}
-                        isFinalState={isFinalState}
-                      />
-                      {!reviewLocked && (
-                        <Button
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={() => removeRow(i)}
+          {localActivities.length > 0 && (
+            <>
+              {localActivities.map((row, i) => (
+                <div key={i}>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '12px 0',
+                    gap: 8
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+                        {i === 0 ? 'Line of business' : ''}
+                      </Text>
+                      <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                        <Select
+                          placeholder="Tax code"
+                          options={taxCodeOptions}
+                          value={row.taxCode || undefined}
+                          onChange={(v) => {
+                            updateRow(i, 'taxCode', v)
+                            updateRow(i, 'lineOfBusiness', v || '')
+                          }}
+                          style={{ width: '100%' }}
+                          allowClear
                           disabled={reviewLocked}
                         />
-                      )}
-                    </Space.Compact>
+                        <Input
+                          placeholder="Line of business"
+                          value={row.lineOfBusiness}
+                          onChange={(e) => updateRow(i, 'lineOfBusiness', e.target.value)}
+                          style={{ width: '100%' }}
+                          disabled={reviewLocked}
+                        />
+                        <Select
+                          placeholder="Detailed line"
+                          options={getDetailedForTaxCode(row.taxCode)}
+                          value={row.detailedLineOfBusiness || undefined}
+                          onChange={(v) => updateRow(i, 'detailedLineOfBusiness', v)}
+                          style={{ width: '100%' }}
+                          allowClear
+                          disabled={reviewLocked}
+                        />
+                      </Space>
+                    </div>
+                    {(onFieldDecision || reviewLocked) && (
+                      <div style={{ width: 'auto', alignSelf: 'flex-start' }}>
+                        <Space.Compact>
+                          <FieldDecisionControl
+                            fieldKey={`businessActivities.${i}`}
+                            decision={fieldReviewDecisions[`businessActivities.${i}`]}
+                            onAccept={handleAccept}
+                            onReject={handleReject}
+                            _token={_token}
+                            disabled={reviewLocked}
+                            hideRequest={true}
+                            isFinalState={isFinalState}
+                          />
+                          {!reviewLocked && (
+                            <Button
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={() => removeRow(i)}
+                              disabled={reviewLocked}
+                            />
+                          )}
+                        </Space.Compact>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              {i < localActivities.length - 1 && <Divider style={{ margin: 0 }} />}
-            </div>
-          ))}
-          {!reviewLocked && (
-            <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow} style={{ marginTop: 12 }}>
-              Add line of business
-            </Button>
+                  {i < localActivities.length - 1 && <Divider style={{ margin: 0 }} />}
+                </div>
+              ))}
+              {!reviewLocked && (
+                <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow} style={{ marginTop: 12 }}>
+                  Add line of business
+                </Button>
+              )}
+            </>
           )}
         </>
       )}

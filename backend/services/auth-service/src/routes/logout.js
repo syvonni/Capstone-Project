@@ -1,7 +1,7 @@
 const express = require("express");
 const { requireJwt } = require("../middleware/auth");
 const inAppNotificationService = require("../services/notificationService");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const Session = require("../models/Session");
 
 const router = express.Router();
@@ -33,15 +33,13 @@ router.post("/logout", requireJwt, async (req, res) => {
       .catch((err) =>
         console.error("Failed to create auth notification:", err),
       );
-    createAuditLog(
-      userId,
-      "logout",
-      "session",
-      "active",
-      "ended",
-      req._role || "business_owner",
-      { ip: req.ip },
-    ).catch(() => {});
+    logAuditEvent("logout", userId, "Session", userId, {
+      role: req._role || "business_owner",
+      fieldChanged: "session",
+      oldValue: "active",
+      newValue: "ended",
+      ip: req.ip,
+    }).catch(() => {});
     return res.json({ success: true });
   } catch (err) {
     console.error("POST /api/auth/logout error:", err);

@@ -27,7 +27,7 @@ const {
   consumeDisableRequestVerified,
   consumeDisableUndoVerified,
 } = require("../lib/mfaStepUpVerify");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 
 const router = express.Router();
 
@@ -421,6 +421,10 @@ router.post(
       if (doc.mustSetupMfa) doc.mustSetupMfa = false;
       if (doc.isStaff) {
         doc.isActive = !(doc.mustChangeCredentials || doc.mustSetupMfa);
+        // Update accountStatus for staff when onboarding is complete
+        if (!doc.mustChangeCredentials && !doc.mustSetupMfa) {
+          doc.accountStatus = "active";
+        }
       }
       await doc.save();
 
@@ -434,15 +438,13 @@ router.post(
         req.connection.remoteAddress ||
         "unknown";
       const userAgent = req.headers["user-agent"] || "unknown";
-      createAuditLog(
-        doc._id,
-        "mfa_verified",
-        "mfa",
-        "disabled",
-        "enabled",
-        roleSlug || doc.role?.slug || "business_owner",
-        { method: "totp" },
-      ).catch(() => {});
+      logAuditEvent("mfa_verified", doc._id, "User", doc._id, {
+        role: roleSlug || doc.role?.slug || "business_owner",
+        fieldChanged: "mfa",
+        oldValue: "disabled",
+        newValue: "enabled",
+        method: "totp",
+      }).catch(() => {});
       sendMfaEnabledNotification(doc._id, { method: "authenticator" }).catch(
         (err) => {
           console.error("Failed to send MFA enabled notification:", err);
@@ -669,6 +671,10 @@ router.post(
       if (doc.mustSetupMfa) doc.mustSetupMfa = false;
       if (doc.isStaff) {
         doc.isActive = !(doc.mustChangeCredentials || doc.mustSetupMfa);
+        // Update accountStatus for staff when onboarding is complete
+        if (!doc.mustChangeCredentials && !doc.mustSetupMfa) {
+          doc.accountStatus = "active";
+        }
       }
       await doc.save();
       mfaRequests.delete(key);
@@ -678,15 +684,13 @@ router.post(
           : doc.role && doc.role.toString
             ? doc.role.toString()
             : "business_owner";
-      createAuditLog(
-        doc._id,
-        "mfa_verified",
-        "mfa",
-        "disabled",
-        "enabled",
-        roleSlug,
-        { method: "fingerprint" },
-      ).catch(() => {});
+      logAuditEvent("mfa_verified", doc._id, "User", doc._id, {
+        role: roleSlug,
+        fieldChanged: "mfa",
+        oldValue: "disabled",
+        newValue: "enabled",
+        method: "fingerprint",
+      }).catch(() => {});
       return res.json({
         enabled: true,
         user: {

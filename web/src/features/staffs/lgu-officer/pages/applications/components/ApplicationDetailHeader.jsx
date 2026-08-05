@@ -1,5 +1,9 @@
-import { CheckOutlined, CloseOutlined, HistoryOutlined, BookOutlined, InfoCircleOutlined, StarOutlined, StarFilled, ShopOutlined } from '@ant-design/icons'
+import { CheckOutlined, CloseOutlined, HistoryOutlined, StarOutlined, StarFilled, ShopOutlined, MailOutlined } from '@ant-design/icons'
+import { Badge } from 'antd'
+import { useState } from 'react'
+import { Grid } from 'antd'
 import DetailHeader from '@/shared/components/DetailHeader'
+import ApplicationEmailStatusModal from './modals/ApplicationEmailStatusModal'
 
 export default function ApplicationDetailHeader({
   isClaimed,
@@ -8,15 +12,27 @@ export default function ApplicationDetailHeader({
   onClaim,
   onRelease,
   onHistoryClick,
-  onManualClick,
-  onInfoClick,
   actionButtons = [],
   isBookmarked = false,
   onBookmarkToggle,
   hasPendingAction = false,
   onGoToBusiness,
   applicationStatus,
+  emailSendStatus = {},
+  onResendEmail,
+  onResendAppealEmail,
+  appealId,
+  isOfficerDraft = false,
+  isAutosaving = false,
+  hasUnsavedChanges = false,
+  _loadApplicationDetails,
+  applicationId,
+  businessId,
+  permitService,
 }) {
+  const screens = Grid.useBreakpoint()
+  const isMobile = !screens.lg
+
   // Only disable release button when pending action is 'complete_review' (approval pending)
   const isApprovalPending = hasPendingAction?.actionType === 'complete_review';
   const isApproved = applicationStatus === 'approved';
@@ -120,18 +136,58 @@ export default function ApplicationDetailHeader({
   // Hide action buttons only when there's NO pending action AND in final decision states
   const effectiveActionButtons = !hasPendingAction && (isRejected || isReturned) ? [] : actionButtons;
 
+  // Email modal state
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [refreshingEmail, setRefreshingEmail] = useState(false);
+
+  // Check if any email has failed
+  const hasFailedEmail = Object.values(emailSendStatus).some(status => status?.status === 'failed');
+
+  // Email status button as secondary action
+  const emailActionButton = onResendEmail ? {
+    text: 'Email Status',
+    icon: (
+      <Badge dot={hasFailedEmail}>
+        <MailOutlined />
+      </Badge>
+    ),
+    onClick: async () => {
+      setRefreshingEmail(true);
+      await _loadApplicationDetails?.(); // Refresh application data to get latest emailSendStatus
+      setRefreshingEmail(false);
+      setEmailModalOpen(true);
+    },
+    loading: refreshingEmail,
+  } : null;
+
   return (
-    <DetailHeader
-      title="Application Details"
-      primaryButton={getPrimaryButton()}
-      iconButtons={[
-        { icon: isBookmarked ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />, onClick: onBookmarkToggle, title: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark' },
-        { icon: <HistoryOutlined />, onClick: onHistoryClick, title: 'History' },
-        { icon: <BookOutlined />, onClick: onManualClick, title: 'Manual' },
-        { icon: <InfoCircleOutlined />, onClick: onInfoClick, title: 'Info' },
-      ]}
-      actionButtons={effectiveActionButtons}
-      desktopOnly={true}
-    />
+    <>
+      <DetailHeader
+        primaryButton={getPrimaryButton()}
+        iconButtons={[
+          { icon: isBookmarked ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />, onClick: onBookmarkToggle, title: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark' },
+          { icon: <HistoryOutlined />, onClick: onHistoryClick, title: 'History' },
+        ]}
+        actionButtons={emailActionButton ? [...effectiveActionButtons, emailActionButton] : effectiveActionButtons}
+        manualSlotId="bizclear-manual"
+        instructionSlotId="lgu-officer-application-review"
+      />
+      <ApplicationEmailStatusModal
+        open={emailModalOpen}
+        onClose={() => setEmailModalOpen(false)}
+        emailSendStatus={emailSendStatus}
+        onResendEmail={onResendEmail}
+        onResendAppealEmail={onResendAppealEmail}
+        appealId={appealId}
+        isApproved={isApproved}
+        isRejected={isRejected}
+        isReturned={isReturned}
+        isMobile={isMobile}
+        isClaimed={isClaimedByMe}
+        applicationId={applicationId}
+        businessId={businessId}
+        permitService={permitService}
+      />
+    </>
   )
 }

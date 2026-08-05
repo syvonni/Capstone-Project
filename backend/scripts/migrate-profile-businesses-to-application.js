@@ -1,9 +1,9 @@
 /**
  * Migration Script: Migrate BusinessProfile.businesses[] to Application collection
- * 
+ *
  * This script migrates draft/submitted applications from the embedded
  * BusinessProfile.businesses[] array to the Application collection.
- * 
+ *
  * Usage: node backend/scripts/migrate-profile-businesses-to-application.js
  */
 
@@ -16,12 +16,15 @@ require("dotenv").config({ path: ".env" });
 async function migrate() {
   try {
     // Connect to MongoDB (use Docker internal MongoDB)
-    const mongoUri = "mongodb://capstone_app:g95fxnwa1wPDdyfA@mongodb:27017/capstone_project?authSource=admin";
+    const mongoUri =
+      "mongodb://capstone_app:g95fxnwa1wPDdyfA@mongodb:27017/capstone_project?authSource=admin";
     await mongoose.connect(mongoUri);
     console.log("Connected to MongoDB");
 
     // Find all BusinessProfiles with businesses array
-    const profiles = await BusinessProfile.find({ businesses: { $exists: true, $ne: [] } });
+    const profiles = await BusinessProfile.find({
+      businesses: { $exists: true, $ne: [] },
+    });
     console.log(`Found ${profiles.length} profiles with businesses array`);
 
     let migratedCount = 0;
@@ -34,9 +37,13 @@ async function migrate() {
       for (const business of profile.businesses) {
         try {
           // Check if application already exists with this businessId
-          const existing = await Application.findOne({ applicationId: business.businessId });
+          const existing = await Application.findOne({
+            applicationId: business.businessId,
+          });
           if (existing) {
-            console.log(`  Skipping duplicate applicationId: ${business.businessId}`);
+            console.log(
+              `  Skipping duplicate applicationId: ${business.businessId}`,
+            );
             skippedCount++;
             continue;
           }
@@ -47,7 +54,8 @@ async function migrate() {
             userId: profile.userId,
             applicationType: business.applicationType || "new",
             applicationStatus: business.applicationStatus || "draft",
-            applicationReferenceNumber: business.applicationReferenceNumber || "",
+            applicationReferenceNumber:
+              business.applicationReferenceNumber || "",
             reviewedBy: business.reviewedBy || null,
             reviewedByName: business.reviewedByName || "",
             reviewedAt: business.reviewedAt || null,
@@ -59,7 +67,7 @@ async function migrate() {
             fieldReviewDecisions: business.fieldReviewDecisions || {},
             formType: business.formType || "",
             category: business.category || "",
-            formDefinitionId: business.formDefinitionId || null,
+            permitFormId: business.permitFormId || business.formDefinitionId || null,
             formData: business.formData || {},
             lguDocuments: business.lguDocuments || {},
             organizationType: business.organizationType || "",
@@ -85,18 +93,29 @@ async function migrate() {
             oathOfUndertaking: business.oathOfUndertaking || false,
             birRegistration: business.birRegistration || {},
             otherAgencyRegistrations: business.otherAgencyRegistrations || {},
-            submittedAt: business.submittedAt ? new Date(business.submittedAt) : null,
+            submittedAt: business.submittedAt
+              ? new Date(business.submittedAt)
+              : null,
             submittedToLguOfficer: business.submittedToLguOfficer || false,
             isSubmitted: business.isSubmitted || false,
             createdByOfficer: business.createdByOfficer || false,
-            createdAt: business.createdAt ? new Date(business.createdAt) : new Date(),
-            updatedAt: business.updatedAt ? new Date(business.updatedAt) : new Date(),
+            createdAt: business.createdAt
+              ? new Date(business.createdAt)
+              : new Date(),
+            updatedAt: business.updatedAt
+              ? new Date(business.updatedAt)
+              : new Date(),
           });
 
-          console.log(`  Migrated application: ${business.businessId} (${business.applicationStatus})`);
+          console.log(
+            `  Migrated application: ${business.businessId} (${business.applicationStatus})`,
+          );
           migratedCount++;
         } catch (err) {
-          console.error(`  Error migrating business ${business.businessId}:`, err.message);
+          console.error(
+            `  Error migrating business ${business.businessId}:`,
+            err.message,
+          );
           errorCount++;
         }
       }
@@ -114,7 +133,9 @@ async function migrate() {
     console.log(`Errors: ${errorCount}`);
 
     if (errorCount > 0) {
-      console.log("\n⚠️  Some applications failed to migrate. Check logs above.");
+      console.log(
+        "\n⚠️  Some applications failed to migrate. Check logs above.",
+      );
     } else {
       console.log("\n✅ Migration completed successfully!");
     }

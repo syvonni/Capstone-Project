@@ -4,7 +4,8 @@ export function useApplicationStatus(application, currentUser) {
   const canReview = reviewableStatuses.includes(status)
   const isFinalDecision = status === 'approved' || status === 'rejected' || status === 'needs_revision' || status === 'appeal_rejected'
   const isWaitingForApplicant = status === 'needs_revision'
-  const isDraft = ['draft', 'requirements_viewed', 'form_completed', 'documents_uploaded', 'bir_registered', 'agencies_registered'].includes(status)
+  const isDraft = ['draft', 'officer_draft', 'requirements_viewed', 'form_completed', 'documents_uploaded', 'bir_registered', 'agencies_registered'].includes(status)
+  const isOfficerDraft = status === 'officer_draft' && application?.createdByOfficer === true
 
   // Check if current user is the one who claimed the application
   const claimedById = application?.reviewedBy && typeof application.reviewedBy === 'object'
@@ -18,6 +19,7 @@ export function useApplicationStatus(application, currentUser) {
     isWaitingForApplicant,
     isActiveReviewState: canReview && isClaimedByMe,
     isDraft,
+    isOfficerDraft,
     isClaimedByMe,
   }
 }

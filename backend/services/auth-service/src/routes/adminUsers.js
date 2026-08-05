@@ -19,7 +19,7 @@ const {
   sanitizeName,
 } = require("../lib/sanitizer");
 const { isStaffRole, refreshStaffRoleCache } = require("../lib/roleHelpers");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { addToPasswordHistory } = require("../lib/passwordHistory");
 const { validatePasswordStrength } = require("../lib/passwordValidator");
 const { sendStaffCredentialsEmail } = require("../lib/mailer");
@@ -334,14 +334,16 @@ router.patch(
 
       // Create audit log per field changed
       for (const change of changes) {
-        await createAuditLog(
-          staffUser._id,
+        await logAuditEvent(
           "profile_update",
-          change.field,
-          change.oldValue,
-          change.newValue,
-          adminRole,
+          staffUser._id,
+          "User",
+          staffUser._id,
           {
+            role: adminRole,
+            fieldChanged: change.field,
+            oldValue: change.oldValue,
+            newValue: change.newValue,
             reason,
             changedBy: adminId,
             ip,
@@ -465,14 +467,16 @@ router.post(
         "unknown";
       const userAgent = req.headers["user-agent"] || "unknown";
 
-      await createAuditLog(
-        staffUser._id,
+      await logAuditEvent(
         "password_change",
-        "password",
-        "[REDACTED]",
-        "[REDACTED]",
-        adminRole,
+        staffUser._id,
+        "User",
+        staffUser._id,
         {
+          role: adminRole,
+          fieldChanged: "password",
+          oldValue: "[REDACTED]",
+          newValue: "[REDACTED]",
           reason,
           resetBy: adminId,
           ip,
@@ -542,12 +546,7 @@ router.get(
 router.get(
   "/offices",
   requireJwt,
-  requireRole([
-    "lgu_officer",
-    "staff",
-    "inspector",
-    "admin",
-  ]),
+  requireRole(["lgu_officer", "staff", "inspector", "admin"]),
   async (req, res) => {
     try {
       const docs = await Office.find({}).sort({ group: 1, name: 1 }).lean();
@@ -1171,14 +1170,16 @@ router.post(
       const userAgent = req.headers["user-agent"] || "unknown";
       const changedFields = Object.keys(newValues);
       const fieldChanged = changedFields[0] || "admin_change";
-      await createAuditLog(
+      await logAuditEvent(
         targetAdminId,
         "admin_approval",
-        fieldChanged,
-        JSON.stringify(oldValues),
-        JSON.stringify(newValues),
-        "admin",
+        "User",
+        targetAdminId,
         {
+          role: "admin",
+          fieldChanged,
+          oldValue: JSON.stringify(oldValues),
+          newValue: JSON.stringify(newValues),
           ip,
           userAgent,
           approvalId,

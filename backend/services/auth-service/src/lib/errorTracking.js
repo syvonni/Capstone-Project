@@ -1,5 +1,5 @@
 const logger = require("./logger");
-const { logAuditEvent } = require("./auditLogger");
+const { logAuditEvent } = require("./auditClient");
 
 /**
  * Error Tracking Service
@@ -66,17 +66,20 @@ class ErrorTrackingService {
     if (severity === "critical" && context.userId) {
       try {
         await logAuditEvent(
-          "error_critical",
           context.userId,
-          "SystemError",
+          "error_critical",
+          "SecurityEvent",
           context.userId,
           {
+            role: context.role || "system",
+            fieldChanged: "system",
+            oldValue: null,
+            newValue: null,
             errorName: error.name,
             errorCode: error.code,
             severity,
             correlationId: context.correlationId,
             stack: error.stack?.substring(0, 500),
-            role: context.role || "system",
           },
         );
       } catch (auditError) {

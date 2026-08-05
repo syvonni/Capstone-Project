@@ -1,10 +1,8 @@
 const mongoose = require("mongoose");
 const BusinessProfile = require("../models/BusinessProfile");
 const Payment = require("../models/Payment");
-const Violation = require("../models/Violation");
-const Inspection = require("../models/Inspection");
 const Permit = require("../models/Permit");
-const { logAuditEvent } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const permitIssuanceService = require("./permitIssuanceService");
 
 // Helper: build query that matches either businessId or subdoc _id
@@ -26,40 +24,6 @@ async function calculateComplianceScore(businessId) {
     deductions: [],
     eligible: true,
   };
-
-  // Check for outstanding violations
-  const openViolations = await Violation.countDocuments({
-    businessId,
-    status: "open",
-  });
-
-  if (openViolations > 0) {
-    score.deductions.push({
-      reason: "Outstanding violations",
-      points: openViolations * 10,
-      count: openViolations,
-    });
-    score.total -= openViolations * 10;
-  }
-
-  // Check for failed inspections in last year
-  const oneYearAgo = new Date();
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-  const failedInspections = await Inspection.countDocuments({
-    businessId,
-    status: "failed",
-    completedAt: { $gte: oneYearAgo },
-  });
-
-  if (failedInspections > 0) {
-    score.deductions.push({
-      reason: "Failed inspections",
-      points: failedInspections * 15,
-      count: failedInspections,
-    });
-    score.total -= failedInspections * 15;
-  }
 
   // Check for late payments
   const latePayments = await Payment.countDocuments({
@@ -111,21 +75,13 @@ async function checkExpressLaneEligibility(businessId) {
   // Additional checks
   const checks = {
     complianceScore,
-    noOutstandingViolations:
-      complianceScore.deductions.find(
-        (d) => d.reason === "Outstanding violations",
-      )?.count === 0,
     noOverduePayments:
       complianceScore.deductions.find((d) => d.reason === "Overdue payments")
-        ?.count === 0,
-    goodInspectionRecord:
-      complianceScore.deductions.find((d) => d.reason === "Failed inspections")
         ?.count === 0,
   };
 
   const eligible =
     complianceScore.eligible &&
-    checks.noOutstandingViolations &&
     checks.noOverduePayments;
 
   return {
@@ -297,65 +253,9 @@ async function createRenewalPayment(businessId, renewalId, assessmentData) {
   return payment;
 }
 
-/**
- * Check if renewal requires inspection
- */
-async function requiresRenewalInspection(businessId) {
-  // Check for violations
-  const openViolations = await Violation.countDocuments({
-    businessId,
-    status: "open",
-  });
-
-  if (openViolations > 0) {
-    return {
-      required: true,
-      reason: "Outstanding violations require inspection",
-    };
-  }
-
-  // Check last inspection date
-  const lastInspection = await Inspection.findOne({
-    businessId,
-    status: "completed",
-  }).sort({ completedAt: -1 });
-
-  if (!lastInspection) {
-    return {
-      required: true,
-      reason: "No previous inspection record",
-    };
-  }
-
-  // If last inspection was more than 1 year ago
-  const oneYearAgo = new Date();
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-  if (lastInspection.completedAt < oneYearAgo) {
-    return {
-      required: true,
-      reason: "Last inspection was more than 1 year ago",
-    };
-  }
-
-  // Check if last inspection had major findings
-  if (lastInspection.result === "failed" || lastInspection.majorFindings > 0) {
-    return {
-      required: true,
-      reason: "Previous inspection had major findings",
-    };
-  }
-
-  return {
-    required: false,
-    reason: "No inspection required - clean record",
-  };
-}
-
 module.exports = {
   calculateComplianceScore,
   checkExpressLaneEligibility,
   processExpressLaneRenewal,
   createRenewalPayment,
-  requiresRenewalInspection,
 };

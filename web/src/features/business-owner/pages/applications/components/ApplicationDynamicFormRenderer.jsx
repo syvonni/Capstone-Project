@@ -9,6 +9,7 @@ import {
   InputNumber,
   Upload,
   Checkbox,
+  Radio,
   Typography,
   Button,
   Row,
@@ -17,13 +18,16 @@ import {
   Divider,
   theme,
   App,
+  Grid,
 } from 'antd'
+
+const { RangePicker } = DatePicker
 import {
   UploadOutlined,
 } from '@ant-design/icons'
 import PhilippineAddressFields from '@/shared/components/PhilippineAddressFields'
 import AlaminosAddressFields from '@/shared/components/AlaminosAddressFields'
-import ApplicationAiLobRecommendation from './ApplicationAiLobRecommendation'
+import LobSection from '@/shared/components/formPreview/LobSection'
 import { uploadFile } from '@/features/business-owner/services/businessRegistrationService'
 import { resolveIpfsUrl } from '@/lib/ipfsUtils'
 import {
@@ -45,7 +49,7 @@ const { Text, Title } = Typography
 
 function DynamicField({ field, form, token, readOnly, businessId, onDocumentCid, onSaveDraft, formDataKey, documents = {}, revisionFieldKeys, fieldReviewDecisions }) {
   const { message } = App.useApp()
-  const fieldName = field.key || field.label
+  const fieldName = field.key
   const rules = buildValidationRules(field)
   const [previewModal, setPreviewModal] = useState({ open: false, url: null, label: '', type: 'other', isBlob: false })
 
@@ -150,8 +154,8 @@ function DynamicField({ field, form, token, readOnly, businessId, onDocumentCid,
 
     case 'date':
       return (
-        <Form.Item 
-          name={fieldName} 
+        <Form.Item
+          name={fieldName}
           label={label}
           rules={effectiveReadOnly ? [] : [
             ...rules,
@@ -209,6 +213,78 @@ function DynamicField({ field, form, token, readOnly, businessId, onDocumentCid,
         </Form.Item>
       )
 
+    case 'date_range': {
+      const startFieldName = `${fieldName}_start`
+      const endFieldName = `${fieldName}_end`
+      
+      return (
+        <div style={hasRequestChange ? { border: `1px dashed ${token.colorVolcano}`, padding: '12px', borderRadius: '8px', marginBottom: '16px' } : { marginBottom: '16px' }}>
+          <Form.Item label={label} style={{ marginBottom: '8px' }} />
+          <Row gutter={8}>
+            <Col span={12}>
+              <Form.Item
+                name={startFieldName}
+                rules={effectiveReadOnly ? [] : [
+                  ...(field.required ? [{ required: true, message: 'Please select start date' }] : []),
+                  {
+                    validator: (_, value) => {
+                      if (!value) return Promise.resolve()
+                      if (dayjs.isDayjs(value)) return Promise.resolve()
+                      if (typeof value === 'string' || value instanceof Date) return Promise.resolve()
+                      return Promise.reject(new Error('Invalid date format'))
+                    }
+                  }
+                ]}
+                style={{ marginBottom: 0 }}
+              >
+                <DatePicker
+                  placeholder="Start date"
+                  style={{ width: '100%' }}
+                  disabled={effectiveReadOnly}
+                  format="YYYY-MM-DD"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name={endFieldName}
+                dependencies={[startFieldName]}
+                rules={effectiveReadOnly ? [] : [
+                  ...(field.required ? [{ required: true, message: 'Please select end date' }] : []),
+                  {
+                    validator: (_, value) => {
+                      if (!value) return Promise.resolve()
+                      if (dayjs.isDayjs(value)) return Promise.resolve()
+                      if (typeof value === 'string' || value instanceof Date) return Promise.resolve()
+                      return Promise.reject(new Error('Invalid date format'))
+                    }
+                  },
+                  {
+                    validator: (_, value) => {
+                      const startDate = form.getFieldValue(startFieldName)
+                      if (!startDate || !value) return Promise.resolve()
+                      if (dayjs(value).isBefore(dayjs(startDate), 'day')) {
+                        return Promise.reject(new Error('End date must be after or equal to start date'))
+                      }
+                      return Promise.resolve()
+                    }
+                  }
+                ]}
+                style={{ marginBottom: 0 }}
+              >
+                <DatePicker
+                  placeholder="End date"
+                  style={{ width: '100%' }}
+                  disabled={effectiveReadOnly}
+                  format="YYYY-MM-DD"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        </div>
+      )
+    }
+
     case 'select':
       return (
         <Form.Item
@@ -218,9 +294,16 @@ function DynamicField({ field, form, token, readOnly, businessId, onDocumentCid,
           style={hasRequestChange || hasAddressRequestChange ? { border: `1px dashed ${token.colorVolcano}`, padding: '12px', borderRadius: '8px', marginBottom: '16px' } : { marginBottom: '16px' }}
         >
           <Select
+            addonBefore="Select"
             placeholder={field.placeholder || 'Select...'}
             style={{ width: '100%' }}
-            options={(field.dropdownOptions || []).map((o) => ({ value: o, label: o }))}
+            options={(field.dropdownOptions || []).map((o) => {
+              const isObject = typeof o === 'object'
+              return {
+                value: isObject ? o.id : o,
+                label: isObject ? o.label : o
+              }
+            })}
             showSearch={!effectiveReadOnly}
             filterOption={(input, option) =>
               (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -240,9 +323,16 @@ function DynamicField({ field, form, token, readOnly, businessId, onDocumentCid,
         >
           <Select
             mode="multiple"
+            addonBefore="Select"
             placeholder={field.placeholder || 'Select one or more...'}
             style={{ width: '100%' }}
-            options={(field.dropdownOptions || []).map((o) => ({ value: o, label: o }))}
+            options={(field.dropdownOptions || []).map((o) => {
+              const isObject = typeof o === 'object'
+              return {
+                value: isObject ? o.id : o,
+                label: isObject ? o.label : o
+              }
+            })}
             showSearch={!effectiveReadOnly}
             filterOption={(input, option) =>
               (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -255,6 +345,7 @@ function DynamicField({ field, form, token, readOnly, businessId, onDocumentCid,
     case 'file': {
       const canUpload = Boolean(businessId && onDocumentCid && !effectiveReadOnly)
       const fieldValue = form.getFieldValue(fieldName)
+      const metadataFieldName = `${fieldName}_metadata`
 
       const allFormValues = form.getFieldsValue(true) || {}
 
@@ -332,82 +423,139 @@ function DynamicField({ field, form, token, readOnly, businessId, onDocumentCid,
             </>
           ) : (
             <>
-              <Form.Item label={label} rules={rules} style={hasRequestChange ? { border: `1px dashed ${token.colorVolcano}`, padding: '12px', borderRadius: '8px', marginBottom: '16px' } : { marginBottom: '16px' }}>
-                <Upload
-                  listType="picture-card"
-                  beforeUpload={canUpload ? async (file) => {
-                    setUploading(true)
-                    try {
-                      message.loading({ content: `Uploading ${file.name}...`, key: `upload-${fieldName}`, duration: 0 })
-                      const res = await uploadFile(businessId, file, field.documentKey || fieldName)
-                      const cid = res?.cid || res?.ipfsCid
-                      if (cid && onDocumentCid) {
-                        onDocumentCid(field.documentKey || fieldName, cid)
+              <div style={hasRequestChange ? { border: `1px dashed ${token.colorVolcano}`, padding: '12px', borderRadius: '8px', marginBottom: '16px' } : field.metadataFields && field.metadataFields.length > 0 ? { border: `1px solid ${token.colorBorder}`, padding: '12px', borderRadius: '8px', marginBottom: '16px' } : { marginBottom: '16px' }}>
+                <Form.Item label={label} rules={rules} style={{ marginBottom: field.metadataFields && field.metadataFields.length > 0 ? 12 : 0 }}>
+                  <Upload
+                    listType="picture-card"
+                    beforeUpload={canUpload ? async (file) => {
+                      setUploading(true)
+                      try {
+                        message.loading({ content: `Uploading ${file.name}...`, key: `upload-${fieldName}`, duration: 0 })
+                        const res = await uploadFile(businessId, file, field.documentKey || fieldName)
+                        const cid = res?.cid || res?.ipfsCid
+                        if (cid && onDocumentCid) {
+                          onDocumentCid(field.documentKey || fieldName, cid)
+                        }
+                        const uploadedFile = { uid: file.uid, name: file.name, status: 'done', cid, url: resolveIpfsUrl(cid) || cid }
+                        form.setFieldValue(fieldName, [uploadedFile])
+                        setLocalFileList([uploadedFile])
+                        message.success({ content: `${file.name} uploaded`, key: `upload-${fieldName}` })
+                        // Auto-save draft after successful upload so document persists on refresh
+                        if (typeof onSaveDraft === 'function') {
+                          setTimeout(() => onSaveDraft(), 100)
+                        }
+                      } catch (err) {
+                        message.error({ content: err?.message || 'Upload failed', key: `upload-${fieldName}` })
+                        form.setFieldValue(fieldName, [])
+                        setLocalFileList([])
+                      } finally {
+                        setUploading(false)
                       }
-                      const uploadedFile = { uid: file.uid, name: file.name, status: 'done', cid, url: resolveIpfsUrl(cid) || cid }
-                      form.setFieldValue(fieldName, [uploadedFile])
-                      setLocalFileList([uploadedFile])
-                      message.success({ content: `${file.name} uploaded`, key: `upload-${fieldName}` })
-                      // Auto-save draft after successful upload so document persists on refresh
-                      if (typeof onSaveDraft === 'function') {
-                        setTimeout(() => onSaveDraft(), 100)
+                      return false
+                    } : () => false}
+                    maxCount={1}
+                    fileList={localFileList}
+                    onChange={({ fileList: newFileList }) => {
+                      setLocalFileList(newFileList)
+                      if (newFileList.length === 0) {
+                        form.setFieldValue(fieldName, [])
+                        if (onDocumentCid) {
+                          onDocumentCid(field.documentKey || fieldName, null)
+                        }
                       }
-                    } catch (err) {
-                      message.error({ content: err?.message || 'Upload failed', key: `upload-${fieldName}` })
+                    }}
+                    onRemove={(_file) => {
                       form.setFieldValue(fieldName, [])
                       setLocalFileList([])
-                    } finally {
-                      setUploading(false)
-                    }
-                    return false
-                  } : () => false}
-                  maxCount={1}
-                  fileList={localFileList}
-                  onChange={({ fileList: newFileList }) => {
-                    setLocalFileList(newFileList)
-                    if (newFileList.length === 0) {
-                      form.setFieldValue(fieldName, [])
                       if (onDocumentCid) {
                         onDocumentCid(field.documentKey || fieldName, null)
                       }
-                    }
-                  }}
-                  onRemove={(_file) => {
-                    form.setFieldValue(fieldName, [])
-                    setLocalFileList([])
-                    if (onDocumentCid) {
-                      onDocumentCid(field.documentKey || fieldName, null)
-                    }
-                    // Force form validation update to trigger section completion recalculation
-                    form.validateFields([fieldName]).catch(() => {})
-                    // Auto-save draft after file removal so deletion persists on refresh
-                    if (typeof onSaveDraft === 'function') {
-                      setTimeout(() => onSaveDraft(), 100)
-                    }
-                    return false
-                  }}
-                  onPreview={(_file) => {
-                    const previewFile = localFileList[0]
-                    const fileType = detectFileType(previewFile.url, previewFile.name, field.validation?.acceptedFileTypes)
-                    setPreviewModal({
-                      open: true,
-                      url: previewFile.url,
-                      label: previewFile.name,
-                      type: fileType,
-                      isBlob: typeof previewFile.url === 'string' && previewFile.url.startsWith('blob:')
-                    })
-                  }}
-                  accept={field.validation?.acceptedFileTypes?.split(',').map(t => `.${t.trim()}`).join(',')}
-                  disabled={!canUpload || uploading || (localFileList.length > 0 && effectiveReadOnly)}
-                >
-                  {localFileList.length === 0 && (
-                    <div>
-                      <UploadOutlined />
-                      <div style={{ marginTop: 8 }}>Upload</div>
-                    </div>
-                  )}
-                </Upload>
-              </Form.Item>
+                      // Force form validation update to trigger section completion recalculation
+                      form.validateFields([fieldName]).catch(() => {})
+                      // Auto-save draft after file removal so deletion persists on refresh
+                      if (typeof onSaveDraft === 'function') {
+                        setTimeout(() => onSaveDraft(), 100)
+                      }
+                      return false
+                    }}
+                    onPreview={(_file) => {
+                      const previewFile = localFileList[0]
+                      const fileType = detectFileType(previewFile.url, previewFile.name, field.validation?.acceptedFileTypes)
+                      setPreviewModal({
+                        open: true,
+                        url: previewFile.url,
+                        label: previewFile.name,
+                        type: fileType,
+                        isBlob: typeof previewFile.url === 'string' && previewFile.url.startsWith('blob:')
+                      })
+                    }}
+                    accept={field.validation?.acceptedFileTypes?.split(',').map(t => `.${t.trim()}`).join(',')}
+                    disabled={!canUpload || uploading || (localFileList.length > 0 && effectiveReadOnly)}
+                  >
+                    {localFileList.length === 0 && (
+                      <div>
+                        <UploadOutlined />
+                        <div style={{ marginTop: 8 }}>Upload</div>
+                      </div>
+                    )}
+                  </Upload>
+                </Form.Item>
+                {/* Render metadata fields if defined */}
+                {field.metadataFields && field.metadataFields.length > 0 && (
+                  <div>
+                    {field.metadataFields.map((metaField, metaIdx) => {
+                      if (metaField.type === 'address') {
+                        return (
+                          <div key={metaIdx} style={{ marginBottom: 8 }}>
+                            <Text style={{ display: 'block', marginBottom: 4 }}>
+                              {metaField.label} {metaField.required && <span style={{ color: token.colorError }}>*</span>}
+                            </Text>
+                            <PhilippineAddressFields
+                              form={form}
+                              namePrefix={[metadataFieldName, metaField.key]}
+                              required={metaField.required}
+                              disabled={effectiveReadOnly}
+                            />
+                          </div>
+                        )
+                      }
+                      if (metaField.type === 'address_alaminos') {
+                        return (
+                          <div key={metaIdx} style={{ marginBottom: 8 }}>
+                            <Text style={{ display: 'block', marginBottom: 4 }}>
+                              {metaField.label} {metaField.required && <span style={{ color: token.colorError }}>*</span>}
+                            </Text>
+                            <AlaminosAddressFields
+                              form={form}
+                              namePrefix={[metadataFieldName, metaField.key]}
+                              required={metaField.required}
+                              disabled={effectiveReadOnly}
+                            />
+                          </div>
+                        )
+                      }
+                      return (
+                        <Form.Item
+                          key={metaIdx}
+                          name={[metadataFieldName, metaField.key]}
+                          label={metaField.label}
+                          rules={effectiveReadOnly ? [] : [
+                            ...(metaField.required ? [{ required: true, message: `Please enter ${metaField.label.toLowerCase()}` }] : []),
+                            ...(metaField.type === 'text' && metaField.validation ? [metaField.validation] : [])
+                          ]}
+                          style={{ marginBottom: 8 }}
+                        >
+                          {metaField.type === 'date' ? (
+                            <DatePicker style={{ width: '100%' }} disabled={effectiveReadOnly} />
+                          ) : (
+                            <Input placeholder={metaField.placeholder || ''} disabled={effectiveReadOnly} />
+                          )}
+                        </Form.Item>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </>
           )}
 
@@ -420,6 +568,232 @@ function DynamicField({ field, form, token, readOnly, businessId, onDocumentCid,
             isBlob={previewModal.isBlob}
           />
         </>
+      )
+    }
+
+    case 'category_upload': {
+      const canUpload = Boolean(businessId && onDocumentCid && !effectiveReadOnly)
+      const categoryFieldName = `${fieldName}_category`
+      const metadataFieldName = `${fieldName}_metadata`
+
+      return (
+        <div style={hasRequestChange ? { border: `1px dashed ${token.colorVolcano}`, padding: '12px', borderRadius: '8px', marginBottom: '16px' } : field.metadataFields && field.metadataFields.length > 0 ? { border: `1px solid ${token.colorBorder}`, padding: '12px', borderRadius: '8px', marginBottom: '16px' } : { marginBottom: '16px' }}>
+          <Form.Item label={label} style={{ marginBottom: field.metadataFields && field.metadataFields.length > 0 ? 12 : 12 }}>
+            <Form.Item
+              name={categoryFieldName}
+              rules={effectiveReadOnly ? [] : [{ required: field.required, message: 'Please select category' }]}
+              style={{ marginBottom: '8px' }}
+            >
+              {({ getFieldValue }) => {
+                const categoryValue = getFieldValue(categoryFieldName)
+                const fileValue = getFieldValue(fieldName)
+                const hasFile = fileValue && fileValue.length > 0
+                return (
+                  <div>
+                    <Radio.Group disabled={effectiveReadOnly} style={{ width: '100%' }}>
+                      <Row gutter={[8, 8]}>
+                        {(field.dropdownOptions || []).map((option, idx) => {
+                          const isObject = typeof option === 'object'
+                          const id = isObject ? option.id : option
+                          const label = isObject ? option.label : option
+                          const definition = isObject ? option.definition : ''
+                          const whereToGet = isObject ? option.whereToGet : ''
+                          const optionMetadataFields = isObject && option.metadataFields ? option.metadataFields : field.metadataFields
+                          const isSelected = categoryValue === id
+                          // Hide unselected options when one is selected
+                          if (categoryValue && !isSelected) return null
+                          return (
+                            <Col key={idx} span={24}>
+                              <Radio.Button
+                                value={id}
+                                style={{
+                                  width: '100%',
+                                  height: 'auto',
+                                  padding: '12px 16px',
+                                  textAlign: 'left',
+                                  display: 'block',
+                                  whiteSpace: 'normal',
+                                  borderColor: isSelected ? token.colorBorder : undefined,
+                                }}
+                              >
+                                <div>
+                                  <Text strong style={{ display: 'block', marginBottom: 4 }}>{label}</Text>
+                                  {definition && !hasFile && (
+                                    <Text type="secondary" style={{ display: 'block' }}>{definition} {isSelected && whereToGet && `- ${whereToGet}`}</Text>
+                                  )}
+                                  {isSelected && (
+                                    <div style={{ marginTop: 12 }}>
+                                      <Form.Item
+                                        name={fieldName}
+                                        dependencies={[categoryFieldName]}
+                                        rules={effectiveReadOnly ? [] : rules}
+                                        style={{ marginBottom: 0 }}
+                                      >
+                                        <Upload
+                                          listType="picture-card"
+                                          beforeUpload={canUpload ? async (file) => {
+                                            setUploading(true)
+                                            try {
+                                              message.loading({ content: `Uploading ${file.name}...`, key: `upload-${fieldName}`, duration: 0 })
+                                              const res = await uploadFile(businessId, file, field.documentKey || fieldName)
+                                              const cid = res?.cid || res?.ipfsCid
+                                              if (cid && onDocumentCid) {
+                                                onDocumentCid(field.documentKey || fieldName, cid)
+                                              }
+                                              const uploadedFile = { uid: file.uid, name: file.name, status: 'done', cid, url: resolveIpfsUrl(cid) || cid }
+                                              form.setFieldValue(fieldName, [uploadedFile])
+                                              setLocalFileList([uploadedFile])
+                                              message.success({ content: `${file.name} uploaded`, key: `upload-${fieldName}` })
+                                              if (typeof onSaveDraft === 'function') {
+                                                setTimeout(() => onSaveDraft(), 100)
+                                              }
+                                            } catch (err) {
+                                              message.error({ content: err?.message || 'Upload failed', key: `upload-${fieldName}` })
+                                              form.setFieldValue(fieldName, [])
+                                              setLocalFileList([])
+                                            } finally {
+                                              setUploading(false)
+                                            }
+                                            return false
+                                          } : () => false}
+                                          maxCount={1}
+                                          fileList={localFileList}
+                                          onChange={({ fileList: newFileList }) => {
+                                            setLocalFileList(newFileList)
+                                            if (newFileList.length === 0) {
+                                              form.setFieldValue(fieldName, [])
+                                              if (onDocumentCid) {
+                                                onDocumentCid(field.documentKey || fieldName, null)
+                                              }
+                                            }
+                                          }}
+                                          onRemove={(_file) => {
+                                            form.setFieldValue(fieldName, [])
+                                            setLocalFileList([])
+                                            if (onDocumentCid) {
+                                              onDocumentCid(field.documentKey || fieldName, null)
+                                            }
+                                            form.validateFields([fieldName]).catch(() => {})
+                                            if (typeof onSaveDraft === 'function') {
+                                              setTimeout(() => onSaveDraft(), 100)
+                                            }
+                                            return false
+                                          }}
+                                          onPreview={(_file) => {
+                                            const previewFile = localFileList[0]
+                                            const fileType = detectFileType(previewFile.url, previewFile.name, field.validation?.acceptedFileTypes)
+                                            setPreviewModal({
+                                              open: true,
+                                              url: previewFile.url,
+                                              label: previewFile.name,
+                                              type: fileType,
+                                              isBlob: typeof previewFile.url === 'string' && previewFile.url.startsWith('blob:')
+                                            })
+                                          }}
+                                          accept={field.validation?.acceptedFileTypes?.split(',').map(t => `.${t.trim()}`).join(',')}
+                                          disabled={!canUpload || uploading || (localFileList.length > 0 && effectiveReadOnly)}
+                                        >
+                                          {localFileList.length === 0 && (
+                                            <div>
+                                              <UploadOutlined />
+                                              <div style={{ marginTop: 8 }}>Upload</div>
+                                            </div>
+                                          )}
+                                        </Upload>
+                                      </Form.Item>
+                                      {/* Render metadata fields if defined */}
+                                      {optionMetadataFields && optionMetadataFields.length > 0 && (
+                                        <div style={{ marginTop: 12 }}>
+                                          {optionMetadataFields.map((metaField, metaIdx) => {
+                                            if (metaField.type === 'address') {
+                                              return (
+                                                <div key={metaIdx} style={{ marginBottom: 8 }}>
+                                                  <Text style={{ display: 'block', marginBottom: 4 }}>
+                                                    {metaField.label} {metaField.required && <span style={{ color: token.colorError }}>*</span>}
+                                                  </Text>
+                                                  <PhilippineAddressFields
+                                                    form={form}
+                                                    namePrefix={[metadataFieldName, metaField.key]}
+                                                    required={metaField.required}
+                                                    disabled={effectiveReadOnly}
+                                                  />
+                                                </div>
+                                              )
+                                            }
+                                            if (metaField.type === 'address_alaminos') {
+                                              return (
+                                                <div key={metaIdx} style={{ marginBottom: 8 }}>
+                                                  <Text style={{ display: 'block', marginBottom: 4 }}>
+                                                    {metaField.label} {metaField.required && <span style={{ color: token.colorError }}>*</span>}
+                                                  </Text>
+                                                  <AlaminosAddressFields
+                                                    form={form}
+                                                    namePrefix={[metadataFieldName, metaField.key]}
+                                                    required={metaField.required}
+                                                    disabled={effectiveReadOnly}
+                                                  />
+                                                </div>
+                                              )
+                                            }
+                                            return (
+                                              <Form.Item
+                                                key={metaIdx}
+                                                name={[metadataFieldName, metaField.key]}
+                                                label={metaField.label}
+                                                rules={effectiveReadOnly ? [] : [
+                                                  ...(metaField.required ? [{ required: true, message: `Please enter ${metaField.label.toLowerCase()}` }] : []),
+                                                  ...(metaField.type === 'text' && metaField.validation ? [metaField.validation] : [])
+                                                ]}
+                                                style={{ marginBottom: 8 }}
+                                              >
+                                                {metaField.type === 'date' ? (
+                                                  <DatePicker style={{ width: '100%' }} disabled={effectiveReadOnly} />
+                                                ) : (
+                                                  <Input placeholder={metaField.placeholder || ''} disabled={effectiveReadOnly} />
+                                                )}
+                                              </Form.Item>
+                                            )
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </Radio.Button>
+                            </Col>
+                          )
+                        })}
+                      </Row>
+                    </Radio.Group>
+                    {categoryValue && !effectiveReadOnly && (
+                      <Button
+                        onClick={() => {
+                          form.setFieldValue(categoryFieldName, null)
+                          form.setFieldValue(fieldName, [])
+                          setLocalFileList([])
+                          if (onDocumentCid) {
+                            onDocumentCid(field.documentKey || fieldName, null)
+                          }
+                        }}
+                        style={{ marginTop: 8, padding: 0 }}
+                      >
+                        Change selection
+                      </Button>
+                    )}
+                  </div>
+                )
+              }}
+            </Form.Item>
+          </Form.Item>
+          <DocumentPreviewModal
+            open={previewModal.open}
+            onClose={() => setPreviewModal({ open: false, url: null, label: '', type: 'other', isBlob: false })}
+            url={previewModal.url}
+            label={previewModal.label}
+            type={previewModal.type}
+            isBlob={previewModal.isBlob}
+          />
+        </div>
       )
     }
 
@@ -492,6 +866,7 @@ function DynamicField({ field, form, token, readOnly, businessId, onDocumentCid,
               <AlaminosAddressFields
                 form={form}
                 namePrefix={field.key || field.label}
+                required={field.required}
                 disabled={effectiveReadOnly}
               />
             </Row>
@@ -509,7 +884,7 @@ function DynamicField({ field, form, token, readOnly, businessId, onDocumentCid,
     case 'ai_lob_recommendation':
       return (
         <Form.Item label={label} style={{ marginBottom: '16px' }}>
-          <ApplicationAiLobRecommendation field={field} form={form} readOnly={effectiveReadOnly} formDataKey={formDataKey} />
+          <LobSection isEditMode={effectiveReadOnly} />
         </Form.Item>
       )
 
@@ -591,8 +966,11 @@ export default function DynamicFormRenderer({
   documents = {},
   revisionFieldKeys,
   fieldReviewDecisions,
+  containerVariant = undefined,
+  customPadding = undefined,
 }) {
   const { token } = theme.useToken()
+  const screens = Grid.useBreakpoint()
 
   if (!definition) {
     return (
@@ -660,7 +1038,11 @@ export default function DynamicFormRenderer({
       {visibleSections.map((section, sIdx) => (
         <Card
           key={sIdx}
+          size={containerVariant}
           style={{ marginBottom: 16 }}
+          styles={customPadding ? {
+            body: { padding: screens.md ? '16px' : '24px' }
+          } : undefined}
         >
           {section.description ? (
             <>

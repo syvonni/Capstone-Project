@@ -16,15 +16,16 @@ let sendEmailFn = null;
 function getSendEmail() {
   if (sendEmailFn) return sendEmailFn;
   try {
-    const {
-      sendEmail,
-    } = require("../../admin-service/src/lib/mailer");
+    const { sendEmail } = require("../../admin-service/src/lib/mailer");
     sendEmailFn = sendEmail;
     logger.info("HelpRequest Email: using shared admin-service mailer");
   } catch (err) {
-    logger.warn("HelpRequest Email: failed to load admin-service mailer, using fallback", {
-      error: err.message,
-    });
+    logger.warn(
+      "HelpRequest Email: failed to load admin-service mailer, using fallback",
+      {
+        error: err.message,
+      },
+    );
     // Fallback: inline minimal implementation matching admin-service pattern
     const axios = require("axios");
     sendEmailFn = async (opts) => {
@@ -110,10 +111,17 @@ async function sendHelpRequestConfirmation(to, requestId, subject) {
 
   const html = buildNotificationEmailBody({
     greeting: "Hello",
-    intro: "Thank you for reaching out. We have received your help request and will respond as soon as possible.",
+    intro:
+      "Thank you for reaching out. We have received your help request and will respond as soon as possible.",
     fields: {
       fields: [
-        { label: "Reference number", value: requestId, color: EMAIL_COLORS.primary, fontSize: "14px", fontWeight: "700" },
+        {
+          label: "Reference number",
+          value: requestId,
+          color: EMAIL_COLORS.primary,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
         { label: "Subject", value: subject },
       ],
     },
@@ -146,10 +154,17 @@ async function sendOfficerReplyNotification(to, requestId, messagePreview) {
 
   const html = buildNotificationEmailBody({
     greeting: "Hello",
-    intro: "Our team has responded to your help request. Please note that you are limited to sending one reply.",
+    intro:
+      "Our team has responded to your help request. Please note that you are limited to sending one reply.",
     fields: {
       fields: [
-        { label: "Reference", value: requestId, color: EMAIL_COLORS.primary, fontSize: "14px", fontWeight: "700" },
+        {
+          label: "Reference",
+          value: requestId,
+          color: EMAIL_COLORS.primary,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
         { label: "Message", value: messagePreview },
       ],
     },
@@ -159,7 +174,8 @@ async function sendOfficerReplyNotification(to, requestId, messagePreview) {
 
   try {
     const sendEmail = getSendEmail();
-    const replyToEmail = process.env.HELP_REQUEST_REPLY_TO || "help@erkokoidda.resend.app";
+    const replyToEmail =
+      process.env.HELP_REQUEST_REPLY_TO || "help@erkokoidda.resend.app";
     await sendEmail({
       to,
       subject: `Reply to Help Request ${requestId}`,
@@ -167,7 +183,11 @@ async function sendOfficerReplyNotification(to, requestId, messagePreview) {
       html,
       replyTo: replyToEmail,
     });
-    logger.info("Officer reply notification sent", { to, requestId, replyTo: replyToEmail });
+    logger.info("Officer reply notification sent", {
+      to,
+      requestId,
+      replyTo: replyToEmail,
+    });
   } catch (err) {
     logger.error("Failed to send officer reply notification", {
       to,
@@ -185,9 +205,21 @@ async function sendRequestClosedNotification(to, requestId, subject) {
     intro: "Your help request has been resolved and closed.",
     fields: {
       fields: [
-        { label: "Reference", value: requestId, color: EMAIL_COLORS.primary, fontSize: "14px", fontWeight: "700" },
+        {
+          label: "Reference",
+          value: requestId,
+          color: EMAIL_COLORS.primary,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
         { label: "Subject", value: subject },
-        { label: "Status", value: "Closed", color: EMAIL_COLORS.success, fontSize: "14px", fontWeight: "700" },
+        {
+          label: "Status",
+          value: "Closed",
+          color: EMAIL_COLORS.success,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
       ],
       bgColor: EMAIL_COLORS.bgSuccess,
       borderColor: EMAIL_COLORS.borderSuccess,
@@ -220,12 +252,25 @@ async function sendRequestInvalidNotification(to, requestId, subject) {
 
   const html = buildNotificationEmailBody({
     greeting: "Hello",
-    intro: "Your help request has been reviewed and marked as invalid by our team. If you believe this is an error, please submit a new request with more details.",
+    intro:
+      "Your help request has been reviewed and marked as invalid by our team. If you believe this is an error, please submit a new request with more details.",
     fields: {
       fields: [
-        { label: "Reference", value: requestId, color: EMAIL_COLORS.primary, fontSize: "14px", fontWeight: "700" },
+        {
+          label: "Reference",
+          value: requestId,
+          color: EMAIL_COLORS.primary,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
         { label: "Subject", value: subject },
-        { label: "Status", value: "Invalid", color: EMAIL_COLORS.antWarning, fontSize: "14px", fontWeight: "700" },
+        {
+          label: "Status",
+          value: "Invalid",
+          color: EMAIL_COLORS.antWarning,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
       ],
       bgColor: EMAIL_COLORS.bgWarning,
       borderColor: EMAIL_COLORS.borderWarning,

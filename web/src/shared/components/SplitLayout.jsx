@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { Grid, Drawer, Splitter } from 'antd'
 
 const { useBreakpoint } = Grid
@@ -6,13 +6,6 @@ const { useBreakpoint } = Grid
 export default function SplitLayout({ listContent, detailContent, drawerTitle = 'Details', onDrawerClose, listMinWidth = 300, listMaxWidth = 400 }) {
   const screens = useBreakpoint()
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false)
-
-  // Open drawer when detail content is provided on mobile
-  useEffect(() => {
-    if (detailContent && !screens.lg) {
-      setDetailDrawerOpen(true)
-    }
-  }, [detailContent, screens.lg])
 
   const handleCloseDrawer = useCallback(() => {
     setDetailDrawerOpen(false)

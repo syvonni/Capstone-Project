@@ -287,33 +287,6 @@ export const AccountDeletionReminder = {
   },
 }
 
-// Violation Reminder (TODO - Not yet implemented)
-export const ViolationReminder = {
-  args: {
-    subject: 'Violation Deadline Reminder - 3 days remaining',
-    greeting: 'Hello',
-    intro: 'You have a pending violation that must be resolved before the deadline to avoid penalties.',
-    violationId: 'VIO-12345',
-    violationType: 'Business Permit Renewal',
-    deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-    businessName: 'Sample Business',
-  },
-}
-
-// Inspection Reminder (TODO - Not yet implemented)
-export const InspectionReminder = {
-  args: {
-    subject: 'Inspection Scheduled Tomorrow',
-    greeting: 'Hello',
-    intro: 'You have an inspection scheduled for tomorrow. Please ensure your business is ready.',
-    inspectionId: 'INS-67890',
-    inspectionDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString(),
-    inspectionTime: '10:00 AM',
-    businessName: 'Sample Business',
-    inspectorName: 'Officer Smith',
-  },
-}
-
 // Clearance Notification (TODO - Not yet implemented)
 export const ClearanceNotification = {
   args: {

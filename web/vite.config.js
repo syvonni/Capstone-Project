@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 /* global process */
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -38,25 +38,30 @@ const __dirname = path.dirname(__filename);
  *   # OR
  *   VITE_BACKEND_PORT=3000         # Use unified backend on port 3000
  */
+
+// Load environment variables from .env files BEFORE reading them
+// This fixes the Vite caching bug where process.env is read before .env files are loaded
+const env = loadEnv(process.env.NODE_ENV || 'development', __dirname);
+
 // Default to microservices mode (Docker Compose) since that's what start.ps1 uses
 // Set VITE_USE_MICROSERVICES=false to use unified backend (port 3000)
-const USE_MICROSERVICES = process.env.VITE_USE_MICROSERVICES !== 'false' && 
-                          process.env.VITE_USE_MICROSERVICES !== '0';
+const USE_MICROSERVICES = env.VITE_USE_MICROSERVICES !== 'false' &&
+                          env.VITE_USE_MICROSERVICES !== '0';
 
 // Storybook/Vitest browser project is opt-in to avoid Playwright download errors.
 // Enable with VITEST_STORYBOOK=true when you have Playwright browsers installed.
-const ENABLE_STORYBOOK_TESTS = process.env.VITEST_STORYBOOK === 'true';
+const ENABLE_STORYBOOK_TESTS = env.VITEST_STORYBOOK === 'true';
 
 // Microservices configuration (Docker Compose setup)
 const MICROSERVICES = {
-  auth: Number(process.env.VITE_AUTH_PORT) || 3001,
-  business: Number(process.env.VITE_BUSINESS_PORT) || 3002,
-  admin: Number(process.env.VITE_ADMIN_PORT) || 3003,
-  audit: Number(process.env.VITE_AUDIT_PORT) || 3004,
+  auth: Number(env.VITE_AUTH_PORT) || 3001,
+  business: Number(env.VITE_BUSINESS_PORT) || 3002,
+  admin: Number(env.VITE_ADMIN_PORT) || 3003,
+  audit: Number(env.VITE_AUDIT_PORT) || 3004,
 };
 
 // Unified backend configuration (local development)
-const UNIFIED_BACKEND_PORT = Number(process.env.VITE_BACKEND_PORT) || 3000;
+const UNIFIED_BACKEND_PORT = Number(env.VITE_BACKEND_PORT) || 3000;
 const UNIFIED_BACKEND_TARGET = `http://localhost:${UNIFIED_BACKEND_PORT}`;
 
 if (USE_MICROSERVICES) {
@@ -313,6 +318,7 @@ export default defineConfig({
       
       // Business endpoints -> Business Service (port 3002)
       '/api/business': createProxyConfig('/api/business', `http://localhost:${MICROSERVICES.business}`),
+      '/api/public/business': createProxyConfig('/api/public/business', `http://localhost:${MICROSERVICES.business}`),
       '/api/help-requests': createProxyConfig('/api/help-requests', `http://localhost:${MICROSERVICES.business}`),
       '/api/lgu-manager': createProxyConfig('/api/lgu-manager', `http://localhost:${MICROSERVICES.business}`),
       '/api/bookmarks': createProxyConfig('/api/bookmarks', `http://localhost:${MICROSERVICES.business}`),
@@ -334,15 +340,19 @@ export default defineConfig({
       '/api/lgu-officer/owner-profile': createProxyConfig('/api/lgu-officer/owner-profile', `http://localhost:${MICROSERVICES.business}`),
       '/api/lgu-officer/businesses': createProxyConfig('/api/lgu-officer/businesses', `http://localhost:${MICROSERVICES.business}`),
       '/api/lgu-officer/permit-applications': createProxyConfig('/api/lgu-officer/permit-applications', `http://localhost:${MICROSERVICES.business}`),
+      '/api/lgu-officer/walk-in-applications': createProxyConfig('/api/lgu-officer/walk-in-applications', `http://localhost:${MICROSERVICES.business}`),
 
-      // LGU Officer endpoints -> Admin Service (port 3003) since permit applications are admin functions
-      '/api/lgu-officer': createProxyConfig('/api/lgu-officer', `http://localhost:${MICROSERVICES.admin}`),
+      // LGU Officer endpoints -> Business Service (port 3002)
+      '/api/lgu-officer': createProxyConfig('/api/lgu-officer', `http://localhost:${MICROSERVICES.business}`),
       
       // Public LGU endpoints -> Admin Service (port 3003)
       '/api/lgus': createProxyConfig('/api/lgus', `http://localhost:${MICROSERVICES.admin}`),
       
       // Public Form Definition endpoints -> Admin Service (port 3003)
       '/api/forms': createProxyConfig('/api/forms', `http://localhost:${MICROSERVICES.admin}`),
+      
+      // Public Permit Forms endpoints -> Admin Service (port 3003)
+      '/api/public/permit-forms': createProxyConfig('/api/public/permit-forms', `http://localhost:${MICROSERVICES.admin}`),
       
       // Public CMS endpoints -> Admin Service (port 3003)
       '/api/cms': createProxyConfig('/api/cms', `http://localhost:${MICROSERVICES.admin}`),

@@ -10,7 +10,7 @@ const BookmarkSchema = new mongoose.Schema(
     },
     itemType: {
       type: String,
-      enum: ["application", "help_request"],
+      enum: ["application", "help_request", "business-owner"],
       required: true,
     },
     itemId: {

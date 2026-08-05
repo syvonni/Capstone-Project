@@ -1,13 +1,9 @@
 /**
  * Background Jobs for Audit Service
- * Scheduled tasks for audit integrity verification
+ * Scheduled tasks for audit maintenance (blockchain jobs removed)
  */
 
 const logger = require("../lib/logger");
-
-// Import job functions
-const verifyAuditIntegrity = require("./verifyAuditIntegrity");
-const retryFailedAnchors = require("./retryFailedAnchors");
 
 // Try to use node-cron, fallback to setInterval if not available
 let cron = null;
@@ -51,31 +47,8 @@ function startJobs() {
 
   logger.info("Starting Audit Service background jobs...");
 
-  // Audit integrity verification (run hourly)
-  scheduleJob(
-    "0 * * * *",
-    async () => {
-      try {
-        await verifyAuditIntegrity();
-      } catch (error) {
-        logger.error("Error in verifyAuditIntegrity job", { error });
-      }
-    },
-    "verifyAuditIntegrity",
-  );
-
-  // Retry failed blockchain anchors (every 30 minutes)
-  scheduleJob(
-    "*/30 * * * *",
-    async () => {
-      try {
-        await retryFailedAnchors();
-      } catch (error) {
-        logger.error("Error in retryFailedAnchors job", { error });
-      }
-    },
-    "retryFailedAnchors",
-  );
+  // Blockchain-related jobs removed (verifyAuditIntegrity, retryFailedAnchors)
+  // Audit logs remain in MongoDB only
 
   logger.info("Audit Service background jobs started successfully");
 }

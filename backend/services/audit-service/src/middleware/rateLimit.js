@@ -182,39 +182,8 @@ function adminApprovalRateLimit() {
   });
 }
 
-/**
- * Rate limiter for audit verify endpoints (hash enumeration protection)
- * 30 verify requests per minute per user/IP
- */
-function auditVerifyRateLimit() {
-  return rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => {
-      return req._userId || ipKeyGenerator(req);
-    },
-    handler: (req, res) => {
-      req.rateLimitViolated = true;
-      let retryAfterSec = 60;
-      try {
-        const rl = req.rateLimit || {};
-        const resetMs = rl.resetTime
-          ? new Date(rl.resetTime).getTime()
-          : rl.resetMs;
-        if (resetMs > Date.now())
-          retryAfterSec = Math.ceil((resetMs - Date.now()) / 1000);
-      } catch (_) {}
-      return respond.error(
-        res,
-        429,
-        "audit_verify_rate_limited",
-        `Too many verification requests. Try again in ${retryAfterSec}s.`,
-      );
-    },
-  });
-}
+// auditVerifyRateLimit function removed - blockchain verify endpoints deleted
+// Previously: Rate limiter for audit verify endpoints (hash enumeration protection)
 
 module.exports = {
   perEmailRateLimit,
@@ -224,5 +193,4 @@ module.exports = {
   idUploadRateLimit,
   adminApprovalRateLimit,
   auditLogRateLimit,
-  auditVerifyRateLimit,
 };

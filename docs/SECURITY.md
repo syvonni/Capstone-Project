@@ -108,8 +108,7 @@ All critical actions generate audit log entries with SHA-256 hashes:
 
 ### 4.2 Tamper-Evidence
 - **SHA-256 hashing:** Every audit entry hashed from `userId + eventType + fieldChanged + oldValue + newValue + role + metadata + timestamp`
-- **Blockchain anchoring:** Hash forwarded to Audit Service → `AuditLog.sol.logAuditHash()` on Ethereum
-- **Verification:** `AuditLog.sol.verifyHash()` — O(1) lookup confirms hash exists on-chain
+- **Database storage:** Audit logs stored in MongoDB with hash verification
 
 ### 4.3 Security Monitoring
 - `securityMonitor.js` — real-time detection of SQL injection, XSS, suspicious user agents, rapid requests

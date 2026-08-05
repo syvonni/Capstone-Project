@@ -3,6 +3,7 @@ import { getFileUrlFromFormValue } from '../utils/applicationDetail.utils'
 import FieldDecisionControl from './ApplicationFieldDecisionControl'
 import DocumentViewer from '@/shared/components/DocumentViewer'
 import { getFieldKey } from '@/features/staffs/lgu-officer/utils/fieldKeyUtils'
+import DynamicFormRenderer from '@/features/business-owner/pages/applications/components/ApplicationDynamicFormRenderer'
 
 const { Text } = Typography
 const { useBreakpoint } = Grid
@@ -25,9 +26,31 @@ export default function ApplicationSectionContent({
   reviewLocked = false,
   application,
   isResubmit = false,
+  isOfficerDraft = false,
+  form,
+  onDocumentCid,
+  isClaimedByMe = false,
 }) {
   const screens = useBreakpoint()
   const isMobile = !screens.lg
+
+  // Officer draft mode: render editable form (Form is wrapped by parent in ApplicationSectionTabs)
+  if (isOfficerDraft && form) {
+    return (
+      <DynamicFormRenderer
+        definition={{ sections: [section] }}
+        form={form}
+        formValues={formData}
+        readOnly={!isClaimedByMe}
+        businessId={application?.applicationId || application?._id}
+        onDocumentCid={onDocumentCid}
+        formDataKey={application?.applicationId}
+        documents={application?.lguDocuments || {}}
+        containerVariant="small"
+        customPadding={true}
+      />
+    )
+  }
 
   const items = section?.items || []
   if (!items.length) {
@@ -47,11 +70,6 @@ export default function ApplicationSectionContent({
     const key = item.key || item.label
     const value = formData?.[key]
     const label = item.label || key || `Field ${idx + 1}`
-
-    // Skip AI LOB recommendation
-    if (item.type === 'ai_lob_recommendation' || key === 'aiLobRecommendation') {
-      return
-    }
 
     // Handle repeatable groups - expand each row
     if (item.type === 'repeatable_group') {

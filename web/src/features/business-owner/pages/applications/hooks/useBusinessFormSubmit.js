@@ -50,7 +50,7 @@ function useBusinessFormSubmit({
 
     allFields.forEach((field) => {
       if (field.type !== 'file') return
-      const key = field.key || field.label
+      const key = field.key
       if (!key) return
       const val = values[key]
       if (Array.isArray(val) && val.length > 0) {

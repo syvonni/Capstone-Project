@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "cross-env NODE_ENV=test jest --runInBand",
-    "migrate:seed-forms": "node src/migrations/seedFormDefinitions.js"
+    "test": "cross-env NODE_ENV=test jest --runInBand"
   },
   "dependencies": {
     "@pinata/sdk": "^2.0.0",

@@ -68,6 +68,49 @@ const GeneralPermitSchema = new mongoose.Schema(
       expiresAt: { type: Date, default: null },
       createdAt: { type: Date, default: null },
     },
+    // Email send status tracking for resend functionality
+    emailSendStatus: {
+      submitted: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      approved: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      rejected: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      returned: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+    },
   },
   { timestamps: true },
 );

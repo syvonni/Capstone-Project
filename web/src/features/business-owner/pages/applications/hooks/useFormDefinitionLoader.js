@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { getActiveFormDefinition } from '@/features/admin/services/formDefinitionService'
+import { getPublicPermitFormByFormId } from '@/shared/services/permitFormService'
 
 /**
  * Hook for loading form definitions
@@ -13,10 +13,9 @@ export function useFormDefinitionLoader() {
     setLocalError(null)
 
     try {
-      const response = await getActiveFormDefinition(type)
-
-      if (response.success && response.definition) {
-        onSetFormDefinition(response.definition)
+      const response = await getPublicPermitFormByFormId(type)
+      if (response?.success && response?.form) {
+        onSetFormDefinition(response.form)
         onSetActiveSectionIndex(-1)
 
         if (category && !isEditing) {
@@ -26,11 +25,11 @@ export function useFormDefinitionLoader() {
 
         onSetStep('form')
       } else {
-        setLocalError(response.error || 'No active form definition found for this type.')
+        setLocalError('Failed to load form definition')
       }
-    } catch (err) {
-      console.error('Failed to fetch form definition:', err)
-      setLocalError(err.message || 'Failed to load form. Please try again.')
+    } catch (error) {
+      setLocalError('Failed to load form definition')
+      console.error('Failed to load form definition:', error)
     } finally {
       setLoading(false)
     }

@@ -27,9 +27,12 @@ router.post("/", requireJwt, async (req, res) => {
       });
     }
 
-    if (!["application", "help_request"].includes(itemType)) {
+    if (!["application", "help_request", "business-owner"].includes(itemType)) {
       return res.status(400).json({
-        error: { message: "itemType must be 'application' or 'help_request'" },
+        error: {
+          message:
+            "itemType must be 'application', 'help_request', or 'business-owner'",
+        },
       });
     }
 

@@ -239,37 +239,12 @@ const ENCRYPTION_MAP = {
     arrayPaths: ["fieldsToChange", "supportingDocuments"],
     mixedPaths: ["currentValue", "requestedValue"],
   },
-  feeconfigurations: {
-    fields: ["lineOfBusiness", "businessTaxCategory"],
-    deterministicFields: ["taxCode"],
-    nestedPaths: [],
-    arrayPaths: [],
-    mixedPaths: [],
-  },
+  // feeconfigurations removed - old FeeConfiguration model deleted
   generalpermits: {
     fields: ["businessPlateNo"],
     deterministicFields: [],
     nestedPaths: [],
     arrayPaths: ["requirements"],
-    mixedPaths: [],
-  },
-  inspections: {
-    fields: [
-      "businessId",
-      "notes",
-      "complaintDetails",
-      "revokedReason",
-      "gpsMismatchReason",
-      "blockchainHash",
-    ],
-    deterministicFields: [],
-    nestedPaths: [
-      "gpsAtStart",
-      "inspectorSignature",
-      "ownerAcknowledgment",
-      "scheduledTimeWindow",
-    ],
-    arrayPaths: ["checklist", "evidence", "violationsFound", "editHistory"],
     mixedPaths: [],
   },
   inspectionslots: {

@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
-const blockchainService = require("./lib/blockchainService");
 const logger = require("./lib/logger");
 const correlationIdMiddleware = require("./middleware/correlationId");
 const {
@@ -66,19 +65,12 @@ app.get("/api/health", async (req, res) => {
     mongoose.connection && mongoose.connection.readyState === 1
       ? "connected"
       : "disconnected";
-  const blockchainStatus =
-    blockchainService &&
-    blockchainService.isAvailable &&
-    blockchainService.isAvailable()
-      ? "available"
-      : "unavailable";
 
   res.json({
     ok: true,
     service: "audit-service",
     timestamp: new Date().toISOString(),
     database: dbStatus,
-    blockchain: blockchainStatus,
   });
 });
 
@@ -105,35 +97,6 @@ async function start() {
     logger.info("Attempting to connect to database...");
     await connectDB(uri);
     logger.info("Database connected successfully!");
-
-    // Initialize blockchain service and related services
-    try {
-      await blockchainService.initialize();
-
-      // Initialize additional blockchain services
-      const accessControlService = require('./lib/accessControlService');
-      const userRegistryService = require('./lib/userRegistryService');
-      const documentStorageService = require('./lib/documentStorageService');
-
-      await Promise.all([
-        accessControlService.initialize().catch(err => {
-          logger.warn('AccessControl service initialization failed', { error: err.message });
-        }),
-        userRegistryService.initialize().catch(err => {
-          logger.warn('UserRegistry service initialization failed', { error: err.message });
-        }),
-        documentStorageService.initialize().catch(err => {
-          logger.warn('DocumentStorage service initialization failed', { error: err.message });
-        }),
-      ]);
-
-      logger.info("Blockchain services initialized successfully");
-    } catch (error) {
-      logger.warn(
-        "Blockchain service initialization failed (continuing without blockchain)",
-        { error },
-      );
-    }
 
     // Initialize background jobs after DB connection
     if (process.env.NODE_ENV !== "test") {

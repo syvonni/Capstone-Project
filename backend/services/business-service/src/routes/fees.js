@@ -1,63 +1,9 @@
 const express = require("express");
-const { getFeeConfig } = require("../lib/feeCalculator");
 const whatIfFeeService = require("../services/whatIfFeeService");
 const { requireJwt } = require("../middleware/auth");
 const respond = require("../middleware/respond");
-const FeeGroup = require("../models/FeeGroup");
 const Fee = require("../models/Fee");
 const router = express.Router();
-
-// GET /api/business/fee-group - Get fee group for a form type (public endpoint for business owners)
-router.get("/fee-group", async (req, res) => {
-  try {
-    const { formType, category } = req.query;
-
-    if (!formType) {
-      return respond.error(res, 400, "missing_form_type", "Form type is required");
-    }
-
-    console.log("[DEBUG] Fetching fee group with query:", { formType, category });
-
-    // For now, return the first active fee group
-    // In production, this would look up the fee group based on formType and category
-    // from a mapping table or by calling the admin-service API
-    const feeGroup = await FeeGroup.findOne({ 
-      isActive: true, 
-      isDraft: { $ne: true } 
-    })
-      .populate("fees")
-      .lean();
-
-    console.log("[DEBUG] Fee group query result:", feeGroup ? "Found" : "Not found");
-    if (feeGroup) {
-      console.log("[DEBUG] Fee group data:", JSON.stringify(feeGroup, null, 2));
-    }
-
-    if (!feeGroup) {
-      return respond.error(res, 404, "no_fee_group_configured", "No active fee group configured");
-    }
-
-    // Format the fees for display
-    const formattedFees = feeGroup.fees?.map((fee) => ({
-      label: fee.name || fee.description || "Fee",
-      amount: fee.amount || 0,
-      description: fee.description || "",
-    })) || [];
-
-    const total = formattedFees.reduce((sum, fee) => sum + (fee.amount || 0), 0);
-
-    return res.json({
-      success: true,
-      fees: formattedFees,
-      total,
-      feeGroupName: feeGroup.name,
-      isMock: false,
-    });
-  } catch (err) {
-    console.error("GET /api/business/fee-group error:", err);
-    return respond.error(res, 500, "fetch_error", "Failed to fetch fee group");
-  }
-});
 
 // POST /api/business/fees/assessment - Compatibility endpoint for payment generation
 router.post("/assessment", requireJwt, async (req, res) => {
@@ -132,37 +78,6 @@ router.post("/assessment", requireJwt, async (req, res) => {
       "assessment_error",
       err.message || "Failed to compute fee assessment",
     );
-  }
-});
-
-router.get("/fee-preview", async (req, res) => {
-  const { lob } = req.query;
-  if (!lob)
-    return res.status(400).json({
-      error: { code: "missing_lob", message: "Line of business is required" },
-    });
-
-  try {
-    const feeConfig = await getFeeConfig(lob);
-    if (!feeConfig)
-      return res.status(404).json({
-        error: {
-          code: "no_fee_config",
-          message: "No fee configuration found for this LOB",
-        },
-      });
-
-    return res.json({
-      data: {
-        lineOfBusiness: feeConfig.lineOfBusiness,
-        taxCode: feeConfig.taxCode || null,
-        feeConfig,
-      },
-    });
-  } catch (err) {
-    return res
-      .status(500)
-      .json({ error: { code: "fee_calc_error", message: err.message } });
   }
 });
 

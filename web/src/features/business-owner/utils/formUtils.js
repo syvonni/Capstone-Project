@@ -200,11 +200,9 @@ export function calculateRevisionFieldKeys(fieldReviewDecisions) {
       // LOB virtual keys from officer panel
       if (fieldKey === 'lob_description') {
         normalized.add('businessDescriptionText')
-        normalized.add('aiLobRecommendation')
       }
       if (/^lob_activity_\d+$/i.test(fieldKey)) {
         normalized.add('businessActivities')
-        normalized.add('aiLobRecommendation')
       }
     })
 
@@ -218,15 +216,6 @@ export function buildFieldToSectionIndexMap(visibleSections) {
       const name = item.key || item.label
       if (name) map[name] = idx
     })
-    // LOB (AI) section uses these internal field names
-    const isLobSection = (section.items || []).some(
-      (f) => f.type === 'ai_lob_recommendation' || f.key === 'aiLobRecommendation'
-    )
-    if (isLobSection) {
-      map.businessDescriptionText = idx
-      map.hasAnalyzedBusinessDescription = idx
-      map.businessActivities = idx
-    }
   })
   return map
 }

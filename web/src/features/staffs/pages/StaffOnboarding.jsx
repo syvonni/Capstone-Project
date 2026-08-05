@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Row, Col, theme } from 'antd'
-import { useLocation } from 'react-router-dom'
 import { useStaffOnboarding } from '../hooks/useStaffOnboarding'
-import StaffLayout from '../components/StaffLayout'
+import StaffLayout from '@/shared/components/StaffLayout'
 import OnboardingStepContent from '@/shared/components/OnboardingStepContent'
 import { mfaStatus } from '@/features/authentication/services/mfaService'
 import { getProfile } from '@/features/authentication/services/authService'
@@ -29,59 +28,37 @@ export default function StaffOnboarding() {
   })
   const mustMfa = mustMfaRaw
   const { token } = theme.useToken()
-  const location = useLocation()
   const [mfaEnabled, setMfaEnabled] = useState(false)
   const [checkingMfa, setCheckingMfa] = useState(false)
 
+  // Check MFA status on mount. MFA counts as enabled if TOTP, passkey, or fingerprint is set up.
   useEffect(() => {
-    // Dev mode: skip MFA check entirely
     if (bypassMfaDev) {
       setMfaEnabled(true)
-      if (currentStep === 0 && !mustChange) setCurrentStep(3)
       return
     }
-    const checkMfaStatus = async () => {
-      if (!currentUser?.email) return
-      setCheckingMfa(true)
-      try {
-        const status = await mfaStatus(currentUser.email)
-        const isEnabled = !!status?.enabled
-        setMfaEnabled(isEnabled)
-        if (isEnabled) {
-          if (currentStep === 2) setCurrentStep(3)
-          else if (currentStep === 0 && !mustChange) setCurrentStep(3)
-        }
-      } catch (err) {
-        console.error('Failed to check MFA status:', err)
-      } finally {
-        setCheckingMfa(false)
-      }
-    }
-    checkMfaStatus()
-  }, [currentUser?.email, currentUser?.mustSetupMfa, currentStep, mustChange])
+    if (!currentUser?.email) return
+    let cancelled = false
+    setCheckingMfa(true)
+    mfaStatus(currentUser.email)
+      .then((status) => {
+        if (cancelled) return
+        const enabled = !!status?.enabled || status?.method === 'passkey' || !!status?.fprintEnabled
+        setMfaEnabled(enabled)
+      })
+      .catch((err) => console.error('Failed to check MFA status:', err))
+      .finally(() => { if (!cancelled) setCheckingMfa(false) })
+    return () => { cancelled = true }
+  }, [currentUser?.email])
 
+  // Single source of truth for step routing once MFA status is known
   useEffect(() => {
-    if (!mustMfa && currentStep === 2) setCurrentStep(3)
-  }, [mustMfa, currentStep])
-
-  useEffect(() => {
-    if (location.pathname === '/staff/onboarding') {
-      const checkMfa = async () => {
-        if (!currentUser?.email) return
-        try {
-          const status = await mfaStatus(currentUser.email)
-          if (status?.enabled) {
-            setMfaEnabled(true)
-            if (currentStep === 2) setCurrentStep(3)
-          }
-        } catch (err) {
-          console.error('Failed to check MFA status on navigation:', err)
-        }
-      }
-      const timer = setTimeout(checkMfa, 500)
-      return () => clearTimeout(timer)
+    if (checkingMfa) return
+    // Skip MFA step if already enabled
+    if (currentStep === 2 && mfaEnabled) {
+      setCurrentStep(3)
     }
-  }, [location.pathname, currentUser?.email, currentStep])
+  }, [currentStep, mfaEnabled, checkingMfa])
 
   const handleComplete = async () => {
     setCompletingOnboarding(true)

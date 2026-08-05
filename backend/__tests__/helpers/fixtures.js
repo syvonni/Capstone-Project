@@ -150,18 +150,28 @@ function getTestTokens(users) {
 }
 
 /**
- * Get headers for admin requests that require step-up (e.g. profile/personal-info, approvals).
- * Use with .set() for supertest: request(app).patch(...).set(...getAdminStepUpHeaders(adminToken, adminUser))
+ * Get headers for requests that require step-up (e.g. profile/personal-info, approvals).
+ * Works for admin, lgu_officer, and any other role with step-up enabled.
+ * Use with .set() for supertest: request(app).patch(...).set(...getStepUpHeaders(token, user))
  */
-function getAdminStepUpHeaders(adminToken, adminUser) {
+function getStepUpHeaders(token, user) {
   const {
     signStepUpToken,
   } = require("../../services/auth-service/src/middleware/auth");
-  const stepUpToken = signStepUpToken(adminUser._id).token;
+  const stepUpToken = signStepUpToken(user._id).token;
   return {
-    Authorization: `Bearer ${adminToken}`,
+    Authorization: `Bearer ${token}`,
     "X-Step-Up-Token": stepUpToken,
   };
+}
+
+/**
+ * Get headers for admin requests that require step-up (e.g. profile/personal-info, approvals).
+ * Use with .set() for supertest: request(app).patch(...).set(...getAdminStepUpHeaders(adminToken, adminUser))
+ * @deprecated Use getStepUpHeaders instead (supports all roles)
+ */
+function getAdminStepUpHeaders(adminToken, adminUser) {
+  return getStepUpHeaders(adminToken, adminUser);
 }
 
 /**
@@ -181,6 +191,7 @@ module.exports = {
   createTestUser,
   createTestUsers,
   getTestTokens,
+  getStepUpHeaders,
   getAdminStepUpHeaders,
   createTestVerificationRequest,
 };

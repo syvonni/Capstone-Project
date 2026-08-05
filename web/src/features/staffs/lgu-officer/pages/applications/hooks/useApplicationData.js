@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { App } from 'antd'
 import { PermitApplicationService } from '@/features/staffs/lgu-officer/services/permitApplicationService'
-import { getActiveFormDefinition, getPublicFormDefinition } from '@/features/admin/services/formDefinitionService'
+import { getPublicPermitForm, getPublicPermitFormByFormId } from '@/shared/services/permitFormService'
 
 export function useApplicationData(initialApplication, form) {
   const [application, setApplication] = useState(initialApplication) 
@@ -57,13 +57,13 @@ export function useApplicationData(initialApplication, form) {
       try {
         let res
         if (formDefId) {
-          res = await getPublicFormDefinition(formDefId)
+          res = await getPublicPermitForm(formDefId)
         } else {
-          res = await getActiveFormDefinition(formType, app?.businessRegistration?.businessType || null, null)
+          res = await getPublicPermitFormByFormId(formType)
         }
         if (cancelled) return
-        if (res?.success && res?.definition) {
-          setFormDefinition(res.definition)
+        if (res?.success && res?.form) {
+          setFormDefinition(res.form)
         }
       } catch (e) {
         if (!cancelled) console.error('Failed to load form definition for review:', e)

@@ -1,5 +1,5 @@
-import { Typography, Button, Tooltip, Collapse, theme, Skeleton, Tag } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { Typography, Button, Tooltip, Collapse, theme, Skeleton, Tag, App } from 'antd'
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import ApplicationPanelCard from './ApplicationPanelCard'
 import BlurFade from '@/shared/components/BlurFade.jsx'
 import { getStatusLabel, getBusinessDisplayName, getBusinessReferenceNumber, getBusinessId } from '../utils/statusUtils'
@@ -17,6 +17,38 @@ function ApplicationsList({
   draftLimitReached = false
 }) {
   const { token } = theme.useToken()
+  const { message, modal } = App.useApp()
+
+  const handleClearApplications = async () => {
+    modal.confirm({
+      title: 'Clear All Applications?',
+      content: 'This will delete all your applications and reset the welcome state. This action cannot be undone.',
+      okText: 'Clear',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          const { fetchJsonWithFallback } = await import('@/lib/http')
+          const { getCurrentUser } = await import('@/features/authentication/lib/authEvents')
+          const { authHeaders } = await import('@/lib/authHeaders')
+          
+          const current = getCurrentUser()
+          const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })
+          
+          await fetchJsonWithFallback('/api/business-owner/debug/clear-applications', {
+            method: 'POST',
+            headers,
+          })
+          
+          message.success('Applications cleared successfully')
+          window.location.reload()
+        } catch (err) {
+          console.error('Failed to clear applications:', err)
+          message.error('Failed to clear applications')
+        }
+      },
+    })
+  }
 
   const collapseItems = [
     {
@@ -29,6 +61,24 @@ function ApplicationsList({
       ),
       children: (
         <>
+          <Tooltip title={draftLimitReached ? 'You can only have up to 2 draft, pending, or submitted applications at a time. Please complete or delete existing applications before creating a new one.' : ''}>
+            <Button
+              type="dashed"
+              icon={<PlusOutlined />}
+              style={{ width: '100%', marginBottom: 8 }}
+              onClick={onAddBusiness}
+              disabled={isSelectingType || draftLimitReached}
+            >
+              Apply
+            </Button>
+          </Tooltip>
+          <Button
+            icon={<DeleteOutlined />}
+            style={{ width: '100%', marginBottom: 8, border: `1px dashed ${token.colorBorder}` }}
+            onClick={handleClearApplications}
+          >
+            Clear ALL applications (DEBUG)
+          </Button>
           <div style={{ width: '100%' }}>
             {businesses.map((business, _index) => {
               const businessId = getBusinessId(business)
@@ -63,17 +113,6 @@ function ApplicationsList({
               )
             })}
           </div>
-          <Tooltip title={draftLimitReached ? 'You can only have up to 2 draft, pending, or submitted applications at a time. Please complete or delete existing applications before creating a new one.' : ''}>
-            <Button
-              type="dashed"
-              icon={<PlusOutlined />}
-              style={{ width: '100%', marginTop: 8 }}
-              onClick={onAddBusiness}
-              disabled={isSelectingType || draftLimitReached}
-            >
-              Apply
-            </Button>
-          </Tooltip>
         </>
       ),
     }

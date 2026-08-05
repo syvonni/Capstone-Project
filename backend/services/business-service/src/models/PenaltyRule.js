@@ -58,4 +58,6 @@ PenaltyRuleSchema.plugin(encryptionPlugin, {
 PenaltyRuleSchema.index({ isActive: 1, category: 1 });
 PenaltyRuleSchema.index({ version: 1 });
 
-module.exports = mongoose.models.PenaltyRule || mongoose.model("PenaltyRule", PenaltyRuleSchema);
+module.exports =
+  mongoose.models.PenaltyRule ||
+  mongoose.model("PenaltyRule", PenaltyRuleSchema);

@@ -290,6 +290,7 @@ export async function fetchJsonWithFallback(path, options = {}) {
     if (statusCode === 401) {
       try {
         const err = await res?.json()
+        const errCode = String(err?.error?.code || err?.code || '').toLowerCase()
         const errMsgLower = String(err?.error?.message || err?.message || '').toLowerCase()
         
         // Check if this is a session invalidation error
@@ -297,8 +298,18 @@ export async function fetchJsonWithFallback(path, options = {}) {
         const isAuthEndpoint = path.includes('/login') || path.includes('/signup') || path.includes('/sign-up') || path.includes('/forgot-password')
         
         if (!isAuthEndpoint && !skipAutoLogout) {
-          const isSessionInvalidation = errMsgLower.includes('session') && errMsgLower.includes('invalidated')
-          const isTokenExpired = errMsgLower.includes('expired') || errMsgLower.includes('jwt') || errMsgLower.includes('token')
+          // Decide based on the backend error CODE first (reliable), and only
+          // fall back to specific message phrases. Do NOT match the bare word
+          // "token" — that fires on unrelated 401s (e.g. "missing token") and
+          // wrongly force-logs-out the user.
+          const isSessionInvalidation =
+            errCode === 'token_invalidated' ||
+            (errMsgLower.includes('session') && errMsgLower.includes('invalidated'))
+          const isTokenExpired =
+            errCode === 'invalid_token' ||
+            errCode === 'token_expired' ||
+            errMsgLower.includes('expired') ||
+            errMsgLower.includes('jwt expired')
           if (isSessionInvalidation || isTokenExpired) {
             setCurrentUser(null)
             try {

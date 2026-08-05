@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/root/.npm \
 # Copy service code
 COPY services/admin-service/ ./
 
-# Copy shared constants (required by BusinessProfile, FormDefinition, FormGroup, etc.)
+# Copy shared constants (required by BusinessProfile, FormGroup, etc.)
 COPY shared/ /backend/shared/
 
 # Expose port

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { App } from 'antd'
 import BookmarkService from '@/features/staffs/lgu-officer/services/bookmarkService'
 
@@ -30,6 +30,11 @@ export function useApplicationBookmarks(application, onBookmarkToggle) {
       setBookmarkId(null)
     }
   }, [application, bookmarkService])
+
+  // Check bookmark status when application changes
+  useEffect(() => {
+    checkBookmarkStatus()
+  }, [checkBookmarkStatus])
 
   /**
    * Toggle bookmark status (add or remove)

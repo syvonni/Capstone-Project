@@ -7,10 +7,90 @@ const { requireJwt, requireRole } = require("../middleware/auth");
 const Business = require("../models/Business");
 const BusinessProfile = require("../models/BusinessProfile");
 const Application = require("../models/Application");
+const User = require("../models/User");
 const businessProfileService = require("../services/businessProfileService");
 const respond = require("../middleware/respond");
 const { scanFile } = require("../../../../shared/fileScan");
 const logger = require("../lib/logger");
+const { logAuditEvent } = require("../lib/auditClient");
+
+// Helper to send application email (fire and forget, doesn't block status change)
+async function sendApplicationEmail(application, emailType, metadata = {}) {
+  try {
+    const user = await User.findById(application.userId).select(
+      "firstName lastName email",
+    );
+    if (!user || !user.email) {
+      console.warn(
+        `User or email not found for application ${application.applicationId}`,
+      );
+      return;
+    }
+
+    const emailData = {
+      to: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      businessName: application.businessName || "Unnamed Business",
+      applicationId: application.applicationId,
+      applicationReferenceNumber: application.applicationReferenceNumber,
+      ...metadata,
+    };
+
+    // Import mailer functions dynamically to avoid circular dependency
+    const mailer = require("../../../auth-service/src/lib/mailer");
+
+    switch (emailType) {
+      case "submitted":
+        await mailer.sendApplicationSubmittedEmail(emailData);
+        break;
+      case "approved":
+        await mailer.sendApplicationApprovedEmail(emailData);
+        break;
+      case "rejected":
+        await mailer.sendApplicationRejectedEmail({
+          ...emailData,
+          rejectionReason: metadata.rejectionReason,
+        });
+        break;
+      case "returned":
+        await mailer.sendApplicationReturnedEmail({
+          ...emailData,
+          reviewComments: metadata.reviewComments,
+        });
+        break;
+      default:
+        console.warn(`Unknown email type: ${emailType}`);
+        return;
+    }
+
+    // Update emailSendStatus to sent
+    application.emailSendStatus = application.emailSendStatus || {};
+    application.emailSendStatus[emailType] = {
+      status: "sent",
+      retryCount: 0,
+      lastAttempt: new Date(),
+      lockUntil: null,
+    };
+    await application.save();
+  } catch (err) {
+    console.error(
+      `Failed to send ${emailType} email for application ${application.applicationId}:`,
+      err.message,
+    );
+    // Update emailSendStatus to failed
+    application.emailSendStatus = application.emailSendStatus || {};
+    const currentRetry =
+      (application.emailSendStatus[emailType]?.retryCount || 0) + 1;
+    application.emailSendStatus[emailType] = {
+      status: "failed",
+      retryCount: currentRetry,
+      lastAttempt: new Date(),
+      lockUntil: null,
+    };
+    await application.save();
+  }
+}
 
 // Owner ID upload (for business registration identity step - no businessId yet)
 const ownerIdUploadRoot = path.join(
@@ -60,9 +140,14 @@ router.get(
       return respond.success(res, 200, profile);
     } catch (err) {
       console.error("GET /api/business-owner/profile error:", err);
-      return respond.error(res, 500, "fetch_error", "Failed to fetch business profile");
+      return respond.error(
+        res,
+        500,
+        "fetch_error",
+        "Failed to fetch business profile",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -140,10 +225,18 @@ router.post(
       logger.info("Owner ID saved to local storage", { url, side, userId });
       return respond.success(res, 200, { url, ipfsCid: null, fallback: true });
     } catch (err) {
-      console.error("POST /api/business-owner/profile/owner-id/upload error:", err);
-      return respond.error(res, 500, "upload_error", err.message || "Failed to upload ID");
+      console.error(
+        "POST /api/business-owner/profile/owner-id/upload error:",
+        err,
+      );
+      return respond.error(
+        res,
+        500,
+        "upload_error",
+        err.message || "Failed to upload ID",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -185,9 +278,14 @@ router.post(
       return respond.success(res, 200, profile);
     } catch (err) {
       console.error("POST /api/business-owner/profile error:", err);
-      return respond.error(res, 500, "update_error", err.message || "Failed to update business profile");
+      return respond.error(
+        res,
+        500,
+        "update_error",
+        err.message || "Failed to update business profile",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -219,9 +317,14 @@ router.post(
       }
 
       // Generate reference number for submitted applications
-      let applicationReferenceNumber = businessData.applicationReferenceNumber || "";
+      let applicationReferenceNumber =
+        businessData.applicationReferenceNumber || "";
       const isSubmitted = businessData.applicationStatus === "submitted";
-      if (isSubmitted && (!applicationReferenceNumber || applicationReferenceNumber.trim() === "")) {
+      if (
+        isSubmitted &&
+        (!applicationReferenceNumber ||
+          applicationReferenceNumber.trim() === "")
+      ) {
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
         const randomSeq = Math.floor(1000 + Math.random() * 9000);
         applicationReferenceNumber = `APP-${dateStr}-${randomSeq}`;
@@ -236,14 +339,25 @@ router.post(
         applicationReferenceNumber,
         formType: businessData.formType || "",
         category: businessData.category || "",
-        formDefinitionId: businessData.formDefinitionId || null,
+        permitFormId: businessData.permitFormId || businessData.formDefinitionId || null,
         formData: businessData.formData || {},
         lguDocuments: lguDocuments,
-        submittedAt: businessData.submittedAt ? new Date(businessData.submittedAt) : (isSubmitted ? new Date() : null),
+        submittedAt: businessData.submittedAt
+          ? new Date(businessData.submittedAt)
+          : isSubmitted
+            ? new Date()
+            : null,
         submittedToLguOfficer: isSubmitted,
         isSubmitted,
         // Store businessName at top level for display (extracted from various possible field keys)
-        businessName: businessData.businessName || businessData.formData?.businessName || businessData.formData?.registeredBusinessName || businessData.formData?.activityName || businessData.formData?.['Business / trade name'] || businessData.formData?.businessTradeName || "",
+        businessName:
+          businessData.businessName ||
+          businessData.formData?.businessName ||
+          businessData.formData?.registeredBusinessName ||
+          businessData.formData?.activityName ||
+          businessData.formData?.["Business / trade name"] ||
+          businessData.formData?.businessTradeName ||
+          "",
         // Map business data to application fields
         organizationType: businessData.organizationType || "",
         businessPlateNo: businessData.businessPlateNo || "",
@@ -270,6 +384,26 @@ router.post(
         otherAgencyRegistrations: businessData.otherAgencyRegistrations || {},
       });
 
+      // Log audit event for submitted applications
+      if (isSubmitted) {
+        await logAuditEvent(
+          "application_submitted",
+          userId,
+          "application",
+          application.applicationId,
+          { applicationId: application.applicationId, userId },
+        ).catch((err) => console.error("Failed to log audit event:", err));
+      }
+
+      // Send submitted email (await to ensure emailSendStatus is updated)
+      if (isSubmitted) {
+        try {
+          await sendApplicationEmail(application, "submitted");
+        } catch (err) {
+          console.error("Failed to send submitted email:", err);
+        }
+      }
+
       // Return in format expected by frontend
       return respond.success(res, 200, {
         businessId: applicationId,
@@ -278,9 +412,14 @@ router.post(
       });
     } catch (err) {
       console.error("POST /api/business-owner/businesses error:", err);
-      return respond.error(res, 400, "add_error", err.message || "Failed to add business");
+      return respond.error(
+        res,
+        400,
+        "add_error",
+        err.message || "Failed to add business",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -305,7 +444,11 @@ router.get(
       const userId = req._userId || req.user?.id;
 
       // Get draft/submitted applications from Application collection (no lean() to allow decryption)
-      const applications = await Application.find({ userId });
+      // Exclude officer_draft applications from business owner view
+      const applications = await Application.find({ 
+        userId,
+        applicationStatus: { $ne: "officer_draft" }
+      });
 
       // Merge only applications (convert to plain objects)
       let businesses = [
@@ -338,7 +481,7 @@ router.get(
         businesses = businesses.filter(
           (b) =>
             b.businessName?.toLowerCase().includes(searchLower) ||
-            b.businessId?.toLowerCase().includes(searchLower)
+            b.businessId?.toLowerCase().includes(searchLower),
         );
       }
 
@@ -352,7 +495,7 @@ router.get(
       });
 
       const total = businesses.length;
-      
+
       // Return all businesses without pagination
       return respond.success(res, 200, {
         businesses: businesses,
@@ -366,9 +509,14 @@ router.get(
       });
     } catch (err) {
       console.error("GET /api/business-owner/businesses error:", err);
-      return respond.error(res, 500, "fetch_error", "Failed to fetch businesses");
+      return respond.error(
+        res,
+        500,
+        "fetch_error",
+        "Failed to fetch businesses",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -385,7 +533,7 @@ router.get(
       const { id } = req.params;
 
       const mongoose = require("mongoose");
-      
+
       // First try to find in Business collection
       const businessFilter = { userId };
       if (mongoose.Types.ObjectId.isValid(id)) {
@@ -415,12 +563,22 @@ router.get(
         return respond.success(res, 200, { business: application });
       }
 
-      return respond.error(res, 404, "not_found", "Business or application not found");
+      return respond.error(
+        res,
+        404,
+        "not_found",
+        "Business or application not found",
+      );
     } catch (err) {
       console.error("GET /api/business-owner/businesses/:id error:", err);
-      return respond.error(res, 500, "fetch_error", "Failed to fetch business/application");
+      return respond.error(
+        res,
+        500,
+        "fetch_error",
+        "Failed to fetch business/application",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -444,20 +602,25 @@ router.get(
         const fallback = await Business.findOne({ userId })
           .sort({ createdAt: -1 })
           .lean();
-        
+
         if (!fallback) {
           return respond.error(res, 404, "not_found", "No businesses found");
         }
-        
+
         return respond.success(res, 200, { business: fallback });
       }
 
       return respond.success(res, 200, { business });
     } catch (err) {
       console.error("GET /api/business-owner/businesses/primary error:", err);
-      return respond.error(res, 500, "fetch_error", "Failed to fetch primary business");
+      return respond.error(
+        res,
+        500,
+        "fetch_error",
+        "Failed to fetch primary business",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -479,7 +642,10 @@ router.put(
       // Map documentCids to lguDocuments format for Application updates
       // Only update lguDocuments if documentCids is non-empty to avoid overwriting existing files
       const updateData = { ...businessData };
-      if (businessData.documentCids && Object.keys(businessData.documentCids).length > 0) {
+      if (
+        businessData.documentCids &&
+        Object.keys(businessData.documentCids).length > 0
+      ) {
         const lguDocuments = {};
         for (const [key, cid] of Object.entries(businessData.documentCids)) {
           lguDocuments[key] = cid;
@@ -489,12 +655,23 @@ router.put(
       }
 
       // Update businessName at top level for display (extracted from various possible field keys)
-      updateData.businessName = businessData.businessName || businessData.formData?.businessName || businessData.formData?.registeredBusinessName || businessData.formData?.activityName || businessData.formData?.['Business / trade name'] || businessData.formData?.businessTradeName || "";
+      updateData.businessName =
+        businessData.businessName ||
+        businessData.formData?.businessName ||
+        businessData.formData?.registeredBusinessName ||
+        businessData.formData?.activityName ||
+        businessData.formData?.["Business / trade name"] ||
+        businessData.formData?.businessTradeName ||
+        "";
 
       // Generate reference number if submitting and missing
       const isSubmitting = businessData.applicationStatus === "submitted";
       const isResubmitting = businessData.applicationStatus === "resubmit";
-      if (isSubmitting && (!businessData.applicationReferenceNumber || businessData.applicationReferenceNumber.trim() === "")) {
+      if (
+        isSubmitting &&
+        (!businessData.applicationReferenceNumber ||
+          businessData.applicationReferenceNumber.trim() === "")
+      ) {
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
         const randomSeq = Math.floor(1000 + Math.random() * 9000);
         updateData.applicationReferenceNumber = `APP-${dateStr}-${randomSeq}`;
@@ -514,29 +691,51 @@ router.put(
       let application = await Application.findOneAndUpdate(
         { applicationId: id, userId },
         { $set: updateData },
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       );
 
       // If not found by applicationId, try by _id
       if (!application && mongoose.Types.ObjectId.isValid(id)) {
-        console.log(`Application not found by applicationId ${id}, trying by _id`);
+        console.log(
+          `Application not found by applicationId ${id}, trying by _id`,
+        );
         application = await Application.findOneAndUpdate(
           { _id: id, userId },
           { $set: updateData },
-          { new: true, runValidators: true }
+          { new: true, runValidators: true },
         );
       }
 
       if (application) {
-        console.log(`Successfully updated Application with applicationId: ${application.applicationId}, status: ${application.applicationStatus}`);
+        console.log(
+          `Successfully updated Application with applicationId: ${application.applicationId}, status: ${application.applicationStatus}`,
+        );
+
+        // Send submitted email (fire and forget)
+        if (isSubmitting || isResubmitting) {
+          console.log('[PUT /businesses/:id] Attempting to send email', {
+            applicationId: application.applicationId,
+            isSubmitting,
+            isResubmitting
+          });
+          const sendApplicationEmail = require("./lgu-officer/permitApplications").sendApplicationEmail;
+          try {
+            await sendApplicationEmail(application, isResubmitting ? "resubmitted" : "submitted");
+          } catch (err) {
+            console.error("Failed to send submitted email:", err);
+          }
+        }
+
         return respond.success(res, 200, { businesses: [application] });
       }
 
-      console.log(`Application not found with id: ${id}, userId: ${userId}, trying Business collection`);
+      console.log(
+        `Application not found with id: ${id}, userId: ${userId}, trying Business collection`,
+      );
 
       // If not found in Application, try Business collection (for approved businesses)
       const filter = { userId };
-      
+
       // Match by businessId or by _id (only if id is a valid ObjectId)
       if (mongoose.Types.ObjectId.isValid(id)) {
         filter.$or = [{ businessId: id }, { _id: id }];
@@ -547,7 +746,7 @@ router.put(
       const business = await Business.findOneAndUpdate(
         filter,
         { $set: businessData },
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       );
 
       if (!business) {
@@ -555,13 +754,20 @@ router.put(
         return respond.error(res, 404, "not_found", "Business not found");
       }
 
-      console.log(`Successfully updated Business with businessId: ${business.businessId}, status: ${business.applicationStatus}`);
+      console.log(
+        `Successfully updated Business with businessId: ${business.businessId}, status: ${business.applicationStatus}`,
+      );
       return respond.success(res, 200, { businesses: [business] });
     } catch (err) {
       console.error("PUT /api/business-owner/businesses/:id error:", err);
-      return respond.error(res, 400, "update_error", err.message || "Failed to update business");
+      return respond.error(
+        res,
+        400,
+        "update_error",
+        err.message || "Failed to update business",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -579,12 +785,17 @@ router.patch(
       const { businessStatus } = req.body || {};
 
       if (!businessStatus) {
-        return respond.error(res, 400, "missing_field", "businessStatus is required");
+        return respond.error(
+          res,
+          400,
+          "missing_field",
+          "businessStatus is required",
+        );
       }
 
       const mongoose = require("mongoose");
       const filter = { userId };
-      
+
       if (mongoose.Types.ObjectId.isValid(id)) {
         filter.$or = [{ businessId: id }, { _id: id }];
       } else {
@@ -594,7 +805,7 @@ router.patch(
       const business = await Business.findOneAndUpdate(
         filter,
         { $set: { businessStatus } },
-        { new: true }
+        { new: true },
       );
 
       if (!business) {
@@ -604,9 +815,14 @@ router.patch(
       return respond.success(res, 200, { business });
     } catch (err) {
       console.error("PATCH /api/business-owner/businesses/:id error:", err);
-      return respond.error(res, 400, "update_error", err.message || "Failed to update business status");
+      return respond.error(
+        res,
+        400,
+        "update_error",
+        err.message || "Failed to update business status",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -623,7 +839,7 @@ router.delete(
       const { id } = req.params;
 
       const mongoose = require("mongoose");
-      
+
       // First try to delete from Business collection
       const businessFilter = { userId };
       if (mongoose.Types.ObjectId.isValid(id)) {
@@ -652,12 +868,22 @@ router.delete(
         return respond.success(res, 200, { success: true });
       }
 
-      return respond.error(res, 404, "not_found", "Business or application not found");
+      return respond.error(
+        res,
+        404,
+        "not_found",
+        "Business or application not found",
+      );
     } catch (err) {
       console.error("DELETE /api/business-owner/businesses/:id error:", err);
-      return respond.error(res, 400, "delete_error", err.message || "Failed to delete business/application");
+      return respond.error(
+        res,
+        400,
+        "delete_error",
+        err.message || "Failed to delete business/application",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -678,7 +904,7 @@ router.post(
 
       const mongoose = require("mongoose");
       const filter = { userId };
-      
+
       if (mongoose.Types.ObjectId.isValid(id)) {
         filter.$or = [{ businessId: id }, { _id: id }];
       } else {
@@ -689,7 +915,7 @@ router.post(
       const business = await Business.findOneAndUpdate(
         filter,
         { $set: { isPrimary: true } },
-        { new: true }
+        { new: true },
       );
 
       if (!business) {
@@ -698,10 +924,18 @@ router.post(
 
       return respond.success(res, 200, { business });
     } catch (err) {
-      console.error("POST /api/business-owner/businesses/:id/primary error:", err);
-      return respond.error(res, 400, "set_primary_error", err.message || "Failed to set primary business");
+      console.error(
+        "POST /api/business-owner/businesses/:id/primary error:",
+        err,
+      );
+      return respond.error(
+        res,
+        400,
+        "set_primary_error",
+        err.message || "Failed to set primary business",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -720,7 +954,7 @@ router.put(
 
       const mongoose = require("mongoose");
       const filter = { userId };
-      
+
       if (mongoose.Types.ObjectId.isValid(id)) {
         filter.$or = [{ businessId: id }, { _id: id }];
       } else {
@@ -730,7 +964,7 @@ router.put(
       const business = await Business.findOneAndUpdate(
         filter,
         { $set: { riskProfile: riskProfileData } },
-        { new: true }
+        { new: true },
       );
 
       if (!business) {
@@ -739,10 +973,18 @@ router.put(
 
       return respond.success(res, 200, { business });
     } catch (err) {
-      console.error("PUT /api/business-owner/businesses/:id/risk-profile error:", err);
-      return respond.error(res, 400, "update_error", err.message || "Failed to update risk profile");
+      console.error(
+        "PUT /api/business-owner/businesses/:id/risk-profile error:",
+        err,
+      );
+      return respond.error(
+        res,
+        400,
+        "update_error",
+        err.message || "Failed to update risk profile",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -759,37 +1001,13 @@ router.post(
       const { id } = req.params;
 
       const mongoose = require("mongoose");
-      
+
       // Generate reference number (matching system format)
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
       const randomSeq = Math.floor(1000 + Math.random() * 9000);
       const referenceNumber = `APP-${dateStr}-${randomSeq}`;
-      
-      // First try Business collection
-      const businessFilter = { userId };
-      if (mongoose.Types.ObjectId.isValid(id)) {
-        businessFilter.$or = [{ businessId: id }, { _id: id }];
-      } else {
-        businessFilter.businessId = id;
-      }
 
-      const business = await Business.findOneAndUpdate(
-        businessFilter,
-        {
-          $set: {
-            submittedAt: new Date(),
-            applicationStatus: "submitted",
-            applicationReferenceNumber: referenceNumber,
-          },
-        },
-        { new: true }
-      );
-
-      if (business) {
-        return respond.success(res, 200, { business });
-      }
-
-      // If not found in Business, try Application collection
+      // Try Application collection (business is only created after approval)
       const applicationFilter = { userId };
       if (mongoose.Types.ObjectId.isValid(id)) {
         applicationFilter.$or = [{ applicationId: id }, { _id: id }];
@@ -808,19 +1026,45 @@ router.post(
             isSubmitted: true,
           },
         },
-        { new: true }
+        { new: true },
       );
 
       if (application) {
+        // Send submitted email (await to ensure emailSendStatus is updated)
+        console.log('[SUBMIT] Application found, attempting to send email', {
+          applicationId: application.applicationId,
+          userId: application.userId,
+          businessName: application.businessName,
+          applicationReferenceNumber: application.applicationReferenceNumber
+        });
+        const sendApplicationEmail = require("./lgu-officer/permitApplications").sendApplicationEmail;
+        try {
+          await sendApplicationEmail(application, "submitted");
+        } catch (err) {
+          console.error("Failed to send submitted email:", err);
+        }
         return respond.success(res, 200, { business: application });
       }
 
-      return respond.error(res, 404, "not_found", "Business or application not found");
+      return respond.error(
+        res,
+        404,
+        "not_found",
+        "Business or application not found",
+      );
     } catch (err) {
-      console.error("POST /api/business-owner/businesses/:id/submit error:", err);
-      return respond.error(res, 400, "submit_error", err.message || "Failed to submit application");
+      console.error(
+        "POST /api/business-owner/businesses/:id/submit error:",
+        err,
+      );
+      return respond.error(
+        res,
+        400,
+        "submit_error",
+        err.message || "Failed to submit application",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -839,7 +1083,7 @@ router.put(
 
       const mongoose = require("mongoose");
       const filter = { userId };
-      
+
       if (mongoose.Types.ObjectId.isValid(id)) {
         filter.$or = [{ businessId: id }, { _id: id }];
       } else {
@@ -848,8 +1092,12 @@ router.put(
 
       const business = await Business.findOneAndUpdate(
         filter,
-        { $set: { paymentGenerationStatus: { ...statusData, updatedAt: new Date() } } },
-        { new: true }
+        {
+          $set: {
+            paymentGenerationStatus: { ...statusData, updatedAt: new Date() },
+          },
+        },
+        { new: true },
       );
 
       if (!business) {
@@ -861,10 +1109,18 @@ router.put(
         paymentGenerationStatus: business.paymentGenerationStatus,
       });
     } catch (err) {
-      console.error("PUT /api/business-owner/businesses/:id/payment-generation-status error:", err);
-      return respond.error(res, 400, "update_error", err.message || "Failed to update payment generation status");
+      console.error(
+        "PUT /api/business-owner/businesses/:id/payment-generation-status error:",
+        err,
+      );
+      return respond.error(
+        res,
+        400,
+        "update_error",
+        err.message || "Failed to update payment generation status",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -882,7 +1138,7 @@ router.get(
 
       const mongoose = require("mongoose");
       const filter = { userId };
-      
+
       if (mongoose.Types.ObjectId.isValid(id)) {
         filter.$or = [{ businessId: id }, { _id: id }];
       } else {
@@ -895,12 +1151,69 @@ router.get(
         return respond.error(res, 404, "not_found", "Business not found");
       }
 
-      return respond.success(res, 200, business.paymentGenerationStatus || { enabled: false });
+      return respond.success(
+        res,
+        200,
+        business.paymentGenerationStatus || { enabled: false },
+      );
     } catch (err) {
-      console.error("GET /api/business-owner/businesses/:id/payment-generation-status error:", err);
-      return respond.error(res, 400, "fetch_error", err.message || "Failed to fetch payment generation status");
+      console.error(
+        "GET /api/business-owner/businesses/:id/payment-generation-status error:",
+        err,
+      );
+      return respond.error(
+        res,
+        400,
+        "fetch_error",
+        err.message || "Failed to fetch payment generation status",
+      );
     }
-  }
+  },
+);
+
+/**
+ * POST /api/business-owner/debug/clear-applications
+ * Debug endpoint to clear all applications and reset welcomeCompleted
+ * WARNING: This is for development/testing only
+ */
+router.post(
+  "/debug/clear-applications",
+  requireJwt,
+  requireRole(["business_owner"]),
+  async (req, res) => {
+    try {
+      const userId = req._userId || req.user?.id;
+
+      // Delete all applications for this user
+      const appResult = await Application.deleteMany({ userId });
+      console.log(`[DEBUG] Deleted ${appResult.deletedCount} applications for user ${userId}`);
+
+      // Clear businesses array from BusinessProfile
+      const bpResult = await BusinessProfile.updateMany(
+        { userId },
+        { $set: { businesses: [] } }
+      );
+      console.log(`[DEBUG] Cleared businesses array from ${bpResult.modifiedCount} profiles for user ${userId}`);
+
+      // Reset welcomeCompleted for this user (need to call auth-service)
+      // For now, we'll just log it - the user can manually reset via the auth-service script
+      console.log(`[DEBUG] Note: welcomeCompleted needs to be reset via auth-service script`);
+
+      return respond.success(res, 200, {
+        message: "Applications cleared successfully",
+        deletedApplications: appResult.deletedCount,
+        clearedProfiles: bpResult.modifiedCount,
+      });
+    } catch (err) {
+      console.error("POST /api/business-owner/debug/clear-applications error:", err);
+      return respond.error(
+        res,
+        500,
+        "clear_error",
+        err.message || "Failed to clear applications",
+      );
+    }
+  },
 );
 
 module.exports = router;

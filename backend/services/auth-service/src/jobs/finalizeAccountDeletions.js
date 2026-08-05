@@ -5,7 +5,7 @@
  */
 
 const User = require("../models/User");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const logger = require("../lib/logger");
 
 async function finalizeAccountDeletions() {
@@ -32,14 +32,16 @@ async function finalizeAccountDeletions() {
       try {
         // Log deletion finalization
         const roleSlug = user.role?.slug || "user";
-        await createAuditLog(
+        await logAuditEvent(
           user._id,
           "account_deletion_finalized",
-          "account",
-          "deletion_pending",
-          "account_permanently_deleted",
-          roleSlug,
+          "User",
+          user._id,
           {
+            role: roleSlug,
+            fieldChanged: "account",
+            oldValue: "deletion_pending",
+            newValue: "account_permanently_deleted",
             scheduledFor: user.deletionScheduledFor?.toISOString(),
             finalizedAt: now.toISOString(),
           },

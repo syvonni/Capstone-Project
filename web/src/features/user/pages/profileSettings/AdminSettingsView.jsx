@@ -1,6 +1,6 @@
 import { Typography, Card, theme } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
-import AdminLayout from '@/features/admin/components/AdminLayout'
+import StaffLayout from '@/shared/components/StaffLayout'
 import SettingsInfoModal from '@/features/user/components/SettingsInfoModal.jsx'
 import SecurityTabContent from './SecurityTabContent'
 import EditUserProfileForm from '@/features/user/components/EditUserProfileForm.jsx'
@@ -82,7 +82,7 @@ export default function AdminSettingsView({
   return (
     <>
       {contextHolder}
-      <AdminLayout>
+      <StaffLayout>
         <div
           style={{
             height: '100%',
@@ -164,7 +164,7 @@ export default function AdminSettingsView({
             </div>
           </div>
         </div>
-      </AdminLayout>
+      </StaffLayout>
       <SettingsInfoModal open={settingsInfoOpen} onClose={() => setSettingsInfoOpen(false)} />
     </>
   )

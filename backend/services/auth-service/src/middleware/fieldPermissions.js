@@ -5,7 +5,7 @@ const {
   isAdminRole,
   isBusinessOwnerRole,
 } = require("../lib/roleHelpers");
-const { logAuditEvent } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 
 /**
  * Field Permission Matrix
@@ -164,13 +164,16 @@ function requireFieldPermission(field) {
         // Create audit log for restricted field attempt (async, don't wait)
         try {
           logAuditEvent(
-            "restricted_field_attempt",
             req._userId,
-            "FieldPermission",
+            "restricted_field_attempt",
+            "SecurityEvent",
             req._userId,
             {
-              field,
               role: roleSlug,
+              fieldChanged: "field",
+              oldValue: null,
+              newValue: null,
+              field,
               ip: req.ip || req.headers["x-forwarded-for"] || "unknown",
               userAgent: req.headers["user-agent"] || "unknown",
             },

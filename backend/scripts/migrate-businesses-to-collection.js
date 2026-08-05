@@ -6,7 +6,8 @@ const path = require("path");
 const projectRootEnv = path.join(__dirname, "..", ".env");
 dotenv.config({ path: projectRootEnv });
 
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL;
+const MONGO_URI =
+  process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL;
 
 if (!MONGO_URI) {
   console.error("ERROR: MONGO_URI not set in environment variables");
@@ -77,9 +78,13 @@ async function migrateBusinesses(dryRun = false) {
         }
 
         // Check if Business already exists (idempotent)
-        const existing = await Business.findOne({ businessId: oldBusiness.businessId });
+        const existing = await Business.findOne({
+          businessId: oldBusiness.businessId,
+        });
         if (existing) {
-          console.log(`  SKIP: Business ${oldBusiness.businessId} already exists in Business collection`);
+          console.log(
+            `  SKIP: Business ${oldBusiness.businessId} already exists in Business collection`,
+          );
           skippedCount++;
           continue;
         }
@@ -88,14 +93,22 @@ async function migrateBusinesses(dryRun = false) {
         if (!oldBusiness.businessId) {
           console.log(`  FAIL: Business missing businessId`);
           failedCount++;
-          failedBusinesses.push({ reason: "missing businessId", data: oldBusiness });
+          failedBusinesses.push({
+            reason: "missing businessId",
+            data: oldBusiness,
+          });
           continue;
         }
 
         if (!oldBusiness.businessRegistrationNumber) {
-          console.log(`  FAIL: Business ${oldBusiness.businessId} missing businessRegistrationNumber`);
+          console.log(
+            `  FAIL: Business ${oldBusiness.businessId} missing businessRegistrationNumber`,
+          );
           failedCount++;
-          failedBusinesses.push({ reason: "missing businessRegistrationNumber", businessId: oldBusiness.businessId });
+          failedBusinesses.push({
+            reason: "missing businessRegistrationNumber",
+            businessId: oldBusiness.businessId,
+          });
           continue;
         }
 
@@ -116,28 +129,46 @@ async function migrateBusinesses(dryRun = false) {
         }
 
         // Ensure businessStatus is valid enum
-        if (!["active", "inactive", "closed"].includes(newBusinessData.businessStatus)) {
+        if (
+          !["active", "inactive", "closed"].includes(
+            newBusinessData.businessStatus,
+          )
+        ) {
           newBusinessData.businessStatus = "active";
         }
 
         // Ensure registrationStatus is valid enum
-        if (!["not_yet_registered", "proposed"].includes(newBusinessData.registrationStatus)) {
+        if (
+          !["not_yet_registered", "proposed"].includes(
+            newBusinessData.registrationStatus,
+          )
+        ) {
           newBusinessData.registrationStatus = "proposed";
         }
 
         if (dryRun) {
-          console.log(`  WOULD CREATE: Business ${oldBusiness.businessId} - ${oldBusiness.businessName}`);
+          console.log(
+            `  WOULD CREATE: Business ${oldBusiness.businessId} - ${oldBusiness.businessName}`,
+          );
           console.log(`    Data:`, JSON.stringify(newBusinessData, null, 2));
           migratedCount++;
         } else {
           try {
             await Business.create(newBusinessData);
-            console.log(`  CREATED: Business ${oldBusiness.businessId} - ${oldBusiness.businessName}`);
+            console.log(
+              `  CREATED: Business ${oldBusiness.businessId} - ${oldBusiness.businessName}`,
+            );
             migratedCount++;
           } catch (err) {
-            console.log(`  FAIL: Could not create Business ${oldBusiness.businessId}:`, err.message);
+            console.log(
+              `  FAIL: Could not create Business ${oldBusiness.businessId}:`,
+              err.message,
+            );
             failedCount++;
-            failedBusinesses.push({ reason: err.message, businessId: oldBusiness.businessId });
+            failedBusinesses.push({
+              reason: err.message,
+              businessId: oldBusiness.businessId,
+            });
           }
         }
       }
@@ -157,9 +188,10 @@ async function migrateBusinesses(dryRun = false) {
     }
 
     if (!dryRun) {
-      console.log("\nNext step: Run this script with --cleanup to delete migrated businesses from BusinessProfile.businesses array");
+      console.log(
+        "\nNext step: Run this script with --cleanup to delete migrated businesses from BusinessProfile.businesses array",
+      );
     }
-
   } catch (err) {
     console.error("Migration error:", err);
     process.exit(1);
@@ -171,8 +203,12 @@ async function migrateBusinesses(dryRun = false) {
 async function cleanupMigratedBusinesses() {
   console.log("\nCLEANUP MODE");
   console.log("=".repeat(50));
-  console.log("This will delete migrated businesses from BusinessProfile.businesses array");
-  console.log("Make sure you have run the migration first and verified the data!\n");
+  console.log(
+    "This will delete migrated businesses from BusinessProfile.businesses array",
+  );
+  console.log(
+    "Make sure you have run the migration first and verified the data!\n",
+  );
 
   try {
     await mongoose.connect(MONGO_URI);
@@ -196,7 +232,9 @@ async function cleanupMigratedBusinesses() {
         }
 
         // Check if Business exists in new collection
-        const existing = await Business.findOne({ businessId: oldBusiness.businessId });
+        const existing = await Business.findOne({
+          businessId: oldBusiness.businessId,
+        });
         if (existing) {
           businessesToDelete.push(oldBusiness.businessId);
         }
@@ -205,16 +243,21 @@ async function cleanupMigratedBusinesses() {
       if (businessesToDelete.length > 0) {
         await BusinessProfile.updateOne(
           { _id: profile._id },
-          { $pull: { businesses: { businessId: { $in: businessesToDelete } } } }
+          {
+            $pull: { businesses: { businessId: { $in: businessesToDelete } } },
+          },
         );
-        console.log(`  Deleted ${businessesToDelete.length} businesses from profile ${profile._id}`);
+        console.log(
+          `  Deleted ${businessesToDelete.length} businesses from profile ${profile._id}`,
+        );
         deletedCount += businessesToDelete.length;
       }
     }
 
     console.log("\n" + "=".repeat(50));
-    console.log(`Total businesses deleted from BusinessProfile.businesses: ${deletedCount}`);
-
+    console.log(
+      `Total businesses deleted from BusinessProfile.businesses: ${deletedCount}`,
+    );
   } catch (err) {
     console.error("Cleanup error:", err);
     process.exit(1);

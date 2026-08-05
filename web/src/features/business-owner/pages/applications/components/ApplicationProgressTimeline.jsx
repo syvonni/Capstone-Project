@@ -45,6 +45,8 @@ export default function ApplicationProgressTimeline({ business, status: _status,
   const hasActiveAppeal = business.hasActiveAppeal || isAppealPending
   const appealExhausted = business.appealExhausted
   const hasAppeal = hasActiveAppeal || appealExhausted || latestAppeal
+  const createdByOfficer = business?.createdByOfficer === true
+  const isOfficerDraft = statusLower === 'officer_draft'
 
   console.log('[ApplicationProgressTimeline] State:', {
     statusLower,
@@ -60,21 +62,64 @@ export default function ApplicationProgressTimeline({ business, status: _status,
     originalRejectionReason: business?.originalRejectionReason,
     latestAppeal,
     businessId: business?.businessId,
-    appealId: business?.appealId
+    appealId: business?.appealId,
+    createdByOfficer,
+    isOfficerDraft
   })
-  
-  const steps = [
-    {
+
+  const steps = []
+
+  // Officer draft flow: direct transition to approved (no submitted/under_review phase)
+  if (isOfficerDraft) {
+    steps.push({
+      title: 'Created by Officer',
+      description: business.createdAt ? `Created on: ${formatDate(business.createdAt)}` : 'Unknown',
+      status: 'finish'
+    })
+    steps.push({
+      title: 'Draft in Progress',
+      description: 'Officer is completing the application',
+      status: isApproved ? 'finish' : 'process'
+    })
+    if (isApproved) {
+      steps.push({
+        title: 'Approved',
+        description: business.reviewedAt ? `Finished on: ${formatDate(business.reviewedAt)}` : 'Pending',
+        status: 'finish'
+      })
+    } else {
+      steps.push({
+        title: 'Pending Approval',
+        description: 'Waiting for officer to finish and approve',
+        status: 'wait'
+      })
+    }
+  } else {
+    // Standard flow for business-owner created applications
+    if (createdByOfficer) {
+      steps.push({
+        title: 'Created by Officer',
+        description: business.createdAt ? `Created on: ${formatDate(business.createdAt)}` : 'Unknown',
+        status: 'finish'
+      })
+    }
+
+    steps.push({
       title: 'Draft Completed',
       description: business.createdAt ? `Finished on: ${formatDate(business.createdAt)}` : 'Not started',
       status: 'finish'
-    },
-    {
+    })
+
+    steps.push({
       title: 'Submitted',
       description: business.submittedAt ? `Finished on: ${formatDate(business.submittedAt)}` : 'Not submitted',
       status: ['submitted', 'under_review', 'needs_revision', 'returned', 'resubmit', 'approved', 'rejected', 'appeal_pending', 'appeal_rejected'].includes(statusLower) ? 'finish' : 'wait'
-    },
-    {
+    })
+  }
+
+  // Standard flow (not officer draft): add Under Review and Decision steps
+  if (!isOfficerDraft) {
+    steps.push({
       title: isReturned ? 'Review Completed' : 'Under Review',
       description: statusLower === 'submitted' ? 'Expected within 24 hours'
                   : statusLower === 'under_review' ? (business.reviewedAt
@@ -87,8 +132,9 @@ export default function ApplicationProgressTimeline({ business, status: _status,
            : isReturned ? 'finish'
            : ['approved', 'rejected', 'appeal_pending', 'appeal_rejected'].includes(statusLower) ? 'finish'
            : 'wait'
-    },
-    {
+    })
+
+    steps.push({
       title: isReturned ? 'Returned to Applicant'
            : (isRejected || isAppealPending || isAppealRejected) ? 'Rejected'
            : isApproved ? 'Approved'
@@ -101,8 +147,8 @@ export default function ApplicationProgressTimeline({ business, status: _status,
            : (isRejected || isAppealPending || isAppealRejected) ? 'error'
            : isApproved ? 'finish'
            : 'wait'
-    }
-  ]
+    })
+  }
 
   // Add resubmitted step if the application was returned and then resubmitted
   if (isReturned && statusLower === 'resubmit') {

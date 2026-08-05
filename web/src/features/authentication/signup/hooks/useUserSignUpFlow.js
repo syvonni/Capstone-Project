@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthSession } from '@/features/authentication'
-import { notifyUserSignedUp } from '@/features/admin/users/lib/usersEvents.js'
 
 export function useUserSignUpFlow() {
   const navigate = useNavigate()
@@ -32,12 +31,10 @@ export function useUserSignUpFlow() {
         : null
 
     if (!withToken || !withToken.token) {
-      notifyUserSignedUp(created)
       navigate('/login', { replace: true })
       return
     }
 
-    notifyUserSignedUp(created)
     const role = String(withToken?.role?.slug ?? withToken?.role ?? '').toLowerCase()
 
     try {

@@ -1,5 +1,8 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { PlusOutlined } from '@ant-design/icons'
 import ApplicationDetailPanel from './components/ApplicationDetailPanel'
+import WalkInApplicationModal from './components/modals/WalkInApplicationModal'
 import ListPanel from '@/shared/components/ListPanel'
 import PanelCard from '@/shared/components/PanelCard'
 import ResponsiveSplitLayout from '@/shared/components/ResponsiveSplitLayout'
@@ -9,6 +12,8 @@ import BookmarkService from '../../services/bookmarkService'
 import { useApplicationEvents } from '@/shared/hooks/useSocket'
 import dayjs from 'dayjs'
 import { STATUS_CONFIG, STATUS_FILTER_OPTIONS, CLAIM_STATUS_FILTER_OPTIONS } from './constants'
+import { PermitApplicationService } from '../../services/permitApplicationService'
+import { getEmailStatusTag } from '../../utils/emailStatusUtils'
 
 // Stale detection helpers (copied from useOfficerData for use in renderCard)
 const STALE_THRESHOLD_HOURS = 48
@@ -46,9 +51,12 @@ const getStaleDuration = (item) => {
 }
 
 export default function OfficerApplications() {
+  console.log('[AUTOSAVE] OfficerApplications (PARENT) rendered')
+  const [searchParams] = useSearchParams()
   const [selectedItem, setSelectedItem] = useState(null)
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set())
-  const [activeFilters, setActiveFilters] = useState({ status: 'all', claimStatus: 'needs_attention' })
+  const [activeFilters, setActiveFilters] = useState({ status: 'all', claimStatus: 'needs_attention', emailStatus: 'all' })
+  const [walkInModalOpen, setWalkInModalOpen] = useState(false)
   const { refreshTrigger, currentUser } = useOfficerDataContext()
   const officerData = useOfficerData('applications', refreshTrigger)
   const bookmarkService = useMemo(() => new BookmarkService(), [])
@@ -91,22 +99,55 @@ export default function OfficerApplications() {
     setSelectedItem(null)
   }, [])
 
-  // Sync selectedItem with refreshed data
+  // Handle URL parameter for selected application ID
   useEffect(() => {
+    const selectedId = searchParams.get('selectedId')
+    if (selectedId && officerData?.applications) {
+      const app = officerData.applications.find(a => getItemId(a) === selectedId)
+      if (app) {
+        setSelectedItem({ ...app, _itemType: 'applications', _itemId: getItemId(app) })
+      } else {
+        // Fetch the application directly if not in officer's list (e.g., when navigating from business owner panel)
+        const fetchApplicationById = async () => {
+          try {
+            const service = new PermitApplicationService()
+            const response = await service.getApplicationById(selectedId)
+            if (response) {
+              setSelectedItem({ ...response, _itemType: 'applications', _itemId: getItemId(response) })
+            }
+          } catch (err) {
+            console.error('Failed to fetch application by ID:', err)
+          }
+        }
+        fetchApplicationById()
+      }
+    }
+  }, [searchParams, officerData?.applications, getItemId])
+
+  // Sync selectedItem with refreshed data - only update when the specific application changes
+  const selectedItemRef = useRef(selectedItem)
+  useEffect(() => {
+    selectedItemRef.current = selectedItem
+  }, [selectedItem])
+
+  useEffect(() => {
+    console.log('[AUTOSAVE][PARENT-SYNC] Sync effect fired - applications.length:', officerData?.applications?.length, 'selectedItem._itemId:', selectedItem?._itemId)
     if (selectedItem && officerData?.applications) {
       const updatedItem = officerData.applications.find(app => getItemId(app) === selectedItem._itemId)
       if (updatedItem) {
-        const currentData = { ...selectedItem }
+        const currentData = { ...selectedItemRef.current }
         delete currentData._itemType
         delete currentData._itemId
         const newData = { ...updatedItem }
+        // Only update if the actual application data changed (not just array reference)
         if (JSON.stringify(currentData) !== JSON.stringify(newData)) {
+          console.log('[AUTOSAVE][PARENT-SYNC] Data changed, updating selectedItem')
           setSelectedItem({ ...updatedItem, _itemType: 'applications', _itemId: getItemId(updatedItem) })
         }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [officerData?.applications, selectedItem?._itemId, getItemId])
+  }, [officerData?.applications?.length, selectedItem?._itemId, getItemId])
 
   const filteredList = useMemo(() => {
     const list = officerData?.applications || []
@@ -138,17 +179,35 @@ export default function OfficerApplications() {
         }
       }
 
+      // Email status filter
+      if (activeFilters.emailStatus && activeFilters.emailStatus !== 'all') {
+        const emailStatusTag = getEmailStatusTag(app.emailSendStatus)
+        if (activeFilters.emailStatus === 'error') {
+          if (!emailStatusTag || emailStatusTag.label !== 'Email error') return false
+        } else if (activeFilters.emailStatus === 'sent') {
+          if (!emailStatusTag || emailStatusTag.label !== 'Emails sent') return false
+        }
+      }
+
       return true
     })
 
     return filtered.sort((a, b) => {
-      // Primary: unclaimed vs claimed
+      // Primary: email errors (highest priority)
+      const aEmailStatus = getEmailStatusTag(a.emailSendStatus)
+      const bEmailStatus = getEmailStatusTag(b.emailSendStatus)
+      const aHasEmailError = aEmailStatus?.label === 'Email error'
+      const bHasEmailError = bEmailStatus?.label === 'Email error'
+      if (aHasEmailError && !bHasEmailError) return -1
+      if (!aHasEmailError && bHasEmailError) return 1
+
+      // Secondary: unclaimed vs claimed
       const aClaimed = Boolean(a.reviewedBy)
       const bClaimed = Boolean(b.reviewedBy)
       if (!aClaimed && bClaimed) return -1
       if (aClaimed && !bClaimed) return 1
 
-      // Secondary: time in status (oldest unclaimed first)
+      // Tertiary: time in status (oldest first)
       const da = new Date(a.createdAt || a.updatedAt || 0).getTime()
       const db = new Date(b.createdAt || b.updatedAt || 0).getTime()
       return da - db
@@ -164,10 +223,22 @@ export default function OfficerApplications() {
     refreshBookmarkStatus()
   }, [refreshBookmarkStatus])
 
-  // WebSocket listener for application claim events
+  // WebSocket listener for application events
   useApplicationEvents({
     onApplicationClaimed: () => {
       // Refresh list to show updated claim status
+      officerData.refresh?.()
+    },
+    onApplicationUpdated: (data) => {
+      // Update the selected application if it matches
+      if (selectedItem && data.application) {
+        const updatedApp = data.application
+        const itemId = getItemId(updatedApp)
+        if (itemId === selectedItem._itemId) {
+          setSelectedItem({ ...updatedApp, _itemType: 'applications', _itemId: itemId })
+        }
+      }
+      // Refresh list to show updated data
       officerData.refresh?.()
     },
   })
@@ -182,9 +253,14 @@ export default function OfficerApplications() {
     const stale = isStale(app)
     const staleDuration = getStaleDuration(app)
 
+    const emailStatusTag = getEmailStatusTag(app.emailSendStatus)
+
     const tags = [
       { label: statusConf.label, color: statusConf.color },
     ]
+    if (emailStatusTag) {
+      tags.push(emailStatusTag)
+    }
     if (stale && staleDuration) {
       tags.push({ label: `Stale for ${staleDuration}`, color: 'warning' })
     }
@@ -235,12 +311,28 @@ export default function OfficerApplications() {
           options: CLAIM_STATUS_FILTER_OPTIONS,
           value: activeFilters.claimStatus === 'all' ? null : activeFilters.claimStatus,
         },
+        {
+          key: 'emailStatus',
+          label: 'Email Status',
+          type: 'select',
+          options: [
+            { label: 'All', value: 'all' },
+            { label: 'Email Error', value: 'error' },
+            { label: 'Emails Sent', value: 'sent' },
+          ],
+          value: activeFilters.emailStatus === 'all' ? null : activeFilters.emailStatus,
+        },
       ]}
       onFilterChange={(key, value) => setActiveFilters(prev => ({ ...prev, [key]: value === null ? 'all' : value }))}
-      onClearFilters={() => setActiveFilters({ status: 'all', claimStatus: 'all' })}
+      onClearFilters={() => setActiveFilters({ status: 'all', claimStatus: 'all', emailStatus: 'all' })}
       onRefresh={officerData.refresh}
       showRefresh={true}
       customFilter={true}
+      primaryButton={{
+        label: 'Walk-In Application',
+        icon: <PlusOutlined />,
+        onClick: () => setWalkInModalOpen(true),
+      }}
     />
   )
 
@@ -249,16 +341,25 @@ export default function OfficerApplications() {
       application={selectedItem}
       onReviewComplete={handleReviewComplete}
       onBookmarkToggle={handleBookmarkToggle}
+      onClose={handleDrawerClose}
     />
   ) : null
 
   return (
-    <ResponsiveSplitLayout
-      listContent={listContent}
-      detailContent={detailContent}
-      drawerTitle="Application details"
-      onDrawerClose={handleDrawerClose}
-      mobileDrawerPlacement="bottom"
-    />
+    <>
+      <ResponsiveSplitLayout
+        listContent={listContent}
+        detailContent={detailContent}
+        drawerTitle="Application details"
+        onDrawerClose={handleDrawerClose}
+        drawerOpen={!!selectedItem}
+        mobileDrawerPlacement="bottom"
+      />
+      <WalkInApplicationModal
+        open={walkInModalOpen}
+        onClose={() => setWalkInModalOpen(false)}
+        onApplicationSelect={handleSelectApplication}
+      />
+    </>
   )
 }

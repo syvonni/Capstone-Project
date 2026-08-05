@@ -1,9 +1,8 @@
 const express = require("express");
 const BusinessProfile = require("../models/BusinessProfile");
-const FeeConfiguration = require("../models/FeeConfiguration");
 const GeneralPermit = require("../models/GeneralPermit");
 const OccupationalPermit = require("../models/OccupationalPermit");
-const PostRequirement = require("../models/PostRequirement");
+const PostDocument = require("../models/PostDocument");
 const Appeal = require("../models/Appeal");
 const EditRequest = require("../models/EditRequest");
 const { requireJwt, requireRole } = require("../middleware/auth");
@@ -20,7 +19,7 @@ router.get("/owner-stats", requireJwt, async (req, res) => {
 
     const [profile, postReqs, appeals, editRequests] = await Promise.all([
       BusinessProfile.findOne({ userId }).lean(),
-      PostRequirement.find({ ownerId: userId }).lean(),
+      PostDocument.find({ ownerId: userId }).lean(),
       Appeal.find({ requestedBy: userId }).lean(),
       EditRequest.find({ requestedBy: userId }).lean(),
     ]);
@@ -57,8 +56,8 @@ router.get("/owner-stats", requireJwt, async (req, res) => {
         activeBusinesses: activeBusinesses.length,
         renewalsDue: renewalsDue.length,
         renewalsDueList: renewalsDue.slice(0, 5),
-        pendingPostRequirements: pendingPostReqs.length,
-        overduePostRequirements: overduePostReqs.length,
+        pendingPostDocuments: pendingPostReqs.length,
+        overduePostDocuments: overduePostReqs.length,
         openAppeals: appeals.filter((a) =>
           ["submitted", "under_review"].includes(a.status),
         ).length,
@@ -109,7 +108,7 @@ router.get(
         }),
         GeneralPermit.countDocuments(),
         OccupationalPermit.countDocuments(),
-        PostRequirement.countDocuments({ status: "pending" }),
+        PostDocument.countDocuments({ status: "pending" }),
         Appeal.countDocuments({
           status: { $in: ["submitted", "under_review"] },
         }),
@@ -144,7 +143,7 @@ router.get(
           occupationalPermitsIssued: await OccupationalPermit.countDocuments({
             status: "approved",
           }),
-          pendingPostRequirements: postReqs,
+          pendingPostDocuments: postReqs,
           openAppeals: appeals,
           estimatedRevenue: Math.round(totalRevenue),
           permitBreakdown: {

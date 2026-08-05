@@ -5,7 +5,7 @@ const User = require("../models/User");
 const Role = require("../models/Role");
 const { requireJwt, requireRole } = require("../middleware/auth");
 const respond = require("../middleware/respond");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { sanitizeName } = require("../lib/sanitizer");
 
 const router = express.Router();
@@ -72,11 +72,13 @@ router.post(
         termsAcceptedAt: new Date(),
       });
 
-      createAuditLog({
-        userId: req._userId,
-        eventType: "walk_in_user_registered",
+      logAuditEvent("walk_in_user_registered", req._userId, "User", user._id, {
         role: req._userRole,
-        metadata: { registeredUserId: user._id.toString(), email: user.email },
+        fieldChanged: "account",
+        oldValue: "",
+        newValue: "created",
+        registeredUserId: user._id.toString(),
+        email: user.email,
       }).catch(() => {});
 
       return res.status(201).json({

@@ -39,9 +39,12 @@ export default function ZipperReveal({
       document.head.appendChild(style)
     }
 
+    const container = containerRef.current
+    if (!container) return
+
     // Apply staggered animation to each strip after DOM is ready
     const timer = setTimeout(() => {
-      const strips = containerRef.current?.querySelectorAll('.zipper-strip')
+      const strips = container.querySelectorAll('.zipper-strip')
       if (!strips) return
 
       strips.forEach((strip, index) => {
@@ -55,7 +58,6 @@ export default function ZipperReveal({
 
     return () => {
       clearTimeout(timer)
-      const container = containerRef.current
       const strips = container?.querySelectorAll('.zipper-strip')
       if (!strips) return
       strips.forEach((strip) => {

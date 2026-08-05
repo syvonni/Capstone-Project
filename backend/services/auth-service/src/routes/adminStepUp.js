@@ -28,7 +28,7 @@ const authenticationChallenges =
 router.post(
   "/admin/step-up",
   requireJwt,
-  requireRole(["admin"]),
+  requireRole(["admin", "lgu_officer"]),
   validateBody(stepUpTOTPSchema),
   async (req, res) => {
     try {
@@ -43,12 +43,12 @@ router.post(
           : doc.role && doc.role.toString
             ? doc.role.toString()
             : "";
-      if (roleSlug !== "admin")
+      if (roleSlug !== "admin" && roleSlug !== "lgu_officer")
         return respond.error(
           res,
           403,
           "forbidden",
-          "Step-up is only for admins",
+          "Step-up is for authorized roles only",
         );
 
       if (!doc.mfaSecret)
@@ -97,7 +97,7 @@ router.post(
 router.post(
   "/admin/step-up/start",
   requireJwt,
-  requireRole(["admin"]),
+  requireRole(["admin", "lgu_officer"]),
   async (req, res) => {
     try {
       const userId = req._userId;

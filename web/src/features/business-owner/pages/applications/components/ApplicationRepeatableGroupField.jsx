@@ -11,7 +11,7 @@ export default function RepeatableGroupField({ field, form: _form, token, readOn
   const maxRows = field.maxRows || 20
 
   return (
-    <Form.List name={field.key || field.label} initialValue={[{}]}>
+    <Form.List name={field.key} initialValue={[{}]}>
       {(fields, { add, remove }) => (
         <div
           style={{
@@ -51,10 +51,17 @@ export default function RepeatableGroupField({ field, form: _form, token, readOn
                   >
                     {gf.type === 'select' || gf.type === 'multiselect' ? (
                       <Select
+                        addonBefore="Select"
                         placeholder={gf.placeholder || 'Select...'}
                         style={{ width: '100%' }}
                         mode={gf.type === 'multiselect' ? 'multiple' : undefined}
-                        options={(gf.dropdownOptions || []).map((o) => ({ value: o, label: o }))}
+                        options={(gf.dropdownOptions || []).map((o) => {
+                          const isObject = typeof o === 'object'
+                          return {
+                            value: isObject ? o.id : o,
+                            label: isObject ? o.label : o
+                          }
+                        })}
                         disabled={readOnly}
                       />
                     ) : gf.type === 'number' ? (

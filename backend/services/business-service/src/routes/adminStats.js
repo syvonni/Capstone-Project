@@ -5,41 +5,36 @@ const respond = require("../middleware/respond");
 const BusinessProfile = require("../models/BusinessProfile");
 const Payment = require("../models/Payment");
 
-router.get(
-  "/stats",
-  requireJwt,
-  requireRole(["admin"]),
-  async (req, res) => {
-    try {
-      const [activeResult, pendingResult] = await Promise.all([
-        BusinessProfile.aggregate([
-          { $unwind: "$businesses" },
-          { $match: { "businesses.businessStatus": "active" } },
-          { $count: "count" },
-        ]),
-        BusinessProfile.aggregate([
-          { $unwind: "$businesses" },
-          {
-            $match: {
-              "businesses.applicationStatus": {
-                $in: ["submitted", "under_review"],
-              },
+router.get("/stats", requireJwt, requireRole(["admin"]), async (req, res) => {
+  try {
+    const [activeResult, pendingResult] = await Promise.all([
+      BusinessProfile.aggregate([
+        { $unwind: "$businesses" },
+        { $match: { "businesses.businessStatus": "active" } },
+        { $count: "count" },
+      ]),
+      BusinessProfile.aggregate([
+        { $unwind: "$businesses" },
+        {
+          $match: {
+            "businesses.applicationStatus": {
+              $in: ["submitted", "under_review"],
             },
           },
-          { $count: "count" },
-        ]),
-      ]);
+        },
+        { $count: "count" },
+      ]),
+    ]);
 
-      return respond.success(res, 200, {
-        activeBusinesses: activeResult[0]?.count || 0,
-        pendingApplications: pendingResult[0]?.count || 0,
-      });
-    } catch (err) {
-      console.error("GET /api/business/admin/stats error:", err);
-      return respond.error(res, 500, "stats_error", "Failed to fetch stats");
-    }
-  },
-);
+    return respond.success(res, 200, {
+      activeBusinesses: activeResult[0]?.count || 0,
+      pendingApplications: pendingResult[0]?.count || 0,
+    });
+  } catch (err) {
+    console.error("GET /api/business/admin/stats error:", err);
+    return respond.error(res, 500, "stats_error", "Failed to fetch stats");
+  }
+});
 
 router.get(
   "/payments/summary",

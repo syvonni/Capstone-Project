@@ -12,6 +12,7 @@ const { signAccessToken } = require("../../middleware/auth");
 const { trackIP } = require("../../lib/ipTracker");
 const { validatePasswordStrength } = require("../../lib/passwordValidator");
 const bcrypt = require("bcryptjs");
+const { logAuditEvent } = require("../../lib/auditClient");
 
 const router = express.Router();
 
@@ -28,6 +29,22 @@ async function createUserFromPayload(payload, email) {
 
   const hashedPassword = await bcrypt.hash(payload.password, 12);
 
+  // Check if PIS is complete (all required fields present)
+  const hasPis = !!(
+    payload.address?.street &&
+    payload.address?.barangay &&
+    payload.address?.city &&
+    payload.address?.province &&
+    payload.address?.zipCode &&
+    payload.maritalStatus &&
+    payload.dateOfBirth &&
+    payload.placeOfBirth &&
+    payload.nationality &&
+    payload.fatherName &&
+    payload.motherName &&
+    payload.highestEducationalAttainment
+  );
+
   const user = await User.create({
     firstName: sanitizeName(payload.firstName),
     lastName: sanitizeName(payload.lastName),
@@ -38,10 +55,12 @@ async function createUserFromPayload(payload, email) {
     passwordHash: hashedPassword,
     role: role._id,
     isEmailVerified: true, // Email verified via code (or trusted single-step signup)
+    pisCompleted: hasPis, // Set to true if all PIS fields were provided during signup
     termsAccepted: true,
     mustChangeCredentials: false, // Business owners set their own password at signup
     mustSetupMfa: true, // Show MFA setup step in onboarding (skippable for business owners)
     passwordChangedAt: new Date(),
+    accountStatus: roleSlug === "business_owner" ? "active" : "pending_setup", // Business owners are active after self-signup
     // PIS fields
     address: payload.address,
     sex: payload.sex,
@@ -175,7 +194,7 @@ router.post("/", validateBody(signupSingleStepSchema), async (req, res) => {
         res,
         409,
         "email_exists",
-        "A user with this email already exists"
+        "A user with this email already exists",
       );
     }
 
@@ -186,7 +205,7 @@ router.post("/", validateBody(signupSingleStepSchema), async (req, res) => {
         res,
         400,
         "weak_password",
-        pwCheck.errors[0] || "Password does not meet strength requirements"
+        pwCheck.errors[0] || "Password does not meet strength requirements",
       );
     }
 
@@ -205,7 +224,7 @@ router.post("/", validateBody(signupSingleStepSchema), async (req, res) => {
       res,
       500,
       "signup_failed",
-      err.message || "Failed to create account"
+      err.message || "Failed to create account",
     );
   }
 });
@@ -223,7 +242,7 @@ router.post("/start", validateBody(signupStartSchema), async (req, res) => {
         res,
         409,
         "email_exists",
-        "A user with this email already exists"
+        "A user with this email already exists",
       );
     }
 
@@ -234,7 +253,7 @@ router.post("/start", validateBody(signupStartSchema), async (req, res) => {
         res,
         400,
         "weak_password",
-        pwCheck.errors[0] || "Password does not meet strength requirements"
+        pwCheck.errors[0] || "Password does not meet strength requirements",
       );
     }
 
@@ -268,7 +287,7 @@ router.post("/start", validateBody(signupStartSchema), async (req, res) => {
       res,
       500,
       "signup_failed",
-      err.message || "Failed to initiate signup"
+      err.message || "Failed to initiate signup",
     );
   }
 });
@@ -291,7 +310,7 @@ router.post("/verify", validateBody(signupCompleteSchema), async (req, res) => {
         res,
         401,
         "invalid_code",
-        "Invalid or expired verification code"
+        "Invalid or expired verification code",
       );
     }
 
@@ -310,251 +329,277 @@ router.post("/verify", validateBody(signupCompleteSchema), async (req, res) => {
       user: safeUser,
     });
   } catch (err) {
-    console.error("POST /api/auth/signup/verify error:", err);
+    // Log minimal info in production, full stack in development
+    if (process.env.NODE_ENV === "production") {
+      console.error("POST /api/auth/signup/verify error:", err.message);
+    } else {
+      console.error("POST /api/auth/signup/verify error:", err);
+    }
+    // Handle duplicate key error gracefully
+    if (err.code === 11000 && err.keyPattern?.email) {
+      return respond.error(
+        res,
+        409,
+        "email_exists",
+        "A user with this email already exists",
+      );
+    }
     return respond.error(
       res,
       500,
       "signup_failed",
-      err.message || "Failed to complete signup"
+      "Failed to complete signup",
     );
   }
 });
 
 // POST /api/auth/signup/resend
 // Resend verification code
-router.post("/resend", validateBody(Joi.object({ email: Joi.string().email().required() })), async (req, res) => {
-  try {
-    const { email } = req.body;
+router.post(
+  "/resend",
+  validateBody(Joi.object({ email: Joi.string().email().required() })),
+  async (req, res) => {
+    try {
+      const { email } = req.body;
 
-    // Find existing signup request
-    const existing = await SignUpRequest.findOne({
-      email: email.toLowerCase().trim(),
-      expiresAt: { $gt: new Date() },
-    });
+      // Find existing signup request
+      const existing = await SignUpRequest.findOne({
+        email: email.toLowerCase().trim(),
+        expiresAt: { $gt: new Date() },
+      });
 
-    if (!existing) {
+      if (!existing) {
+        return respond.error(
+          res,
+          404,
+          "signup_not_found",
+          "No active signup request found for this email",
+        );
+      }
+
+      // Generate new code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      // Log verification code for development
+      console.log(`[SIGNUP] New verification code for ${email}: ${code}`);
+
+      // Update signup request
+      await SignUpRequest.updateOne({ _id: existing._id }, { code, expiresAt });
+
+      const devCode = process.env.NODE_ENV === "development" ? code : undefined;
+
+      return res.json({
+        success: true,
+        message: "Verification code resent",
+        devCode,
+      });
+    } catch (err) {
+      console.error("POST /api/auth/signup/resend error:", err);
       return respond.error(
         res,
-        404,
-        "signup_not_found",
-        "No active signup request found for this email"
+        500,
+        "resend_failed",
+        err.message || "Failed to resend verification code",
       );
     }
-
-    // Generate new code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-    // Log verification code for development
-    console.log(`[SIGNUP] New verification code for ${email}: ${code}`);
-
-    // Update signup request
-    await SignUpRequest.updateOne(
-      { _id: existing._id },
-      { code, expiresAt }
-    );
-
-    const devCode = process.env.NODE_ENV === "development" ? code : undefined;
-
-    return res.json({
-      success: true,
-      message: "Verification code resent",
-      devCode,
-    });
-  } catch (err) {
-    console.error("POST /api/auth/signup/resend error:", err);
-    return respond.error(
-      res,
-      500,
-      "resend_failed",
-      err.message || "Failed to resend verification code"
-    );
-  }
-});
+  },
+);
 
 // ── Link Existing Account ──
 // For users who already have a permit and want to create a web account linked to their PIS record
 
 // POST /api/auth/link-existing-account
 // Step 1: Search by email + business plate number, send verification code
-router.post("/link-existing-account", validateBody(linkExistingSchema), async (req, res) => {
-  try {
-    const { email, businessPlateNo } = req.body || {};
-    const emailKey = String(email || "").toLowerCase().trim();
+router.post(
+  "/link-existing-account",
+  validateBody(linkExistingSchema),
+  async (req, res) => {
+    try {
+      const { email, businessPlateNo } = req.body || {};
+      const emailKey = String(email || "")
+        .toLowerCase()
+        .trim();
 
-    // Check if user with this email already exists
-    const existingUser = await User.findOne({ email: emailKey }).lean();
-    if (existingUser) {
-      return respond.error(
-        res,
-        409,
-        "BUSINESS_ALREADY_LINKED",
-        "An account with this email already exists. Please log in instead."
+      // Check if user with this email already exists
+      const existingUser = await User.findOne({ email: emailKey }).lean();
+      if (existingUser) {
+        return respond.error(
+          res,
+          409,
+          "BUSINESS_ALREADY_LINKED",
+          "An account with this email already exists. Please log in instead.",
+        );
+      }
+
+      // Generate verification code and store the link request
+      const code = generateCode();
+      const ttlMin = Number(process.env.VERIFICATION_CODE_TTL_MIN || 10);
+      const expiresAtMs = Date.now() + ttlMin * 60 * 1000;
+
+      await SignUpRequest.findOneAndUpdate(
+        { email: emailKey },
+        {
+          code,
+          expiresAt: new Date(expiresAtMs),
+          payload: { email: emailKey, businessPlateNo, linkExisting: true },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
       );
-    }
 
-    // Generate verification code and store the link request
-    const code = generateCode();
-    const ttlMin = Number(process.env.VERIFICATION_CODE_TTL_MIN || 10);
-    const expiresAtMs = Date.now() + ttlMin * 60 * 1000;
-
-    await SignUpRequest.findOneAndUpdate(
-      { email: emailKey },
-      {
+      const emailResult = await sendOtp({
+        to: email,
         code,
-        expiresAt: new Date(expiresAtMs),
-        payload: { email: emailKey, businessPlateNo, linkExisting: true },
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+        subject: "Verify your existing account link",
+        purpose: "signup",
+      });
+      if (!emailResult || !emailResult.success) {
+        return respond.error(
+          res,
+          500,
+          "email_send_failed",
+          "Failed to send verification email",
+        );
+      }
 
-    const emailResult = await sendOtp({
-      to: email,
-      code,
-      subject: "Verify your existing account link",
-      purpose: "signup",
-    });
-    if (!emailResult || !emailResult.success) {
+      return respond.success(res, 200, {
+        data: { verificationSent: true, expiresIn: ttlMin * 60 },
+      });
+    } catch (err) {
+      console.error("POST /api/auth/link-existing-account error:", err);
       return respond.error(
         res,
         500,
-        "email_send_failed",
-        "Failed to send verification email"
+        "link_failed",
+        "Failed to initiate account linking",
       );
     }
-
-    return respond.success(res, 200, {
-      data: { verificationSent: true, expiresIn: ttlMin * 60 },
-    });
-  } catch (err) {
-    console.error("POST /api/auth/link-existing-account error:", err);
-    return respond.error(
-      res,
-      500,
-      "link_failed",
-      "Failed to initiate account linking"
-    );
-  }
-});
+  },
+);
 
 // POST /api/auth/link-existing-account/verify
 // Step 2: Verify code and create account linked to existing business
-router.post("/link-existing-account/verify", validateBody(linkVerifySchema), async (req, res) => {
-  try {
-    const { email, businessPlateNo, code } = req.body || {};
-    const emailKey = String(email || "").toLowerCase().trim();
+router.post(
+  "/link-existing-account/verify",
+  validateBody(linkVerifySchema),
+  async (req, res) => {
+    try {
+      const { email, businessPlateNo, code } = req.body || {};
+      const emailKey = String(email || "")
+        .toLowerCase()
+        .trim();
 
-    const reqObj = await SignUpRequest.findOne({ email: emailKey }).lean();
+      const reqObj = await SignUpRequest.findOne({ email: emailKey }).lean();
 
-    if (!reqObj) {
-      return respond.error(
-        res,
-        404,
-        "NOT_FOUND",
-        "No link request found. Please start again."
-      );
-    }
+      if (!reqObj) {
+        return respond.error(
+          res,
+          404,
+          "NOT_FOUND",
+          "No link request found. Please start again.",
+        );
+      }
 
-    if (Date.now() > new Date(reqObj.expiresAt).getTime()) {
-      return respond.error(
-        res,
-        400,
-        "LINK_CODE_EXPIRED",
-        "Verification code expired"
-      );
-    }
+      if (Date.now() > new Date(reqObj.expiresAt).getTime()) {
+        return respond.error(
+          res,
+          400,
+          "LINK_CODE_EXPIRED",
+          "Verification code expired",
+        );
+      }
 
-    if (String(reqObj.code) !== String(code)) {
-      return respond.error(
-        res,
-        400,
-        "LINK_CODE_INVALID",
-        "Wrong verification code"
-      );
-    }
+      if (String(reqObj.code) !== String(code)) {
+        return respond.error(
+          res,
+          400,
+          "LINK_CODE_INVALID",
+          "Wrong verification code",
+        );
+      }
 
-    // Verify the payload matches
-    const p = reqObj.payload || {};
-    if (!p.linkExisting || p.businessPlateNo !== businessPlateNo) {
-      return respond.error(res, 400, "LINK_CODE_INVALID", "Request mismatch");
-    }
+      // Verify the payload matches
+      const p = reqObj.payload || {};
+      if (!p.linkExisting || p.businessPlateNo !== businessPlateNo) {
+        return respond.error(res, 400, "LINK_CODE_INVALID", "Request mismatch");
+      }
 
-    // Check if email already taken
-    const existing = await User.findOne({ email: emailKey }).lean();
-    if (existing) {
+      // Check if email already taken
+      const existing = await User.findOne({ email: emailKey }).lean();
+      if (existing) {
+        await SignUpRequest.deleteOne({ email: emailKey });
+        return respond.error(
+          res,
+          409,
+          "BUSINESS_ALREADY_LINKED",
+          "Account already exists for this email",
+        );
+      }
+
+      // Create user account (without password — they'll set it up via login flow or password reset)
+      // For now, create with a random password; user must use "forgot password" to set their own
+      const tempPassword = require("crypto").randomBytes(32).toString("hex");
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+      const roleDoc = await Role.findOne({ slug: "business_owner" });
+      if (!roleDoc) {
+        return respond.error(
+          res,
+          500,
+          "role_not_configured",
+          "Business owner role not configured",
+        );
+      }
+
+      const doc = await User.create({
+        role: roleDoc._id,
+        firstName: "Pending",
+        lastName: "User",
+        email: emailKey,
+        passwordHash,
+        passwordChangedAt: new Date(),
+        isEmailVerified: true,
+        mustChangeCredentials: true, // Force password setup on first login
+        theme: "default",
+        createdBy: "self",
+      });
+
+      logAuditEvent("signup", doc._id, "User", doc._id, {
+        role: "business_owner",
+        fieldChanged: "account",
+        oldValue: "",
+        newValue: "created",
+        ip: req.ip,
+      }).catch(() => {});
+
+      // Cleanup
       await SignUpRequest.deleteOne({ email: emailKey });
-      return respond.error(
-        res,
-        409,
-        "BUSINESS_ALREADY_LINKED",
-        "Account already exists for this email"
-      );
-    }
 
-    // Create user account (without password — they'll set it up via login flow or password reset)
-    // For now, create with a random password; user must use "forgot password" to set their own
-    const tempPassword = require("crypto").randomBytes(32).toString("hex");
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
-    const roleDoc = await Role.findOne({ slug: "business_owner" });
-    if (!roleDoc) {
+      return respond.success(res, 201, {
+        data: {
+          linked: true,
+          userId: String(doc._id),
+          message:
+            "Account linked successfully. Please log in and set your password.",
+        },
+      });
+    } catch (err) {
+      if (err && err.code === 11000) {
+        return respond.error(
+          res,
+          409,
+          "BUSINESS_ALREADY_LINKED",
+          "Account already exists",
+        );
+      }
+      console.error("POST /api/auth/link-existing-account/verify error:", err);
       return respond.error(
         res,
         500,
-        "role_not_configured",
-        "Business owner role not configured"
+        "link_verify_failed",
+        "Failed to verify and link account",
       );
     }
-
-    const doc = await User.create({
-      role: roleDoc._id,
-      firstName: "Pending",
-      lastName: "User",
-      email: emailKey,
-      passwordHash,
-      passwordChangedAt: new Date(),
-      isEmailVerified: true,
-      mustChangeCredentials: true, // Force password setup on first login
-      theme: "default",
-      createdBy: "self",
-    });
-
-    createAuditLog(
-      doc._id,
-      "signup",
-      "account",
-      "",
-      "created",
-      "business_owner",
-      { ip: req.ip }
-    ).catch(() => {});
-
-    // Cleanup
-    await SignUpRequest.deleteOne({ email: emailKey });
-
-    return respond.success(res, 201, {
-      data: {
-        linked: true,
-        userId: String(doc._id),
-        message: "Account linked successfully. Please log in and set your password.",
-      },
-    });
-  } catch (err) {
-    if (err && err.code === 11000) {
-      return respond.error(
-        res,
-        409,
-        "BUSINESS_ALREADY_LINKED",
-        "Account already exists"
-      );
-    }
-    console.error("POST /api/auth/link-existing-account/verify error:", err);
-    return respond.error(
-      res,
-      500,
-      "link_verify_failed",
-      "Failed to verify and link account"
-    );
-  }
-});
+  },
+);
 
 module.exports = router;

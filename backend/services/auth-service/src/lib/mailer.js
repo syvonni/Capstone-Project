@@ -1,9 +1,15 @@
 const axios = require("axios");
 const logger = require("./logger");
 
-let buildOtpEmailBody, buildNotificationEmailBody, buildInfoBox, buildWarningBox, buildButton, buildEmailHtml, EMAIL_COLORS;
+let buildOtpEmailBody,
+  buildNotificationEmailBody,
+  buildInfoBox,
+  buildWarningBox,
+  buildButton,
+  buildEmailHtml,
+  EMAIL_COLORS;
 try {
-  const builder = require("/backend/shared/lib/emailTemplateBuilder");
+  const builder = require("../../../../shared/lib/emailTemplateBuilder");
   buildOtpEmailBody = builder.buildOtpEmailBody;
   buildNotificationEmailBody = builder.buildNotificationEmailBody;
   buildInfoBox = builder.buildInfoBox;
@@ -175,10 +181,13 @@ async function sendEmailViaAPI({
     const isDev = process.env.NODE_ENV !== "production";
     const isQuotaError = err.response?.status === 429;
     if (isDev && isQuotaError) {
-      logger.warn("Email: quota exceeded, falling back to mock sender (dev mode)", {
-        provider,
-        status: err.response.status,
-      });
+      logger.warn(
+        "Email: quota exceeded, falling back to mock sender (dev mode)",
+        {
+          provider,
+          status: err.response.status,
+        },
+      );
       const mockSender = createMockEmailSender();
       return await mockSender({ to: actualTo, subject, text, html });
     }
@@ -690,17 +699,14 @@ async function sendForgotPasswordNotAvailableEmail({
         <p style="margin:0;color:${EMAIL_COLORS.textTertiary};font-size:14px;">This code expires in ${ttlMin} minutes.</p>`
     : "";
 
-  const html = buildNotificationEmailBody({
+  let html = buildNotificationEmailBody({
     greeting: "Hello",
     intro: `You requested a password reset, but password reset is <strong>not available</strong> for your account type. ${instructionHtml} This action has been logged and administrators have been alerted to this attempt.`,
     appUrl,
   });
   // Add code block if present
   if (code) {
-    html = html.replace(
-      /<\/div>\s*<\/body>/,
-      `${codeBlockHtml}</div></body>`
-    );
+    html = html.replace(/<\/div>\s*<\/body>/, `${codeBlockHtml}</div></body>`);
   }
 
   try {
@@ -786,13 +792,28 @@ async function sendStaffCredentialsEmail({
 
   const html = buildNotificationEmailBody({
     greeting: "Hello",
-    intro: "Your staff account has been created. Use the credentials below to access the portal. Please <a href=\"http://localhost:5173/auth/login\" style=\"color:#0039AF;text-decoration:underline;\">log in</a> and change your password immediately.",
+    intro:
+      'Your staff account has been created. Use the credentials below to access the portal. Please <a href="http://localhost:5173/auth/login" style="color:#0039AF;text-decoration:underline;">log in</a> and change your password immediately.',
     fields: {
       fields: [
         ...(username
-          ? [{ label: "Username", value: username, color: EMAIL_COLORS.primary, fontSize: "14px", fontWeight: "700" }]
+          ? [
+              {
+                label: "Username",
+                value: username,
+                color: EMAIL_COLORS.primary,
+                fontSize: "14px",
+                fontWeight: "700",
+              },
+            ]
           : []),
-        { label: "Temporary password", value: tempPassword, color: EMAIL_COLORS.primary, fontSize: "14px", fontWeight: "700" },
+        {
+          label: "Temporary password",
+          value: tempPassword,
+          color: EMAIL_COLORS.primary,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
         { label: "Office", value: office },
         { label: "Role", value: roleLabel },
       ],
@@ -809,6 +830,75 @@ async function sendStaffCredentialsEmail({
     console.log("⚠️  EMAIL API FAILED (Send Staff Credentials) ⚠️");
     console.log("To:", to);
     console.log("Username:", username);
+    console.log("TempPass:", tempPassword);
+    console.log("Error:", err.message);
+    console.log("--------------------------------------------------");
+  }
+}
+
+async function sendBusinessOwnerCredentialsEmail({
+  to,
+  firstName,
+  lastName,
+  tempPassword,
+  subject = "Your Business Owner Account Credentials",
+  from = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_HOST_USER,
+}) {
+  const brandName = "BizClear";
+  const appUrl =
+    process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:5173";
+  const supportEmail =
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_HOST_USER ||
+    "support@bizclear.com";
+
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
+  const textLines = [
+    `Welcome to ${brandName}`,
+    "",
+    "Your business owner account has been created successfully.",
+    "",
+    "Here are your login credentials:",
+    `Email: ${to}`,
+    `Temporary Password: ${tempPassword}`,
+    "",
+    "Please log in and change your password immediately.",
+    `Login here: ${appUrl}/auth/login`,
+    "",
+    "Thank you,",
+    brandName,
+  ];
+  const text = textLines.join("\n");
+
+  const html = buildNotificationEmailBody({
+    greeting: `Hello ${firstName}`,
+    intro:
+      'Your business owner account has been created. Use the credentials below to access the portal. Please <a href="http://localhost:5173/auth/login" style="color:#0039AF;text-decoration:underline;">log in</a> and change your password immediately.',
+    fields: {
+      fields: [
+        { label: "Email", value: to },
+        {
+          label: "Temporary password",
+          value: tempPassword,
+          color: EMAIL_COLORS.primary,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
+      ],
+    },
+    appUrl,
+  });
+
+  try {
+    const fromAddress =
+      from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
+    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+  } catch (err) {
+    console.log("--------------------------------------------------");
+    console.log("⚠️  EMAIL API FAILED (Send Business Owner Credentials) ⚠️");
+    console.log("To:", to);
+    console.log("Name:", fullName);
     console.log("TempPass:", tempPassword);
     console.log("Error:", err.message);
     console.log("--------------------------------------------------");
@@ -885,7 +975,13 @@ async function sendEmailChangeNotification({
     fields: {
       fields: [
         { label: "Old email", value: oldEmail },
-        { label: "New email", value: newEmail, color: EMAIL_COLORS.primary, fontSize: "14px", fontWeight: "700" },
+        {
+          label: "New email",
+          value: newEmail,
+          color: EMAIL_COLORS.primary,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
       ],
     },
     appUrl,
@@ -1304,12 +1400,19 @@ async function sendAdminAlertEmail({
 
   const html = buildNotificationEmailBody({
     greeting: `Hello ${adminName}`,
-    intro: "A staff user has attempted to modify a restricted field. This action has been blocked and logged.",
+    intro:
+      "A staff user has attempted to modify a restricted field. This action has been blocked and logged.",
     fields: {
       fields: [
         { label: "User", value: `${userName} (${userEmail})` },
         { label: "Role", value: roleSlug },
-        { label: "Field attempted", value: field, color: EMAIL_COLORS.antError, fontSize: "14px", fontWeight: "700" },
+        {
+          label: "Field attempted",
+          value: field,
+          color: EMAIL_COLORS.antError,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
         { label: "Attempted value", value: attemptedValue },
         { label: "Time", value: attemptTime },
       ],
@@ -1379,7 +1482,8 @@ async function sendStaffOrAdminForgotPasswordAlertEmail({
 
   const html = buildNotificationEmailBody({
     greeting: `Hello ${adminName}`,
-    intro: "A staff or admin account was used on the Forgot Password page. Password reset is not allowed for this account type. This action has been logged.",
+    intro:
+      "A staff or admin account was used on the Forgot Password page. Password reset is not allowed for this account type. This action has been logged.",
     fields: {
       fields: [
         { label: "Account", value: userEmail || "—", fontWeight: "700" },
@@ -1523,7 +1627,16 @@ async function sendApprovalNotification({
       fields: [
         { label: "Approval ID", value: approvalId },
         { label: "Request type", value: requestType },
-        { label: "Status", value: statusText, color: status === "approved" ? EMAIL_COLORS.success : EMAIL_COLORS.antError, fontSize: "14px", fontWeight: "700" },
+        {
+          label: "Status",
+          value: statusText,
+          color:
+            status === "approved"
+              ? EMAIL_COLORS.success
+              : EMAIL_COLORS.antError,
+          fontSize: "14px",
+          fontWeight: "700",
+        },
         { label: "Approved by", value: approverName },
         ...(comment ? [{ label: "Comment", value: comment }] : []),
         { label: "Time", value: approvalTime },
@@ -1545,10 +1658,599 @@ async function sendApprovalNotification({
   }
 }
 
+/**
+ * Send application submitted email notification
+ * @param {object} options - Notification options
+ * @param {string} options.to - Recipient email
+ * @param {string} options.firstName - User's first name
+ * @param {string} options.lastName - User's last name
+ * @param {string} options.businessName - Business name
+ * @param {string} options.applicationId - Application ID
+ * @param {string} options.applicationReferenceNumber - Application reference number
+ * @param {string} options.subject - Email subject (optional)
+ * @param {string} options.from - From email address (optional)
+ */
+async function sendApplicationSubmittedEmail({
+  to,
+  firstName,
+  lastName,
+  businessName,
+  applicationId,
+  applicationReferenceNumber,
+  subject,
+  from = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_HOST_USER,
+}) {
+  const brandName = "BizClear";
+  const appUrl =
+    process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:5173";
+  const supportEmail =
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_HOST_USER ||
+    "support@bizclear.com";
+
+  subject = subject || `Application Submitted - ${brandName}`;
+
+  const text = [
+    `Hello ${firstName},`,
+    "",
+    `Your application for ${businessName} has been successfully submitted.`,
+    "",
+    `Application Reference: ${applicationReferenceNumber || applicationId}`,
+    "",
+    "Your application is now under review. You will be notified once a decision has been made.",
+    "",
+    `You can check your application status at: ${appUrl}/business-owner/applications`,
+    "",
+    `Support: ${supportEmail}`,
+    "",
+    "Thank you,",
+    brandName,
+  ].join("\n");
+
+  const html = buildNotificationEmailBody({
+    greeting: `Hello ${firstName}`,
+    intro: `Your application for <strong>${businessName}</strong> has been successfully submitted. Your application is now under review and you will be notified once a decision has been made.`,
+    details: [
+      {
+        label: "Application Reference",
+        value: applicationReferenceNumber || applicationId,
+      },
+    ],
+    actionUrl: `${appUrl}/business-owner/applications`,
+    actionText: "View Application Status",
+    appUrl,
+  });
+
+  try {
+    const fromAddress =
+      from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
+    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+  } catch (err) {
+    console.log("--------------------------------------------------");
+    console.log("⚠️  EMAIL API FAILED (Application Submitted) ⚠️");
+    console.log("To:", to);
+    console.log("Error:", err.message);
+    console.log("--------------------------------------------------");
+  }
+}
+
+/**
+ * Send application resubmitted email notification
+ * @param {object} options - Notification options
+ * @param {string} options.to - Recipient email
+ * @param {string} options.firstName - User's first name
+ * @param {string} options.lastName - User's last name
+ * @param {string} options.businessName - Business name
+ * @param {string} options.applicationId - Application ID
+ * @param {string} options.applicationReferenceNumber - Application reference number
+ * @param {string} options.subject - Email subject (optional)
+ * @param {string} options.from - From email address (optional)
+ */
+async function sendApplicationResubmittedEmail({
+  to,
+  firstName,
+  lastName,
+  businessName,
+  applicationId,
+  applicationReferenceNumber,
+  subject,
+  from = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_HOST_USER,
+}) {
+  const brandName = "BizClear";
+  const appUrl =
+    process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:5173";
+  const supportEmail =
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_HOST_USER ||
+    "support@bizclear.com";
+
+  subject = subject || `Application Resubmitted - ${brandName}`;
+
+  const text = [
+    `Hello ${firstName},`,
+    "",
+    `Your updated application for ${businessName} has been successfully resubmitted.`,
+    "",
+    `Application Reference: ${applicationReferenceNumber || applicationId}`,
+    "",
+    "Your application is now back under review. You will be notified once a decision has been made.",
+    "",
+    `You can check your application status at: ${appUrl}/business-owner/applications`,
+    "",
+    `Support: ${supportEmail}`,
+    "",
+    "Thank you,",
+    brandName,
+  ].join("\n");
+
+  const html = buildNotificationEmailBody({
+    greeting: `Hello ${firstName}`,
+    intro: `Your updated application for <strong>${businessName}</strong> has been successfully resubmitted. Your application is now back under review and you will be notified once a decision has been made.`,
+    details: [
+      {
+        label: "Application Reference",
+        value: applicationReferenceNumber || applicationId,
+      },
+    ],
+    actionUrl: `${appUrl}/business-owner/applications`,
+    actionText: "View Application Status",
+    appUrl,
+  });
+
+  try {
+    const fromAddress =
+      from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
+    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+  } catch (err) {
+    console.log("--------------------------------------------------");
+    console.log("⚠️  EMAIL API FAILED (Application Resubmitted) ⚠️");
+    console.log("To:", to);
+    console.log("Error:", err.message);
+    console.log("--------------------------------------------------");
+  }
+}
+
+/**
+ * Send application approved email notification
+ * @param {object} options - Notification options
+ * @param {string} options.to - Recipient email
+ * @param {string} options.firstName - User's first name
+ * @param {string} options.lastName - User's last name
+ * @param {string} options.businessName - Business name
+ * @param {string} options.applicationId - Application ID
+ * @param {string} options.applicationReferenceNumber - Application reference number
+ * @param {string} options.subject - Email subject (optional)
+ * @param {string} options.from - From email address (optional)
+ */
+async function sendApplicationApprovedEmail({
+  to,
+  firstName,
+  lastName,
+  businessName,
+  applicationId,
+  applicationReferenceNumber,
+  subject,
+  from = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_HOST_USER,
+}) {
+  const brandName = "BizClear";
+  const appUrl =
+    process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:5173";
+  const supportEmail =
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_HOST_USER ||
+    "support@bizclear.com";
+
+  subject = subject || `Application Approved - ${brandName}`;
+
+  const text = [
+    `Hello ${firstName},`,
+    "",
+    `Congratulations! Your permit application for ${businessName} has been successfully approved. Your business is now officially registered in the system. Please log in to your BizClear account to view your business details, download your permit, and proceed with any additional requirements.`,
+    "",
+    `Application Reference: ${applicationReferenceNumber || applicationId}`,
+    "",
+    `You can view your business details at: ${appUrl}/business-owner/business`,
+    "",
+    `Support: ${supportEmail}`,
+    "",
+    "Thank you,",
+    brandName,
+  ].join("\n");
+
+  const html = buildNotificationEmailBody({
+    greeting: `Hello ${firstName}`,
+    intro: `Congratulations! Your permit application for <strong>${businessName}</strong> has been successfully approved. Your business is now officially registered in the system. Please log in to your BizClear account to view your business details, download your permit, and proceed with any additional requirements.`,
+    details: [
+      {
+        label: "Application Reference",
+        value: applicationReferenceNumber || applicationId,
+      },
+    ],
+    actionUrl: `${appUrl}/business-owner/business`,
+    actionText: "View Business Details",
+    appUrl,
+  });
+
+  try {
+    const fromAddress =
+      from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
+    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+  } catch (err) {
+    console.log("--------------------------------------------------");
+    console.log("⚠️  EMAIL API FAILED (Application Approved) ⚠️");
+    console.log("To:", to);
+    console.log("Error:", err.message);
+    console.log("--------------------------------------------------");
+  }
+}
+
+/**
+ * Send application rejected email notification
+ * @param {object} options - Notification options
+ * @param {string} options.to - Recipient email
+ * @param {string} options.firstName - User's first name
+ * @param {string} options.lastName - User's last name
+ * @param {string} options.businessName - Business name
+ * @param {string} options.applicationId - Application ID
+ * @param {string} options.applicationReferenceNumber - Application reference number
+ * @param {string} options.rejectionReason - Reason for rejection
+ * @param {string} options.subject - Email subject (optional)
+ * @param {string} options.from - From email address (optional)
+ */
+async function sendApplicationRejectedEmail({
+  to,
+  firstName,
+  lastName,
+  businessName,
+  applicationId,
+  applicationReferenceNumber,
+  rejectionReason,
+  subject,
+  from = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_HOST_USER,
+}) {
+  const brandName = "BizClear";
+  const appUrl =
+    process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:5173";
+  const supportEmail =
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_HOST_USER ||
+    "support@bizclear.com";
+
+  subject = subject || `Application Update - ${brandName}`;
+
+  const text = [
+    `Hello ${firstName},`,
+    "",
+    `After careful review, we regret to inform you that your permit application for ${businessName} has been declined. This decision was made based on the information provided and applicable requirements. Please log in to your BizClear account to review the specific reason for this decision and explore your options, including submitting an appeal if you believe this was made in error.`,
+    "",
+    `Application Reference: ${applicationReferenceNumber || applicationId}`,
+    "",
+    rejectionReason ? `Reason: ${rejectionReason}` : "",
+    "",
+    `You can view your application at: ${appUrl}/business-owner/applications`,
+    "",
+    `Support: ${supportEmail}`,
+    "",
+    "Thank you,",
+    brandName,
+  ].join("\n");
+
+  const html = buildNotificationEmailBody({
+    greeting: `Hello ${firstName}`,
+    intro: `After careful review, we regret to inform you that your permit application for <strong>${businessName}</strong> has been declined. This decision was made based on the information provided and applicable requirements. Please log in to your BizClear account to review the specific reason for this decision and explore your options, including submitting an appeal if you believe this was made in error.`,
+    details: [
+      {
+        label: "Application Reference",
+        value: applicationReferenceNumber || applicationId,
+      },
+      ...(rejectionReason ? [{ label: "Reason", value: rejectionReason }] : []),
+    ],
+    actionUrl: `${appUrl}/business-owner/applications`,
+    actionText: "View Application",
+    appUrl,
+  });
+
+  try {
+    const fromAddress =
+      from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
+    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+  } catch (err) {
+    console.log("--------------------------------------------------");
+    console.log("⚠️  EMAIL API FAILED (Application Rejected) ⚠️");
+    console.log("To:", to);
+    console.log("Error:", err.message);
+    console.log("--------------------------------------------------");
+  }
+}
+
+/**
+ * Send application returned email notification
+ * @param {object} options - Notification options
+ * @param {string} options.to - Recipient email
+ * @param {string} options.firstName - User's first name
+ * @param {string} options.lastName - User's last name
+ * @param {string} options.businessName - Business name
+ * @param {string} options.applicationId - Application ID
+ * @param {string} options.applicationReferenceNumber - Application reference number
+ * @param {string} options.reviewComments - Review comments
+ * @param {string} options.subject - Email subject (optional)
+ * @param {string} options.from - From email address (optional)
+ */
+async function sendApplicationReturnedEmail({
+  to,
+  firstName,
+  lastName,
+  businessName,
+  applicationId,
+  applicationReferenceNumber,
+  reviewComments,
+  subject,
+  from = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_HOST_USER,
+}) {
+  const brandName = "BizClear";
+  const appUrl =
+    process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:5173";
+  const supportEmail =
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_HOST_USER ||
+    "support@bizclear.com";
+
+  subject = subject || `Application Returned for Revision - ${brandName}`;
+
+  const text = [
+    `Hello ${firstName},`,
+    "",
+    `Your permit application for ${businessName} has been returned for revision. Our review team has identified areas that require attention before approval can be granted. Please log in to your BizClear account to review the specific comments and make the necessary corrections to your application.`,
+    "",
+    `Application Reference: ${applicationReferenceNumber || applicationId}`,
+    "",
+    reviewComments ? `Comments: ${reviewComments}` : "",
+    "",
+    `You can update your application at: ${appUrl}/business-owner/applications`,
+    "",
+    `Support: ${supportEmail}`,
+    "",
+    "Thank you,",
+    brandName,
+  ].join("\n");
+
+  const html = buildNotificationEmailBody({
+    greeting: `Hello ${firstName}`,
+    intro: `Your permit application for <strong>${businessName}</strong> has been returned for revision. Our review team has identified areas that require attention before approval can be granted. Please log in to your BizClear account to review the specific comments and make the necessary corrections to your application.`,
+    details: [
+      {
+        label: "Application Reference",
+        value: applicationReferenceNumber || applicationId,
+      },
+      ...(reviewComments ? [{ label: "Comments", value: reviewComments }] : []),
+    ],
+    actionUrl: `${appUrl}/business-owner/applications`,
+    actionText: "Update Application",
+    appUrl,
+  });
+
+  try {
+    const fromAddress =
+      from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
+    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+  } catch (err) {
+    console.log("--------------------------------------------------");
+    console.log("⚠️  EMAIL API FAILED (Application Returned) ⚠️");
+    console.log("To:", to);
+    console.log("Error:", err.message);
+    console.log("--------------------------------------------------");
+  }
+}
+
+/**
+ * Send appeal denied email notification
+ * @param {object} options - Notification options
+ * @param {string} options.to - Recipient email
+ * @param {string} options.firstName - User's first name
+ * @param {string} options.lastName - User's last name
+ * @param {string} options.businessName - Business name
+ * @param {string} options.appealId - Appeal ID
+ * @param {string} options.resolution - Appeal resolution/reason
+ * @param {string} options.subject - Email subject (optional)
+ * @param {string} options.from - From email address (optional)
+ */
+async function sendAppealDeniedEmail({
+  to,
+  firstName,
+  lastName,
+  businessName,
+  appealId,
+  resolution,
+  subject,
+  from = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_HOST_USER,
+}) {
+  const brandName = "BizClear";
+  const appUrl =
+    process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:5173";
+  const supportEmail =
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_HOST_USER ||
+    "support@bizclear.com";
+
+  subject = subject || `Appeal Denied - ${brandName}`;
+
+  const text = [
+    `Hello ${firstName},`,
+    "",
+    `After thorough review, we regret to inform you that your appeal for ${businessName} has been denied. This decision is final based on the information provided and applicable regulations. Please log in to your BizClear account to review the specific resolution details and explore any available options for your application.`,
+    "",
+    `Appeal ID: ${appealId}`,
+    "",
+    resolution ? `Resolution: ${resolution}` : "",
+    "",
+    `Support: ${supportEmail}`,
+    "",
+    "Thank you,",
+    brandName,
+  ].join("\n");
+
+  const html = buildNotificationEmailBody({
+    greeting: `Hello ${firstName}`,
+    intro: `After thorough review, we regret to inform you that your appeal for <strong>${businessName}</strong> has been denied. This decision is final based on the information provided and applicable regulations. Please log in to your BizClear account to review the specific resolution details and explore any available options for your application.`,
+    details: [
+      { label: "Appeal ID", value: appealId },
+      ...(resolution ? [{ label: "Resolution", value: resolution }] : []),
+    ],
+    appUrl,
+  });
+
+  try {
+    const fromAddress =
+      from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
+    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+  } catch (err) {
+    console.log("--------------------------------------------------");
+    console.log("⚠️  EMAIL API FAILED (Appeal Denied) ⚠️");
+    console.log("To:", to);
+    console.log("Error:", err.message);
+    console.log("--------------------------------------------------");
+  }
+}
+
+/**
+ * Send appeal submitted email notification
+ * @param {object} options - Notification options
+ * @param {string} options.to - Recipient email
+ * @param {string} options.firstName - User's first name
+ * @param {string} options.lastName - User's last name
+ * @param {string} options.businessName - Business name
+ * @param {string} options.appealId - Appeal ID
+ * @param {string} options.subject - Email subject (optional)
+ * @param {string} options.from - From email address (optional)
+ */
+async function sendAppealSubmittedEmail({
+  to,
+  firstName,
+  lastName,
+  businessName,
+  appealId,
+  subject,
+  from = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_HOST_USER,
+}) {
+  const brandName = "BizClear";
+  const appUrl =
+    process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:5173";
+  const supportEmail =
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_HOST_USER ||
+    "support@bizclear.com";
+
+  subject = subject || `Appeal Submitted - ${brandName}`;
+
+  const text = [
+    `Hello ${firstName},`,
+    "",
+    `Your appeal for ${businessName} has been successfully submitted and is now under review. Our team will carefully evaluate your appeal and you will be notified once a decision has been made. Please log in to your BizClear account to monitor the status of your appeal.`,
+    "",
+    `Appeal ID: ${appealId}`,
+    "",
+    `You can check your appeal status at: ${appUrl}/business-owner/applications`,
+    "",
+    `Support: ${supportEmail}`,
+    "",
+    "Thank you,",
+    brandName,
+  ].join("\n");
+
+  const html = buildNotificationEmailBody({
+    greeting: `Hello ${firstName}`,
+    intro: `Your appeal for <strong>${businessName}</strong> has been successfully submitted and is now under review. Our team will carefully evaluate your appeal and you will be notified once a decision has been made. Please log in to your BizClear account to monitor the status of your appeal.`,
+    details: [{ label: "Appeal ID", value: appealId }],
+    actionUrl: `${appUrl}/business-owner/applications`,
+    actionText: "View Appeal Status",
+    appUrl,
+  });
+
+  try {
+    const fromAddress =
+      from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
+    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+  } catch (err) {
+    console.log("--------------------------------------------------");
+    console.log("⚠️  EMAIL API FAILED (Appeal Submitted) ⚠️");
+    console.log("To:", to);
+    console.log("Error:", err.message);
+    console.log("--------------------------------------------------");
+  }
+}
+
+/**
+ * Send appeal approved email notification
+ * @param {object} options - Notification options
+ * @param {string} options.to - Recipient email
+ * @param {string} options.firstName - User's first name
+ * @param {string} options.lastName - User's last name
+ * @param {string} options.businessName - Business name
+ * @param {string} options.appealId - Appeal ID
+ * @param {string} options.subject - Email subject (optional)
+ * @param {string} options.from - From email address (optional)
+ */
+async function sendAppealApprovedEmail({
+  to,
+  firstName,
+  lastName,
+  businessName,
+  appealId,
+  subject,
+  from = process.env.DEFAULT_FROM_EMAIL || process.env.EMAIL_HOST_USER,
+}) {
+  const brandName = "BizClear";
+  const appUrl =
+    process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:5173";
+  const supportEmail =
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_HOST_USER ||
+    "support@bizclear.com";
+
+  subject = subject || `Appeal Granted - ${brandName}`;
+
+  const text = [
+    `Hello ${firstName},`,
+    "",
+    `Good news! Your appeal for ${businessName} has been granted. Your application has been returned for review and an LGU officer will re-evaluate your application. Please log in to your BizClear account to monitor the status of your application and respond to any additional requirements.`,
+    "",
+    `Appeal ID: ${appealId}`,
+    "",
+    `You can check your application status at: ${appUrl}/business-owner/applications`,
+    "",
+    `Support: ${supportEmail}`,
+    "",
+    "Thank you,",
+    brandName,
+  ].join("\n");
+
+  const html = buildNotificationEmailBody({
+    greeting: `Hello ${firstName}`,
+    intro: `Good news! Your appeal for <strong>${businessName}</strong> has been granted. Your application has been returned for review and an LGU officer will re-evaluate your application. Please log in to your BizClear account to monitor the status of your application and respond to any additional requirements.`,
+    details: [{ label: "Appeal ID", value: appealId }],
+    actionUrl: `${appUrl}/business-owner/applications`,
+    actionText: "View Application Status",
+    appUrl,
+  });
+
+  try {
+    const fromAddress =
+      from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
+    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+  } catch (err) {
+    console.log("--------------------------------------------------");
+    console.log("⚠️  EMAIL API FAILED (Appeal Approved) ⚠️");
+    console.log("To:", to);
+    console.log("Error:", err.message);
+    console.log("--------------------------------------------------");
+  }
+}
+
 module.exports = {
   sendOtp,
   sendForgotPasswordNotAvailableEmail,
   sendStaffCredentialsEmail,
+  sendBusinessOwnerCredentialsEmail,
   sendEmailChangeNotification,
   sendPasswordChangeNotification,
   sendMfaEnabledNotification,
@@ -1559,4 +2261,12 @@ module.exports = {
   sendAdminAlertEmail,
   sendAdminAlert,
   sendApprovalNotification,
+  sendApplicationSubmittedEmail,
+  sendApplicationResubmittedEmail,
+  sendApplicationApprovedEmail,
+  sendApplicationRejectedEmail,
+  sendApplicationReturnedEmail,
+  sendAppealSubmittedEmail,
+  sendAppealDeniedEmail,
+  sendAppealApprovedEmail,
 };

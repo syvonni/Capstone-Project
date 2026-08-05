@@ -15,7 +15,9 @@ async function updateBusinessApplicationStatus() {
       { $set: { applicationStatus: "approved" } },
     );
 
-    console.log(`Updated ${result.modifiedCount} businesses to approved status`);
+    console.log(
+      `Updated ${result.modifiedCount} businesses to approved status`,
+    );
     process.exit(0);
   } catch (err) {
     console.error("Error:", err);

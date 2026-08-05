@@ -21,10 +21,8 @@ BizClear is a full-stack BPLO platform comprising:
 - **Auth Service** — Express.js (port 3001) — authentication, MFA, sessions, profiles
 - **Business Service** — Express.js (port 3002) — permits, applications, payments, appeals
 - **Admin Service** — Express.js (port 3003) — staff management, forms, announcements
-- **Audit Service** — Express.js (port 3004) — blockchain-anchored audit logging
-- **AI Service** — Flask/Python (port 5001) — LOB recommendation classifier
+- **Audit Service** — Express.js (port 3004) — audit logging (MongoDB)
 - **MongoDB** — Primary database with field-level AES-256-GCM encryption
-- **Ethereum Blockchain** — Immutable audit hash anchoring (Ganache dev / mainnet prod)
 - **IPFS** — Decentralized document storage
 
 ## Quick Start

@@ -315,7 +315,7 @@
    * @param {object} siderProps - Props passed to Antd Sider
    */
   export default function Sidebar({ items = [], activeKey, onItemClick, headerContent, mobileOpen, setMobileOpen, ...siderProps }) {
-    const [collapsed, setCollapsed] = useState(false)
+    const [collapsed, setCollapsed] = useState(true)
     const screens = useBreakpoint()
     const { token } = theme.useToken();
 
@@ -355,7 +355,6 @@
             collapsible
             collapsed={collapsed}
             onCollapse={(value) => setCollapsed(value)}
-            breakpoint="lg"
             style={{
               overflow: 'auto',
               height: '100vh',

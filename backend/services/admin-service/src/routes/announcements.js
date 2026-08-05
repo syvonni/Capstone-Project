@@ -3,7 +3,7 @@ const router = express.Router();
 const { requireJwt, requireRole, optionalJwt } = require("../middleware/auth");
 const respond = require("../middleware/respond");
 const Announcement = require("../models/Announcement");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 
 router.get("/public", async (req, res) => {
   try {
@@ -118,26 +118,30 @@ router.post("/", requireJwt, requireRole(["admin"]), async (req, res) => {
     });
 
     // Create audit log
-    await createAuditLog(
-      req._userId,
+    await logAuditEvent(
       "announcement_created",
-      "announcement",
-      null,
-      JSON.stringify({
-        title,
-        body,
-        priority,
-        status,
-        isActive,
-        publishAt,
-        expiresAt,
-      }),
-      req._userRole,
+      req._userId,
+      "Announcement",
+      String(announcement._id),
       {
+        role: req._userRole,
+        fieldChanged: "announcement",
+        oldValue: "",
+        newValue: JSON.stringify({
+          title,
+          body,
+          priority,
+          status,
+          isActive,
+          publishAt,
+          expiresAt,
+        }),
         announcementId: announcement._id,
         ip: req.ip,
         userAgent: req.get("User-Agent"),
       },
+    ).catch((err) =>
+      console.error("Failed to log audit event for announcement_created:", err),
     );
 
     return respond.success(res, 201, announcement);
@@ -238,26 +242,30 @@ router.put("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
       return respond.error(res, 404, "not_found", "Announcement not found");
 
     // Create audit log
-    await createAuditLog(
-      req._userId,
+    await logAuditEvent(
       "announcement_updated",
-      "announcement",
-      JSON.stringify(oldValues),
-      JSON.stringify({
-        title,
-        body,
-        priority,
-        status,
-        isActive,
-        publishAt,
-        expiresAt,
-      }),
-      req._userRole,
+      req._userId,
+      "Announcement",
+      String(announcement._id),
       {
+        role: req._userRole,
+        fieldChanged: "announcement",
+        oldValue: JSON.stringify(oldValues),
+        newValue: JSON.stringify({
+          title,
+          body,
+          priority,
+          status,
+          isActive,
+          publishAt,
+          expiresAt,
+        }),
         announcementId: announcement._id,
         ip: req.ip,
         userAgent: req.get("User-Agent"),
       },
+    ).catch((err) =>
+      console.error("Failed to log audit event for announcement_updated:", err),
     );
 
     return respond.success(res, 200, announcement);
@@ -293,26 +301,30 @@ router.delete("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
     }
 
     // Create audit log before deletion
-    await createAuditLog(
-      req._userId,
+    await logAuditEvent(
       "announcement_deleted",
-      "announcement",
-      JSON.stringify({
-        title: announcement.title,
-        body: announcement.body,
-        priority: announcement.priority,
-        status: announcement.status,
-        isActive: announcement.isActive,
-        publishAt: announcement.publishAt,
-        expiresAt: announcement.expiresAt,
-      }),
-      null,
-      req._userRole,
+      req._userId,
+      "Announcement",
+      String(announcement._id),
       {
+        role: req._userRole,
+        fieldChanged: "announcement",
+        oldValue: JSON.stringify({
+          title: announcement.title,
+          body: announcement.body,
+          priority: announcement.priority,
+          status: announcement.status,
+          isActive: announcement.isActive,
+          publishAt: announcement.publishAt,
+          expiresAt: announcement.expiresAt,
+        }),
+        newValue: "",
         announcementId: announcement._id,
         ip: req.ip,
         userAgent: req.get("User-Agent"),
       },
+    ).catch((err) =>
+      console.error("Failed to log audit event for announcement_deleted:", err),
     );
 
     await Announcement.findByIdAndDelete(req.params.id);

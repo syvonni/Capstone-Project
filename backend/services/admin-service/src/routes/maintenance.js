@@ -9,7 +9,7 @@ const respond = require("../middleware/respond");
 const AdminApproval = require("../models/AdminApproval");
 const MaintenanceWindow = require("../models/MaintenanceWindow");
 const Announcement = require("../models/Announcement");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const logger = require("../lib/logger");
 
 const router = express.Router();
@@ -333,14 +333,16 @@ router.post(
         requiredApprovals: 2,
       });
 
-      createAuditLog(
-        requestedBy,
+      logAuditEvent(
         "maintenance_mode",
-        "maintenance_request",
-        "",
-        action,
-        "admin",
+        requestedBy,
+        "MaintenanceWindow",
+        String(approval._id),
         {
+          role: "admin",
+          fieldChanged: "maintenance_request",
+          oldValue: "",
+          newValue: action,
           approvalId: approval.approvalId,
           action,
           reason: reason || "",
@@ -355,10 +357,7 @@ router.post(
           userAgent: req.get("user-agent"),
         },
       ).catch((err) =>
-        console.error(
-          "Failed to create audit log for maintenance request",
-          err,
-        ),
+        console.error("Failed to log audit event for maintenance request", err),
       );
 
       return res.status(201).json({
@@ -453,14 +452,16 @@ router.post(
         requiredApprovals: 2,
       });
 
-      createAuditLog(
-        requestedBy,
+      logAuditEvent(
         "maintenance_cancel_request",
-        "maintenance_request",
-        approvalId,
-        cancellationApproval.approvalId,
-        "admin",
+        requestedBy,
+        "MaintenanceWindow",
+        String(cancellationApproval._id),
         {
+          role: "admin",
+          fieldChanged: "maintenance_request",
+          oldValue: approvalId,
+          newValue: cancellationApproval.approvalId,
           approvalId: cancellationApproval.approvalId,
           cancelTargetApprovalId: approvalId,
           ip: req.ip,
@@ -468,7 +469,7 @@ router.post(
         },
       ).catch((err) =>
         console.error(
-          "Failed to create audit log for maintenance cancellation request",
+          "Failed to log audit event for maintenance cancellation request",
           err,
         ),
       );

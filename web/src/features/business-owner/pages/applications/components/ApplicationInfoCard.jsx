@@ -1,5 +1,5 @@
-import { Typography, Card, Divider, Grid, Button, theme } from 'antd'
-import { FileTextOutlined } from '@ant-design/icons'
+import { Typography, Card, Divider, Grid, Button, theme, Tag } from 'antd'
+import { FileTextOutlined, UserOutlined } from '@ant-design/icons'
 import { getStatusLabel } from '@/shared/utils/statusUtils'
 import { formatDate } from '../utils/formatters.js'
 import PermitTypesModal from '@/shared/components/PermitTypesModal'
@@ -67,7 +67,14 @@ export default function ApplicationInfoCard({
       <div style={{ flex: screens.md ? '0 0 40%' : 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: screens.md ? '48px 16px 16px' : '96px 24px 16px' }}>
         <div>
           <FileTextOutlined style={{ fontSize: 24, color: token.colorTextSecondary, marginBottom: 8 }} />
-          <Typography.Title level={5} style={{ margin: 0 }}>Application Details</Typography.Title>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Typography.Title level={5} style={{ margin: 0 }}>Application Details</Typography.Title>
+            {business?.createdByOfficer && (
+              <Tag icon={<UserOutlined />} color="blue" style={{ fontSize: 11 }}>
+                Created by Officer
+              </Tag>
+            )}
+          </div>
         </div>
         <Divider style={{ margin: '16px 0' }} />
         <div>
@@ -280,6 +287,7 @@ export default function ApplicationInfoCard({
                     fontWeight: 600,
                     textDecoration: 'underline',
                     textDecorationColor: statusLower === 'draft' ? token.colorText
+                                    : statusLower === 'officer_draft' ? token.colorVolcano
                                     : statusLower === 'approved' ? token.colorSuccess
                                     : statusLower === 'rejected' ? token.colorError
                                     : statusLower === 'appeal_pending' ? token.colorPurple
@@ -290,6 +298,7 @@ export default function ApplicationInfoCard({
                 >
                   <span style={{
                     color: statusLower === 'draft' ? token.colorText
+                           : statusLower === 'officer_draft' ? token.colorVolcano
                            : statusLower === 'approved' ? token.colorSuccess
                            : statusLower === 'rejected' ? token.colorError
                            : statusLower === 'appeal_pending' ? token.colorPurple
@@ -312,6 +321,7 @@ export default function ApplicationInfoCard({
               ) : (
                 <Text strong style={{
                   color: statusLower === 'draft' ? token.colorText
+                         : statusLower === 'officer_draft' ? token.colorVolcano
                          : statusLower === 'approved' ? token.colorSuccess
                          : statusLower === 'rejected' ? token.colorError
                          : statusLower === 'appeal_pending' ? token.colorPurple

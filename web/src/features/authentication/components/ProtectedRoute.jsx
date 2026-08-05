@@ -117,8 +117,8 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
   const isStaffOrAdmin = staffRoles.includes(roleKey) || roleKey === 'admin'
   const mustSetupMfaEffective = isStaffOrAdmin ? !!effectiveUser?.mustSetupMfa : (bypassMfaDev ? false : !!effectiveUser?.mustSetupMfa)
   const needsOnboarding = (staffRoles.includes(roleKey) || roleKey === 'admin') && (effectiveUser?.mustChangeCredentials || mustSetupMfaEffective)
-  // Business owners only need onboarding if mustSetupMfa is true (MFA not yet set up)
-  const businessOwnerNeedsOnboarding = roleKey === 'business_owner' && mustSetupMfaEffective
+  // Business owners need onboarding if mustChangeCredentials is true (temporary password) or mustSetupMfa is true (MFA not yet set up)
+  const businessOwnerNeedsOnboarding = roleKey === 'business_owner' && (effectiveUser?.mustChangeCredentials || mustSetupMfaEffective)
   const onboardingAllowedPaths = ['/staff/onboarding', '/admin/onboarding', '/business-owner/onboarding']
   const needsPasswordOrOnboarding = needsOnboarding || businessOwnerNeedsOnboarding
   if (needsPasswordOrOnboarding && !onboardingAllowedPaths.includes(location.pathname)) {

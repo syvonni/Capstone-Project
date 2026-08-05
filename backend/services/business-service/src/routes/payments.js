@@ -2,7 +2,6 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Payment = require("../models/Payment");
 const BusinessProfile = require("../models/BusinessProfile");
-const Inspection = require("../models/Inspection");
 const { requireJwt, requireRole } = require("../middleware/auth");
 const { logAuditEvent } = require("../lib/auditClient");
 
@@ -369,55 +368,6 @@ router.post("/:paymentId/pay", requireJwt, async (req, res) => {
       { amount: payment.amount, businessId: payment.businessId },
     );
 
-    // Auto-create inspection when ALL permit payments for this business are paid
-    try {
-      if (payment.businessId) {
-        const pendingPermitPayments = await Payment.countDocuments({
-          businessId: payment.businessId,
-          status: { $ne: "paid" },
-          paymentType: { $nin: ["cessation_tax"] },
-        });
-        if (pendingPermitPayments === 0) {
-          // Check if an inspection already exists for this business that is not completed
-          const existingInspection = await Inspection.findOne({
-            businessId: payment.businessId,
-            status: { $in: ["pending_assignment", "pending", "in_progress"] },
-          });
-          if (!existingInspection) {
-            const profile = await BusinessProfile.findOne(
-              buildBusinessLookupQuery(payment.businessId),
-            );
-            if (profile) {
-              const business = findBusinessInProfile(
-                profile,
-                payment.businessId,
-              );
-              if (business) {
-                const appType = business.applicationType || "new";
-                const permitType =
-                  appType === "renewal" ? "renewal" : "initial";
-                await Inspection.create({
-                  businessProfileId: profile._id,
-                  businessId: payment.businessId,
-                  permitType,
-                  inspectionType: permitType,
-                  status: "pending_assignment",
-                });
-                console.log(
-                  `[payments] Auto-created inspection for business ${payment.businessId}`,
-                );
-              }
-            }
-          }
-        }
-      }
-    } catch (inspErr) {
-      console.error(
-        "[payments] Auto-inspection creation failed (non-blocking):",
-        inspErr,
-      );
-    }
-
     return res.json({
       data: payment,
       message: "Payment processed successfully",
@@ -583,9 +533,9 @@ router.post("/mock", requireJwt, async (req, res) => {
 
     const paymentId = await generatePaymentId();
     const receiptNumber = `RCP-${Date.now()}`;
-    
+
     // Map fee breakdown to payment model format
-    const feeBreakdown = fees.map(fee => ({
+    const feeBreakdown = fees.map((fee) => ({
       label: fee.label || fee.description || "Fee",
       amount: fee.amount || 0,
       type: fee.type || "other",
@@ -628,7 +578,10 @@ router.post("/mock", requireJwt, async (req, res) => {
     return res.status(201).json({ data: payment });
   } catch (err) {
     if (err.code === 11000 || err.message?.includes("E11000")) {
-      console.warn("POST /payments/mock duplicate:", err.keyValue || err.message);
+      console.warn(
+        "POST /payments/mock duplicate:",
+        err.keyValue || err.message,
+      );
       return res.status(409).json({
         error: {
           code: "DUPLICATE",

@@ -10,7 +10,7 @@ const {
   containsSqlInjection,
   containsXss,
 } = require("../lib/sanitizer");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { isBusinessOwnerRole } = require("../lib/roleHelpers");
 
 const router = express.Router();
@@ -446,14 +446,16 @@ router.patch(
       const userAgent = req.headers["user-agent"] || "unknown";
       const reason = body.reason || "LGU officer profile update";
 
-      await createAuditLog(
-        user._id,
+      await logAuditEvent(
         "profile_update_by_officer",
-        changes[0] || "profile",
-        JSON.stringify(oldValues),
-        JSON.stringify(newValues),
-        req._userRole || "lgu_officer",
+        user._id,
+        "User",
+        user._id,
         {
+          role: req._userRole || "lgu_officer",
+          fieldChanged: changes[0] || "profile",
+          oldValue: JSON.stringify(oldValues),
+          newValue: JSON.stringify(newValues),
           ip,
           userAgent,
           updatedBy: officerId,

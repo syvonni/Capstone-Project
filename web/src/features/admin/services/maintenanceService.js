@@ -30,7 +30,7 @@ export async function getMaintenanceConflicts(start, end) {
 export async function getMaintenanceCurrent() {
   const current = getCurrentUser()
   const headers = authHeaders(current, 'admin')
-  return fetchJsonWithFallback('/api/admin/maintenance/current', {
+  return fetchJsonWithFallback('/api/maintenance/current', {
     method: 'GET',
     headers,
   })

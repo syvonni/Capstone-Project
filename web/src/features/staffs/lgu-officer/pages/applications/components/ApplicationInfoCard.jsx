@@ -8,6 +8,7 @@ import ApplicationProgressModal from './modals/ApplicationProgressModal'
 import OwnerDetailsModal from './modals/ApplicationOwnerDetailsModal'
 import { GENERAL_PERMIT_CATEGORIES } from '@/features/business-owner/constants/businessFormConstants'
 import { getAppealsByBusiness } from '../../../services/appealsService'
+import { get } from '@/lib/http'
 
 const { Text } = Typography
 const { useBreakpoint } = Grid
@@ -22,6 +23,24 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
   const [latestAppeal, setLatestAppeal] = useState(propLatestAppeal || null)
   const [previewModal, setPreviewModal] = useState({ open: false, url: null, label: '', type: 'other' })
   const [permitModalOpen, setPermitModalOpen] = useState(false)
+  const [ownerProfile, setOwnerProfile] = useState(null)
+
+  const ownerId = application?.userId
+
+  // Fetch owner profile to get the actual name
+  useEffect(() => {
+    if (!ownerId) return
+    let cancelled = false
+    get(`/api/lgu-officer/owner-profile/${ownerId}`)
+      .then((res) => {
+        if (cancelled) return
+        setOwnerProfile(res.profile)
+      })
+      .catch((err) => {
+        console.error('Failed to fetch owner profile:', err)
+      })
+    return () => { cancelled = true }
+  }, [ownerId])
 
   const businessId = application?.businessId || application?.applicationId
   const isAppealPending = application?.status === 'appeal_pending' || application?.applicationStatus === 'appeal_pending'
@@ -125,9 +144,18 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
                    : statusLower === 'needs_revision' || statusLower === 'returned' ? themeToken.colorVolcano
                    : statusLower === 'resubmit' ? themeToken.colorCyan
                    : statusLower === 'suspended' ? themeToken.colorMagenta
+                   : statusLower === 'officer_draft' ? themeToken.colorVolcano
                    : themeToken.colorInfo
 
   const isApproved = application?.status === 'approved' || application?.applicationStatus === 'approved'
+  const createdByOfficer = application?.createdByOfficer === true
+
+  // Use ownerIdentity as fallback for ownerName, then use fetched ownerProfile
+  // Construct full name from firstName and lastName if fullName is not available
+  const profileFullName = ownerProfile?.fullName || (ownerProfile?.firstName && ownerProfile?.lastName
+    ? `${ownerProfile.firstName} ${ownerProfile.lastName}`.trim()
+    : null)
+  const displayOwnerName = ownerName && ownerName !== 'N/A' ? ownerName : ownerIdentity?.fullName || profileFullName || 'Unknown Owner'
 
   const statusLabel = statusLower === 'submitted' ? 'Waiting for Assignment'
                    : statusLower === 'under_review' ? 'Under Review'
@@ -184,7 +212,7 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
               onClick={() => setOwnerModalOpen(true)}
               style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
             >
-              {ownerName}
+              {displayOwnerName}
             </Button>
           </div>
         </div>
@@ -354,7 +382,7 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
             </div>
           </>
         )}
-        {requestChangeFields.length > 0 && (
+        {!createdByOfficer && requestChangeFields.length > 0 && (
           <>
             <Divider style={{ margin: '16px 0' }} />
             <div style={{ marginBottom: 12 }}>
@@ -392,10 +420,12 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
               </Button>
             </div>
           </div>
-          <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>Reference Number</Text>
-            <div><Text strong>{application?.applicationReferenceNumber || 'Pending'}</Text></div>
-          </div>
+          {!createdByOfficer && (
+            <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Reference Number</Text>
+              <div><Text strong>{application?.applicationReferenceNumber || 'Pending'}</Text></div>
+            </div>
+          )}
           <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
             <Text type="secondary" style={{ fontSize: 12 }}>Business Type</Text>
             <div>
@@ -410,9 +440,15 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
             </div>
           </div>
           <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>Submitted On</Text>
-            <div><Text strong>{formatDate(application?.submittedAt)}</Text></div>
+            <Text type="secondary" style={{ fontSize: 12 }}>{createdByOfficer ? 'Created On' : 'Submitted On'}</Text>
+            <div><Text strong>{formatDate(createdByOfficer ? application?.createdAt : application?.submittedAt)}</Text></div>
           </div>
+          {createdByOfficer && isApproved && application?.submittedAt && (
+            <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Submitted On</Text>
+              <div><Text strong>{formatDate(application?.submittedAt)}</Text></div>
+            </div>
+          )}
           <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
             <Text type="secondary" style={{ fontSize: 12 }}>Last Reviewed</Text>
             <div><Text strong>{application?.reviewedAt ? formatDate(application.reviewedAt) : 'Not yet reviewed'}</Text></div>
@@ -448,7 +484,7 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
               </div>
             </div>
           )}
-          {!isApproved && (
+          {!isApproved && !createdByOfficer && (
             <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
               <Text type="secondary" style={{ fontSize: 12 }}>Requested Changes</Text>
               <div>

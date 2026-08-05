@@ -1,6 +1,6 @@
-import { Typography, Tag, Descriptions, Empty } from 'antd'
+import { Typography, Descriptions, Empty } from 'antd'
 
-const { Text, Title } = Typography
+const { Text } = Typography
 
 const STATUS_CONFIG = {
   submitted: { color: 'blue', label: 'Submitted' },
@@ -11,88 +11,7 @@ const STATUS_CONFIG = {
   appeal_pending: { color: 'volcano', label: 'Appeal Pending' },
 }
 
-const EVENT_TYPE_LABELS = {
-  // Application lifecycle
-  application_submitted: 'Application Submitted',
-  application_rejected: 'Application Rejected',
-  application_returned: 'Application Returned',
-  review_completed: 'Review Completed',
-  decision_revoked: 'Decision Revoked',
-
-  // Claim management
-  application_claimed: 'Application Claimed',
-  application_released: 'Application Released',
-  application_transferred: 'Application Transferred',
-  claimed: 'Claimed',
-  released: 'Released',
-
-  // Appeals
-  appeal_submitted: 'Appeal Submitted',
-  appeal_resolved: 'Appeal Resolved',
-  appeal_rejected: 'Appeal Rejected',
-
-  // Edit requests
-  edit_request_submitted: 'Edit Request Submitted',
-  edit_request_applied: 'Edit Request Applied',
-
-  // Field review
-  field_reviewed: 'Field Reviewed',
-  field_decisions_updated: 'Field Decisions Updated',
-
-  // Pending actions
-  pending_action_created: 'Pending Action Created',
-  pending_action_cancelled: 'Pending Action Cancelled',
-}
-
-const AUDIT_EVENT_INFO = [
-  // Application lifecycle
-  { event: 'application_submitted', description: 'When a business owner submits a new permit application' },
-  { event: 'application_rejected', description: 'When an LGU officer rejects an application' },
-  { event: 'application_returned', description: 'When an application is returned to the business owner for revisions' },
-  { event: 'review_completed', description: 'When an officer completes the review process for an application' },
-  { event: 'decision_revoked', description: 'When an officer revokes a previous decision on an application' },
-
-  // Claim management
-  { event: 'application_claimed', description: 'When an LGU officer claims an application for review' },
-  { event: 'application_released', description: 'When an LGU officer releases an application back to the pool' },
-  { event: 'application_transferred', description: 'When an LGU officer transfers an application to another officer' },
-  { event: 'claimed', description: 'When an LGU officer claims an application for review' },
-  { event: 'released', description: 'When an LGU officer releases an application back to the pool' },
-
-  // Appeals
-  { event: 'appeal_submitted', description: 'When a business owner submits an appeal for a rejected application' },
-  { event: 'appeal_resolved', description: 'When an LGU officer approves an appeal' },
-  { event: 'appeal_rejected', description: 'When an LGU officer rejects an appeal' },
-
-  // Edit requests
-  { event: 'edit_request_submitted', description: 'When a business owner submits an edit request' },
-  { event: 'edit_request_applied', description: 'When an LGU officer applies an edit request' },
-
-  // Field review
-  { event: 'field_reviewed', description: 'When an officer reviews and approves/rejects specific form fields' },
-  { event: 'field_decisions_updated', description: 'When field review decisions are updated' },
-
-  // Pending actions
-  { event: 'pending_action_created', description: 'When a pending action is scheduled' },
-  { event: 'pending_action_cancelled', description: 'When a pending action is cancelled' },
-]
-
-export default function ApplicationAuditDetailPanel({ audit, showInfo }) {
-  if (showInfo) {
-    return (
-      <div style={{ padding: 16, overflow: 'auto' }}>
-        <Title level={5} style={{ marginBottom: 16 }}>Event Types</Title>
-        <Descriptions column={1} size="small" bordered>
-          {AUDIT_EVENT_INFO.map((item) => (
-            <Descriptions.Item key={item.event} label={EVENT_TYPE_LABELS[item.event] || item.event}>
-              {item.description}
-            </Descriptions.Item>
-          ))}
-        </Descriptions>
-      </div>
-    )
-  }
-
+export default function ApplicationAuditDetailPanel({ audit }) {
   if (!audit) {
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -107,7 +26,7 @@ export default function ApplicationAuditDetailPanel({ audit, showInfo }) {
     <div style={{ padding: 16 }}>
       <Descriptions column={1} size="small" bordered>
         <Descriptions.Item label="Event Type">
-          {EVENT_TYPE_LABELS[audit.eventType] || audit.eventType}
+          {audit.eventType || 'Unknown Event'}
         </Descriptions.Item>
         <Descriptions.Item label="Timestamp">
           {new Date(audit.createdAt).toLocaleString()}
@@ -123,45 +42,35 @@ export default function ApplicationAuditDetailPanel({ audit, showInfo }) {
         {/* Entity Information */}
         {metadata.businessId && (
           <Descriptions.Item label="Business ID">
-            <Text code>{metadata.businessId}</Text>
+            {metadata.businessId}
           </Descriptions.Item>
         )}
         
         {/* Status Information */}
         {metadata.applicationStatus && (
           <Descriptions.Item label="Application Status">
-            <Tag color={STATUS_CONFIG[metadata.applicationStatus]?.color || 'default'}>
-              {STATUS_CONFIG[metadata.applicationStatus]?.label || metadata.applicationStatus}
-            </Tag>
+            {STATUS_CONFIG[metadata.applicationStatus]?.label || metadata.applicationStatus}
           </Descriptions.Item>
         )}
         {metadata.status && (
           <Descriptions.Item label="Status Change">
-            <Tag color={STATUS_CONFIG[metadata.status.from]?.color || 'default'}>
-              {STATUS_CONFIG[metadata.status.from]?.label || metadata.status.from}
-            </Tag>
+            {STATUS_CONFIG[metadata.status.from]?.label || metadata.status.from}
             {' → '}
-            <Tag color={STATUS_CONFIG[metadata.status.to]?.color || 'default'}>
-              {STATUS_CONFIG[metadata.status.to]?.label || metadata.status.to}
-            </Tag>
+            {STATUS_CONFIG[metadata.status.to]?.label || metadata.status.to}
           </Descriptions.Item>
         )}
         {metadata.appealStatus && (
           <Descriptions.Item label="Appeal Status">
-            <Tag color={metadata.appealStatus === 'approved' ? 'green' : metadata.appealStatus === 'rejected' ? 'red' : 'default'}>
-              {metadata.appealStatus}
-            </Tag>
+            {metadata.appealStatus}
           </Descriptions.Item>
         )}
         
         {/* Field Review Information */}
         {metadata.fieldKey && (
           <Descriptions.Item label="Field Reviewed">
-            <Text code>{metadata.fieldKey}</Text>
+            {metadata.fieldKey}
             <br />
-            <Tag color={metadata.decision === 'approved' ? 'green' : 'red'}>
-              {metadata.decision || 'reviewed'}
-            </Tag>
+            {metadata.decision || 'reviewed'}
           </Descriptions.Item>
         )}
         {metadata.decisionsCount && (
@@ -207,7 +116,7 @@ export default function ApplicationAuditDetailPanel({ audit, showInfo }) {
         {/* Pending Action Information */}
         {metadata.actionType && (
           <Descriptions.Item label="Action Type">
-            <Text code>{metadata.actionType}</Text>
+            <Text>{metadata.actionType}</Text>
           </Descriptions.Item>
         )}
         {metadata.scheduledAt && (
@@ -219,7 +128,7 @@ export default function ApplicationAuditDetailPanel({ audit, showInfo }) {
         {/* Permit Information */}
         {metadata.permitId && (
           <Descriptions.Item label="Permit ID">
-            <Text code>{metadata.permitId}</Text>
+            <Text>{metadata.permitId}</Text>
           </Descriptions.Item>
         )}
         {metadata.permitType && (
@@ -229,7 +138,7 @@ export default function ApplicationAuditDetailPanel({ audit, showInfo }) {
         {/* Inspection Information */}
         {metadata.inspectionId && (
           <Descriptions.Item label="Inspection ID">
-            <Text code>{metadata.inspectionId}</Text>
+            <Text>{metadata.inspectionId}</Text>
           </Descriptions.Item>
         )}
         {metadata.violationType && (

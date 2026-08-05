@@ -57,13 +57,6 @@ export default function EmailTemplate(props) {
   timestamp,
   daysRemaining,
   scheduledFor,
-  violationId,
-  violationType,
-  deadline,
-  inspectionId,
-  inspectionDate,
-  inspectionTime,
-  inspectorName,
   clearanceId,
   status,
   applicationReferenceNumber,
@@ -80,8 +73,6 @@ export default function EmailTemplate(props) {
   const isAdminAlert = field !== undefined && userName !== undefined
   const isPermitDecision = applicationReferenceNumber !== undefined && !requestId
   const isDeletionReminder = daysRemaining !== undefined && !requestId
-  const isViolationReminder = violationId !== undefined
-  const isInspectionReminder = inspectionId !== undefined
   const isClearanceNotification = clearanceId !== undefined && !requestId
 
   // Consistent header template (matches landing page style)
@@ -368,51 +359,6 @@ export default function EmailTemplate(props) {
         fields: [
           { label: 'Days remaining', value: daysRemaining, color: EMAIL_COLORS.antWarning, fontSize: '14px', fontWeight: '700' },
           { label: 'Scheduled for', value: scheduledFor }
-        ]
-      })}
-      <p style="margin:0 0 24px;color:rgba(0,0,0,0.88);font-size:14px;">
-        Regards, BizClear Team
-      </p>
-    </div>
-    `
-    html = buildEmailHtml({ bodyContent })
-  } else if (isViolationReminder) {
-    const bodyContent = `
-    <div style="padding:40px 32px;">
-      <p style="margin:0 0 24px;color:${EMAIL_COLORS.textPrimary};font-size:14px;">${greeting},</p>
-      <p style="margin:0 0 24px;color:rgba(0,0,0,0.88);font-size:14px;line-height:1.5715;">
-        ${intro}
-      </p>
-      ${buildInfoBox({
-        bgColor: EMAIL_COLORS.bgError,
-        borderColor: EMAIL_COLORS.borderError,
-        fields: [
-          { label: 'Violation ID', value: violationId, fontWeight: '700' },
-          { label: 'Violation type', value: violationType },
-          { label: 'Business name', value: businessName },
-          { label: 'Deadline', value: deadline, color: EMAIL_COLORS.antError, fontSize: '14px', fontWeight: '700' }
-        ]
-      })}
-      <p style="margin:0 0 24px;color:rgba(0,0,0,0.88);font-size:14px;">
-        Regards, BizClear Team
-      </p>
-    </div>
-    `
-    html = buildEmailHtml({ bodyContent })
-  } else if (isInspectionReminder) {
-    const bodyContent = `
-    <div style="padding:40px 32px;">
-      <p style="margin:0 0 24px;color:${EMAIL_COLORS.textPrimary};font-size:14px;">${greeting},</p>
-      <p style="margin:0 0 24px;color:rgba(0,0,0,0.88);font-size:14px;line-height:1.5715;">
-        ${intro}
-      </p>
-      ${buildInfoBox({
-        fields: [
-          { label: 'Inspection ID', value: inspectionId, fontWeight: '700' },
-          { label: 'Date', value: inspectionDate, color: EMAIL_COLORS.primary, fontSize: '14px', fontWeight: '700' },
-          { label: 'Time', value: inspectionTime, color: EMAIL_COLORS.primary, fontSize: '14px', fontWeight: '700' },
-          { label: 'Business name', value: businessName },
-          { label: 'Inspector', value: inspectorName }
         ]
       })}
       <p style="margin:0 0 24px;color:rgba(0,0,0,0.88);font-size:14px;">

@@ -355,7 +355,12 @@ router.post("/", requireJwt, async (req, res) => {
       req._userId,
       "EditRequest",
       editRequest._id.toString(),
-      { businessId: normalizedBusinessId },
+      {
+        businessId: normalizedBusinessId,
+        businessName: business?.businessName,
+        fieldName,
+        applicationReferenceNumber: business?.applicationReferenceNumber,
+      },
     );
     return res.status(201).json({ data: editRequest });
   } catch (err) {
@@ -381,8 +386,7 @@ router.put(
       }
 
       const userRole = req._userRole;
-      const isManagerOrAdmin =
-        userRole === "admin";
+      const isManagerOrAdmin = userRole === "admin";
       if (
         editRequest.reviewedBy &&
         String(editRequest.reviewedBy) !== String(req._userId) &&
@@ -464,10 +468,13 @@ router.put(
           "BusinessProfile",
           editRequest.businessId,
           {
+            businessId: editRequest.businessId,
+            businessName: business?.businessName,
             fieldName: editRequest.fieldName,
             previousValue: editRequest.currentValue,
             newValue: editRequest.requestedValue,
             editRequestId: editRequest._id.toString(),
+            applicationReferenceNumber: business?.applicationReferenceNumber,
           },
         );
       }
@@ -554,8 +561,7 @@ router.put(
       }
 
       const userRole = req._userRole;
-      const isManagerOrAdmin =
-        userRole === "admin";
+      const isManagerOrAdmin = userRole === "admin";
       if (
         editRequest.reviewedBy &&
         String(editRequest.reviewedBy) !== String(req._userId) &&
@@ -620,8 +626,7 @@ router.put(
       }
 
       const userRole = req._userRole;
-      const isManagerOrAdmin =
-        userRole === "admin";
+      const isManagerOrAdmin = userRole === "admin";
       if (
         editRequest.reviewedBy &&
         String(editRequest.reviewedBy) !== String(req._userId) &&

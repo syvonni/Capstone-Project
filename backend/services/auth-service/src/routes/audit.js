@@ -11,7 +11,8 @@ const { containsSqlInjection } = require("../lib/sanitizer");
 const axios = require("axios");
 
 const router = express.Router();
-const AUDIT_SERVICE_URL = process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
+const AUDIT_SERVICE_URL =
+  process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
 
 /**
  * Mask sensitive data in audit log
@@ -214,7 +215,7 @@ router.get(
         "Failed to fetch admin audit logs from audit-service",
       );
     }
-  }
+  },
 );
 
 // GET /api/auth/admin/audit/recent
@@ -245,7 +246,7 @@ router.get(
         "Failed to fetch recent audit logs from audit-service",
       );
     }
-  }
+  },
 );
 
 // GET /api/auth/audit/staff/all
@@ -306,7 +307,9 @@ router.get(
       const { applicationId } = req.params;
       const { page = 1, limit = 20 } = req.query;
 
-      console.log(`[audit-proxy] Fetching audit logs for application ${applicationId}`);
+      console.log(
+        `[audit-proxy] Fetching audit logs for application ${applicationId}`,
+      );
 
       const headers = {
         Authorization: req.headers.authorization,
@@ -318,10 +321,15 @@ router.get(
         { headers },
       );
 
-      console.log(`[audit-proxy] Successfully fetched ${response.data.logs?.length || 0} logs`);
+      console.log(
+        `[audit-proxy] Successfully fetched ${response.data.logs?.length || 0} logs`,
+      );
       return res.json(response.data);
     } catch (err) {
-      console.error("[audit-proxy] Proxy to audit-service failed:", err.message);
+      console.error(
+        "[audit-proxy] Proxy to audit-service failed:",
+        err.message,
+      );
       return respond.error(
         res,
         500,
@@ -355,6 +363,42 @@ router.get(
       return res.json(response.data);
     } catch (err) {
       console.error("Proxy to audit-service failed:", err.message);
+      return respond.error(
+        res,
+        500,
+        "audit_proxy_failed",
+        "Failed to fetch audit logs from audit-service",
+      );
+    }
+  },
+);
+
+// Proxy route: GET /api/auth/audit/business-owner/:ownerId - Proxy to audit-service
+router.get(
+  "/business-owner/:ownerId",
+  requireJwt,
+  requireRole(["lgu_officer", "staff", "admin"]),
+  async (req, res) => {
+    try {
+      const { ownerId } = req.params;
+      const { page = 1, limit = 20 } = req.query;
+
+      const headers = {
+        Authorization: req.headers.authorization,
+        "Content-Type": "application/json",
+      };
+
+      const response = await axios.get(
+        `${AUDIT_SERVICE_URL}/api/audit/business-owner/${ownerId}?page=${page}&limit=${limit}`,
+        { headers },
+      );
+
+      return res.json(response.data);
+    } catch (err) {
+      console.error(
+        "[audit-proxy] Proxy to audit-service failed:",
+        err.message,
+      );
       return respond.error(
         res,
         500,

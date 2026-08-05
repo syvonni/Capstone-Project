@@ -111,8 +111,7 @@ export class PermitApplicationService {
     if (businessId) params.append('businessId', businessId)
 
     const url = `/api/lgu-officer/permit-applications/${id}${params.toString() ? `?${params}` : ''}`
-    const response = await fetchJsonWithFallback(url)
-    return response
+    return fetchJsonWithFallback(url)
   }
 
   /**
@@ -184,14 +183,19 @@ export class PermitApplicationService {
    * @param {string} actionType - 'complete_review' | 'reject' | 'return'
    * @param {object} payload - Action payload
    * @param {number} delayMinutes - Delay before execution (default: 10)
+   * @param {object} options - Additional options (e.g., stepUpToken)
    * @returns {Promise<object>} Updated application
    */
-  async createPendingAction(applicationId, businessId, actionType, payload, delayMinutes = 10) {
+  async createPendingAction(applicationId, businessId, actionType, payload, delayMinutes = 10, options = {}) {
+    const headers = { 'Content-Type': 'application/json' }
+    if (options.stepUpToken) {
+      headers['X-Step-Up-Token'] = options.stepUpToken
+    }
     const response = await fetchJsonWithFallback(
       `/api/lgu-officer/permit-applications/${applicationId}/pending-action`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ actionType, payload, delayMinutes })
       }
     )
@@ -215,12 +219,213 @@ export class PermitApplicationService {
   /**
    * Execute a pending action immediately
    * @param {string} applicationId - Application ID
+   * @param {object} options - Additional options (e.g., stepUpToken)
    * @returns {Promise<object>} Updated application
    */
-  async executePendingActionNow(applicationId) {
+  async executePendingActionNow(applicationId, options = {}) {
+    const headers = {}
+    if (options.stepUpToken) {
+      headers['X-Step-Up-Token'] = options.stepUpToken
+    }
     const response = await fetchJsonWithFallback(
       `/api/lgu-officer/permit-applications/${applicationId}/execute-pending-action`,
-      { method: 'PUT' }
+      { method: 'PUT', headers }
+    )
+    return response
+  }
+
+  /**
+   * Create a walk-in application for a business owner
+   * @param {object} params - Walk-in application parameters
+   * @param {string} params.ownerId - Business owner user ID
+   * @param {string} params.permitType - Permit type (permit or general_permit)
+   * @param {string} params.category - Category for general_permit (optional)
+   * @param {string} params.stepUpToken - Step-up authentication token (optional)
+   * @returns {Promise<object>} Created application
+   */
+  async createWalkInApplication({ ownerId, permitType, category, stepUpToken }) {
+    if (!ownerId) {
+      throw new Error('Owner ID is required')
+    }
+    if (!permitType) {
+      throw new Error('Permit type is required')
+    }
+
+    const headers = { 'Content-Type': 'application/json' }
+    if (stepUpToken) {
+      headers['X-Step-Up-Token'] = stepUpToken
+    }
+
+    const response = await fetchJsonWithFallback('/api/lgu-officer/walk-in-applications', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ownerId, permitType, category })
+    })
+    return response
+  }
+
+  /**
+   * Finish an officer draft application (transition to approved)
+   * @param {string} applicationId - Application ID
+   * @param {string} stepUpToken - Step-up authentication token
+   * @returns {Promise<object>} Updated application
+   */
+  async finishApplication(applicationId, stepUpToken) {
+    if (!applicationId) {
+      throw new Error('Application ID is required')
+    }
+
+    const headers = { 'Content-Type': 'application/json' }
+    if (stepUpToken) {
+      headers['X-Step-Up-Token'] = stepUpToken
+    }
+
+    const response = await fetchJsonWithFallback(
+      `/api/lgu-officer/permit-applications/${applicationId}/finish`,
+      {
+        method: 'POST',
+        headers
+      }
+    )
+    return response
+  }
+
+  /**
+   * Delete an application
+   * @param {string} applicationId - Application ID
+   * @returns {Promise<object>} Deletion result
+   */
+  async deleteApplication(applicationId, stepUpToken) {
+    if (!applicationId) {
+      throw new Error('Application ID is required')
+    }
+
+    const headers = {}
+    if (stepUpToken) {
+      headers['X-Step-Up-Token'] = stepUpToken
+    }
+
+    const response = await fetchJsonWithFallback(
+      `/api/lgu-officer/permit-applications/${applicationId}`,
+      { method: 'DELETE', headers }
+    )
+    return response
+  }
+
+  /**
+   * Update application form data
+   * @param {string} applicationId - Application ID
+   * @param {object} formData - Form data to update
+   * @returns {Promise<object>} Updated application
+   */
+  async updateFormData(applicationId, formData) {
+    if (!applicationId) {
+      throw new Error('Application ID is required')
+    }
+
+    const response = await fetchJsonWithFallback(
+      `/api/lgu-officer/permit-applications/${applicationId}/form-data`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      }
+    )
+    return response
+  }
+
+  /**
+   * Resend application email
+   * @param {string} applicationId - Application ID
+   * @param {string} emailType - Email type (submitted, approved, rejected, returned)
+   * @param {object} options - Additional options (e.g., stepUpToken)
+   * @returns {Promise<object>} Resend result
+   */
+  async resendApplicationEmail(applicationId, emailType, options = {}) {
+    console.log('[permitService] resendApplicationEmail CALLED', { applicationId, emailType, hasStepUpToken: !!options.stepUpToken })
+    if (!applicationId) {
+      throw new Error('Application ID is required')
+    }
+    if (!emailType) {
+      throw new Error('Email type is required')
+    }
+
+    const headers = { 'Content-Type': 'application/json' }
+    if (options.stepUpToken) {
+      headers['X-Step-Up-Token'] = options.stepUpToken
+    }
+
+    console.log('[permitService] Making API call')
+    const response = await fetchJsonWithFallback(
+      `/api/lgu-officer/permit-applications/${applicationId}/resend-email`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ emailType })
+      }
+    )
+    console.log('[permitService] API call completed', response)
+    return response
+  }
+
+  /**
+   * Resend appeal email
+   * @param {string} appealId - Appeal ID
+   * @param {string} emailType - Email type (appeal_approved, appeal_denied)
+   * @param {object} options - Additional options (e.g., stepUpToken)
+   * @returns {Promise<object>} Resend result
+   */
+  async resendAppealEmail(appealId, emailType, options = {}) {
+    if (!appealId) {
+      throw new Error('Appeal ID is required')
+    }
+    if (!emailType) {
+      throw new Error('Email type is required')
+    }
+
+    const headers = { 'Content-Type': 'application/json' }
+    if (options.stepUpToken) {
+      headers['X-Step-Up-Token'] = options.stepUpToken
+    }
+
+    const response = await fetchJsonWithFallback(
+      `/api/lgu-officer/appeals/${appealId}/resend-email`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ emailType })
+      }
+    )
+    return response
+  }
+
+  /**
+   * Reset application email status
+   * @param {string} applicationId - Application ID
+   * @param {string} emailType - Email type (submitted, approved, rejected, returned)
+   * @param {object} options - Additional options (e.g., stepUpToken)
+   * @returns {Promise<object>} Reset result
+   */
+  async resetApplicationEmailStatus(applicationId, emailType, options = {}) {
+    if (!applicationId) {
+      throw new Error('Application ID is required')
+    }
+    if (!emailType) {
+      throw new Error('Email type is required')
+    }
+
+    const headers = { 'Content-Type': 'application/json' }
+    if (options.stepUpToken) {
+      headers['X-Step-Up-Token'] = options.stepUpToken
+    }
+
+    const response = await fetchJsonWithFallback(
+      `/api/lgu-officer/permit-applications/${applicationId}/reset-email-status`,
+      {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ emailType })
+      }
     )
     return response
   }

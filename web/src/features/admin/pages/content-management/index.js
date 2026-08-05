@@ -1,1 +1,1 @@
-export { default as ContentManagementPage } from './ContentManagementPage'
+export { default as ContentManagementView } from './views/ContentManagementView'

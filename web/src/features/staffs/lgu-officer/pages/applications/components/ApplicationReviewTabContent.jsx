@@ -20,6 +20,7 @@ export default function ReviewTabContent({
   _isWaitingForApplicant,
   _isFinalDecision,
   _isDraft,
+  _isOfficerDraft,
   _loadApplicationDetails,
   _message,
   ownerIdentity,

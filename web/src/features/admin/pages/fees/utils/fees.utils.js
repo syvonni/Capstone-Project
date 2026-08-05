@@ -6,8 +6,8 @@ export function filterItemsBySearch(items, query) {
   const q = query.trim().toLowerCase()
   return items.filter((item) => {
     const name = (item.name || '').toLowerCase()
-    const description = (item.description || '').toLowerCase()
-    return name.includes(q) || description.includes(q)
+    const notes = (item.notes || '').toLowerCase()
+    return name.includes(q) || notes.includes(q)
   })
 }
 
@@ -26,6 +26,14 @@ export function filterItemsByStatus(items, statusFilter) {
 /**
  * Get add button label by fee type
  */
-export function getAddButtonLabel(_feeType) {
-  return 'Add'
+export function getAddButtonLabel(feeType) {
+  const labels = {
+    fees: 'Add Global Application Fee',
+    conditional_fees: 'Add Conditional Fee',
+    classification_fees: 'Classification fees are pre-populated',
+    variable_fee_rules: 'Add Variable Fees',
+    claimable_documents: 'Fees auto-created with documents',
+    appeal_fees: 'Add Appeal Fee',
+  }
+  return labels[feeType] || 'Add'
 }

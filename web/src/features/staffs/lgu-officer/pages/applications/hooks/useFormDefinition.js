@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getActiveFormDefinition, getPublicFormDefinition } from '@/features/admin/services/formDefinitionService'
+import { getPublicPermitForm, getPublicPermitFormByFormId } from '@/shared/services/permitFormService'
 
 export function useFormDefinition(appIdentifier, formDefId, formType, businessType) {
   const [formDefinition, setFormDefinition] = useState(null)
@@ -19,14 +19,13 @@ export function useFormDefinition(appIdentifier, formDefId, formType, businessTy
       try {
         let res
         if (formDefId) {
-          res = await getPublicFormDefinition(formDefId)
+          res = await getPublicPermitForm(formDefId)
         } else {
-          const businessTypeToUse = businessType || 'all'
-          res = await getActiveFormDefinition(formType, businessTypeToUse, null)
+          res = await getPublicPermitFormByFormId(formType)
         }
         if (cancelled) return
-        if (res?.success && res?.definition) {
-          setFormDefinition(res.definition)
+        if (res?.success && res?.form) {
+          setFormDefinition(res.form)
         } else {
           console.error('Failed to load form definition - no valid response:', res)
         }

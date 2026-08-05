@@ -1,5 +1,4 @@
 import dayjs from 'dayjs'
-import { LINE_OF_BUSINESS } from '@/constants/lineOfBusiness'
 import { ALAMINOS_TEST_ADDRESS } from '../constants/businessFormConstants'
 import { resolveIpfsUrl } from '@/lib/ipfsUtils'
 
@@ -274,7 +273,7 @@ function formDataWithDayjs(formData, definition, documents = {}) {
 }
 
 function generateTestDataForField(field) {
-  const fieldName = field.key || field.label
+  const fieldName = field.key
 
   switch (field.type) {
     case 'text':
@@ -308,13 +307,16 @@ function generateTestDataForField(field) {
 
     case 'select':
       if (field.dropdownOptions?.length > 0) {
-        return field.dropdownOptions[0]
+        const firstOption = field.dropdownOptions[0]
+        return typeof firstOption === 'object' ? firstOption.id : firstOption
       }
       return null
 
     case 'multiselect':
       if (field.dropdownOptions?.length > 0) {
-        return field.dropdownOptions.slice(0, Math.min(2, field.dropdownOptions.length))
+        return field.dropdownOptions.slice(0, Math.min(2, field.dropdownOptions.length)).map(opt => 
+          typeof opt === 'object' ? opt.id : opt
+        )
       }
       return []
 
@@ -340,7 +342,8 @@ function generateTestDataForField(field) {
       groupFields.forEach(gf => {
         const gfName = gf.key || gf.label
         if (gf.type === 'select' && gf.dropdownOptions?.length > 0) {
-          row[gfName] = gf.dropdownOptions[0]
+          const firstOption = gf.dropdownOptions[0]
+          row[gfName] = typeof firstOption === 'object' ? firstOption.id : firstOption
         } else if (gf.type === 'date') {
           row[gfName] = dayjs().subtract(1, 'month')
         } else if (gf.type === 'number') {
@@ -357,7 +360,7 @@ function generateTestDataForField(field) {
   }
 }
 
-function generateTestDataForDefinition(definition, category = null) {
+function generateTestDataForDefinition(definition, category = null, lobs = []) {
   const testData = {}
 
   if (category) {
@@ -369,7 +372,7 @@ function generateTestDataForDefinition(definition, category = null) {
   sections.forEach(section => {
     const items = section.items || []
     items.forEach(field => {
-      const fieldName = field.key || field.label
+      const fieldName = field.key
       if (field.type === 'address') {
         testData[fieldName] = { ...ALAMINOS_TEST_ADDRESS }
         return
@@ -381,17 +384,6 @@ function generateTestDataForDefinition(definition, category = null) {
           barangayName: ALAMINOS_TEST_ADDRESS.barangayName,
           postalCode: ALAMINOS_TEST_ADDRESS.postalCode,
         }
-        return
-      }
-      if (field.type === 'ai_lob_recommendation') {
-        const firstLob = LINE_OF_BUSINESS[0]
-        const firstDetailed = firstLob?.detailedLines?.[0]
-        const firstPsic = firstLob?.psicCodes?.[0] || ''
-        testData.businessDescriptionText = 'Retail store selling groceries and general merchandise.'
-        testData.hasAnalyzedBusinessDescription = true
-        testData.businessActivities = firstLob && firstDetailed
-          ? [{ taxCode: firstLob.taxCode, lineOfBusiness: firstLob.lineOfBusiness, detailedLineOfBusiness: firstDetailed, psicCode: firstPsic }]
-          : []
         return
       }
       const value = generateTestDataForField(field)

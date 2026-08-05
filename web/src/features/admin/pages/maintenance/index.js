@@ -1,6 +1,6 @@
 // Main page components
-export { default as MaintenanceDesktopView } from './MaintenanceDesktopView.jsx'
-export { default as MaintenanceMobileView } from './MaintenanceMobileView.jsx'
+export { default as MaintenanceView } from './views/MaintenanceView.jsx'
+export { default as MaintenancePage } from './MaintenancePage.jsx'
 
 // All other components (subcomponents, modals, panels, tabs, etc.)
 export * from './components/index.js'

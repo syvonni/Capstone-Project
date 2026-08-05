@@ -5,13 +5,13 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ShopOutlined } from '@ant-design/icons'
 import { useAuthSession } from '@/features/authentication'
 import { mfaStatus } from '@/features/authentication/services/mfaService'
-import { firstLoginChangeCredentials } from '@/features/authentication/services/authService'
+import { firstLoginChangeCredentials, getProfile } from '@/features/authentication/services/authService'
 import { useNotifier } from '@/shared/notifications'
 import BusinessOwnerLayout from '../components/shared/BusinessOwnerLayout'
 import OnboardingStepContent from '@/shared/components/OnboardingStepContent'
 
 export default function BusinessOwnerOnboarding() {
-  const { currentUser } = useAuthSession()
+  const { currentUser, login } = useAuthSession()
   const { success, error } = useNotifier()
   const location = useLocation()
   const navigate = useNavigate()
@@ -22,10 +22,10 @@ export default function BusinessOwnerOnboarding() {
   const mustMfa = !!currentUser?.mustSetupMfa
   const passwordExpired = !!currentUser?.passwordExpired
 
-  // Business owners skip password step on signup, only show for password expiration
-  const initialStep = passwordExpired ? 0 : (mustMfa ? 0 : 1)
+  // Business owners always start at step 0 (Welcome) in onboarding mode
+  const initialStep = passwordExpired ? 0 : 0
   const [currentStep, setCurrentStep] = useState(initialStep)
-  const onboardingMode = passwordExpired ? 'password-expired' : 'mfa-only'
+  const onboardingMode = passwordExpired ? 'password-expired' : 'onboarding'
   const [mfaEnabled, setMfaEnabled] = useState(false)
   const [checkingMfa, setCheckingMfa] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -89,8 +89,8 @@ export default function BusinessOwnerOnboarding() {
         newUsername: currentUser?.username || (currentUser?.email ? currentUser.email.split('@')[0] : 'businessowner'),
       })
       success('Password changed successfully')
-      if (mustMfa) setCurrentStep(2)
-      else setCurrentStep(3)
+      // Always go to MFA step after password change (business owners can skip)
+      setCurrentStep(2)
     } catch (err) {
       console.error('Change credentials error:', err)
       error(err?.message || 'Failed to change password')
@@ -100,16 +100,37 @@ export default function BusinessOwnerOnboarding() {
   }
 
   const handleComplete = async () => {
-    // For business owners, navigate directly to dashboard
-    // MFA is optional, so no need to wait for mustSetupMfa to be cleared
-    navigate('/owner', { replace: true })
+    try {
+      // Fetch fresh profile to ensure mustChangeCredentials and mustSetupMfa are cleared
+      const fresh = await getProfile()
+      const merged = { ...currentUser, ...fresh, token: currentUser?.token }
+      const remember = !!localStorage.getItem('auth__currentUser')
+      await login(merged, { remember })
+      // Navigate immediately after login update
+      navigate('/owner', { replace: true })
+    } catch (e) {
+      console.error('[BusinessOwnerOnboarding] Failed to refresh profile before dashboard', e)
+      // Fallback: navigate anyway to avoid being stuck
+      navigate('/owner', { replace: true })
+    }
   }
 
-  const handleMfaSkip = () => {
-    // MFA is optional for business owners. Skipping navigates directly to dashboard.
-    // (mustSetupMfa remains set but is not enforced by ProtectedRoute for business owners.)
-    navigate('/owner', { replace: true })
+  const handleMfaSkip = async () => {
+    try {
+      // Fetch fresh profile to ensure mustChangeCredentials is cleared
+      const fresh = await getProfile()
+      const merged = { ...currentUser, ...fresh, token: currentUser?.token }
+      const remember = !!localStorage.getItem('auth__currentUser')
+      await login(merged, { remember })
+      // Navigate immediately after login update
+      navigate('/owner', { replace: true })
+    } catch (e) {
+      console.error('[BusinessOwnerOnboarding] Failed to refresh profile before dashboard (MFA skip)', e)
+      // Fallback: navigate anyway to avoid being stuck
+      navigate('/owner', { replace: true })
+    }
   }
+
 
   return (
     <BusinessOwnerLayout hideSidebar pageTitle="Onboarding" pageIcon={<ShopOutlined />}>

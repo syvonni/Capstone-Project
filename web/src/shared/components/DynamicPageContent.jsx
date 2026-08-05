@@ -73,6 +73,7 @@ export default function DynamicPageContent({ slotId, embedded = false, compact =
     'privacy-policy': 'Privacy Policy',
     'terms-of-service': 'Terms of Service',
     'bizclear-manual': 'BizClear Manual',
+    'business-owners-manual': 'Business Owners Manual',
   }[pageData.slotId] || pageData.slotId : ''
 
   // Desktop: Left sidebar TOC + right content

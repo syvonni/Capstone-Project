@@ -18,7 +18,7 @@ const {
   createInAppNotificationsForAdmins,
   createInAppNotification,
 } = require("../lib/notificationService");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const logger = require("../lib/logger");
 
 const router = express.Router();
@@ -262,14 +262,16 @@ router.post(
       );
 
       const requesterRole = req._userRole || "admin";
-      createAuditLog(
-        requestedBy,
+      logAuditEvent(
         "admin_approval_request",
-        "approval_request",
-        "",
-        approvalId,
-        requesterRole,
+        requestedBy,
+        "AdminApproval",
+        String(approval._id),
         {
+          role: requesterRole,
+          fieldChanged: "approval_request",
+          oldValue: "",
+          newValue: approvalId,
           approvalId,
           requestType,
           targetUserId: String(userId),
@@ -277,7 +279,7 @@ router.post(
           userAgent: req.get("user-agent"),
         },
       ).catch((err) =>
-        logger.warn("Failed to create audit log for approval request", { err }),
+        logger.warn("Failed to log audit event for approval request", { err }),
       );
 
       return res.status(201).json({
@@ -407,14 +409,16 @@ router.post(
 
       await approval.save();
 
-      createAuditLog(
-        approverId,
+      logAuditEvent(
         "admin_approval",
-        "approval_vote",
-        "pending",
-        approved ? "approved" : "rejected",
-        approverRole,
+        approverId,
+        "AdminApproval",
+        String(approval._id),
         {
+          role: approverRole,
+          fieldChanged: "approval_vote",
+          oldValue: "pending",
+          newValue: approved ? "approved" : "rejected",
           approvalId: approval.approvalId,
           approved,
           requestType: approval.requestType,
@@ -424,7 +428,7 @@ router.post(
           userAgent: req.get("user-agent"),
         },
       ).catch((err) =>
-        logger.warn("Failed to create audit log for approval vote", { err }),
+        logger.warn("Failed to log audit event for approval vote", { err }),
       );
 
       // Apply changes if just approved
@@ -752,16 +756,23 @@ router.delete(
 
       await approval.save();
 
-      createAuditLog({
-        action: "undo_vote",
-        targetId: approvalId,
-        targetType: "approval",
-        details: {
+      logAuditEvent(
+        "undo_vote",
+        approverId,
+        "AdminApproval",
+        String(approval._id),
+        {
+          role: approverRole || "admin",
+          targetType: "approval",
           approverId,
           requestType: approval.requestType,
           newStatus: approval.status,
+          ip: req.ip,
+          userAgent: req.get("user-agent"),
         },
-      });
+      ).catch((err) =>
+        logger.warn("Failed to log audit event for undo vote", { err }),
+      );
 
       return res.json({
         success: true,

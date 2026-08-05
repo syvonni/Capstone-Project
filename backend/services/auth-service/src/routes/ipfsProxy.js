@@ -19,7 +19,9 @@ router.get("/:cid", async (req, res) => {
     const response = await fetch(url);
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: "Failed to fetch IPFS content" });
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch IPFS content" });
     }
 
     // Stream the response

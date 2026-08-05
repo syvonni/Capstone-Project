@@ -1,78 +1,127 @@
 const mongoose = require("mongoose");
-const {
-  POST_REQUIREMENT_TYPE_VALUES,
-} = require("../../../../shared/constants");
 
 const PostRequirementSchema = new mongoose.Schema(
   {
-    businessId: {
+    code: {
       type: String,
       required: true,
+      unique: true,
+      trim: true,
     },
-    ownerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
-    permitId: {
+    name: {
       type: String,
-      default: "",
-    },
-    requirementType: {
-      type: String,
-      enum: POST_REQUIREMENT_TYPE_VALUES,
       required: true,
+      trim: true,
     },
     description: {
       type: String,
-      default: "",
+      trim: true,
     },
-    isNewPermit: {
+    notes: {
+      type: String,
+      trim: true,
+    },
+    legalBasis: [{
+      _id: false,
+      url: {
+        type: String,
+        trim: true,
+      },
+      title: {
+        type: String,
+        trim: true,
+      },
+      description: {
+        type: String,
+        trim: true,
+      },
+    }],
+    isActive: {
       type: Boolean,
       default: true,
     },
-    dueDate: {
-      type: Date,
-      required: true,
+    checklistId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Checklist",
     },
-    submittedAt: {
-      type: Date,
-      default: null,
+    customFields: [{
+      _id: false,
+      key: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      label: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      type: {
+        type: String,
+        required: true,
+        enum: ['text', 'textarea', 'date', 'boolean', 'number', 'select'],
+      },
+      required: {
+        type: Boolean,
+        default: false,
+      },
+      placeholder: {
+        type: String,
+        trim: true,
+      },
+      // Text/textarea specific
+      maxLength: {
+        type: Number,
+      },
+      pattern: {
+        type: String,
+        trim: true,
+      },
+      // Date specific
+      minDate: {
+        type: Date,
+      },
+      maxDate: {
+        type: Date,
+      },
+      // Number specific
+      min: {
+        type: Number,
+      },
+      max: {
+        type: Number,
+      },
+      step: {
+        type: Number,
+      },
+      // Boolean specific
+      defaultValue: {
+        type: Boolean,
+      },
+      // Select specific
+      options: [{
+        _id: false,
+        value: {
+          type: String,
+          required: true,
+        },
+        label: {
+          type: String,
+          required: true,
+        },
+      }],
+    }],
+    version: {
+      type: Number,
+      default: 1,
     },
-    submittedDocuments: {
-      type: [String],
-      default: [],
-    },
-    documentUrl: {
-      type: String,
-      default: "",
-    },
-    verifiedBy: {
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      default: null,
     },
-    verifiedAt: {
-      type: Date,
-      default: null,
-    },
-    verificationNotes: {
-      type: String,
-      default: "",
-    },
-    extensionHistory: [
-      {
-        previousDueDate: Date,
-        newDueDate: Date,
-        reason: { type: String, default: "" },
-        extendedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        extendedAt: { type: Date, default: Date.now },
-      },
-    ],
-    status: {
-      type: String,
-      enum: ["pending", "submitted", "verified", "overdue", "non_compliant"],
-      default: "pending",
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   { timestamps: true },
@@ -80,12 +129,15 @@ const PostRequirementSchema = new mongoose.Schema(
 
 const { encryptionPlugin } = require("../../../../shared/lib/encryptionPlugin");
 PostRequirementSchema.plugin(encryptionPlugin, {
-  fields: ["description", "documentUrl", "verificationNotes"],
-  deterministicFields: ["businessId", "permitId"],
+  fields: ["name", "description", "notes"],
+  deterministicFields: ["name"],
   nestedPaths: [],
-  arrayPaths: ["submittedDocuments", "extensionHistory"],
+  arrayPaths: [],
   mixedPaths: [],
 });
+
+// Index for faster queries
+PostRequirementSchema.index({ isActive: 1 });
 
 module.exports =
   mongoose.models.PostRequirement ||

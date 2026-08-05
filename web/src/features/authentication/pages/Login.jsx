@@ -1,6 +1,6 @@
 import React from 'react'
 import { LoginForm, AuthLayout } from '@/features/authentication'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuthSession } from '@/features/authentication/hooks/useAuthSession'
 import { Alert } from 'antd'
 
@@ -15,6 +15,7 @@ function normalizeRoleKey(value) {
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const { logout } = useAuthSession()
 
   // Clear any existing location state notifications on login page load
@@ -27,6 +28,8 @@ export default function Login() {
       }
     }
   }, [location])
+
+  const showSessionExpired = searchParams.get('reason') === 'session_invalidated' || searchParams.get('reason') === 'token_expired'
 
   const handleLoginSuccess = React.useCallback((user) => {
     const role = normalizeRoleKey(user?.role)
@@ -81,6 +84,15 @@ export default function Login() {
 
   return (
     <AuthLayout>
+      {showSessionExpired && (
+        <Alert
+          type="warning"
+          message="Session Expired"
+          description="Your session has expired. Please log in again."
+          showIcon
+          style={{ marginBottom: 24, maxWidth: 300 }}
+        />
+      )}
       {showInvalidCredentials && (
         <Alert
           type="error"

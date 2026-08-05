@@ -28,19 +28,23 @@ async function logAuditEvent(
     if (process.env.AUDIT_SERVICE_API_KEY)
       headers["x-api-key"] = process.env.AUDIT_SERVICE_API_KEY;
 
+    const payload = {
+      userId,
+      eventType,
+      entityType,
+      entityId,
+      fieldChanged: metadata.fieldChanged || null,
+      oldValue: metadata.oldValue || "",
+      newValue: metadata.newValue || "",
+      role: metadata.role || "lgu_officer",
+      metadata: { ...fullMetadata, fieldChanged: undefined, oldValue: undefined, newValue: undefined, role: undefined },
+    };
+
+    console.log("[AuditClient] Sending to audit-service:", JSON.stringify(payload, null, 2));
+
     const response = await axios.post(
       `${AUDIT_SERVICE_URL}/api/audit/ingest`,
-      {
-        userId,
-        eventType,
-        entityType,
-        entityId,
-        fieldChanged: null,
-        oldValue: "",
-        newValue: "",
-        role: metadata.role || "lgu_officer",
-        metadata: fullMetadata,
-      },
+      payload,
       { headers },
     );
 
@@ -51,7 +55,10 @@ async function logAuditEvent(
 
     return response.data;
   } catch (err) {
-    console.error("[AuditClient] Failed to send audit log to audit-service:", err.message);
+    console.error(
+      "[AuditClient] Failed to send audit log to audit-service:",
+      err.message,
+    );
     return null;
   }
 }

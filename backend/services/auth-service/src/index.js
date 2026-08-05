@@ -154,13 +154,16 @@ require("./models/Notification");
 const authRouter = require("./routes/index");
 app.use("/api/auth", authRouter);
 
+// LGU Officer Business Owners routes
+const lguOfficerBusinessOwnersRouter = require("./routes/lguOfficerBusinessOwners");
+app.use(
+  "/api/auth/lgu-officer/business-owners",
+  lguOfficerBusinessOwnersRouter,
+);
+
 // Notification routes (shared across all services)
 const notificationsRouter = require("./routes/notifications");
 app.use("/api/notifications", notificationsRouter);
-
-// Admin monitoring routes (for testing)
-const monitoringRouter = require("./routes/monitoring");
-app.use("/api/admin/monitoring", monitoringRouter);
 
 // Tamper incident routes (for testing)
 if (process.env.NODE_ENV === "test") {

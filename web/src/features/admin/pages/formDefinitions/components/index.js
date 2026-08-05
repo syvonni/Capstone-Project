@@ -1,8 +1,0 @@
-export { default as FormDefinitionsDesktopView } from './FormDefinitionsDesktopView'
-export { default as FormDefinitionsMobileView } from './FormDefinitionsMobileView'
-export { default as FormDefinitionsLogsTab } from './FormDefinitionsLogsTab'
-export { default as DraftsModal } from './DraftsModal'
-export { default as AddVersionModal } from './AddVersionModal'
-export { default as FormContentEditor } from './FormContentEditor'
-export { default as DeactivateFormModal } from './DeactivateFormModal'
-export { default as TargetingTab } from './TargetingTab'

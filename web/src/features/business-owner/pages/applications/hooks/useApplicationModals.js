@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { getFeeGroupForForm } from '../../../services/feeService'
+import { useState } from 'react'
 
 /**
  * Manages all modal states for business owner applications
@@ -26,22 +25,6 @@ export function useApplicationModals(registrationType = null, generalPermitCateg
   const [showAppealPaymentModal, setShowAppealPaymentModal] = useState(false)
   const [feeData, setFeeData] = useState(null)
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false)
-
-  // Fetch fee data when registration type changes (only if parameters provided)
-  useEffect(() => {
-    if (!registrationType) return
-    const fetchFees = async () => {
-      try {
-        const category = registrationType === 'general_permit' ? generalPermitCategory : null
-        const response = await getFeeGroupForForm(registrationType, category)
-        setFeeData(response)
-      } catch (err) {
-        console.error('Failed to fetch fee data:', err)
-        setFeeData(null)
-      }
-    }
-    fetchFees()
-  }, [registrationType, generalPermitCategory, setFeeData])
 
   // Appeal modals
   const [appealModalOpen, setAppealModalOpen] = useState(false)

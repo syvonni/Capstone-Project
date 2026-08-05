@@ -73,17 +73,6 @@ function calculateMayorsPermitFee(businessType, businessSize = 0) {
   return Math.round(baseFee / 100) * 100;
 }
 
-/**
- * Calculate Barangay Clearance Fee
- * Typically fixed or location-based
- * @param {string} barangay - Barangay name
- * @returns {number} Barangay Clearance Fee
- */
-function calculateBarangayClearanceFee(barangay) {
-  // Base fee: ₱200 (typical for most barangays)
-  // Can vary by barangay
-  return 200;
-}
 
 /**
  * Calculate Community Tax (Cedula)
@@ -271,7 +260,6 @@ function calculateTotalAssessment(grossReceipts, businessData) {
     businessType,
     numberOfEmployees,
   );
-  const barangayClearanceFee = calculateBarangayClearanceFee(barangay);
   const communityTax = calculateCommunityTax(grossReceipts);
   const fireSafetyInspectionFee =
     calculateFireSafetyInspectionFee(businessType);
@@ -296,7 +284,6 @@ function calculateTotalAssessment(grossReceipts, businessData) {
   const total =
     localBusinessTax +
     mayorsPermitFee +
-    barangayClearanceFee +
     communityTax +
     fireSafetyInspectionFee +
     sanitaryPermitFee +
@@ -307,7 +294,6 @@ function calculateTotalAssessment(grossReceipts, businessData) {
   return {
     localBusinessTax: Math.round(localBusinessTax * 100) / 100,
     mayorsPermitFee: Math.round(mayorsPermitFee * 100) / 100,
-    barangayClearanceFee: Math.round(barangayClearanceFee * 100) / 100,
     communityTax: Math.round(communityTax * 100) / 100,
     fireSafetyInspectionFee: Math.round(fireSafetyInspectionFee * 100) / 100,
     sanitaryPermitFee: Math.round(sanitaryPermitFee * 100) / 100,
@@ -322,7 +308,6 @@ function calculateTotalAssessment(grossReceipts, businessData) {
 module.exports = {
   calculateLocalBusinessTax,
   calculateMayorsPermitFee,
-  calculateBarangayClearanceFee,
   calculateCommunityTax,
   calculateFireSafetyInspectionFee,
   calculateSanitaryPermitFee,

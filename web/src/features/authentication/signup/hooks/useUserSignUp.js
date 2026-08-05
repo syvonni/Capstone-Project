@@ -1,5 +1,4 @@
 import { Form } from '@/shared/components/AppForm'
-import { notifyUserSignedUp } from "@/features/admin/users/lib/usersEvents.js"
 import { useRef, useState } from 'react'
 import { signupStart, signup } from "@/features/authentication/services"
 import { useAuthNotification, useNotifier } from '@/shared/notifications.js'
@@ -65,7 +64,6 @@ export function useUserSignUp({ onBegin, onSubmit, getCaptchaToken } = {}) {
         notificationSuccess('Account created', 'Your account has been created successfully.')
         form.resetFields()
         if (typeof onSubmit === 'function') onSubmit(created)
-        notifyUserSignedUp(created)
       }
     } catch (err) {
       const msg = String(err?.message || '').toLowerCase()

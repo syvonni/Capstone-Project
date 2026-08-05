@@ -1,5 +1,7 @@
 const axios = require("axios");
-const { buildNotificationEmailBody } = require("../../../../shared/lib/emailTemplateBuilder");
+const {
+  buildNotificationEmailBody,
+} = require("../../../../shared/lib/emailTemplateBuilder");
 
 /**
  * Email API Service - REST API Implementation
@@ -227,13 +229,30 @@ async function sendAdminAlertEmail({
 
   const html = buildNotificationEmailBody({
     greeting: `Hello ${adminName}`,
-    intro: "A staff user has attempted to modify a restricted field. This action has been blocked and logged.",
+    intro:
+      "A staff user has attempted to modify a restricted field. This action has been blocked and logged.",
     fields: {
       fields: [
-        { label: "User", value: `${userName} (${userEmail})`, fontSize: "14px" },
+        {
+          label: "User",
+          value: `${userName} (${userEmail})`,
+          fontSize: "14px",
+        },
         { label: "Role", value: roleSlug, fontSize: "14px" },
-        { label: "Field Attempted", value: field, color: "#FF4D4F", fontSize: "14px", fontWeight: "700" },
-        { label: "Attempted Value", value: attemptedValue.slice(0, 100) + (attemptedValue.length > 100 ? "..." : ""), fontSize: "14px" },
+        {
+          label: "Field Attempted",
+          value: field,
+          color: "#FF4D4F",
+          fontSize: "14px",
+          fontWeight: "700",
+        },
+        {
+          label: "Attempted Value",
+          value:
+            attemptedValue.slice(0, 100) +
+            (attemptedValue.length > 100 ? "..." : ""),
+          fontSize: "14px",
+        },
         { label: "Time", value: attemptTime, fontSize: "14px" },
       ],
     },

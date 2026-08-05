@@ -1,5 +1,0 @@
-export { default as AnnouncementList } from './AnnouncementList.jsx'
-export { default as AnnouncementDetailPanel } from './AnnouncementDetailPanel.jsx'
-export { default as AnnouncementModals } from './AnnouncementModals.jsx'
-export { default as AnnouncementDesktopView } from './AnnouncementDesktopView.jsx'
-export { default as AnnouncementMobileView } from './AnnouncementMobileView.jsx'

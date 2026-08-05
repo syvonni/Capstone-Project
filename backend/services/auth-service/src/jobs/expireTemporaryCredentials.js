@@ -4,7 +4,7 @@
  */
 
 const TemporaryCredential = require("../models/TemporaryCredential");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const logger = require("../lib/logger");
 
 async function expireTemporaryCredentials() {
@@ -40,14 +40,16 @@ async function expireTemporaryCredentials() {
         if (cred.userId) {
           const user = cred.userId;
           const roleSlug = user.role?.slug || "staff";
-          await createAuditLog(
+          await logAuditEvent(
             user._id,
             "temporary_credentials_expired",
-            "password",
-            "",
-            "temp_credentials_expired",
-            roleSlug,
+            "User",
+            user._id,
             {
+              role: roleSlug,
+              fieldChanged: "password",
+              oldValue: "",
+              newValue: "temp_credentials_expired",
               temporaryCredentialId: String(cred._id),
               expiresAt: cred.expiresAt?.toISOString(),
               expiredAt: now.toISOString(),

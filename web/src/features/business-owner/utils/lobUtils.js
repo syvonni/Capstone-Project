@@ -1,33 +1,27 @@
-import { LINE_OF_BUSINESS } from '@/constants/lineOfBusiness.js'
+import { getLobsByCategory, mapTaxCodeToCategory, getTaxCodeOptions } from '@/shared/utils/lobApiUtils'
 
-export const TAX_CODE_OPTIONS = LINE_OF_BUSINESS.map(l => ({
-  value: l.taxCode,
-  label: `${l.taxCode} — ${l.label || l.lineOfBusiness}`,
-}))
+export const TAX_CODE_OPTIONS = getTaxCodeOptions([])
 
-export function getDetailedLinesForTaxCode(taxCode) {
-  const lob = LINE_OF_BUSINESS.find(l => l.taxCode === taxCode)
-  if (!lob) return []
-  return lob.detailedLines.map((dl, idx) => ({
-    value: dl,
-    label: dl,
-    psicCode: lob.psicCodes[idx] || '',
+export function getDetailedLinesForTaxCode(lobs, taxCode) {
+  const category = mapTaxCodeToCategory(lobs, taxCode)
+  const categoryLobs = getLobsByCategory(lobs, category)
+  return categoryLobs.map((lob) => ({
+    value: lob.name,
+    label: lob.name,
+    description: lob.description,
     lineOfBusiness: lob.lineOfBusiness,
   }))
 }
 
-export function normalizeActivityFromForm(a) {
+export function normalizeActivityFromForm(a, lobs) {
   if (!a || !a.taxCode) return null
-  const lob = LINE_OF_BUSINESS.find(l => l.taxCode === a.taxCode)
+  const category = mapTaxCodeToCategory(lobs, a.taxCode)
   const detailedLine = a.detailedLine || a.detailedLineOfBusiness
   if (!detailedLine) return null
-  const idx = lob ? lob.detailedLines.indexOf(detailedLine) : -1
-  const psicCode = (lob && idx >= 0 && lob.psicCodes[idx]) ? lob.psicCodes[idx] : (a.psicCode || '')
   return {
     taxCode: a.taxCode,
-    lineOfBusiness: a.lineOfBusiness || (lob && lob.lineOfBusiness) || '',
+    lineOfBusiness: a.lineOfBusiness || category || '',
     detailedLine,
-    psicCode,
     source: a.source === 'ai' ? 'ai' : 'manual',
   }
 }

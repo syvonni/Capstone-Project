@@ -32,11 +32,15 @@ export default function FormNavigation({
               if (typeof item.label === 'string') {
                 labelText = item.label
               } else if (item.label?.props?.children) {
-                // Handle JSX labels like <Space><Icon /><span>Text</span></Space>
+                // Handle JSX labels like <><Icon />Text</>
                 const children = item.label.props.children
                 if (Array.isArray(children)) {
                   // Find the text content (usually the second child after icon)
-                  labelText = children.find(c => c?.props?.children)?.props?.children || String(item.key)
+                  labelText = children.find(c => typeof c === 'string') || 
+                              children.find(c => c?.props?.children)?.props?.children || 
+                              String(item.key)
+                } else if (typeof children === 'string') {
+                  labelText = children
                 } else if (children?.props?.children) {
                   labelText = children.props.children
                 }

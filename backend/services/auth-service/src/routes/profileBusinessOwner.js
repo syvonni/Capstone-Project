@@ -10,7 +10,7 @@ const {
   containsSqlInjection,
   containsXss,
 } = require("../lib/sanitizer");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { isBusinessOwnerRole, isAdminRole } = require("../lib/roleHelpers");
 const {
   profileUpdateRateLimit,
@@ -334,24 +334,20 @@ router.patch(
         "unknown";
       const userAgent = req.headers["user-agent"] || "unknown";
       const primaryField = changes[0] || "firstName";
-      await createAuditLog(
-        doc._id,
-        "name_update",
-        primaryField,
-        JSON.stringify(oldValues),
-        JSON.stringify(
+      await logAuditEvent(doc._id, "name_update", "User", doc._id, {
+        role: roleSlug,
+        fieldChanged: primaryField,
+        oldValue: JSON.stringify(oldValues),
+        newValue: JSON.stringify(
           changes.reduce((acc, field) => {
             acc[field] = doc[field];
             return acc;
           }, {}),
         ),
-        roleSlug,
-        {
-          ip,
-          userAgent,
-          allChanges: changes,
-        },
-      );
+        ip,
+        userAgent,
+        allChanges: changes,
+      });
 
       const userSafe = {
         id: String(doc._id),
@@ -575,18 +571,14 @@ router.patch(
         req.connection.remoteAddress ||
         "unknown";
       const userAgent = req.headers["user-agent"] || "unknown";
-      await createAuditLog(
-        doc._id,
-        "contact_update",
-        "phoneNumber",
-        oldPhoneNumber || "",
-        sanitized || "",
-        roleSlug,
-        {
-          ip,
-          userAgent,
-        },
-      );
+      await logAuditEvent(doc._id, "contact_update", "User", doc._id, {
+        role: roleSlug,
+        fieldChanged: "phoneNumber",
+        oldValue: oldPhoneNumber || "",
+        newValue: sanitized || "",
+        ip,
+        userAgent,
+      });
 
       const userSafe = {
         id: String(doc._id),
@@ -797,15 +789,15 @@ router.patch(
         req.connection.remoteAddress ||
         "unknown";
       const userAgent = req.headers["user-agent"] || "unknown";
-      await createAuditLog(
-        doc._id,
-        "pis_update",
-        changes[0] || "address",
-        JSON.stringify({}),
-        JSON.stringify(changes),
-        roleSlug,
-        { ip, userAgent, allChanges: changes },
-      );
+      await logAuditEvent(doc._id, "pis_update", "User", doc._id, {
+        role: roleSlug,
+        fieldChanged: changes[0] || "address",
+        oldValue: JSON.stringify({}),
+        newValue: JSON.stringify(changes),
+        ip,
+        userAgent,
+        allChanges: changes,
+      });
 
       const userSafe = {
         id: String(doc._id),
@@ -877,7 +869,8 @@ router.get("/profile/audit-history", requireJwt, async (req, res) => {
     }
 
     // Query audit-service for logs
-    const auditServiceUrl = process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
+    const auditServiceUrl =
+      process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
     const headers = {
       Authorization: req.headers.authorization,
       "Content-Type": "application/json",

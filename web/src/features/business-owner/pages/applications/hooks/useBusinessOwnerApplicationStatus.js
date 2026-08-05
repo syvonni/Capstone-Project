@@ -16,8 +16,8 @@ export function useBusinessOwnerApplicationStatus(business) {
   // Needs revision - editable form with locked fields
   const isNeedsRevision = statusLower === 'needs_revision'
 
-  // Returned - editable form with locked fields + payment
-  const isReturned = statusLower === 'returned'
+  // Returned - editable form with locked fields + payment (includes needs_revision)
+  const isReturned = statusLower === 'returned' || statusLower === 'needs_revision'
 
   // Rejected - read-only form with appeal option
   const isRejected = statusLower === 'rejected'

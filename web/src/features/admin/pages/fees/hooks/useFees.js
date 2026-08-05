@@ -1,26 +1,45 @@
 import { useState, useMemo, useEffect } from 'react'
-import { getFeeGroups, getFees, getPenaltyRules } from '@/features/admin/services/feeService'
+import { getFees, getPenaltyRules, getTaxBrackets, getVariableFeeRules, getFeesByCategory } from '@/features/admin/services/feeService'
+import { getLobs } from '@/shared/services/lobService'
 import { getAddButtonLabel } from '../utils/fees.utils'
 
 export function useFees() {
-  const [selectedType, setSelectedType] = useState('fee_groups')
+  const [selectedType, setSelectedType] = useState('fees')
   const [selectedItemId, setSelectedItemId] = useState(null)
-  const [feeGroups, setFeeGroups] = useState([])
   const [fees, setFees] = useState([])
+  const [documentFees, setDocumentFees] = useState([])
+  const [appealFees, setAppealFees] = useState([])
+  const [penaltyFees, setPenaltyFees] = useState([])
+  const [applicationFees, setApplicationFees] = useState([])
   const [penaltyRules, setPenaltyRules] = useState([])
+  const [variableFeeRules, setVariableFeeRules] = useState([])
+  const [taxBrackets, setTaxBrackets] = useState([])
+  const [lobs, setLobs] = useState([])
   const [loading, setLoading] = useState(true)
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [groups, feeList, penalties] = await Promise.all([
-        getFeeGroups({ isActive: true }),
-        getFees({ isActive: true }),
-        getPenaltyRules({ isActive: true }),
+      const [feeList, docFees, appFees, penaltyFeesData, applicationFeesData, penalties, varFeeRules, taxBracketsData, lobsData] = await Promise.all([
+        getFees({ category: 'global' }),
+        getFees({ category: 'claimable_document' }),
+        getFees({ category: 'appeal' }),
+        getFees({ category: 'penalty' }),
+        getFeesByCategory('application_fee'),
+        getPenaltyRules(),
+        getVariableFeeRules(),
+        getTaxBrackets(),
+        getLobs({ isActive: true }),
       ])
-      setFeeGroups(groups)
       setFees(feeList)
+      setDocumentFees(docFees)
+      setAppealFees(appFees)
+      setPenaltyFees(penaltyFeesData)
+      setApplicationFees(applicationFeesData || [])
       setPenaltyRules(penalties)
+      setVariableFeeRules(varFeeRules)
+      setTaxBrackets(taxBracketsData)
+      setLobs(lobsData || [])
     } catch (error) {
       console.error('Failed to load fees data:', error)
     } finally {
@@ -34,21 +53,35 @@ export function useFees() {
 
   const items = useMemo(() => {
     switch (selectedType) {
-      case 'fee_groups':
-        return feeGroups.map((group) => ({
-          ...group,
-          amount: group.fees?.reduce((sum, fee) => sum + (fee.amount || 0), 0) || 0,
-        }))
       case 'fees':
         return fees
-      case 'penalty_rules':
-        return penaltyRules
+      case 'variables':
+        return variableFeeRules
+      case 'tax_brackets': {
+        // Return individual tax bracket items
+        return taxBrackets.map(tb => {
+          const lob = lobs.find(l => String(l._id) === String(tb.lobId))
+          const lobName = lob?.name || 'Unknown LOB'
+
+          return {
+            ...tb,
+            name: `${tb.name} - ${lobName}`,
+            lobName: lobName,
+          }
+        })
+      }
       case 'appeal_fees':
-        return fees.filter((fee) => fee.category === 'appeal')
+        return appealFees
+      case 'claimable_documents':
+        return documentFees
+      case 'penalties':
+        return penaltyFees
+      case 'application_fees':
+        return applicationFees
       default:
         return []
     }
-  }, [selectedType, feeGroups, fees, penaltyRules])
+  }, [selectedType, fees, documentFees, appealFees, penaltyFees, applicationFees, variableFeeRules, taxBrackets, lobs])
 
   const selectedItem = items.find((i) => i._id === selectedItemId)
 
@@ -69,29 +102,6 @@ export function useFees() {
     setSelectedItemId('new')
   }
 
-  const handleDelete = async (id) => {
-    try {
-      if (selectedType === 'fee_groups') {
-        // Import disableFeeGroup to avoid circular dependency
-        const { disableFeeGroup } = await import('@/features/admin/services/feeService')
-        await disableFeeGroup(id)
-      } else if (selectedType === 'fees') {
-        const { disableFee } = await import('@/features/admin/services/feeService')
-        await disableFee(id)
-      } else if (selectedType === 'penalty_rules') {
-        const { disablePenaltyRule } = await import('@/features/admin/services/feeService')
-        await disablePenaltyRule(id)
-      }
-      await loadData()
-      if (selectedItemId === id) {
-        setSelectedItemId(null)
-      }
-    } catch (error) {
-      console.error('Failed to delete item:', error)
-      throw error
-    }
-  }
-
   return {
     selectedType,
     setSelectedType: handleTypeChange,
@@ -102,10 +112,8 @@ export function useFees() {
     addButtonLabel,
     onSelectItem: handleSelectItem,
     onAddNew: handleAddNew,
-    onDelete: handleDelete,
     loading,
     refresh: loadData,
-    feeGroups,
     fees,
     penaltyRules,
   }

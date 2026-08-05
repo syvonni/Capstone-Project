@@ -47,11 +47,29 @@ export function useApplicationFormHandlers({
     }
   }
 
-  const handleDraftCreated = (newBusiness) => {
+  const handleDraftCreated = async (newBusiness) => {
     dashboardState.setBusinesses(prev => [newBusiness, ...prev.filter(b => (b.businessId || b._id) !== (newBusiness.businessId || newBusiness._id))])
     dashboardState.setEditingApplication(newBusiness)
     dashboardState.setSelectedBusinessId(newBusiness.businessId || newBusiness._id)
     dashboardState.fetchBusinesses()
+
+    // Mark welcome as completed if this draft was created from the welcome modal
+    if (dashboardState?.fromWelcomeModal) {
+      try {
+        const { getCurrentUser } = await import('@/features/authentication/lib/authEvents')
+        const { authHeaders } = await import('@/lib/authHeaders')
+        const { fetchJsonWithFallback } = await import('@/lib/http')
+        const current = getCurrentUser()
+        const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })
+        await fetchJsonWithFallback('/api/auth/welcome-complete', {
+          method: 'PATCH',
+          headers,
+        })
+      } catch (err) {
+        console.error('Failed to mark welcome as completed:', err)
+        // Continue anyway - don't block the user
+      }
+    }
   }
 
   const handleDeleteDraft = async () => {

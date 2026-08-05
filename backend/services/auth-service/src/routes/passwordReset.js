@@ -25,7 +25,7 @@ const {
   addToPasswordHistory,
 } = require("../lib/passwordHistory");
 const { validatePasswordStrength } = require("../lib/passwordValidator");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { isBusinessOwnerRole, isAdminRole } = require("../lib/roleHelpers");
 const {
   verifyTurnstileToken,
@@ -163,19 +163,15 @@ router.post(
 
       if (!isBusinessOwnerRole(roleSlug)) {
         // Admin/staff: send "not available" email (no code), alert admins, return resetNotAvailable so UI skips verify step
-        await createAuditLog(
-          user._id,
-          "security_event",
-          "recovery",
-          "",
-          "",
-          roleSlug,
-          {
-            ip: ipAddress,
-            userAgent,
-            reason: "recovery_not_available_for_role",
-          },
-        ).catch((err) => console.error("Audit log failed:", err));
+        await logAuditEvent("security_event", user._id, "User", user._id, {
+          role: roleSlug,
+          fieldChanged: "recovery",
+          oldValue: "",
+          newValue: "",
+          ip: ipAddress,
+          userAgent,
+          reason: "recovery_not_available_for_role",
+        }).catch((err) => console.error("Audit log failed:", err));
         sendAdminAlert("staff_or_admin_forgot_password_attempted", {
           userId: String(user._id),
           userEmail: user.email,
@@ -239,32 +235,30 @@ router.post(
         await incrementFailedAttempts(user._id);
 
         // Log to audit trail
-        await createAuditLog(
-          user._id,
-          "security_event",
-          "recovery",
-          "",
-          "unusual_ip_detected",
-          roleSlug,
-          {
-            ip: ipAddress,
-            userAgent,
-            reason: ipCheck.reason,
-          },
-        );
+        await logAuditEvent("security_event", user._id, "User", user._id, {
+          role: roleSlug,
+          fieldChanged: "recovery",
+          oldValue: "",
+          newValue: "unusual_ip_detected",
+          ip: ipAddress,
+          userAgent,
+          reason: ipCheck.reason,
+        });
       }
 
       // If user has MFA enabled, don't send email OTP - require MFA verification
       if (hasMfa) {
         // Create audit log for MFA-based recovery
-        await createAuditLog(
-          user._id,
+        await logAuditEvent(
           "account_recovery_initiated",
-          "password",
-          "",
-          "mfa_verification_required",
-          roleSlug,
+          user._id,
+          "User",
+          user._id,
           {
+            role: roleSlug,
+            fieldChanged: "password",
+            oldValue: "",
+            newValue: "mfa_verification_required",
             ip: ipAddress,
             userAgent,
             suspiciousActivityDetected: suspiciousActivity,
@@ -334,14 +328,16 @@ router.post(
       }
 
       // Log recovery initiation to blockchain
-      await createAuditLog(
-        user._id,
+      await logAuditEvent(
         "account_recovery_initiated",
-        "password",
-        "",
-        "recovery_requested",
-        roleSlug,
+        user._id,
+        "User",
+        user._id,
         {
+          role: roleSlug,
+          fieldChanged: "password",
+          oldValue: "",
+          newValue: "recovery_requested",
           ip: ipAddress,
           userAgent,
           suspiciousActivityDetected: suspiciousActivity,
@@ -399,19 +395,15 @@ router.post(
 
       if (!isBusinessOwnerRole(roleSlug)) {
         // Admin/staff: send "not available" email (no code), alert admins
-        await createAuditLog(
-          user._id,
-          "security_event",
-          "recovery",
-          "",
-          "",
-          roleSlug,
-          {
-            ip: ipAddress,
-            userAgent,
-            reason: "recovery_not_available_for_role",
-          },
-        );
+        await logAuditEvent("security_event", user._id, "User", user._id, {
+          role: roleSlug,
+          fieldChanged: "recovery",
+          oldValue: "",
+          newValue: "",
+          ip: ipAddress,
+          userAgent,
+          reason: "recovery_not_available_for_role",
+        });
         await createSecurityIncidentForForgotPasswordAttempt({
           userId: user._id,
           userEmail: emailKey,
@@ -477,15 +469,15 @@ router.post(
       }
 
       // Create audit log
-      await createAuditLog(
-        user._id,
-        "password_reset",
-        "code_sent",
-        "",
-        "",
-        roleSlug,
-        { ip: ipAddress, userAgent, method: "resend" },
-      );
+      await logAuditEvent("password_reset", user._id, "User", user._id, {
+        role: roleSlug,
+        fieldChanged: "code_sent",
+        oldValue: "",
+        newValue: "",
+        ip: ipAddress,
+        userAgent,
+        method: "resend",
+      });
 
       // Send email
       const emailResult = await sendOtp({
@@ -699,14 +691,16 @@ router.post(
       }
 
       // Create audit log
-      await createAuditLog(
-        user._id,
+      await logAuditEvent(
         "account_recovery_verified",
-        "password",
-        "",
-        "mfa_verified",
-        roleSlug,
+        user._id,
+        "User",
+        user._id,
         {
+          role: roleSlug,
+          fieldChanged: "password",
+          oldValue: "",
+          newValue: "mfa_verified",
           ip: ipAddress,
           userAgent,
           recoveryMethod: "mfa_verified",
@@ -885,13 +879,16 @@ router.post(
 
       // Create audit log
       const roleSlug = doc.role?.slug || "user";
-      await createAuditLog(
-        doc._id,
+      await logAuditEvent(
         "account_recovery_completed",
-        "[REDACTED]", // Don't log actual passwords
-        "[REDACTED]",
-        roleSlug,
+        doc._id,
+        "User",
+        doc._id,
         {
+          role: roleSlug,
+          fieldChanged: "password",
+          oldValue: "[REDACTED]",
+          newValue: "[REDACTED]",
           ip: ipAddress,
           userAgent,
           tokenVersion: doc.tokenVersion,

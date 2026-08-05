@@ -196,50 +196,54 @@ app.use("/api/business", businessRouter);
 app.use("/api/business", applicationsRouter);
 
 // Phase 2 routes
-const feeConfigurationRouter = require("./routes/feeConfiguration");
 const regulatoryFeeConfigRouter = require("./routes/regulatoryFeeConfig");
 const generalPermitsRouter = require("./routes/generalPermits");
 const occupationalPermitsRouter = require("./routes/occupationalPermits");
-const appealsRouter = require("./routes/appeals");
+const { router: appealsRouter } = require("./routes/appeals");
 const editRequestsRouter = require("./routes/editRequests");
-const postRequirementsRouter = require("./routes/postRequirements");
+const postDocumentsRouter = require("./routes/postDocuments");
 const dashboardRouter = require("./routes/dashboard");
 const paymentsRouter = require("./routes/payments");
-const ownerInspectionsRouter = require("./routes/ownerInspections");
-const ownerViolationsRouter = require("./routes/ownerViolations");
-const aiRouter = require("./routes/ai");
-const lobTrainerRouter = require("./routes/lobTrainer");
 const feesRouter = require("./routes/fees");
 const clearanceRouter = require("./routes/clearances");
 const treasuryRouter = require("./routes/treasury");
-const inspectionSchedulingRouter = require("./routes/inspectionScheduling");
 const permitsRouter = require("./routes/permits");
 const adminFeesRouter = require("./routes/adminFees");
-const adminFeeGroupsRouter = require("./routes/adminFeeGroups");
 const adminPenaltyRulesRouter = require("./routes/adminPenaltyRules");
+const adminClaimableDocumentsRouter = require("./routes/adminClaimableDocuments");
+const adminVariablesRouter = require("./routes/adminVariables");
+const adminVariableFeeRulesRouter = require("./routes/adminVariableFeeRules");
+const adminTaxBracketsRouter = require("./routes/adminTaxBrackets");
+const adminLobsRouter = require("./routes/adminLobs");
+const adminPostRequirementsRouter = require("./routes/adminPostRequirements");
+const adminViolationsRouter = require("./routes/adminViolations");
+const adminInspectionItemsRouter = require("./routes/adminInspectionItems");
+const adminChecklistsRouter = require("./routes/adminChecklists");
 
 app.use("/api/business/general-permits", generalPermitsRouter);
 app.use("/api/business/occupational-permits", occupationalPermitsRouter);
 app.use("/api/business/appeals", appealsRouter);
 app.use("/api/business/edit-requests", editRequestsRouter);
-app.use("/api/business/post-requirements", postRequirementsRouter);
+app.use("/api/business/post-documents", postDocumentsRouter);
 app.use("/api/business/dashboard", dashboardRouter);
 app.use("/api/business/payments", paymentsRouter);
-app.use("/api/business/inspections", ownerInspectionsRouter);
-app.use("/api/business/violations", ownerViolationsRouter);
-app.use("/api/business/ai", aiRouter);
-app.use("/api/business/admin/lob-trainer", lobTrainerRouter);
 app.use("/api/business", feesRouter);
 app.use("/api/business/fees", feesRouter);
 app.use("/api/business/clearances", clearanceRouter);
 app.use("/api/business/permits", permitsRouter);
 app.use("/api/treasury", treasuryRouter);
-app.use("/api/inspections", inspectionSchedulingRouter);
-app.use("/api/business/admin/fee-configuration", feeConfigurationRouter);
 app.use("/api/business/admin/regulatory-fee-config", regulatoryFeeConfigRouter);
 app.use("/api/business/admin/fees", adminFeesRouter);
-app.use("/api/business/admin/fee-groups", adminFeeGroupsRouter);
+app.use("/api/business/admin/documents", adminClaimableDocumentsRouter);
 app.use("/api/business/admin/penalty-rules", adminPenaltyRulesRouter);
+app.use("/api/business/admin/variables", adminVariablesRouter);
+app.use("/api/business/admin/variable-fee-rules", adminVariableFeeRulesRouter);
+app.use("/api/business/admin/tax-brackets", adminTaxBracketsRouter);
+app.use("/api/business/admin/lobs", adminLobsRouter);
+app.use("/api/business/admin/post-requirements", adminPostRequirementsRouter);
+app.use("/api/business/admin/violations", adminViolationsRouter);
+app.use("/api/business/admin/inspection-items", adminInspectionItemsRouter);
+app.use("/api/business/admin/checklists", adminChecklistsRouter);
 
 // Help Requests (public + officer)
 const helpRequestsRouter = require("./routes/helpRequests");
@@ -255,14 +259,6 @@ app.use("/api/business/admin", adminStatsRouter);
 // Public transparency stats for landing page
 const publicStatsRouter = require("./routes/publicStats");
 app.use("/api/public/business", publicStatsRouter);
-
-// Inspector routes
-const inspectorRouter = require("./routes/inspector/index");
-app.use("/api/inspector", inspectorRouter);
-
-// LGU Officer inspection assignment routes
-const inspectionAssignmentsRouter = require("./routes/lgu-officer/inspectionAssignments");
-app.use("/api/lgu-officer", inspectionAssignmentsRouter);
 
 // LGU Officer businesses routes
 const businessesRouter = require("./routes/lgu-officer/businesses");
@@ -388,10 +384,9 @@ async function start() {
           }
           break;
         } catch (error) {
-          logger.warn(
-            `Fees seed attempt ${attempt}/${maxSeedRetries} failed`,
-            { error: error.message },
-          );
+          logger.warn(`Fees seed attempt ${attempt}/${maxSeedRetries} failed`, {
+            error: error.message,
+          });
           if (attempt === maxSeedRetries) {
             logger.warn("Fees seed failed after retries", {
               error: error.message,
@@ -427,6 +422,186 @@ async function start() {
       }
     }
 
+    // Seed requirements if empty (idempotent)
+    if (shouldSeedFeeConfig) {
+      try {
+        const { seedIfEmpty: seedClaimableDocuments } = require("./seed/seedClaimableDocumentsClean");
+        const reqResult = await seedClaimableDocuments();
+        if (reqResult.seeded) {
+          logger.info("Documents seeded");
+        }
+      } catch (error) {
+        logger.warn("Documents seed failed", {
+          error: error.message,
+        });
+      }
+    }
+
+    // Seed variables if empty (idempotent)
+    if (shouldSeedFeeConfig) {
+      try {
+        const { seedIfEmpty: seedVariables } = require("./seed/seedVariables");
+        logger.info("Running variables seed");
+        const varResult = await seedVariables();
+        logger.info("Variables seed result", varResult);
+        if (varResult.seeded) {
+          logger.info("Variables seeded", { count: varResult.count });
+        } else {
+          logger.info("Variables already exist", { variableCount: varResult.variableCount });
+        }
+      } catch (error) {
+        logger.warn("Variables seed failed", {
+          error: error.message,
+        });
+      }
+    }
+
+    // Seed tax brackets if empty (idempotent)
+    if (shouldSeedFeeConfig) {
+      try {
+        const { seedIfEmpty: seedTaxBrackets } = require("./seed/seedTaxBrackets");
+        logger.info("Running tax brackets seed");
+        const taxResult = await seedTaxBrackets();
+        logger.info("Tax brackets seed result", taxResult);
+        if (taxResult.seeded) {
+          logger.info("Tax brackets seeded", { count: taxResult.count });
+        } else {
+          logger.info("Tax brackets already exist", { bracketCount: taxResult.bracketCount });
+        }
+      } catch (error) {
+        logger.warn("Tax brackets seed failed", {
+          error: error.message,
+        });
+      }
+    }
+
+    // Seed LOBs if empty (idempotent)
+    if (shouldSeedFeeConfig) {
+      try {
+        const { seedIfEmpty: seedLobs } = require("./seed/seedLobs");
+        logger.info("Running LOBs seed");
+        const lobResult = await seedLobs();
+        logger.info("LOBs seed result", lobResult);
+        if (lobResult.seeded) {
+          logger.info("LOBs seeded", { count: lobResult.count, updated: lobResult.updated });
+        } else {
+          logger.info("LOBs already exist", { lobCount: lobResult.feeCount });
+        }
+      } catch (error) {
+        logger.warn("LOBs seed failed", {
+          error: error.message,
+        });
+      }
+    }
+
+    // Seed PostRequirements if empty (idempotent)
+    if (shouldSeedFeeConfig) {
+      try {
+        const { seedIfEmpty: seedPostRequirements } = require("./seed/seedPostRequirements");
+        logger.info("Running PostRequirements seed");
+        const prResult = await seedPostRequirements();
+        logger.info("PostRequirements seed result", prResult);
+        if (prResult.postRequirementsCreated > 0) {
+          logger.info("PostRequirements seeded", { 
+            postRequirementsCreated: prResult.postRequirementsCreated,
+            lobsUpdated: prResult.lobsUpdated 
+          });
+        } else {
+          logger.info("PostRequirements already exist");
+        }
+      } catch (error) {
+        logger.warn("PostRequirements seed failed", {
+          error: error.message,
+        });
+      }
+    }
+
+    // Seed Violations if empty (idempotent)
+    if (shouldSeedFeeConfig) {
+      try {
+        const { seedIfEmpty: seedViolations } = require("./seed/seedViolations");
+        logger.info("Running Violations seed");
+        const vioResult = await seedViolations();
+        logger.info("Violations seed result", vioResult);
+        if (vioResult.seeded) {
+          logger.info("Violations seeded", { 
+            count: vioResult.count,
+            feesCreated: vioResult.feesCreated 
+          });
+        } else {
+          logger.info("Violations already exist", { violationCount: vioResult.violationCount });
+        }
+      } catch (error) {
+        logger.warn("Violations seed failed", {
+          error: error.message,
+        });
+      }
+    }
+
+    // Seed PostRequirementViolations if empty (idempotent)
+    if (shouldSeedFeeConfig) {
+      try {
+        const { seedPostRequirementViolations } = require("./seed/seedPostRequirementViolations");
+        logger.info("Running PostRequirementViolations seed");
+        const prvResult = await seedPostRequirementViolations();
+        logger.info("PostRequirementViolations seed result", prvResult);
+        if (prvResult.createdCount > 0) {
+          logger.info("PostRequirementViolations seeded", { 
+            createdCount: prvResult.createdCount,
+            feesCreated: prvResult.feesCreated 
+          });
+        } else {
+          logger.info("PostRequirementViolations already exist");
+        }
+      } catch (error) {
+        logger.warn("PostRequirementViolations seed failed", {
+          error: error.message,
+        });
+      }
+    }
+
+    // Seed PostRequirementInspectionItems if empty (idempotent)
+    if (shouldSeedFeeConfig) {
+      try {
+        const { seedPostRequirementInspectionItems } = require("./seed/seedPostRequirementInspectionItems");
+        logger.info("Running PostRequirementInspectionItems seed");
+        const priResult = await seedPostRequirementInspectionItems();
+        logger.info("PostRequirementInspectionItems seed result", priResult);
+        if (priResult.createdCount > 0) {
+          logger.info("PostRequirementInspectionItems seeded", { 
+            createdCount: priResult.createdCount 
+          });
+        } else {
+          logger.info("PostRequirementInspectionItems already exist");
+        }
+      } catch (error) {
+        logger.warn("PostRequirementInspectionItems seed failed", {
+          error: error.message,
+        });
+      }
+    }
+
+    // Seed PostRequirementChecklists if empty (idempotent)
+    if (shouldSeedFeeConfig) {
+      try {
+        const { seedPostRequirementChecklists } = require("./seed/seedPostRequirementChecklists");
+        logger.info("Running PostRequirementChecklists seed");
+        const prcResult = await seedPostRequirementChecklists();
+        logger.info("PostRequirementChecklists seed result", prcResult);
+        if (prcResult.createdCount > 0) {
+          logger.info("PostRequirementChecklists seeded", { 
+            createdCount: prcResult.createdCount 
+          });
+        } else {
+          logger.info("PostRequirementChecklists already exist");
+        }
+      } catch (error) {
+        logger.warn("PostRequirementChecklists seed failed", {
+          error: error.message,
+        });
+      }
+    }
+
     // IPFS service is lazy-loaded in routes when needed
     // Don't initialize here to avoid module loading issues
     logger.info("IPFS service will be loaded on-demand in routes");
@@ -442,19 +617,13 @@ async function start() {
         detectAbandonedBusinesses,
       } = require("./cron/abandonedDetection");
       const {
-        markOverduePostRequirements,
-      } = require("./cron/postRequirementOverdue");
+        markOverduePostDocuments,
+      } = require("./cron/postDocumentOverdue");
       const {
-        checkPostRequirementDue,
-        checkOverduePostRequirements,
+        checkPostDocumentDue,
+        checkOverduePostDocuments,
       } = require("./cron/notificationReminders");
-      const {
-        escalateOverdueViolations,
-        sendViolationReminders,
-        flagCriticalViolators,
-        sendInspectionReminders,
-        cancelExpiredBookings,
-      } = require("./cron/complianceEnforcement");
+      const { executePendingActions } = require("./cron/executePendingActions");
 
       const cronLocks = new Set();
       async function withCronMutex(name, fn) {
@@ -518,9 +687,9 @@ async function start() {
         withCronMutex("postRequirementOverdue", async () => {
           logger.info("[CRON] Checking for overdue post-requirements...");
           try {
-            const result = await markOverduePostRequirements();
+            const result = await markOverduePostDocuments();
             logger.info(
-              `[CRON] Marked ${result.marked} post-requirements as overdue`,
+              `[CRON] Marked ${result.marked} post-documents as overdue`,
             );
           } catch (err) {
             logger.error("[CRON] postRequirementOverdue error:", {
@@ -534,8 +703,8 @@ async function start() {
         withCronMutex("notificationReminders", async () => {
           logger.info("[CRON] Running notification reminders...");
           try {
-            const dueCount = await checkPostRequirementDue();
-            const overdueCount = await checkOverduePostRequirements();
+            const dueCount = await checkPostDocumentDue();
+            const overdueCount = await checkOverduePostDocuments();
             logger.info(
               `[CRON] Notification reminders: ${dueCount} due, ${overdueCount} overdue`,
             );
@@ -551,89 +720,19 @@ async function start() {
         "Cron jobs scheduled: renewalAutoFlag, monthlyInterest, abandonedDetection, postRequirementOverdue, notificationReminders",
       );
 
-      // Phase 4: Compliance Enforcement Cron Jobs
-      cron.schedule("0 9 * * *", () =>
-        withCronMutex("escalateViolations", async () => {
-          logger.info("[CRON] Escalating overdue violations...");
+      // Execute expired pending actions (run every minute)
+      cron.schedule("* * * * *", () =>
+        withCronMutex("executePendingActions", async () => {
           try {
-            const result = await escalateOverdueViolations();
-            logger.info(`[CRON] Escalated ${result.escalated} violations`);
+            await executePendingActions();
           } catch (err) {
-            logger.error("[CRON] escalateViolations error:", {
+            logger.error("[CRON] executePendingActions error:", {
               error: err.message,
             });
           }
         }),
       );
 
-      cron.schedule("0 8 * * *", () =>
-        withCronMutex("violationReminders", async () => {
-          logger.info("[CRON] Sending violation reminders...");
-          try {
-            const result = await sendViolationReminders();
-            logger.info(
-              `[CRON] Sent ${result.remindersSent} violation reminders`,
-            );
-          } catch (err) {
-            logger.error("[CRON] violationReminders error:", {
-              error: err.message,
-            });
-          }
-        }),
-      );
-
-      cron.schedule("0 10 * * *", () =>
-        withCronMutex("flagCriticalViolators", async () => {
-          logger.info("[CRON] Flagging critical violators...");
-          try {
-            const result = await flagCriticalViolators();
-            logger.info(
-              `[CRON] Flagged ${result.flagged} businesses as high risk`,
-            );
-          } catch (err) {
-            logger.error("[CRON] flagCriticalViolators error:", {
-              error: err.message,
-            });
-          }
-        }),
-      );
-
-      cron.schedule("0 * * * *", () =>
-        withCronMutex("inspectionReminders", async () => {
-          try {
-            const result = await sendInspectionReminders();
-            if (result.remindersSent > 0) {
-              logger.info(
-                `[CRON] Sent ${result.remindersSent} inspection reminders`,
-              );
-            }
-          } catch (err) {
-            logger.error("[CRON] inspectionReminders error:", {
-              error: err.message,
-            });
-          }
-        }),
-      );
-
-      cron.schedule("0 0 * * *", () =>
-        withCronMutex("cancelExpiredBookings", async () => {
-          logger.info("[CRON] Cancelling expired inspection bookings...");
-          try {
-            const result = await cancelExpiredBookings();
-            logger.info(
-              `[CRON] Cancelled ${result.cancelled} expired bookings`,
-            );
-          } catch (err) {
-            logger.error("[CRON] cancelExpiredBookings error:", {
-              error: err.message,
-            });
-          }
-        }),
-      );
-
-      logger.info(
-        "Phase 4 cron jobs scheduled: escalateViolations, violationReminders, flagCriticalViolators, inspectionReminders, cancelExpiredBookings",
-      );
     }
   } catch (err) {
     logger.error("Business Service DB/init failed (server still running)", {

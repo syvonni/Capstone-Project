@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { App } from 'antd'
 import { PermitApplicationService } from '@/features/staffs/lgu-officer/services/permitApplicationService'
 
-export function useApplicationHandlers(application, setApplication, onReview, onReviewStarted, initialApplication) {
+export function useApplicationHandlers(application, setApplication, onReview, onReviewStarted, initialApplication, runWithStepUp) {
   const { message } = App.useApp()
   const [reviewing, setReviewing] = useState(false)
   const [startingReview, setStartingReview] = useState(false)
@@ -117,30 +117,100 @@ export function useApplicationHandlers(application, setApplication, onReview, on
 
     setReviewing(true)
     try {
-      let reviewComments = ''
-      
-      if (decision === 'approve') {
-        reviewComments = values.comments?.trim() || ''
-      } else if (decision === 'request_changes') {
-        reviewComments = values.requestChanges?.trim() || ''
-      }
+      await runWithStepUp(async (stepUpToken) => {
+        let reviewComments = ''
 
-      await onReview({
-        applicationId: application.applicationId,
-        decision,
-        comments: reviewComments,
-        rejectionReason: values.rejectionReason?.trim() || '',
-        businessId: application.businessId
+        if (decision === 'approve') {
+          reviewComments = values.comments?.trim() || ''
+        } else if (decision === 'request_changes') {
+          reviewComments = values.requestChanges?.trim() || ''
+        }
+
+        await onReview({
+          applicationId: application.applicationId,
+          decision,
+          comments: reviewComments,
+          rejectionReason: values.rejectionReason?.trim() || '',
+          businessId: application.businessId,
+          stepUpToken
+        })
       })
 
       message.success('Review submitted successfully')
     } catch (error) {
-      console.error('Failed to submit review:', error)
-      message.error(error?.message || 'Failed to submit review')
+      if (error?.message !== 'Step-up cancelled') {
+        console.error('Failed to submit review:', error)
+        message.error(error?.message || 'Failed to submit review')
+      }
     } finally {
       setReviewing(false)
     }
-  }, [application, onReview, message])
+  }, [application, onReview, message, runWithStepUp])
+
+  const handleResendEmail = useCallback(async (emailType) => {
+    console.log('[handleResendEmail] START', { emailType })
+    const appId = application?.applicationId || application?._id
+    console.log('[handleResendEmail] appId:', appId)
+    if (!appId) {
+      console.log('[handleResendEmail] No appId, returning')
+      return
+    }
+
+    try {
+      console.log('[handleResendEmail] Calling runWithStepUp')
+      await runWithStepUp(async (stepUpToken) => {
+        console.log('[handleResendEmail] Step-up callback, calling permitService')
+        await permitService.resendApplicationEmail(appId, emailType, { stepUpToken })
+        console.log('[handleResendEmail] permitService call done')
+      })
+      console.log('[handleResendEmail] runWithStepUp done')
+      message.success('Email sent successfully')
+      await loadApplicationDetails()
+    } catch (error) {
+      console.error('[handleResendEmail] ERROR:', error)
+      if (error?.message !== 'Step-up cancelled') {
+        message.error(error?.message || 'Failed to resend email')
+      }
+    }
+  }, [application, permitService, runWithStepUp, loadApplicationDetails, message])
+
+  const handleResetEmailStatus = useCallback(async (emailType) => {
+    if (!application?.applicationId) return
+
+    try {
+      await runWithStepUp(async (stepUpToken) => {
+        await permitService.resetApplicationEmailStatus(application.applicationId, emailType, { stepUpToken })
+      })
+      message.success('Email status reset successfully')
+      await loadApplicationDetails()
+    } catch (error) {
+      if (error?.message !== 'Step-up cancelled') {
+        console.error('Failed to reset email status:', error)
+        message.error(error?.message || 'Failed to reset email status')
+      }
+    }
+  }, [application, permitService, runWithStepUp, loadApplicationDetails, message])
+
+  const handleResendAppealEmail = useCallback(async (emailType) => {
+    const appealId = application?.appealId
+    if (!appealId) {
+      message.error('No active appeal found for this application')
+      return
+    }
+
+    try {
+      await runWithStepUp(async (stepUpToken) => {
+        await permitService.resendAppealEmail(appealId, emailType, { stepUpToken })
+      })
+      message.success('Appeal email sent successfully')
+      await loadApplicationDetails()
+    } catch (error) {
+      if (error?.message !== 'Step-up cancelled') {
+        console.error('Failed to resend appeal email:', error)
+        message.error(error?.message || 'Failed to resend appeal email')
+      }
+    }
+  }, [application, permitService, runWithStepUp, loadApplicationDetails, message])
 
   return {
     reviewing,
@@ -151,5 +221,8 @@ export function useApplicationHandlers(application, setApplication, onReview, on
     handleFieldDecision,
     handleSaveLob,
     handleReview,
+    handleResendEmail,
+    handleResetEmailStatus,
+    handleResendAppealEmail,
   }
 }

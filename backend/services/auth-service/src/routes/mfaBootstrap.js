@@ -13,7 +13,7 @@ const {
   verifyTotpWithCounter,
 } = require("../lib/totp");
 const { encryptWithHash, decryptWithHash } = require("../lib/secretCipher");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { getStaffRoles } = require("../lib/roleHelpers");
 
 async function leanOrValue(queryOrDoc) {
@@ -151,14 +151,16 @@ router.post(
       });
 
       if (auth.actorId) {
-        await createAuditLog(
+        await logAuditEvent(
           targetUser._id,
           "mfa_bootstrap_token_created",
-          "mfa",
-          "",
-          "bootstrap_token_created",
-          roleSlug,
+          "User",
+          targetUser._id,
           {
+            role: roleSlug,
+            fieldChanged: "mfa",
+            oldValue: "",
+            newValue: "bootstrap_token_created",
             expiresAt: expiresAt.toISOString(),
             createdBy: String(auth.actorId),
             createdVia: auth.via,
@@ -494,14 +496,16 @@ router.post(
       tokenDoc.usedAt = new Date();
       await tokenDoc.save();
 
-      await createAuditLog(
+      await logAuditEvent(
         user._id,
         "mfa_bootstrap_completed",
-        "mfa",
-        "",
-        "bootstrap_mfa_enabled",
-        user.role?.slug || "user",
+        "User",
+        user._id,
         {
+          role: user.role?.slug || "user",
+          fieldChanged: "mfa",
+          oldValue: "",
+          newValue: "bootstrap_mfa_enabled",
           tokenId: String(tokenDoc._id),
           verifiedAt: new Date().toISOString(),
         },

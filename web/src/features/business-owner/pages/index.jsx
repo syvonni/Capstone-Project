@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { App } from 'antd'
 import { ShopOutlined } from '@ant-design/icons'
 import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
@@ -9,63 +9,36 @@ import UserSettingsView from '@/features/user/pages/profileSettings/UserSettings
 import { useAuthSession } from '@/features/authentication'
 import { useThemeSettings } from '@/features/user/hooks/useThemeSettings'
 import { useApplicationsState } from './applications/hooks/useApplicationsState'
-import { useBusinessDashboard } from './applications/hooks/useBusinessDashboard'
+import { getCurrentUser } from '@/features/authentication/lib/authEvents'
+import { authHeaders } from '@/lib/authHeaders'
+import { fetchJsonWithFallback } from '@/lib/http'
 
 export default function BusinessOwnerIndex() {
   const { message } = App.useApp()
   const { currentUser, roleSlug, isLoading: authLoading } = useAuthSession()
   const themeSettings = useThemeSettings(message)
 
-  // State management hook
+  // State management hook (includes useBusinessDashboard)
   const dashboardState = useApplicationsState()
   const {
     businesses,
     loading,
     showWelcomeState,
-    hasCompletedOnboarding,
     openApplicationForm,
+    fetchBusinesses,
   } = dashboardState
 
-  // Data fetching hook
-  const { fetchBusinesses } = useBusinessDashboard({
-    businesses,
-    setBusinesses: dashboardState.setBusinesses,
-    editingApplication: dashboardState.editingApplication,
-    setEditingApplication: dashboardState.setEditingApplication,
-    loading,
-    setLoading: dashboardState.setLoading,
-    paginationLoading: dashboardState.paginationLoading,
-    setPaginationLoading: dashboardState.setPaginationLoading,
-    setLastUpdatedAt: dashboardState.setLastUpdatedAt,
-    currentPage: dashboardState.currentPage,
-    pageSize: dashboardState.pageSize,
-    searchTerm: dashboardState.searchTerm,
-    statusFilter: dashboardState.statusFilter,
-    sortBy: dashboardState.sortBy,
-    sortOrder: dashboardState.sortOrder,
-    setCurrentPage: dashboardState.setCurrentPage,
-    setTotalItems: dashboardState.setTotalItems,
-    initialFetchDone: dashboardState.initialFetchDone,
-    isFirstRender: dashboardState.isFirstRender
-  })
+  // Show welcome state based on welcomeCompleted flag from user profile
+  const welcomeDismissedRef = useRef(false)
 
-  // Clean up stale localStorage key from previous implementation
-  useEffect(() => { localStorage.removeItem('bizclear_onboarding_skipped') }, [])
-
-  // Show welcome state only for truly new users who have never completed onboarding
   useEffect(() => {
-    if (!loading && businesses.length === 0 && !showWelcomeState && !hasCompletedOnboarding.current) {
-      const completed = localStorage.getItem('bizclear_onboarding_completed')
-      if (!completed) {
-        dashboardState.setShowWelcomeState(true)
-      }
+    // Only auto-show welcome if user hasn't explicitly dismissed it
+    if (!loading && !showWelcomeState && !currentUser?.welcomeCompleted && !welcomeDismissedRef.current) {
+      dashboardState.setShowWelcomeState(true)
     }
-    if (!loading && businesses.length > 0) {
-      hasCompletedOnboarding.current = true
-    }
-  }, [businesses.length, loading, showWelcomeState, hasCompletedOnboarding, dashboardState])
+  }, [loading, showWelcomeState, currentUser?.welcomeCompleted, dashboardState])
 
-  const handleWelcomeSelect = useCallback((registrationType) => {
+  const handleWelcomeSelect = useCallback(async (registrationType) => {
     // Count draft, pending, and submitted applications
     const draftOrPendingCount = businesses.filter(
       b => b.applicationStatus === 'draft' || b.applicationStatus === 'pending' || b.applicationStatus === 'submitted'
@@ -76,18 +49,34 @@ export default function BusinessOwnerIndex() {
       return
     }
 
-    localStorage.setItem('bizclear_onboarding_completed', '1')
-    hasCompletedOnboarding.current = true
+    // Mark welcome as dismissed so useEffect doesn't re-enable it
+    welcomeDismissedRef.current = true
+
+    // Don't mark welcome as completed via API yet - only mark it when user actually submits the application
     openApplicationForm({ registrationType, fromWelcome: true })
     dashboardState.setShowWelcomeState(false)
-  }, [openApplicationForm, dashboardState, hasCompletedOnboarding, businesses, message])
+  }, [openApplicationForm, dashboardState, businesses, message])
 
-  const handleLinkExisting = useCallback(() => {
-    localStorage.setItem('bizclear_onboarding_completed', '1')
-    hasCompletedOnboarding.current = true
+  const handleLinkExisting = useCallback(async () => {
+    // Mark welcome as dismissed so useEffect doesn't re-enable it
+    welcomeDismissedRef.current = true
+
+    // Mark welcome as completed via API
+    try {
+      const current = getCurrentUser()
+      const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })
+      await fetchJsonWithFallback('/api/auth/welcome-complete', {
+        method: 'PATCH',
+        headers,
+      })
+    } catch (err) {
+      console.error('Failed to mark welcome as completed:', err)
+      // Continue anyway - don't block the user
+    }
+
     message.info('Link existing business feature coming soon!')
     dashboardState.setShowWelcomeState(false)
-  }, [message, dashboardState, hasCompletedOnboarding])
+  }, [message, dashboardState])
 
   if (authLoading) {
     return (
@@ -134,7 +123,7 @@ export default function BusinessOwnerIndex() {
           </div>
         </div>
       ) : (
-        <ApplicationsIndex />
+        <ApplicationsIndex dashboardState={dashboardState} />
       )}
     </BusinessOwnerLayout>
   )

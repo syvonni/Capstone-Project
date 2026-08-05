@@ -29,7 +29,9 @@ function getRoleModel() {
 
 const mailer = require("./mailer");
 const internalNotificationService = require("../services/notificationService");
-const { buildNotificationEmailBody } = require("../../../../shared/lib/emailTemplateBuilder");
+const {
+  buildNotificationEmailBody,
+} = require("../../../../shared/lib/emailTemplateBuilder");
 
 /**
  * Get active admin user IDs (for in-app notifications)
@@ -427,7 +429,11 @@ async function notifyAdminsOfSystemAlert(alertType, details = {}) {
       fields: {
         fields: [
           { label: "Alert Type", value: alertType },
-          { label: "Details", value: detailsStr.slice(0, 200) + (detailsStr.length > 200 ? "..." : "") },
+          {
+            label: "Details",
+            value:
+              detailsStr.slice(0, 200) + (detailsStr.length > 200 ? "..." : ""),
+          },
         ],
       },
       appUrl,
@@ -568,10 +574,32 @@ async function notifyAdminsOfTamperIncident(incident) {
       intro: "An audit tamper or integrity issue was detected.",
       fields: {
         fields: [
-          { label: "Severity", value: incident.severity, color: incident.severity === "high" ? "#FF4D4F" : undefined, fontSize: "14px", fontWeight: "700" },
-          { label: "Status", value: incident.verificationStatus, fontSize: "14px" },
-          { label: "Message", value: (incident.message || "N/A").slice(0, 200) + ((incident.message || "").length > 200 ? "..." : ""), fontSize: "14px" },
-          { label: "Detected", value: incident.detectedAt ? new Date(incident.detectedAt).toLocaleString() : "N/A", fontSize: "14px" },
+          {
+            label: "Severity",
+            value: incident.severity,
+            color: incident.severity === "high" ? "#FF4D4F" : undefined,
+            fontSize: "14px",
+            fontWeight: "700",
+          },
+          {
+            label: "Status",
+            value: incident.verificationStatus,
+            fontSize: "14px",
+          },
+          {
+            label: "Message",
+            value:
+              (incident.message || "N/A").slice(0, 200) +
+              ((incident.message || "").length > 200 ? "..." : ""),
+            fontSize: "14px",
+          },
+          {
+            label: "Detected",
+            value: incident.detectedAt
+              ? new Date(incident.detectedAt).toLocaleString()
+              : "N/A",
+            fontSize: "14px",
+          },
         ],
       },
       appUrl,

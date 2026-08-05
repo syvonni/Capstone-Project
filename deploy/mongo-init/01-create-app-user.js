@@ -16,6 +16,7 @@ try {
   if (e.codeName === 'DuplicateKey' || e.code === 51003 || e.message.includes('already exists')) {
     print('App user ' + process.env.MONGO_APP_USER + ' already exists, skipping creation.');
   } else {
+    print('Error creating app user: ' + e.message);
     throw e;
   }
 }

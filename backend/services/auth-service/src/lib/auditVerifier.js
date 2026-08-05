@@ -58,9 +58,7 @@ class AuditVerifier {
     try {
       const auditServiceUrl =
         process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-      const response = await axios.get(
-        `${auditServiceUrl}/api/audit/stats`,
-      );
+      const response = await axios.get(`${auditServiceUrl}/api/audit/stats`);
 
       if (response.data && response.data.success) {
         return response.data.stats;

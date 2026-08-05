@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Typography, Space, theme, Empty, App, Grid } from 'antd'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { Typography, Space, theme, Empty, App, Grid, Modal, Form } from 'antd'
+import { generateTestDataForDefinition, formDataWithDayjs } from '@/features/business-owner/utils/businessFormUtils'
 import { FileTextOutlined } from '@ant-design/icons'
+import { useStepUp } from '@/shared/hooks/useStepUp'
 import { PermitApplicationService } from '@/features/staffs/lgu-officer/services/permitApplicationService'
 import { filterSectionsByFormValues } from '@/features/business-owner/utils/formUtils.js'
 import {
@@ -22,14 +24,13 @@ import { useApplicationClaim } from '../hooks/useApplicationClaim'
 import { useApplicationFieldActions } from '../hooks/useApplicationFieldActions'
 import { useApplicationPendingActions } from '../hooks/useApplicationPendingActions'
 import { useApplicationActions } from '../hooks/useApplicationActions'
-import DynamicInfoModal from '@/shared/components/DynamicInfoModal'
+import { useApplicationHandlers } from '../hooks/useApplicationHandlers'
 import ApplicationAuditHistoryModal from './modals/ApplicationAuditHistoryModal'
 import RejectApplicationModal from './modals/ApplicationRejectApplicationModal'
 import RejectAppealModal from './modals/ApplicationRejectAppealModal'
 import CompleteReviewModal from './modals/ApplicationCompleteReviewModal'
 import ReturnToApplicantModal from './modals/ApplicationReturnToApplicantModal'
 import DisabledReasonModal from './modals/ApplicationDisabledReasonModal'
-import BizClearManualModal from './modals/ApplicationBizClearManualModal'
 import ApplicationRejectionReasonModal from './modals/ApplicationRejectionReasonModal'
 import AppealRejectionReasonModal from './modals/ApplicationAppealRejectionReasonModal'
 import AppealLetterModal from './modals/ApplicationAppealLetterModal'
@@ -45,7 +46,9 @@ export default function ApplicationDetailPanel({
   onReviewStarted,
   onSelectApplication: _onSelectApplication,
   onBookmarkToggle,
+  onClose,
 }) {
+  console.log('[AUTOSAVE] ApplicationDetailPanel rendered - applicationId:', initialApplication?.applicationId || initialApplication?._id)
   const [startingReview, setStartingReview] = useState(false)
   const [activeTab, setActiveTab] = useState('review')
   const { token } = theme.useToken()
@@ -53,12 +56,23 @@ export default function ApplicationDetailPanel({
   const { currentUser } = useAuthSession()
   const screens = Grid.useBreakpoint()
   const isMobile = !screens.lg
+  const [documentCids, setDocumentCids] = useState({})
+  const [_formValues, setFormValues] = useState({})
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const permitService = useMemo(() => new PermitApplicationService(), [])
   const [application, setApplication] = useState(initialApplication)
   const [loading, setLoading] = useState(false)
+  const { runWithStepUp } = useStepUp()
 
-  const { canReview, isFinalDecision, isWaitingForApplicant, isActiveReviewState, isDraft, isClaimedByMe } = useApplicationStatus(application, currentUser)
+  const { canReview, isFinalDecision, isWaitingForApplicant, isActiveReviewState, isDraft, isOfficerDraft, isClaimedByMe } = useApplicationStatus(application, currentUser)
+
+  // Form instance for officer drafts
+  const [form] = Form.useForm()
+
+  // Email handlers
+  const { handleResendEmail, handleResetEmailStatus, handleResendAppealEmail } = useApplicationHandlers(application, setApplication, null, null, initialApplication, runWithStepUp)
 
   const loadApplicationDetails = useCallback(async () => {
     // Accept either applicationId or businessId as valid identifier (old flat schema uses businessId)
@@ -73,11 +87,61 @@ export default function ApplicationDetailPanel({
       )
       if (details) setApplication(details)
     } catch (error) {
-      console.error('Failed to load application details:', error)
+      console.error('[loadApplicationDetails] Failed to load application details:', error)
+      message.error('Failed to load application details')
     } finally {
       setLoading(false)
     }
-  }, [initialApplication, permitService])
+  }, [initialApplication, permitService, message])
+
+  // Officer draft handlers
+  const handleFinishApplication = useCallback(async () => {
+    if (!application?.applicationId && !application?._id) return
+
+    try {
+      await runWithStepUp(async (stepUpToken) => {
+        const appId = application.applicationId || application._id
+        await permitService.finishApplication(appId, stepUpToken)
+        message.success('Application finished and approved successfully')
+        await loadApplicationDetails()
+      })
+    } catch (err) {
+      if (err?.message !== 'Step-up cancelled') {
+        message.error(err?.message || 'Failed to finish application')
+      }
+    }
+  }, [application, permitService, runWithStepUp, loadApplicationDetails, message])
+
+  const handleDeleteDraft = useCallback(async () => {
+    if (!application?.applicationId && !application?._id) return
+
+    Modal.confirm({
+      title: 'Delete Draft Application',
+      content: 'Are you sure you want to delete this draft application? This action cannot be undone.',
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          await runWithStepUp(async (stepUpToken) => {
+            const appId = application.applicationId || application._id
+            await permitService.deleteApplication(appId, stepUpToken)
+            message.success('Draft application deleted successfully')
+            if (onReviewComplete) {
+              onReviewComplete()
+            }
+            if (onClose) {
+              onClose()
+            }
+          })
+        } catch (err) {
+          if (err?.message !== 'Step-up cancelled') {
+            message.error(err?.message || 'Failed to delete draft application')
+          }
+        }
+      },
+    })
+  }, [application, permitService, runWithStepUp, onReviewComplete, onClose, message])
 
   // Load full application details on mount
   useEffect(() => {
@@ -91,16 +155,43 @@ export default function ApplicationDetailPanel({
   const formDefId = application?.formDefinitionId
   const formType = application?.formType || 'permit'
   const businessType = application?.businessRegistration?.businessType || application?.organizationType || null
+  console.log('[AUTOSAVE][HOOK-CALL] Before useFormDefinition - appIdentifier:', appIdentifier)
   const { formDefinition, formDefLoading } = useFormDefinition(appIdentifier, formDefId, formType, businessType)
-  const { handleClaim, handleRelease, isClaimed } = useApplicationClaim(application, loadApplicationDetails, onReviewComplete, isClaimedByMe)
+  console.log('[AUTOSAVE][HOOK-CALL] After useFormDefinition - formDefinition:', !!formDefinition)
+
+  const handleFillTestData = useCallback(async () => {
+    if (!formDefinition) {
+      message.error('Form definition not loaded yet. Please wait a moment and try again.')
+      return
+    }
+
+    // Generate test data based on form definition (same as business owner)
+    const testData = generateTestDataForDefinition(formDefinition, application?.category)
+    const processedTestData = formDataWithDayjs(testData, formDefinition)
+
+    // Update form directly first
+    form.setFieldsValue(processedTestData)
+
+    // Save to backend
+    try {
+      await permitService.updateFormData(application.applicationId || application._id, {
+        formData: processedTestData
+      })
+      message.success('Test data filled successfully')
+    } catch {
+      message.error('Failed to save test data')
+    }
+  }, [formDefinition, application, form, permitService, message])
+  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationClaim')
+  const { handleClaim, handleRelease, isClaimed, stepUpModal: claimStepUpModal } = useApplicationClaim(application, loadApplicationDetails, onReviewComplete, isClaimedByMe)
+  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationFieldActions')
   const { handleFieldDecision, handleSaveLob } = useApplicationFieldActions(application, setApplication)
 
   // Use extracted hooks - must call useApplicationModals first to get setters
+  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationModals')
   const {
     documentModal, setDocumentModal,
     documentPreview, setDocumentPreview,
-    manualVisible, setManualVisible,
-    infoModalOpen, setInfoModalOpen,
     auditModalOpen, setAuditModalOpen,
     rejectModalOpen, setRejectModalOpen,
     rejectAppealModalOpen, setRejectAppealModalOpen,
@@ -118,6 +209,7 @@ export default function ApplicationDetailPanel({
     returnRequestOther, setReturnRequestOther,
   } = useApplicationModals()
 
+  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationPendingActions')
   const {
     handleReturnConfirm,
     handleRejectClick,
@@ -129,6 +221,7 @@ export default function ApplicationDetailPanel({
     handleReturnClick,
     handleUndoPendingAction,
     handleExecutePendingActionNow,
+    stepUpModal: pendingActionsStepUpModal,
   } = useApplicationPendingActions(
     application,
     loadApplicationDetails,
@@ -148,12 +241,16 @@ export default function ApplicationDetailPanel({
     setReturnRequestOther,
     setReturnModalOpen
   )
+  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationBookmarks')
   const { isBookmarked, _bookmarkId, handleBookmarkToggle } = useApplicationBookmarks(application, onBookmarkToggle)
+  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationAudit')
   const { auditLogs: _auditLogs, _refreshAudit } = useApplicationAudit(application)
+  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationAppeals')
   const { latestAppeal, _getActiveAppeal } = useApplicationAppeals(application)
 
 
   useEffect(() => {
+    console.log('[AUTOSAVE][EFFECT-242] initialApplication changed -> setApplication + setActiveTab(review)')
     if (initialApplication) {
       setApplication(initialApplication)
       setActiveTab('review')
@@ -196,10 +293,144 @@ export default function ApplicationDetailPanel({
   // Fallback logic for owner name - same as ApplicationOwnerDetailsModal
   const bo = application?.businessOwner || {}
   const profile = application?.profile || {}
-  const ownerName = application?.ownerName || ownerIdentity?.fullName || businessReg?.ownerFullName || bo?.name || application?.formData?.ownerName || profile?.fullName || 'N/A'
+  const ownerName = application?.ownerName || ownerIdentity?.fullName || businessReg?.ownerFullName || bo?.name || profile?.fullName || 'N/A'
 
   const formData = application?.formData && typeof application.formData === 'object' ? application.formData : {}
   const sections = formDefinition ? filterSectionsByFormValues(formDefinition.sections || [], formData) : []
+
+  // Initialize form with existing formData for officer drafts
+  // Only run when application is fully loaded (not just the initial prop from parent)
+  useEffect(() => {
+    console.log('[AUTOSAVE][EFFECT-292] form-init effect fired (application.formData ref changed)')
+    if (isOfficerDraft && application?.formData && application?.applicationId) {
+      form.setFieldsValue(application.formData)
+      setFormValues(application.formData)
+    }
+  }, [isOfficerDraft, application?.applicationId, application?.formData, form])
+
+  // Auto-save for officer drafts with debouncing
+  const savingRef = useRef(false)
+  const triggerAutoSave = useCallback(async () => {
+    console.log('[AUTOSAVE] triggerAutoSave called - isOfficerDraft:', isOfficerDraft, 'applicationId:', application?.applicationId || application?._id, 'isClaimedByMe:', isClaimedByMe)
+    if (!isOfficerDraft || !application?.applicationId && !application?._id) {
+      console.log('[AUTOSAVE] Aborting: not officer draft or no application ID')
+      return
+    }
+    if (savingRef.current) {
+      console.log('[AUTOSAVE] Aborting: already saving')
+      return
+    }
+    if (!isClaimedByMe) {
+      console.log('[AUTOSAVE] Aborting: not claimed by current officer')
+      return
+    }
+
+    console.log('[AUTOSAVE] Starting auto-save for application:', application?.applicationId || application?._id)
+
+    try {
+      savingRef.current = true
+      console.log('[AUTOSAVE] Setting saving state to true')
+      setSaving(true)
+      const values = form.getFieldsValue(true)
+      console.log('[AUTOSAVE] Got form values:', values)
+
+      // Extract CIDs from file fields
+      const allFields = (formDefinition?.sections || []).flatMap(s => s.items || [])
+      const mergedCids = { ...documentCids }
+      const cleanedValues = { ...values }
+
+      allFields.forEach((field) => {
+        if (field.type !== 'file') return
+        const key = field.key
+        if (!key) return
+        const val = values[key]
+        if (Array.isArray(val) && val.length > 0) {
+          const first = val[0]
+          const cid = first?.cid || first?.ipfsCid || first?.response?.cid
+          if (cid && typeof cid === 'string' && cid.trim()) {
+            mergedCids[field.documentKey || key] = cid.trim()
+            cleanedValues[key] = cid.trim()
+          }
+        }
+      })
+
+      const payload = {
+        formData: cleanedValues,
+        documentCids: mergedCids,
+      }
+      console.log('[AUTOSAVE] Calling permitService.updateFormData with payload:', payload)
+
+      await permitService.updateFormData(application.applicationId || application._id, payload)
+      console.log('[AUTOSAVE] updateFormData succeeded, setting hasUnsavedChanges to false')
+      setHasUnsavedChanges(false)
+      console.log('[AUTOSAVE] Auto-save completed successfully')
+    } catch (err) {
+      console.error('[AUTOSAVE] Auto-save failed:', err)
+      message.error('Failed to save draft')
+    } finally {
+      console.log('[AUTOSAVE] Setting saving state to false')
+      savingRef.current = false
+      setSaving(false)
+    }
+  }, [isOfficerDraft, isClaimedByMe, application, form, formDefinition, documentCids, permitService, message])
+
+  // Handle form values change (for unsaved changes tracking with debounced auto-save)
+  const saveTimeoutRef = useRef(null)
+  const handleFormValuesChange = useCallback((changedValues, allValues) => {
+    console.log('[AUTOSAVE] handleFormValuesChange called - changedValues:', changedValues, 'allValues:', allValues)
+    setHasUnsavedChanges(true)
+    console.log('[AUTOSAVE] Setting hasUnsavedChanges to true')
+
+    // Debounced auto-save on form change
+    if (saveTimeoutRef.current) {
+      console.log('[AUTOSAVE] Clearing existing timeout')
+      clearTimeout(saveTimeoutRef.current)
+    }
+    console.log('[AUTOSAVE] Setting new 5-second timeout for auto-save')
+    saveTimeoutRef.current = setTimeout(() => {
+      console.log('[AUTOSAVE] 5-second timeout elapsed, triggering auto-save')
+      triggerAutoSave()
+    }, 5000) // Save after 5 seconds of inactivity
+  }, [triggerAutoSave])
+
+  // Section-based auto-save (like business owner)
+  const previousSectionRef = useRef(-1)
+  useEffect(() => {
+    if (!isOfficerDraft) return
+    if (!hasUnsavedChanges) return
+    if (previousSectionRef.current === activeTab) return
+    if (saving) return
+
+    console.log('[Officer Draft Auto-save] Section change detected, triggering auto-save from', previousSectionRef.current, 'to', activeTab)
+
+    // Auto-save when switching sections
+    const autoSave = async () => {
+      try {
+        await triggerAutoSave()
+      } catch (err) {
+        console.error('Section change autosave failed:', err)
+      }
+    }
+    autoSave()
+    previousSectionRef.current = activeTab
+  }, [activeTab, isOfficerDraft, hasUnsavedChanges, saving, triggerAutoSave])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Handle document CID from file upload
+  const handleDocumentCid = useCallback((fieldKey, cid) => {
+    setDocumentCids(prev => ({
+      ...prev,
+      [fieldKey]: cid,
+    }))
+  }, [])
   // ST-PA-17: Officer field editing is intentionally scoped to LOB fields only.
   // Other form fields (business info, address, etc.) are owner-controlled and
   // can only be changed via the Edit Request workflow.
@@ -253,7 +484,13 @@ export default function ApplicationDetailPanel({
     handleCompleteReviewClick,
     handleReturnClick,
     handleUndoPendingAction,
-    handleExecutePendingActionNow
+    handleExecutePendingActionNow,
+    isOfficerDraft,
+    handleFinishApplication,
+    handleDeleteDraft,
+    handleFillTestData,
+    hasUnsavedChanges,
+    saving
   )
 
   if (!initialApplication) {
@@ -286,9 +523,13 @@ export default function ApplicationDetailPanel({
     application,
     setDocumentModal,
     isFinalDecision || isWaitingForApplicant || !!pendingAction, // isFinalState when in final decision state, waiting for applicant, or has pending action
-    (application?.status === 'resubmit' || application?.applicationStatus === 'resubmit') // isResubmit
+    (application?.status === 'resubmit' || application?.applicationStatus === 'resubmit'), // isResubmit
+    isOfficerDraft,
+    isOfficerDraft ? form : null,
+    handleDocumentCid,
+    handleFormValuesChange,
+    isClaimedByMe
   )
-
 
   const reviewTab = {
     key: 'review',
@@ -315,6 +556,7 @@ export default function ApplicationDetailPanel({
         _isWaitingForApplicant={isWaitingForApplicant}
         _isFinalDecision={isFinalDecision}
         isDraft={isDraft}
+        _isOfficerDraft={isOfficerDraft}
         _loadApplicationDetails={loadApplicationDetails}
         _message={message}
         ownerIdentity={ownerIdentity}
@@ -372,9 +614,7 @@ export default function ApplicationDetailPanel({
         activeTab={activeTab}
         getSectionStatus={getSectionStatus}
         token={token}
-        onManualClick={() => setManualVisible(true)}
         onHistoryClick={() => setAuditModalOpen(true)}
-        onInfoClick={() => setInfoModalOpen(true)}
         isClaimed={isClaimed}
         isClaimedByMe={isClaimedByMe}
         onClaim={handleClaim}
@@ -383,6 +623,15 @@ export default function ApplicationDetailPanel({
         isBookmarked={isBookmarked}
         onBookmarkToggle={handleBookmarkToggle}
         hasPendingAction={pendingAction}
+        isOfficerDraft={isOfficerDraft}
+        saving={saving}
+        hasUnsavedChanges={hasUnsavedChanges}
+        emailSendStatus={application?.emailSendStatus || {}}
+        onResendEmail={handleResendEmail}
+        onResetEmailStatus={handleResetEmailStatus}
+        onResendAppealEmail={handleResendAppealEmail}
+        appealId={application?.appealId}
+        _permitService={permitService}
       />
       <DocumentPreviewModal
         open={documentModal.open}
@@ -390,16 +639,6 @@ export default function ApplicationDetailPanel({
         url={documentModal.url}
         label={documentModal.label}
         type={documentModal.type}
-      />
-      <DynamicInfoModal
-        slotId="lgu-officer-application-review"
-        open={infoModalOpen}
-        onClose={() => setInfoModalOpen(false)}
-        title="Application Review Information"
-      />
-      <BizClearManualModal
-        open={manualVisible}
-        onClose={() => setManualVisible(false)}
       />
       <RejectApplicationModal
         open={rejectModalOpen}
@@ -474,6 +713,10 @@ export default function ApplicationDetailPanel({
         pendingAction={pendingAction}
         isMobile={isMobile}
       />
+      {claimStepUpModal}
+      {pendingActionsStepUpModal}
+      {/* Hidden Form to ensure form instance is always connected (prevents React warning) */}
+      <Form form={form} style={{ display: 'none' }} />
     </>
   )
 }

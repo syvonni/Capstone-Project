@@ -9,7 +9,6 @@ export { default as MaintenancePreview } from './MaintenancePreview.jsx'
 // Additional components moved from parent directory
 export { default as MaintenanceRequestDetailPanel } from './MaintenanceRequestDetailPanel.jsx'
 export { default as MaintenanceRequestModal } from './MaintenanceRequestModal.jsx'
-export { default as MaintenanceInfoModal } from './MaintenanceInfoModal.jsx'
 export { default as MaintenanceHistoryDetailPanel } from './MaintenanceHistoryDetailPanel.jsx'
 
 

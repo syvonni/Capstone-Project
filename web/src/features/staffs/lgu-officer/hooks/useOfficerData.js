@@ -7,7 +7,6 @@ import { getMyActions } from '../services/auditService'
 import { searchUsers } from '../services/userService'
 import { getBusinesses } from '../services/businessService'
 import { PermitApplicationService } from '../services/permitApplicationService'
-import { InspectionService } from '../services/inspectionService'
 
 const EDIT_REQUESTS_POLL_INTERVAL_MS = 30 * 1000
 
@@ -19,6 +18,7 @@ const PENDING_APPLICATION_STATUSES = new Set([
   'pending_renewal',
   'renewal_submitted',
   'appeal_pending',
+  'officer_draft',
 ])
 
 const PENDING_APPEAL_STATUSES = new Set(['pending', 'submitted'])
@@ -181,13 +181,11 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     renewals: [],
     appeals: [],
     editRequests: [],
-    inspections: [],
   })
   const [applications, setApplications] = useState([])
   const [appeals, setAppeals] = useState([])
   const [editRequests, setEditRequests] = useState([])
   const [renewals, setRenewals] = useState([])
-  const [inspections, setInspections] = useState([])
   const [owners, setOwners] = useState([])
   const [drafts, setDrafts] = useState([])
   const [logs, setLogs] = useState([])
@@ -220,19 +218,14 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     setTabLoading('toReview', true)
     try {
       const permitApplicationService = new PermitApplicationService()
-      const inspectionService = new InspectionService()
 
-      const [applicationsRes, editRequestsRes, appealsRes, inspectionsRes] = await Promise.allSettled([
+      const [applicationsRes, editRequestsRes, appealsRes] = await Promise.allSettled([
         permitApplicationService.getApplications({
           filters: { reviewedBy: officerId },
           pagination: { limit: 200 }
         }),
         getEditRequests({ role: 'staff', limit: 200 }),
         getAppealsForReview({ limit: 200 }),
-        inspectionService.getInspections({
-          filters: {},
-          pagination: { limit: 200 }
-        }),
       ])
 
       const claimedApplications = applicationsRes.status === 'fulfilled'
@@ -273,16 +266,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
 
       const claimedCessations = []
 
-      const claimedInspections = inspectionsRes.status === 'fulfilled'
-        ? (inspectionsRes.value?.data || inspectionsRes.value?.inspections || [])
-          .filter((insp) => {
-            const assignedById = insp.assignedById ? String(insp.assignedById) : null
-            const status = insp.status || ''
-            return assignedById === String(officerId) || status === 'pending_assignment'
-          })
-          .map((insp) => ({ ...insp, _itemType: 'inspections' }))
-        : []
-
       // Build a businessId alias map from applications so that all items for the same
       // business (which may use different ID formats — subdoc _id vs businessId) resolve
       // to the same canonical ID. Applications are the source of truth since their
@@ -299,7 +282,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         }
       }
       // Also learn aliases from appeals/edit-requests/cessations that carry _businessSubdocId
-      const allItemsForAlias = [...claimedAppeals, ...unclaimedAppeals, ...claimedEditRequests, ...unclaimedEditRequests, ...claimedCessations, ...claimedInspections]
+      const allItemsForAlias = [...claimedAppeals, ...unclaimedAppeals, ...claimedEditRequests, ...unclaimedEditRequests, ...claimedCessations]
       for (const item of allItemsForAlias) {
         const subdocId = item._businessSubdocId ? String(item._businessSubdocId) : null
         const rawBizId = item.businessId ? String(item.businessId) : null
@@ -326,7 +309,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         appeals: claimedAppeals,
         editRequests: claimedEditRequests,
         cessation: claimedCessations,
-        inspections: claimedInspections,
       }
 
       // Group all claimed items by businessId into consolidated business cards
@@ -335,7 +317,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         ...claimedEditRequests,
         ...claimedAppeals,
         ...claimedCessations,
-        ...claimedInspections,
       ]
 
       const businessMap = new Map()
@@ -347,7 +328,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
             businessId: bizId,
             businessName: item.businessName || item.registeredBusinessName || 'Unknown Business',
             _itemType: 'business',
-            _requests: { application: null, editRequests: [], appeals: [], inspections: [] },
+            _requests: { application: null, editRequests: [], appeals: [] },
             createdAt: item.createdAt || item.updatedAt || item.submittedAt || new Date().toISOString(),
           })
         }
@@ -375,9 +356,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
             break
           case 'appeals':
             group._requests.appeals.push(item)
-            break
-          case 'inspections':
-            group._requests.inspections.push(item)
             break
         }
       }
@@ -558,25 +536,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     finally { setTabLoading('drafts', false) }
   }, [])
 
-  const fetchInspections = useCallback(async () => {
-    setTabLoading('inspections', true)
-    try {
-      const inspectionService = new InspectionService()
-      const res = await inspectionService.getInspections({
-        filters: {},
-        pagination: { limit: 200 },
-        options: { skipAutoLogout: true }
-      })
-      const list = res?.data || res?.inspections || []
-      const pendingCount = list.filter(i => i.status === 'pending_assignment' || i.status === 'pending').length
-      setInspections(list)
-      setCounts(prev => ({ ...prev, inspections: pendingCount }))
-    } catch {
-      setInspections([])
-      setCounts(prev => ({ ...prev, inspections: 0 }))
-    }
-    finally { setTabLoading('inspections', false) }
-  }, [])
 
   const fetchLogs = useCallback(async () => {
     setTabLoading('logs', true)
@@ -621,14 +580,13 @@ export default function useOfficerData(activeTab, refreshTrigger) {
       case 'appeals': return fetchAppeals()
       case 'editRequests': return fetchEditRequests()
       case 'renewals': return fetchRenewals()
-      case 'inspections': return fetchInspections()
       case 'owners': return fetchOwners(ownerSearch)
       case 'drafts': return fetchDrafts()
       case 'logs': return fetchLogs()
       case 'businesses': return fetchBusinesses()
       case 'helpRequests': return fetchHelpRequests()
     }
-  }, [activeTab, fetchToReview, fetchApplications, fetchAppeals, fetchEditRequests, fetchRenewals, fetchInspections, fetchOwners, fetchDrafts, fetchLogs, fetchBusinesses, fetchHelpRequests, ownerSearch])
+  }, [activeTab, fetchToReview, fetchApplications, fetchAppeals, fetchEditRequests, fetchRenewals, fetchOwners, fetchDrafts, fetchLogs, fetchBusinesses, fetchHelpRequests, ownerSearch])
 
 
   // Fetch on tab change
@@ -643,7 +601,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     fetchAppeals()
     fetchEditRequests()
     fetchRenewals()
-    fetchInspections()
     fetchDrafts()
     fetchBusinesses()
   }, [currentUser?.id])
@@ -681,7 +638,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
       appeals,
       editRequests,
       renewals,
-      inspections,
       owners,
       drafts,
       logs,
@@ -689,7 +645,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
       helpRequests,
     }
     return lists[activeTab] || []
-  }, [activeTab, toReview, applications, appeals, editRequests, renewals, inspections, owners, drafts, logs, businesses, helpRequests])
+  }, [activeTab, toReview, applications, appeals, editRequests, renewals, owners, drafts, logs, businesses, helpRequests])
 
   // Refresh all application-related tabs (for claim/release/transfer)
   const refreshApplicationTabs = useCallback(() => {
@@ -705,7 +661,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     appeals,
     editRequests,
     renewals,
-    inspections,
     owners,
     drafts,
     logs,
@@ -725,7 +680,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     refreshToReview: fetchToReview,
     refreshApplicationTabs,
     refreshEditRequests: fetchEditRequests,
-    refreshInspections: fetchInspections,
     refreshHelpRequests: fetchHelpRequests,
   }
 }

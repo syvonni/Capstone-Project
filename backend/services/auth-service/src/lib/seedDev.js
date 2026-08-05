@@ -344,18 +344,12 @@ async function seedDevDataIfEmpty() {
         office: "OSBC",
       },
     );
-    await ensureUser(
-      devEmails.manager,
-      "Mary",
-      "Manager",
-      "+1-555-0404",
-      {
-        mustChangeCredentials: true,
-        mustSetupMfa: true,
-        isStaff: true,
-        office: "CTO",
-      },
-    );
+    await ensureUser(devEmails.manager, "Mary", "Manager", "+1-555-0404", {
+      mustChangeCredentials: true,
+      mustSetupMfa: true,
+      isStaff: true,
+      office: "CTO",
+    });
     await ensureUser(
       devEmails.inspector,
       "inspector",

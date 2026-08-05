@@ -67,6 +67,10 @@ export function useApplicationPaymentHandlers({
         // Continue anyway since submission succeeded
       }
       
+      // Refresh the full businesses list BEFORE showing receipt modal
+      // This ensures the header re-renders with the updated status
+      await dashboardState.fetchBusinesses()
+      
       const updatedReceiptInfo = {
         ...receiptInfo,
         receiptNumber: backendReceiptNumber,
@@ -75,17 +79,6 @@ export function useApplicationPaymentHandlers({
       }
       setReceiptData(updatedReceiptInfo)
       setShowReceiptModal(true)
-      
-      // Update the specific business in the list, don't replace the whole list
-      if (response?.businesses?.length) {
-        dashboardState.setBusinesses(prev => 
-          prev.map(b => 
-            (b.businessId || b._id) === (updatedApplication.businessId || updatedApplication._id)
-              ? updatedApplication
-              : b
-          )
-        )
-      }
     } catch (err) {
       console.error('Error during submission:', err)
       message.error(err?.message || 'Failed to submit application. Please try again.')
@@ -94,6 +87,10 @@ export function useApplicationPaymentHandlers({
 
   const handleReceiptModalClose = () => {
     setShowReceiptModal(false)
+    // Navigate to overview tab after payment completion
+    if (formRef.current?.handleTabChange) {
+      formRef.current.handleTabChange('overview')
+    }
     // Don't close the detail panel - keep the application selected so user can view it
     // Just refresh the businesses list to get updated status
     dashboardState.fetchBusinesses()

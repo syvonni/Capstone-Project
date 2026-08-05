@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { App } from 'antd'
 import { useAuthSession } from '@/features/authentication'
-import { getAdminList } from '../../../services/staffService'
+import { getAdminList } from '@/features/admin/services/staffService'
 import dayjs from 'dayjs'
 import { REQUEST_EXPIRY_HOURS } from '../constants/maintenance.constants.js'
 import { entityId } from '../utils/maintenance.utils.js'

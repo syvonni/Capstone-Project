@@ -7,7 +7,7 @@ const {
 const { validateBody, Joi } = require("../middleware/validation");
 const respond = require("../middleware/respond");
 const LGU = require("../models/LGU");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 
 const router = express.Router();
 
@@ -164,7 +164,11 @@ router.post(
         isActive: isActive !== false,
       });
 
-      createAuditLog(req._userId, "lgu_created", "lgu", "", lgu.code, "admin", {
+      logAuditEvent("lgu_created", req._userId, "LGU", String(lgu._id), {
+        role: "admin",
+        fieldChanged: "lgu",
+        oldValue: "",
+        newValue: lgu.code,
         code: lgu.code,
         name: lgu.name,
         type: lgu.type,
@@ -172,7 +176,7 @@ router.post(
         ip: req.ip,
         userAgent: req.get("user-agent"),
       }).catch((err) =>
-        console.error("Failed to create audit log for LGU create", err),
+        console.error("Failed to log audit event for LGU create", err),
       );
 
       return res.status(201).json({ success: true, lgu });
@@ -227,22 +231,22 @@ router.put(
 
       await lgu.save();
 
-      createAuditLog(
-        req._userId,
-        "lgu_updated",
-        "lgu",
-        JSON.stringify(oldValues),
-        JSON.stringify({
+      logAuditEvent("lgu_updated", req._userId, "LGU", String(lgu._id), {
+        role: "admin",
+        fieldChanged: "lgu",
+        oldValue: JSON.stringify(oldValues),
+        newValue: JSON.stringify({
           name: lgu.name,
           region: lgu.region,
           province: lgu.province,
           type: lgu.type,
           isActive: lgu.isActive,
         }),
-        "admin",
-        { code: lgu.code, ip: req.ip, userAgent: req.get("user-agent") },
-      ).catch((err) =>
-        console.error("Failed to create audit log for LGU update", err),
+        code: lgu.code,
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
+      }).catch((err) =>
+        console.error("Failed to log audit event for LGU update", err),
       );
 
       return res.json({ success: true, lgu });
@@ -272,7 +276,11 @@ router.delete(
         return respond.error(res, 404, "lgu_not_found", "LGU not found");
       }
       await LGU.deleteOne({ code });
-      createAuditLog(req._userId, "lgu_deleted", "lgu", code, "", "admin", {
+      logAuditEvent("lgu_deleted", req._userId, "LGU", code, {
+        role: "admin",
+        fieldChanged: "lgu",
+        oldValue: code,
+        newValue: "",
         code,
         name: lgu.name,
         type: lgu.type,
@@ -280,7 +288,7 @@ router.delete(
         ip: req.ip,
         userAgent: req.get("user-agent"),
       }).catch((err) =>
-        console.error("Failed to create audit log for LGU delete", err),
+        console.error("Failed to log audit event for LGU delete", err),
       );
       return res.json({ success: true, message: "LGU deleted" });
     } catch (err) {

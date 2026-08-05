@@ -1,9 +1,10 @@
-import { Layout, Typography, theme } from 'antd'
+import { Layout, Typography, theme, Grid } from 'antd'
 import LayoutPageHeader from '@/shared/components/LayoutPageHeader'
 import { usePageRefresh } from '@/shared/hooks/usePageRefresh'
 
 const { Content } = Layout
 const { Title } = Typography
+const { useBreakpoint } = Grid
 
 export default function BusinessOwnerLayout({
   children,
@@ -21,6 +22,8 @@ export default function BusinessOwnerLayout({
   brandLogoClickable = false, // Make brand logo unclickable by default
 }) {
   const { token } = theme.useToken()
+  const screens = useBreakpoint()
+  const isMobile = !screens.md
 
   // Use centralized refresh hook by default, but allow override via props
   const pageRefresh = usePageRefresh({ onRefresh })
@@ -43,7 +46,7 @@ export default function BusinessOwnerLayout({
         showBrandLogo={showBrandLogo}
         brandLogoClickable={brandLogoClickable}
       />
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: token.colorBgContainer, width: '100%' }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: token.colorBgContainer, width: '100%', paddingTop: isMobile ? 64 : 0 }}>
         {showBusinessSidebar ? (
           <>
             {/* Business Sidebar */}
@@ -54,19 +57,18 @@ export default function BusinessOwnerLayout({
                 maxWidth: 400,
                 flexShrink: 0,
                 borderRight: `1px solid ${token.colorBorderSecondary}`,
-                paddingRight: 24,
                 display: 'flex',
                 flexDirection: 'column',
                 overflowY: 'auto',
                 background: token.colorBgContainer,
-                padding: '24px 24px 24px 16px',
+                padding: '24px',
               }}
             >
               {sidebarContent}
             </div>
-            
+
             {/* Main Content */}
-            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', padding: '24px' }}>
               {children}
             </div>
           </>

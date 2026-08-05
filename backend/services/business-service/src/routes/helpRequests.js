@@ -1,6 +1,10 @@
 const express = require("express");
 const crypto = require("crypto");
-const { requireJwt, requireRole } = require("../middleware/auth");
+const {
+  requireJwt,
+  requireRole,
+  requireAdminStepUp,
+} = require("../middleware/auth");
 const respond = require("../middleware/respond");
 const HelpRequest = require("../models/HelpRequest");
 const logger = require("../lib/logger");
@@ -350,6 +354,7 @@ router.put(
   "/:requestId/claim",
   requireJwt,
   requireRole(["lgu_officer", "admin"]),
+  requireAdminStepUp,
   async (req, res) => {
     try {
       const { requestId } = req.params;
@@ -371,25 +376,24 @@ router.put(
       await helpRequest.save();
 
       // Log audit event
-      console.log("[HelpRequests] Attempting to log audit event for claim:", requestId);
-      logAuditEvent(
-        "claim",
-        req._userId,
-        "help_request",
+      console.log(
+        "[HelpRequests] Attempting to log audit event for claim:",
         requestId,
-        {
-          claimedBy: req._userId,
-          claimedByName: req._userEmail,
-          claimedAt: helpRequest.claimedAt,
-          status: { from: previousStatus, to: helpRequest.status },
-          ...(previousClaimedBy && {
-            override: {
-              from: previousClaimedBy,
-              fromName: previousClaimedByName,
-            },
-          }),
-        }
-      ).catch((err) => logger.error("Failed to log claim audit", { error: err.message }));
+      );
+      logAuditEvent("claim", req._userId, "help_request", requestId, {
+        claimedBy: req._userId,
+        claimedByName: req._userEmail,
+        claimedAt: helpRequest.claimedAt,
+        status: { from: previousStatus, to: helpRequest.status },
+        ...(previousClaimedBy && {
+          override: {
+            from: previousClaimedBy,
+            fromName: previousClaimedByName,
+          },
+        }),
+      }).catch((err) =>
+        logger.error("Failed to log claim audit", { error: err.message }),
+      );
 
       return res.json({ success: true, data: helpRequest.toObject() });
     } catch (err) {
@@ -412,6 +416,7 @@ router.put(
   "/:requestId/release",
   requireJwt,
   requireRole(["lgu_officer", "admin"]),
+  requireAdminStepUp,
   async (req, res) => {
     try {
       const { requestId } = req.params;
@@ -442,19 +447,18 @@ router.put(
       await helpRequest.save();
 
       // Log audit event
-      console.log("[HelpRequests] Attempting to log audit event for release:", requestId);
-      logAuditEvent(
-        "release",
-        req._userId,
-        "help_request",
+      console.log(
+        "[HelpRequests] Attempting to log audit event for release:",
         requestId,
-        {
-          releasedBy: req._userId,
-          releasedByName: req._userEmail,
-          releasedAt: new Date(),
-          status: { from: previousStatus, to: helpRequest.status },
-        }
-      ).catch((err) => logger.error("Failed to log release audit", { error: err.message }));
+      );
+      logAuditEvent("release", req._userId, "help_request", requestId, {
+        releasedBy: req._userId,
+        releasedByName: req._userEmail,
+        releasedAt: new Date(),
+        status: { from: previousStatus, to: helpRequest.status },
+      }).catch((err) =>
+        logger.error("Failed to log release audit", { error: err.message }),
+      );
 
       return res.json({ success: true, data: helpRequest.toObject() });
     } catch (err) {
@@ -497,13 +501,17 @@ router.put(
       }
 
       // Check if 24-hour window has passed for terminal statuses (closed, invalid)
-      const isTerminalStatus = ["closed", "invalid"].includes(helpRequest.status);
+      const isTerminalStatus = ["closed", "invalid"].includes(
+        helpRequest.status,
+      );
       const isChangingToTerminal = ["closed", "invalid"].includes(status);
 
       if (isTerminalStatus && isChangingToTerminal) {
         // Changing from one terminal status to another - check lock
-        const statusChangedAt = helpRequest.statusChangedAt || helpRequest.createdAt;
-        const hoursSinceChange = (Date.now() - new Date(statusChangedAt).getTime()) / (1000 * 60 * 60);
+        const statusChangedAt =
+          helpRequest.statusChangedAt || helpRequest.createdAt;
+        const hoursSinceChange =
+          (Date.now() - new Date(statusChangedAt).getTime()) / (1000 * 60 * 60);
         if (hoursSinceChange >= 24) {
           return respond.error(
             res,
@@ -520,16 +528,14 @@ router.put(
       await helpRequest.save();
 
       // Log audit event
-      logAuditEvent(
-        "status_update",
-        req._userId,
-        "help_request",
-        requestId,
-        {
-          status: { from: previousStatus, to: status },
-          updatedByName: req._userEmail,
-        }
-      ).catch((err) => logger.error("Failed to log status update audit", { error: err.message }));
+      logAuditEvent("status_update", req._userId, "help_request", requestId, {
+        status: { from: previousStatus, to: status },
+        updatedByName: req._userEmail,
+      }).catch((err) =>
+        logger.error("Failed to log status update audit", {
+          error: err.message,
+        }),
+      );
 
       // Send email notifications for terminal statuses
       if (status === "closed") {
@@ -599,16 +605,14 @@ router.put(
       await helpRequest.save();
 
       // Log audit event
-      logAuditEvent(
-        "priority_update",
-        req._userId,
-        "help_request",
-        requestId,
-        {
-          priority: { from: previousPriority, to: priority },
-          updatedByName: req._userEmail,
-        }
-      ).catch((err) => logger.error("Failed to log priority update audit", { error: err.message }));
+      logAuditEvent("priority_update", req._userId, "help_request", requestId, {
+        priority: { from: previousPriority, to: priority },
+        updatedByName: req._userEmail,
+      }).catch((err) =>
+        logger.error("Failed to log priority update audit", {
+          error: err.message,
+        }),
+      );
 
       return res.json({ success: true, data: helpRequest.toObject() });
     } catch (err) {
@@ -631,6 +635,7 @@ router.post(
   "/:requestId/messages",
   requireJwt,
   requireRole(["lgu_officer", "admin"]),
+  requireAdminStepUp,
   async (req, res) => {
     try {
       const { requestId } = req.params;
@@ -652,8 +657,12 @@ router.post(
 
       // Fetch officer's name for display
       const User = require("../models/User");
-      const officer = await User.findById(req._userId).select("firstName lastName").lean();
-      const officerName = officer ? `${officer.firstName} ${officer.lastName}` : (req._userEmail || "Officer");
+      const officer = await User.findById(req._userId)
+        .select("firstName lastName")
+        .lean();
+      const officerName = officer
+        ? `${officer.firstName} ${officer.lastName}`
+        : req._userEmail || "Officer";
 
       helpRequest.messages.push({
         sender: "officer",
@@ -698,6 +707,7 @@ router.post(
   "/:requestId/internal-notes",
   requireJwt,
   requireRole(["lgu_officer", "admin"]),
+  requireAdminStepUp,
   async (req, res) => {
     try {
       const { requestId } = req.params;
@@ -824,7 +834,14 @@ router.post("/inbound", async (req, res) => {
       hasRaw: !!data.raw,
     });
 
-    const { email_id, from, to, subject, text: webhookText, html: webhookHtml } = data || {};
+    const {
+      email_id,
+      from,
+      to,
+      subject,
+      text: webhookText,
+      html: webhookHtml,
+    } = data || {};
 
     if (!to || !subject) {
       logger.warn("Inbound email missing required fields", { to, subject });
@@ -834,8 +851,12 @@ router.post("/inbound", async (req, res) => {
     // Extract requestId from subject (format: "Reply to Help Request HR-XXX" or "HR-XXX")
     const requestIdMatch = subject.match(/HR-[A-Z0-9-]+/i);
     if (!requestIdMatch) {
-      logger.warn("Inbound email subject does not contain requestId", { subject });
-      return res.status(200).json({ message: "Accepted but no requestId in subject" });
+      logger.warn("Inbound email subject does not contain requestId", {
+        subject,
+      });
+      return res
+        .status(200)
+        .json({ message: "Accepted but no requestId in subject" });
     }
 
     const requestId = requestIdMatch[0].toUpperCase();
@@ -843,24 +864,31 @@ router.post("/inbound", async (req, res) => {
 
     if (!helpRequest) {
       logger.warn("Inbound email for non-existent help request", { requestId });
-      return res.status(200).json({ message: "Accepted but request not found" });
+      return res
+        .status(200)
+        .json({ message: "Accepted but request not found" });
     }
 
     // Verify sender email matches the original contact email
     const senderEmail = from?.match(/<(.+)>/)?.[1] || from;
     if (senderEmail?.toLowerCase() !== helpRequest.contactEmail.toLowerCase()) {
-      logger.warn("Inbound email sender does not match original contact email", {
-        requestId,
-        senderEmail,
-        originalEmail: helpRequest.contactEmail,
-      });
+      logger.warn(
+        "Inbound email sender does not match original contact email",
+        {
+          requestId,
+          senderEmail,
+          originalEmail: helpRequest.contactEmail,
+        },
+      );
       return res.status(200).json({ message: "Accepted but sender mismatch" });
     }
 
     // Fetch full email content from Resend API with delay + retry
     const axios = require("axios");
     const resendApiKey = process.env.EMAIL_API_KEY;
-    let text = webhookText || "", html = webhookHtml || "", attachments = [];
+    let text = webhookText || "",
+      html = webhookHtml || "",
+      attachments = [];
 
     // If webhook didn't include content, try fetching from API
     // Add initial delay because Resend may not have content ready when webhook fires
@@ -869,7 +897,9 @@ router.post("/inbound", async (req, res) => {
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         // Wait before each attempt (increasing delay: 3s, 5s, 7s, 9s)
-        await new Promise(resolve => setTimeout(resolve, 1000 + attempt * 2000));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 + attempt * 2000),
+        );
 
         try {
           const response = await axios.get(
@@ -878,7 +908,7 @@ router.post("/inbound", async (req, res) => {
               headers: {
                 Authorization: `Bearer ${resendApiKey}`,
               },
-            }
+            },
           );
           const emailData = response.data;
           logger.info("Fetched email content from Resend", {
@@ -894,28 +924,31 @@ router.post("/inbound", async (req, res) => {
           attachments = emailData.attachments || [];
           if (text || html) break; // Got content, exit loop
         } catch (err) {
-          logger.warn(`Failed to fetch email content from Resend (attempt ${attempt}/${maxRetries})`, {
-            email_id,
-            error: err.message,
-            responseStatus: err.response?.status,
-          });
+          logger.warn(
+            `Failed to fetch email content from Resend (attempt ${attempt}/${maxRetries})`,
+            {
+              email_id,
+              error: err.message,
+              responseStatus: err.response?.status,
+            },
+          );
         }
       }
     }
 
     // Add message to help request
     let messageContent = text || html?.replace(/<[^>]*>/g, "") || "";
-    
+
     // Strip quoted reply content (Gmail and other clients add "On [date], [sender] wrote:")
     // Handle multi-line patterns where "wrote:" might be on a separate line
     const quotedReplyPatterns = [
-      /On .+?wrote:\s*$/im,  // "On [date] [sender] wrote:" (multi-line)
-      /On .+?wrote:/i,       // "On [date] [sender] wrote:" (single-line)
-      /From: .+/i,           // "From: [email]"
+      /On .+?wrote:\s*$/im, // "On [date] [sender] wrote:" (multi-line)
+      /On .+?wrote:/i, // "On [date] [sender] wrote:" (single-line)
+      /From: .+/i, // "From: [email]"
       /-----Original Message-----/i,
-      />+ On .+?wrote:/i,     // Quoted reply starting with >
+      />+ On .+?wrote:/i, // Quoted reply starting with >
     ];
-    
+
     for (const pattern of quotedReplyPatterns) {
       const match = messageContent.match(pattern);
       if (match) {
@@ -926,15 +959,19 @@ router.post("/inbound", async (req, res) => {
         }
       }
     }
-    
+
     // Also strip common quote markers like "> "
-    messageContent = messageContent.split('\n')
-      .filter(line => !line.trim().startsWith('>'))
-      .join('\n')
+    messageContent = messageContent
+      .split("\n")
+      .filter((line) => !line.trim().startsWith(">"))
+      .join("\n")
       .trim();
-    
+
     if (!messageContent) {
-      logger.warn("Inbound email has no message content after stripping quotes", { requestId });
+      logger.warn(
+        "Inbound email has no message content after stripping quotes",
+        { requestId },
+      );
       return res.status(200).json({ message: "Accepted but no content" });
     }
 
@@ -942,12 +979,14 @@ router.post("/inbound", async (req, res) => {
       sender: "business_owner",
       senderName: senderEmail,
       content: messageContent.trim(),
-      attachments: Array.isArray(attachments) ? attachments.map(a => ({
-        filename: a.filename,
-        contentType: a.content_type,
-        size: a.size,
-        cid: a.content_id,
-      })) : [],
+      attachments: Array.isArray(attachments)
+        ? attachments.map((a) => ({
+            filename: a.filename,
+            contentType: a.content_type,
+            size: a.size,
+            cid: a.content_id,
+          }))
+        : [],
     });
 
     // Update status to in_progress (officer needs to respond)

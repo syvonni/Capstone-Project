@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { requireJwt, requireRole } = require("../middleware/auth");
+const {
+  requireJwt,
+  requireRole,
+  requireAdminStepUp,
+} = require("../middleware/auth");
 const respond = require("../middleware/respond");
 // Load permitApplicationService from local services directory
 const permitApplicationService = require("../services/permitApplicationService");
@@ -212,6 +216,7 @@ router.post(
   "/:applicationId/review",
   requireJwt,
   requireRole(["lgu_officer", "staff"]),
+  requireAdminStepUp,
   async (req, res) => {
     try {
       const { applicationId } = req.params;
@@ -320,7 +325,7 @@ router.patch(
       const payload =
         decisions && Array.isArray(decisions)
           ? decisions
-          : fieldKey && (status !== undefined && status !== null)
+          : fieldKey && status !== undefined && status !== null
             ? [{ fieldKey, status, reasonCode, reasonOther }]
             : fieldKey && (status === null || status === undefined)
               ? [{ fieldKey, status: null, reasonCode, reasonOther }]
@@ -427,17 +432,28 @@ router.post(
       const { actionType, payload, delayMinutes } = req.body;
       const officerId = req._userId;
 
-      if (!actionType || !["complete_review", "reject", "return", "reject_appeal"].includes(actionType)) {
-        return respond.error(res, 400, "invalid_data", "actionType must be one of: complete_review, reject, return, reject_appeal");
+      if (
+        !actionType ||
+        !["complete_review", "reject", "return", "reject_appeal"].includes(
+          actionType,
+        )
+      ) {
+        return respond.error(
+          res,
+          400,
+          "invalid_data",
+          "actionType must be one of: complete_review, reject, return, reject_appeal",
+        );
       }
 
-      const updatedApplication = await permitApplicationService.createPendingAction(
-        applicationId,
-        null,
-        actionType,
-        payload || {},
-        delayMinutes || 10
-      );
+      const updatedApplication =
+        await permitApplicationService.createPendingAction(
+          applicationId,
+          null,
+          actionType,
+          payload || {},
+          delayMinutes || 10,
+        );
       return res.json(updatedApplication);
     } catch (err) {
       console.error("POST /pending-action error:", err);
@@ -447,9 +463,14 @@ router.post(
       if (err.message.includes("pending action already exists")) {
         return respond.error(res, 409, "conflict", err.message);
       }
-      return respond.error(res, 500, "server_error", err.message || "Failed to create pending action");
+      return respond.error(
+        res,
+        500,
+        "server_error",
+        err.message || "Failed to create pending action",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -465,16 +486,22 @@ router.delete(
       const { applicationId } = req.params;
       const officerId = req._userId;
 
-      const updatedApplication = await permitApplicationService.cancelPendingAction(applicationId, null);
+      const updatedApplication =
+        await permitApplicationService.cancelPendingAction(applicationId, null);
       return res.json(updatedApplication);
     } catch (err) {
       console.error("DELETE /pending-action error:", err);
       if (err.message === "Application not found") {
         return respond.error(res, 404, "not_found", err.message);
       }
-      return respond.error(res, 500, "server_error", err.message || "Failed to cancel pending action");
+      return respond.error(
+        res,
+        500,
+        "server_error",
+        err.message || "Failed to cancel pending action",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -489,7 +516,8 @@ router.get(
     try {
       const { applicationId } = req.params;
 
-      const application = await permitApplicationService.getApplicationById(applicationId);
+      const application =
+        await permitApplicationService.getApplicationById(applicationId);
       const pendingAction = application?.pendingAction || null;
       return res.json({ pendingAction });
     } catch (err) {
@@ -497,9 +525,14 @@ router.get(
       if (err.message === "Application not found") {
         return respond.error(res, 404, "not_found", err.message);
       }
-      return respond.error(res, 500, "server_error", err.message || "Failed to get pending action");
+      return respond.error(
+        res,
+        500,
+        "server_error",
+        err.message || "Failed to get pending action",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -515,7 +548,11 @@ router.put(
       const { applicationId } = req.params;
       const officerId = req._userId;
 
-      const updatedApplication = await permitApplicationService.executePendingAction(applicationId, null);
+      const updatedApplication =
+        await permitApplicationService.executePendingAction(
+          applicationId,
+          null,
+        );
       return res.json(updatedApplication);
     } catch (err) {
       console.error("PUT /execute-pending-action error:", err);
@@ -525,9 +562,14 @@ router.put(
       if (err.message.includes("No pending action")) {
         return respond.error(res, 400, "invalid_data", err.message);
       }
-      return respond.error(res, 500, "server_error", err.message || "Failed to execute pending action");
+      return respond.error(
+        res,
+        500,
+        "server_error",
+        err.message || "Failed to execute pending action",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -712,6 +754,9 @@ router.post(
           businessOwnerId: String(profile.userId),
           businessName:
             business.businessName || business.registeredBusinessName || "",
+          applicationReferenceNumber: business.applicationReferenceNumber,
+          oldStatus,
+          newStatus: "under_review",
           revokedAt: new Date().toISOString(),
           role: req._userRole || req.user?.role?.slug || "lgu_officer",
         },
@@ -747,6 +792,7 @@ router.put(
   "/:applicationId/claim",
   requireJwt,
   requireRole(["lgu_officer", "staff"]),
+  requireAdminStepUp,
   async (req, res) => {
     try {
       const { applicationId } = req.params;
@@ -785,8 +831,12 @@ router.put(
       }
 
       // Fetch officer name for reviewedByName
-      const officer = await User.findById(officerId).select("firstName lastName").lean();
-      const officerName = officer ? `${officer.firstName} ${officer.lastName}`.trim() : (req._userEmail || "Officer");
+      const officer = await User.findById(officerId)
+        .select("firstName lastName")
+        .lean();
+      const officerName = officer
+        ? `${officer.firstName} ${officer.lastName}`.trim()
+        : req._userEmail || "Officer";
 
       // Set reviewer and transition to under_review if currently submitted/resubmit
       const claimUpdate = {
@@ -869,6 +919,7 @@ router.put(
   "/:applicationId/release",
   requireJwt,
   requireRole(["lgu_officer", "staff"]),
+  requireAdminStepUp,
   async (req, res) => {
     try {
       const { applicationId } = req.params;
@@ -978,6 +1029,7 @@ router.put(
   "/:applicationId/transfer",
   requireJwt,
   requireRole(["lgu_officer", "staff"]),
+  requireAdminStepUp,
   async (req, res) => {
     try {
       const { applicationId } = req.params;
@@ -1028,8 +1080,12 @@ router.put(
       }
 
       // Fetch target officer name for reviewedByName
-      const targetOfficer = await User.findById(targetOfficerId).select("firstName lastName").lean();
-      const targetOfficerName = targetOfficer ? `${targetOfficer.firstName} ${targetOfficer.lastName}`.trim() : "Officer";
+      const targetOfficer = await User.findById(targetOfficerId)
+        .select("firstName lastName")
+        .lean();
+      const targetOfficerName = targetOfficer
+        ? `${targetOfficer.firstName} ${targetOfficer.lastName}`.trim()
+        : "Officer";
 
       await BusinessProfile.updateOne(
         { _id: profile._id },

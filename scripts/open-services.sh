@@ -18,7 +18,7 @@ set -e
 # USE_NGROK=1: use ngrok URL instead of localhost for web app
 OPEN_WEB_ONLY=0
 GANACHE_GUI=0
-USE_NGROK=0
+USE_NGROK="${USE_NGROK:-0}"
 for a in "$@"; do
   case "$a" in
     --web-only) OPEN_WEB_ONLY=1 ;;
@@ -139,6 +139,12 @@ if [ "$OPEN_WEB_ONLY" = "1" ]; then
   if [ "${PRODUCTION_DEMO:-0}" = "1" ] && [ "$WEB_APP_PORT" = "5173" ]; then
     WEB_APP_PORT=4173
   fi
+  # Use ngrok URL if USE_NGROK is set (for HTTPS/WebAuthn access), else localhost
+  WEB_APP_URL="http://localhost:$WEB_APP_PORT"
+  if [ "$USE_NGROK" = "1" ] && [ -n "${NGROK_URL:-}" ]; then
+    WEB_APP_URL="$NGROK_URL"
+    echo -e "${CYAN}   Using ngrok URL: $WEB_APP_URL${NC}"
+  fi
   WEB_RUNNING=false
   if command -v nc >/dev/null 2>&1 && nc -z localhost "$WEB_APP_PORT" 2>/dev/null; then
     WEB_RUNNING=true
@@ -147,10 +153,10 @@ if [ "$OPEN_WEB_ONLY" = "1" ]; then
   fi
   echo -e "\n${GREEN}🌐 Opening web app tab...${NC}\n"
   if [ "$WEB_RUNNING" = true ]; then
-    open_browser "http://localhost:$WEB_APP_PORT" "Web App"
+    open_browser "$WEB_APP_URL" "Web App"
   else
     echo -e "${YELLOW}   ℹ️  Web frontend may not be ready yet; opening anyway.${NC}"
-    open_browser "http://localhost:$WEB_APP_PORT" "Web App"
+    open_browser "$WEB_APP_URL" "Web App"
   fi
   echo -e "\n${GREEN}✅ Done! Only the web app tab was opened.${NC}\n"
   echo -e "${CYAN}💡 Other URLs (open manually if needed):${NC}"
@@ -339,6 +345,10 @@ WEB_APP_URL="http://localhost:$WEB_APP_PORT"
 if [ "$USE_NGROK" = "1" ] && [ -n "${NGROK_URL:-}" ]; then
   WEB_APP_URL="$NGROK_URL"
   echo -e "${CYAN}   Using ngrok URL: $WEB_APP_URL${NC}"
+fi
+# Fallback to localhost if URL is somehow empty
+if [ -z "$WEB_APP_URL" ]; then
+  WEB_APP_URL="http://localhost:$WEB_APP_PORT"
 fi
 
 # Check if web server is running on the chosen port

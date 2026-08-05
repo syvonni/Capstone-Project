@@ -1644,7 +1644,8 @@ router.get(
 
       // Query audit-service for application audit logs
       const axios = require("axios");
-      const auditServiceUrl = process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
+      const auditServiceUrl =
+        process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
       const headers = { "Content-Type": "application/json" };
       if (process.env.AUDIT_SERVICE_API_KEY)
         headers["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;

@@ -17,42 +17,9 @@ const AuditLogSchema = new mongoose.Schema(
     fieldChanged: {
       type: String,
       required: false,
-      enum: [
-        "email",
-        "password",
-        "firstName",
-        "lastName",
-        "phoneNumber",
-        "id",
-        "idType",
-        "idNumber",
-        "dateOfBirth",
-        "avatar",
-        "termsAccepted",
-        "mfa",
-        "role",
-        "office",
-        "department",
-        "security",
-        "system",
-        "account",
-        "session",
-        "recovery",
-        "maintenance",
-        "applicationStatus",
-        "businessName",
-        "businessType",
-        "location",
-        "permit",
-        "inspection",
-        "violation",
-        "payment",
-        "appeal",
-        "editRequest",
-        "renewal",
-        "amendment",
-        "closure",
-      ],
+      // Removed enum constraint to follow Open/Closed Principle
+      // Entity-specific field validation should be handled at the application level
+      // This allows any entity type to define its own fields without modifying this schema
     },
     oldValue: {
       type: String,
@@ -69,19 +36,7 @@ const AuditLogSchema = new mongoose.Schema(
       required: true,
       unique: true,
       index: true,
-      // SHA256 hash of the full audit record (calculated in pre-save hook)
-      // Note: Validation is skipped if hash is being set in pre-save hook
-    },
-    txHash: {
-      type: String,
-      default: "",
-      index: true,
-      // Blockchain transaction hash
-    },
-    blockNumber: {
-      type: Number,
-      default: null,
-      // Block number where transaction was mined
+      // SHA256 hash of the full audit record (for integrity verification)
     },
     role: {
       type: String,
@@ -104,55 +59,44 @@ const AuditLogSchema = new mongoose.Schema(
       default: {},
       // Additional context: IP address, user agent, approval IDs, etc.
     },
-    blockchainStatus: {
-      type: String,
-      enum: ["pending", "anchored", "failed", "skipped"],
-      default: "pending",
-      index: true,
-    },
-    blockchainError: { type: String, default: "" },
-    blockchainRetries: { type: Number, default: 0 },
-    verified: {
-      type: Boolean,
-      default: false,
-    },
-    verifiedAt: {
-      type: Date,
-      default: null,
-    },
   },
   { timestamps: true },
 );
 
-// Index for efficient querying (txHash already has index: true on the field)
+// Index for efficient querying
 AuditLogSchema.index({ userId: 1, createdAt: -1 });
 AuditLogSchema.index({ eventType: 1, createdAt: -1 });
-AuditLogSchema.index({ verified: 1 });
+
+// Compound indexes for entity-specific queries
+// These indexes optimize the most common audit log queries by entity type
+// Each index supports queries that filter by entity ID in metadata and sort by creation date
+
+// Variables: queries like { "metadata.variableId": "123" } sorted by createdAt
+AuditLogSchema.index({ 'metadata.variableId': 1, createdAt: -1 });
+
+// Applications: queries like { "metadata.applicationId": "123" } sorted by createdAt
+AuditLogSchema.index({ 'metadata.applicationId': 1, createdAt: -1 });
+
+// Fees: queries like { "metadata.feeId": "123" } sorted by createdAt
+AuditLogSchema.index({ 'metadata.feeId': 1, createdAt: -1 });
+
+// Entity type + event type: queries like { entityType: "variable", eventType: "variable_created" } sorted by createdAt
+// This index supports filtering by both entity type and event type together
+AuditLogSchema.index({ entityType: 1, eventType: 1, createdAt: -1 });
+
+// Additional entity-specific indexes for common query patterns
+// These can be added as needed when performance issues are identified
+// Examples for future reference:
+// AuditLogSchema.index({ 'metadata.businessId': 1, createdAt: -1 });
+// AuditLogSchema.index({ 'metadata.penaltyRuleId': 1, createdAt: -1 });
+// AuditLogSchema.index({ 'metadata.requirementId': 1, createdAt: -1 });
 
 // Note: Hash is now calculated manually before creating the document
 // This avoids validation issues and ensures the hash is always set correctly
 // The pre-save hook was removed since we calculate the hash in the route handler
 
-// Method to verify the hash matches the current data
-AuditLogSchema.methods.verifyHash = function () {
-  const hashableData = {
-    userId: String(this.userId),
-    eventType: this.eventType,
-    fieldChanged: this.fieldChanged || "",
-    oldValue: this.oldValue || "",
-    newValue: this.newValue || "",
-    role: this.role,
-    metadata: JSON.stringify(this.metadata || {}),
-    timestamp: this.createdAt.toISOString(),
-  };
-
-  const dataString = JSON.stringify(hashableData);
-  const calculatedHash = crypto
-    .createHash("sha256")
-    .update(dataString)
-    .digest("hex");
-  return calculatedHash === this.hash;
-};
+// verifyHash method removed - blockchain feature deleted
+// Previously: Method to verify the hash matches the current data
 
 // Static method to create audit log with automatic hash calculation
 AuditLogSchema.statics.createAuditLog = async function (data) {
@@ -181,7 +125,7 @@ AuditLogSchema.statics.getUserAuditHistory = async function (
 
 const { encryptionPlugin } = require("../../../../shared/lib/encryptionPlugin");
 AuditLogSchema.plugin(encryptionPlugin, {
-  fields: ["oldValue", "newValue", "role", "blockchainError"],
+  fields: ["oldValue", "newValue", "role"],
   deterministicFields: ["hash"],
   nestedPaths: [],
   arrayPaths: [],

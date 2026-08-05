@@ -8,7 +8,7 @@ const { validateBody, Joi } = require("../middleware/validation");
 const { requireJwt, requireRole } = require("../middleware/auth");
 const { checkHighPrivilegeTasks } = require("../lib/highPrivilegeTaskChecker");
 const { trackIP, isUnusualIP } = require("../lib/ipTracker");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { isAdminRole } = require("../lib/roleHelpers");
 const { checkLockout } = require("../lib/accountLockout");
 const { verifyCode } = require("../lib/verificationService");
@@ -143,14 +143,16 @@ router.post(
       });
 
       // Log to audit trail
-      await createAuditLog(
+      await logAuditEvent(
         requestingAdminId,
         "admin_deletion_requested",
-        "account",
-        "",
-        "admin_deletion_requested",
-        "admin",
+        "User",
+        requestingAdminId,
         {
+          role: "admin",
+          fieldChanged: "account",
+          oldValue: "",
+          newValue: "admin_deletion_requested",
           ip: ipAddress,
           userAgent,
           deletionRequestId: String(deletionRequest._id),
@@ -371,14 +373,16 @@ router.post(
         await requestingAdmin.save();
 
         // Log to audit trail
-        await createAuditLog(
+        await logAuditEvent(
           requestingAdmin._id,
           "admin_deletion_approved",
-          "account",
-          "",
-          "admin_deletion_approved",
-          "admin",
+          "User",
+          requestingAdmin._id,
           {
+            role: "admin",
+            fieldChanged: "account",
+            oldValue: "",
+            newValue: "admin_deletion_approved",
             ip: ipAddress,
             userAgent,
             approvingAdminId: String(approvingAdminId),
@@ -409,14 +413,16 @@ router.post(
         await deletionRequest.save();
 
         // Log to audit trail
-        await createAuditLog(
+        await logAuditEvent(
           requestingAdmin._id,
           "admin_deletion_denied",
-          "account",
-          "",
-          "admin_deletion_denied",
-          "admin",
+          "User",
+          requestingAdmin._id,
           {
+            role: "admin",
+            fieldChanged: "account",
+            oldValue: "",
+            newValue: "admin_deletion_denied",
             ip: ipAddress,
             userAgent,
             approvingAdminId: String(approvingAdminId),

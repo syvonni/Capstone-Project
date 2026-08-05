@@ -7,8 +7,10 @@ import SplitLayout from '@/shared/components/SplitLayout'
 import BookmarkService from '../../services/bookmarkService'
 import { PermitApplicationService } from '@/features/staffs/lgu-officer/services/permitApplicationService'
 import { getHelpRequestById } from '../../services/helpRequestService'
+import BusinessOwnerService from '../../services/businessOwnerService'
 import ApplicationDetailPanel from '../applications/components/ApplicationDetailPanel'
 import HelpRequestDetailPanel from '../help-requests/components/HelpRequestDetailPanel'
+import BusinessOwnerDetailPanel from '../business-owners/components/BusinessOwnerDetailPanel'
 import dayjs from 'dayjs'
 import { STATUS_CONFIG } from '../applications/constants'
 import { HELP_REQUEST_STATUS_CONFIG } from '../help-requests/constants'
@@ -23,6 +25,7 @@ export default function OfficerBookmarks() {
 
   const bookmarkService = useMemo(() => new BookmarkService(), [])
   const permitService = useMemo(() => new PermitApplicationService(), [])
+  const businessOwnerService = useMemo(() => new BusinessOwnerService(), [])
 
   const loadBookmarks = useCallback(async () => {
     setLoading(true)
@@ -40,6 +43,9 @@ export default function OfficerBookmarks() {
             } else if (bookmark.itemType === 'help_request') {
               const res = await getHelpRequestById(bookmark.itemId)
               return { ...bookmark, itemData: res?.data || res }
+            } else if (bookmark.itemType === 'business-owner') {
+              const owner = await businessOwnerService.getBusinessOwnerById(bookmark.itemId)
+              return { ...bookmark, itemData: owner }
             }
             return bookmark
           } catch (error) {
@@ -56,7 +62,7 @@ export default function OfficerBookmarks() {
     } finally {
       setLoading(false)
     }
-  }, [bookmarkService, permitService])
+  }, [bookmarkService, permitService, businessOwnerService])
 
   useEffect(() => {
     loadBookmarks()
@@ -84,13 +90,16 @@ export default function OfficerBookmarks() {
       } else if (bookmark.itemType === 'help_request') {
         // TODO: Fetch help request data
         setItemData({ requestId: bookmark.itemId })
+      } else if (bookmark.itemType === 'business-owner') {
+        const owner = await businessOwnerService.getBusinessOwnerById(bookmark.itemId)
+        setItemData(owner)
       }
     } catch (error) {
       console.error('Failed to load item details:', error)
     } finally {
       setDetailsLoading(false)
     }
-  }, [permitService])
+  }, [permitService, businessOwnerService])
 
   // Auto-select bookmark from URL query param
   useEffect(() => {
@@ -208,6 +217,45 @@ export default function OfficerBookmarks() {
           ]}
         />
       )
+    } else if (bookmark.itemType === 'business-owner') {
+      const fullName = [item.firstName, item.middleName, item.lastName, item.suffix].filter(Boolean).join(' ') || 'Unknown Owner'
+      const date = item.createdAt ? dayjs(item.createdAt).format('MMMM D, YYYY') : null
+      const statusLabel = item.deletionPending ? 'Pending Deletion' : (item.isActive ? 'Active' : 'Inactive')
+
+      const tags = [
+        { label: 'Business Owner', color: 'green' },
+        { label: statusLabel, color: item.isActive ? 'success' : 'default' },
+      ]
+      if (item.businessCount !== undefined) {
+        tags.push({ label: `${item.businessCount} business${item.businessCount !== 1 ? 'es' : ''}`, color: 'default' })
+      }
+
+      return (
+        <PanelCard
+          key={bookmark._id}
+          item={bookmark}
+          selected={currentSelectedId === bookmark._id}
+          onClick={() => onSelect(bookmark)}
+          title={fullName}
+          description={item.email || ''}
+          metaInfo={[
+            ...(date ? [{ label: 'Registered', value: date }] : []),
+            ...(item.phoneNumber ? [{ label: 'Phone', value: item.phoneNumber }] : []),
+          ]}
+          tags={tags}
+          isBookmarked={true}
+          actions={[
+            {
+              icon: 'star',
+              onClick: (e) => {
+                e.stopPropagation()
+                handleRemoveBookmark(bookmark._id)
+              },
+              title: 'Remove Bookmark',
+            },
+          ]}
+        />
+      )
     }
 
     return null
@@ -260,10 +308,17 @@ export default function OfficerBookmarks() {
                   application={itemData}
                   onReviewComplete={() => {}}
                   onBookmarkToggle={handleBookmarkToggle}
+                  onClose={handleDrawerClose}
                 />
               ) : selectedItem.itemType === 'help_request' && itemData ? (
                 <HelpRequestDetailPanel
                   request={itemData}
+                  onReviewComplete={() => {}}
+                  onBookmarkToggle={handleBookmarkToggle}
+                />
+              ) : selectedItem.itemType === 'business-owner' && itemData ? (
+                <BusinessOwnerDetailPanel
+                  businessOwner={itemData}
                   onReviewComplete={() => {}}
                   onBookmarkToggle={handleBookmarkToggle}
                 />
@@ -274,11 +329,7 @@ export default function OfficerBookmarks() {
               )}
             </>
           )
-        ) : (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <Empty description="Select a bookmark to view details" />
-          </div>
-        )
+        ) : null
       }
       onDrawerClose={handleDrawerClose}
     />

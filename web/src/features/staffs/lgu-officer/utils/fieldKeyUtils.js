@@ -37,19 +37,9 @@ export function getLobActivityFieldKey(index) {
 export function getReviewableFieldKeys(sections, formData) {
   const keys = []
   let lobSectionIndex = null
-  const activities = Array.isArray(formData?.businessActivities) ? formData.businessActivities : []
 
   ;(sections || []).forEach((section, sectionIdx) => {
     const items = section?.items || []
-    const isLobSection = items.some(
-      (it) => it.type === 'ai_lob_recommendation' || (it.key || it.label) === 'aiLobRecommendation'
-    )
-    if (isLobSection) {
-      lobSectionIndex = sectionIdx
-      keys.push(LOB_FIELD_DESCRIPTION)
-      activities.forEach((_, i) => keys.push(getLobActivityFieldKey(i)))
-      return
-    }
     items.forEach((item) => {
       if (item.type === 'download') return
       const itemKey = item.key || item.label

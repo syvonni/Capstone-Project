@@ -10,7 +10,7 @@ const { generateCode } = require("../lib/codes");
 const { sendOtp } = require("../lib/mailer");
 const { changeEmailRequests } = require("../lib/authRequestsStore");
 const { sanitizeEmail } = require("../lib/sanitizer");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { sendEmailChangeNotification } = require("../lib/notificationService");
 const inAppNotificationService = require("../services/notificationService");
 const { isBusinessOwnerRole, isAdminRole } = require("../lib/roleHelpers");
@@ -710,21 +710,17 @@ router.patch(
         req.connection.remoteAddress ||
         "unknown";
       const userAgent = req.headers["user-agent"] || "unknown";
-      await createAuditLog(
-        doc._id,
-        "email_change",
-        "email",
-        oldEmail,
-        sanitizedEmail,
-        roleSlug,
-        {
-          ip,
-          userAgent,
-          mfaReEnrollmentRequired: true,
-          emailChangeRequestId: String(emailChangeRequest._id),
-          expiresAt,
-        },
-      );
+      await logAuditEvent("email_change", doc._id, "User", doc._id, {
+        role: roleSlug,
+        fieldChanged: "email",
+        oldValue: oldEmail,
+        newValue: sanitizedEmail,
+        ip,
+        userAgent,
+        mfaReEnrollmentRequired: true,
+        emailChangeRequestId: String(emailChangeRequest._id),
+        expiresAt,
+      });
 
       // Get email change request info
       const emailChangeRequestInfo = await EmailChangeRequest.findOne({
@@ -858,19 +854,15 @@ router.post("/profile/email/revert", requireJwt, async (req, res) => {
       req.connection.remoteAddress ||
       "unknown";
     const userAgent = req.headers["user-agent"] || "unknown";
-    await createAuditLog(
-      doc._id,
-      "email_change_reverted",
-      "email",
-      emailChangeRequest.newEmail,
-      revertedEmail,
-      roleSlug,
-      {
-        ip,
-        userAgent,
-        emailChangeRequestId: String(emailChangeRequest._id),
-      },
-    );
+    await logAuditEvent("email_change_reverted", doc._id, "User", doc._id, {
+      role: roleSlug,
+      fieldChanged: "email",
+      oldValue: emailChangeRequest.newEmail,
+      newValue: revertedEmail,
+      ip,
+      userAgent,
+      emailChangeRequestId: String(emailChangeRequest._id),
+    });
 
     return res.json({
       success: true,
@@ -1067,20 +1059,16 @@ router.patch(
         req.connection.remoteAddress ||
         "unknown";
       const userAgent = req.headers["user-agent"] || "unknown";
-      await createAuditLog(
-        doc._id,
-        "admin_approval_request",
-        "email",
-        oldEmail,
-        sanitizedEmail,
-        roleSlug,
-        {
-          ip,
-          userAgent,
-          approvalId,
-          requestType: "email_change",
-        },
-      );
+      await logAuditEvent("admin_approval_request", doc._id, "User", doc._id, {
+        role: roleSlug,
+        fieldChanged: "email",
+        oldValue: oldEmail,
+        newValue: sanitizedEmail,
+        ip,
+        userAgent,
+        approvalId,
+        requestType: "email_change",
+      });
 
       return res.json({
         success: true,

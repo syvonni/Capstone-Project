@@ -1,6 +1,6 @@
 const logger = require("../lib/logger");
 const errorTracking = require("../lib/errorTracking");
-const { logAuditEvent } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const mongoose = require("mongoose");
 
 /**
@@ -231,14 +231,17 @@ async function logSecurityEvent(eventType, details) {
     // Since userId is required, we'll create a system-level audit log with a placeholder user ID if needed.
     // In practice, you might want to create a system user for this purpose.
     await logAuditEvent(
-      "security_event",
       details.userId || new mongoose.Types.ObjectId("000000000000000000000000"),
+      "security_event",
       "SecurityEvent",
-      details.userId || "system",
+      details.userId || new mongoose.Types.ObjectId("000000000000000000000000"),
       {
+        role: "system",
+        fieldChanged: "security",
+        oldValue: null,
+        newValue: null,
         ...details,
         eventType,
-        role: "system",
         timestamp: new Date().toISOString(),
         isSystemEvent: !details.userId,
       },

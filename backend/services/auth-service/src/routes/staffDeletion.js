@@ -8,7 +8,7 @@ const { validateBody, Joi } = require("../middleware/validation");
 const { requireJwt, requireRole } = require("../middleware/auth");
 const { isWithinOfficeHours } = require("../lib/officeHoursValidator");
 const { trackIP, isUnusualIP } = require("../lib/ipTracker");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { isStaffRole } = require("../lib/roleHelpers");
 const { checkLockout } = require("../lib/accountLockout");
 const securityMonitor = require("../middleware/securityMonitor");
@@ -114,14 +114,16 @@ router.post(
       await user.save();
 
       // Log to audit trail
-      await createAuditLog(
+      await logAuditEvent(
         user._id,
         "account_deletion_requested",
-        "account",
-        "",
-        "staff_deletion_requested",
-        roleSlug,
+        "User",
+        user._id,
         {
+          role: roleSlug,
+          fieldChanged: "account",
+          oldValue: "",
+          newValue: "staff_deletion_requested",
           ip: ipAddress,
           userAgent,
           office: user.office || "",
@@ -330,14 +332,16 @@ router.post(
         await staffUser.save();
 
         // Log to audit trail
-        await createAuditLog(
+        await logAuditEvent(
           staffUser._id,
           "account_deletion_approved",
-          "account",
-          "",
-          "staff_deletion_approved",
-          roleSlug,
+          "User",
+          staffUser._id,
           {
+            role: roleSlug,
+            fieldChanged: "account",
+            oldValue: "",
+            newValue: "staff_deletion_approved",
             ip: ipAddress,
             userAgent,
             approvedBy: String(adminId),
@@ -367,14 +371,16 @@ router.post(
         await staffUser.save();
 
         // Log to audit trail
-        await createAuditLog(
+        await logAuditEvent(
           staffUser._id,
           "account_deletion_denied",
-          "account",
-          "deletion_requested",
-          "deletion_denied",
-          roleSlug,
+          "User",
+          staffUser._id,
           {
+            role: roleSlug,
+            fieldChanged: "account",
+            oldValue: "deletion_requested",
+            newValue: "deletion_denied",
             ip: ipAddress,
             userAgent,
             deniedBy: String(adminId),

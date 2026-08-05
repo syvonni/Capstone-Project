@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 FROM node:18-alpine
 
+# Install curl for health checks
+RUN apk add --no-cache curl
+
 # Build from backend root so we can include shared/
 WORKDIR /backend/services/auth-service
 

@@ -4,7 +4,6 @@
 
 - **Docker** and **Docker Compose** (v2+)
 - **Node.js** 18+ and **npm**
-- **Python** 3.10+ (for AI service)
 - **Flutter SDK** (for mobile app)
 
 ## 2. Environment Setup
@@ -28,7 +27,6 @@ cp web/.env.example web/.env.local
 | `DEFAULT_FROM_EMAIL` | Verified sender email | `noreply@yourdomain.com` |
 | `SEED_DEV` | Seed dev accounts on startup | `true` |
 | `SEED_TEMP_PASSWORD` | Temp password for seeded accounts | `TempPass123!` |
-| `LOB_MODEL_ADMIN_TOKEN` | AI service admin token | Any strong secret |
 
 ## 3. Docker Deployment (Recommended)
 
@@ -58,8 +56,6 @@ docker-compose logs -f auth-service     # View auth service logs
 | Business Service | `capstone-business-service` | 3002 |
 | Admin Service | `capstone-admin-service` | 3003 |
 | Audit Service | `capstone-audit-service` | 3004 |
-| AI Service | `capstone-ai-service` | 5001 |
-| Ganache (Blockchain) | `capstone-ganache` | 8545 |
 | IPFS | `capstone-ipfs` | 5002 (API), 8080 (Gateway) |
 | Web Frontend | `capstone-web` | 5173 (dev) / 4173 (demo) |
 
@@ -83,24 +79,6 @@ cd audit-service && npm start    # Port 3004
 cd web
 npm install
 npm run dev    # Port 5173
-```
-
-### AI Service
-
-```bash
-cd ai
-pip install -r requirements.txt
-python service/predict_app.py    # Port 5001
-```
-
-### Blockchain
-
-```bash
-cd blockchain
-npm install
-npx truffle develop              # Local blockchain
-npx truffle migrate              # Deploy contracts
-node GRANT_ROLES.js              # Grant roles
 ```
 
 ## 5. MongoDB Atlas (Production)

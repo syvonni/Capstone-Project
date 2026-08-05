@@ -294,6 +294,45 @@ export const findBarangayByName = async (barangayName, cityMunicipalityCode) => 
 }
 
 /**
+ * Find province by code
+ */
+export const findProvinceByCode = async (code) => {
+  const provinces = await fetchProvinces()
+  return provinces.find(p => p.code === code) || null
+}
+
+/**
+ * Find city/municipality by code
+ */
+export const findCityByCode = async (code) => {
+  // Cities are cached by province, so we need to search all provinces
+  const provinces = await fetchProvinces()
+  for (const province of provinces) {
+    const cities = await fetchCitiesMunicipalities(province.code)
+    const city = cities.find(c => c.code === code)
+    if (city) return city
+  }
+  return null
+}
+
+/**
+ * Find barangay by code
+ */
+export const findBarangayByCode = async (code) => {
+  // Barangays are cached by city, so we need to search all cities
+  const provinces = await fetchProvinces()
+  for (const province of provinces) {
+    const cities = await fetchCitiesMunicipalities(province.code)
+    for (const city of cities) {
+      const barangays = await fetchBarangays(city.code)
+      const barangay = barangays.find(b => b.code === code)
+      if (barangay) return barangay
+    }
+  }
+  return null
+}
+
+/**
  * Clear the cache (useful for testing or refreshing data)
  */
 export const clearCache = () => {
@@ -312,5 +351,8 @@ export default {
   findProvinceByName,
   findCityByName,
   findBarangayByName,
+  findProvinceByCode,
+  findCityByCode,
+  findBarangayByCode,
   clearCache,
 }

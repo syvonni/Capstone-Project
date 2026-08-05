@@ -1,6 +1,6 @@
 /**
  * Audit Logger Utility for Auth Service
- * Creates audit logs via centralized audit-service
+ * Creates audit logs via centralized audit-service (blockchain anchoring removed)
  */
 
 const axios = require("axios");
@@ -34,9 +34,11 @@ function calculateAuditHash(
 }
 
 /**
- * Create audit log and log to blockchain via Audit Service
- * Non-blocking - operation succeeds even if blockchain logging fails
+ * Create audit log via Audit Service
+ * Non-blocking - operation succeeds even if audit logging fails
  * Now uses centralized audit-service ingestion endpoint
+ *
+ * @deprecated Use logAuditEvent from auditClient instead
  */
 async function createAuditLog(
   userId,
@@ -47,6 +49,11 @@ async function createAuditLog(
   role,
   metadata = {},
 ) {
+  // Log deprecation warning
+  console.warn(
+    "[DEPRECATION] createAuditLog is deprecated. Use logAuditEvent from auditClient instead.",
+  );
+
   try {
     // Prepare metadata
     const fullMetadata = {

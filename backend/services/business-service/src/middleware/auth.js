@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 
 function signAccessToken(user) {
   const secret = process.env.JWT_SECRET || "dev_secret_change_me";
-  const ttlMin = Number(process.env.ACCESS_TOKEN_TTL_MINUTES) || 60;
+  const ttlMin = Number(process.env.ACCESS_TOKEN_TTL_MINUTES) || 240; // Default 4 hours (240 minutes)
   const nowSec = Math.floor(Date.now() / 1000);
   const expSec = nowSec + Math.max(1, ttlMin) * 60;
   const payload = {
@@ -46,7 +46,8 @@ async function requireJwt(req, res, next) {
       // Verify token version matches user's current token version (session invalidation check)
       const User = require("../models/User");
       const user = await User.findById(decoded.sub)
-        .select("tokenVersion")
+        .select("tokenVersion role")
+        .populate("role")
         .lean();
       if (!user) {
         return res.status(401).json({
@@ -68,18 +69,41 @@ async function requireJwt(req, res, next) {
           },
         });
       }
+
+      // Use the actual role slug from the database (in case JWT has stale/incorrect role)
+      const roleSlug = user.role?.slug || decoded.role || "";
+      req._userRole = String(roleSlug);
+    } else {
+      req._userRole = String(decoded.role || "");
     }
 
     req._userId = String(decoded.sub || "");
     req._userEmail = String(decoded.email || "");
-    req._userRole = String(decoded.role || "");
     req._tokenVersion = Number(decoded.tokenVersion || 0);
     next();
   } catch (err) {
-    return res.status(401).json({
+    // Only treat genuine JWT verification failures as auth errors (401).
+    // Infrastructure errors (e.g. DB not connected) must NOT masquerade as
+    // invalid_token, otherwise the frontend force-logs-out the user on a
+    // transient backend problem.
+    const isJwtError =
+      err &&
+      (err.name === "JsonWebTokenError" ||
+        err.name === "TokenExpiredError" ||
+        err.name === "NotBeforeError");
+    if (isJwtError) {
+      return res.status(401).json({
+        error: {
+          code: "invalid_token",
+          message: "Unauthorized: invalid or expired token",
+        },
+      });
+    }
+    console.error("[requireJwt] non-auth error during verification:", err);
+    return res.status(503).json({
       error: {
-        code: "invalid_token",
-        message: "Unauthorized: invalid or expired token",
+        code: "auth_unavailable",
+        message: "Authentication temporarily unavailable. Please try again.",
       },
     });
   }
@@ -109,7 +133,7 @@ function requireRole(allowedRoles) {
   };
 }
 
-/** Require valid admin step-up token (X-Step-Up-Token). Use after requireJwt + requireRole(['admin']). */
+/** Require valid admin step-up token (X-Step-Up-Token). Use after requireJwt + requireRole(['admin', 'lgu_officer']). */
 function requireAdminStepUp(req, res, next) {
   const raw = req.headers["x-step-up-token"] || "";
   const bearer = String(req.headers["authorization"] || "");

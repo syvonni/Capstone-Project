@@ -96,6 +96,7 @@ export default function OfficerBusinesses() {
       detailContent={detailContent}
       drawerTitle="Business details"
       onDrawerClose={handleDrawerClose}
+      drawerOpen={!!selectedItem}
       mobileDrawerPlacement="bottom"
     />
   )

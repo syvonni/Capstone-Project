@@ -3,7 +3,6 @@ const User = require("../models/User");
 // Register Role model to enable populate('role')
 require("../models/Role");
 const crypto = require("crypto");
-const blockchainService = require("../lib/blockchainService");
 const { logAuditEvent } = require("../lib/auditClient");
 const {
   validateBusinessRegistrationNumber,
@@ -17,10 +16,18 @@ const { decrypt, isEncrypted } = require("../../../../shared/lib/fieldCipher");
  * Helper function to create audit logs via centralized audit-service
  * Replaces direct AuditLog.create() calls
  */
-async function createAuditLog(userId, eventType, fieldChanged, oldValue, newValue, metadata = {}) {
+async function createAuditLog(
+  userId,
+  eventType,
+  fieldChanged,
+  oldValue,
+  newValue,
+  metadata = {},
+) {
   try {
     const user = await User.findById(userId).populate("role").lean();
-    const roleSlug = user && user.role && user.role.slug ? user.role.slug : "business_owner";
+    const roleSlug =
+      user && user.role && user.role.slug ? user.role.slug : "business_owner";
 
     await logAuditEvent(
       eventType,
@@ -252,21 +259,15 @@ class BusinessProfileService {
       const newValue = JSON.stringify(data);
 
       // Use centralized audit-service
-      await logAuditEvent(
-        "profile_update",
-        userId,
-        "BusinessProfile",
-        userId,
-        {
-          step,
-          stepName,
-          oldValue,
-          newValue,
-          role: roleSlug,
-          profileType: "business",
-          ...metadata,
-        },
-      );
+      await logAuditEvent("profile_update", userId, "BusinessProfile", userId, {
+        step,
+        stepName,
+        oldValue,
+        newValue,
+        role: roleSlug,
+        profileType: "business",
+        ...metadata,
+      });
     } catch (error) {
       // Don't throw - audit logging failure shouldn't break profile updates
       console.error("Error creating audit log for business profile:", error);
@@ -415,7 +416,7 @@ class BusinessProfileService {
         businessData.applicationStatus === "submitted" || hasExistingPermit,
       formType: businessData.formType || "",
       category: businessData.category || "",
-      formDefinitionId: businessData.formDefinitionId ?? null,
+      permitFormId: businessData.permitFormId ?? businessData.formDefinitionId ?? null,
       formData:
         businessData.formData && typeof businessData.formData === "object"
           ? businessData.formData
@@ -708,7 +709,7 @@ class BusinessProfileService {
     delete businessData.createdAt;
 
     // Debug logging
-    console.log('[updateBusiness] Debug:', {
+    console.log("[updateBusiness] Debug:", {
       businessId,
       existingCreatedAt: existingBusinessObj.createdAt,
       incomingCreatedAt: businessData.createdAt,
@@ -814,11 +815,12 @@ class BusinessProfileService {
         businessId,
         {
           businessName: updatedBusiness.businessName,
-          applicationReferenceNumber: updatedBusiness.applicationReferenceNumber,
+          applicationReferenceNumber:
+            updatedBusiness.applicationReferenceNumber,
           submittedAt: updatedBusiness.submittedAt,
           isResubmit: true,
           role: "business_owner",
-        }
+        },
       );
     }
 
@@ -848,10 +850,11 @@ class BusinessProfileService {
         businessId,
         {
           businessName: updatedBusiness.businessName,
-          applicationReferenceNumber: updatedBusiness.applicationReferenceNumber,
+          applicationReferenceNumber:
+            updatedBusiness.applicationReferenceNumber,
           submittedAt: updatedBusiness.submittedAt,
           role: "business_owner",
-        }
+        },
       );
     }
     // Ensure ANY submitted application has a reference number (catches edge cases and direct submissions)
@@ -870,7 +873,7 @@ class BusinessProfileService {
     profile.businesses[businessIndex] = updatedBusiness;
 
     // Log state before save
-    console.log('[updateBusiness] Before save:', {
+    console.log("[updateBusiness] Before save:", {
       businessId,
       createdAtBefore: profile.businesses[businessIndex].createdAt,
       updatedAtBefore: profile.businesses[businessIndex].updatedAt,
@@ -881,7 +884,7 @@ class BusinessProfileService {
     await profile.save();
 
     // Log state after save
-    console.log('[updateBusiness] After save:', {
+    console.log("[updateBusiness] After save:", {
       businessId,
       createdAtAfter: profile.businesses[businessIndex].createdAt,
       updatedAtAfter: profile.businesses[businessIndex].updatedAt,
@@ -966,31 +969,55 @@ class BusinessProfileService {
    * @returns {Promise<object>} Updated profile
    */
   async deleteBusiness(userId, businessId) {
-    console.log('[deleteBusiness] Attempting to delete business:', { userId, businessId });
+    console.log("[deleteBusiness] Attempting to delete business:", {
+      userId,
+      businessId,
+    });
     const profile = await BusinessProfile.findOne({ userId });
     if (!profile) {
-      console.error('[deleteBusiness] Profile not found for userId:', userId);
+      console.error("[deleteBusiness] Profile not found for userId:", userId);
       throw new Error("Business profile not found");
     }
 
     if (!profile.businesses || profile.businesses.length === 0) {
-      console.error('[deleteBusiness] No businesses in profile for userId:', userId);
+      console.error(
+        "[deleteBusiness] No businesses in profile for userId:",
+        userId,
+      );
       throw new Error("No businesses found");
     }
 
-    console.log('[deleteBusiness] Profile has', profile.businesses.length, 'businesses');
+    console.log(
+      "[deleteBusiness] Profile has",
+      profile.businesses.length,
+      "businesses",
+    );
     const businessIndex = profile.businesses.findIndex(
       (b) => b.businessId === businessId || String(b._id) === businessId,
     );
     if (businessIndex === -1) {
-      console.error('[deleteBusiness] Business not found with businessId or _id:', businessId);
-      console.log('[deleteBusiness] Available business IDs:', profile.businesses.map(b => ({ businessId: b.businessId, _id: String(b._id), status: b.applicationStatus })));
+      console.error(
+        "[deleteBusiness] Business not found with businessId or _id:",
+        businessId,
+      );
+      console.log(
+        "[deleteBusiness] Available business IDs:",
+        profile.businesses.map((b) => ({
+          businessId: b.businessId,
+          _id: String(b._id),
+          status: b.applicationStatus,
+        })),
+      );
       throw new Error("Business not found");
     }
 
     const businessToDelete = profile.businesses[businessIndex];
     const wasPrimary = businessToDelete.isPrimary;
-    console.log('[deleteBusiness] Found business:', { businessId: businessToDelete.businessId, _id: String(businessToDelete._id), applicationStatus: businessToDelete.applicationStatus });
+    console.log("[deleteBusiness] Found business:", {
+      businessId: businessToDelete.businessId,
+      _id: String(businessToDelete._id),
+      applicationStatus: businessToDelete.applicationStatus,
+    });
 
     // Only allow deletion of applications that have never been submitted
     // Decrypt status if it's encrypted (handles legacy encrypted data)
@@ -999,14 +1026,17 @@ class BusinessProfileService {
       try {
         status = decrypt(status);
       } catch (err) {
-        console.error('[deleteBusiness] Failed to decrypt status:', err);
+        console.error("[deleteBusiness] Failed to decrypt status:", err);
       }
     }
     // Normalize status to match frontend behavior (case-insensitive, handles Draft/DRAFT/draft)
     status = status.toLowerCase().trim();
-    console.log('[deleteBusiness] Normalized status:', status, 'vs "draft"');
+    console.log("[deleteBusiness] Normalized status:", status, 'vs "draft"');
     if (status !== "draft") {
-      console.error('[deleteBusiness] Status check failed:', { rawStatus: businessToDelete.applicationStatus, normalizedStatus: status });
+      console.error("[deleteBusiness] Status check failed:", {
+        rawStatus: businessToDelete.applicationStatus,
+        normalizedStatus: status,
+      });
       throw new Error(
         `Cannot delete application with status "${businessToDelete.applicationStatus}". Only draft applications can be deleted.`,
       );
@@ -1526,7 +1556,7 @@ class BusinessProfileService {
         applicationReferenceNumber: referenceNumber,
         submittedAt: business.submittedAt,
         role: "business_owner",
-      }
+      },
     );
 
     // Create notifications for LGU Officers when business owner submits documents
@@ -1588,7 +1618,9 @@ class BusinessProfileService {
     // Audit log
     try {
       const user = await User.findById(userId).populate("role").lean();
-      const officerName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Business Owner";
+      const officerName = user
+        ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        : "Business Owner";
       const { logAuditEvent } = require("../lib/auditClient");
       await logAuditEvent(
         "application_submitted",

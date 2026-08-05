@@ -10,7 +10,7 @@ const respond = require("../middleware/respond");
 const { validateBody, Joi } = require("../middleware/validation");
 const { perEmailRateLimit } = require("../middleware/rateLimit");
 const { requireJwt } = require("../middleware/auth");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const inAppNotificationService = require("../services/notificationService");
 const { trackIP, isUnusualIP } = require("../lib/ipTracker");
 const {
@@ -519,14 +519,16 @@ router.post(
 
       // Log to audit trail
       const roleSlug = doc.role?.slug || "user";
-      await createAuditLog(
-        doc._id,
+      await logAuditEvent(
         "account_deletion_scheduled",
-        "account",
-        "",
-        "deletion_scheduled",
-        roleSlug,
+        doc._id,
+        "User",
+        doc._id,
         {
+          role: roleSlug,
+          fieldChanged: "account",
+          oldValue: "",
+          newValue: "deletion_scheduled",
           ip: ipAddress,
           userAgent,
           scheduledFor: scheduledFor.toISOString(),
@@ -696,19 +698,15 @@ router.post(
 
       // Log to audit trail
       const roleSlug = doc.role?.slug || "user";
-      await createAuditLog(
-        doc._id,
-        "account_deletion_undone",
-        "account",
-        "deletion_scheduled",
-        "deletion_cancelled",
-        roleSlug,
-        {
-          ip: ipAddress,
-          userAgent,
-          method: undoToken ? "undo_token" : "manual",
-        },
-      );
+      await logAuditEvent("account_deletion_undone", doc._id, "User", doc._id, {
+        role: roleSlug,
+        fieldChanged: "account",
+        oldValue: "deletion_scheduled",
+        newValue: "deletion_cancelled",
+        ip: ipAddress,
+        userAgent,
+        method: undoToken ? "undo_token" : "manual",
+      });
 
       const userSafe = {
         id: String(doc._id),

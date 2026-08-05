@@ -1,9 +1,10 @@
-import { Typography, theme } from 'antd'
+import { Typography, theme, Button } from 'antd'
 import { GENERAL_PERMIT_CATEGORIES } from '../../constants/businessFormConstants'
 import {
   TeamOutlined, HeartOutlined, ToolOutlined, FireOutlined,
   GiftOutlined, ShoppingCartOutlined, RiseOutlined, ShopOutlined,
-  ExperimentOutlined, BlockOutlined, InboxOutlined, MoreOutlined
+  ExperimentOutlined, BlockOutlined, InboxOutlined, MoreOutlined,
+  ArrowLeftOutlined
 } from '@ant-design/icons'
 
 const { Title, Text } = Typography
@@ -23,7 +24,7 @@ const ICON_MAP = {
   MoreOutlined,
 }
 
-function GeneralPermitCategorySelector({ onSelect, title = 'Select Permit Category' }) {
+function GeneralPermitCategorySelector({ onSelect, onBack, title = 'Select Permit Category' }) {
   const { token } = theme.useToken()
 
   const handleSelectCategory = (value) => {
@@ -31,7 +32,20 @@ function GeneralPermitCategorySelector({ onSelect, title = 'Select Permit Catego
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: 600, margin: '0 auto' }}>
+    <div style={{ padding: '24px', maxWidth: 600, margin: '0 auto', width: 'fit-content' }}>
+      {onBack && (
+        <Button 
+          onClick={() => {
+            onBack()
+          }}
+          icon={<ArrowLeftOutlined />}
+          style={{ 
+            marginBottom: 16
+          }}
+        >
+          Back
+        </Button>
+      )}
       <Title level={4} style={{ marginBottom: 24, textAlign: 'center' }}>
         {title}
       </Title>
@@ -63,6 +77,7 @@ function GeneralPermitCategorySelector({ onSelect, title = 'Select Permit Catego
                 background: token.colorBgContainer,
                 display: 'flex',
                 flexDirection: 'row',
+                width: '100%',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = token.colorPrimary

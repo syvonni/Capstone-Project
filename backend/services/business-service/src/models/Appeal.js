@@ -71,10 +71,7 @@ const AppealSchema = new mongoose.Schema(
 const { encryptionPlugin } = require("../../../../shared/lib/encryptionPlugin");
 AppealSchema.plugin(encryptionPlugin, {
   fields: ["description", "resolution"],
-  deterministicFields: [
-    "violationId",
-    "inspectionId",
-  ],
+  deterministicFields: ["violationId", "inspectionId"],
   nestedPaths: [],
   arrayPaths: [],
   mixedPaths: [],

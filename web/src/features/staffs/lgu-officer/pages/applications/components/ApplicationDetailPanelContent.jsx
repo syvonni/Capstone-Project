@@ -39,6 +39,15 @@ export default function ApplicationDetailPanelContent({
   isBookmarked = false,
   onBookmarkToggle,
   hasPendingAction = false,
+  emailSendStatus = {},
+  onResendEmail,
+  onResetEmailStatus,
+  onResendAppealEmail,
+  appealId,
+  isOfficerDraft = false,
+  saving = false,
+  hasUnsavedChanges = false,
+  _permitService,
 }) {
   const screens = useBreakpoint()
   const isMobile = !screens.lg
@@ -98,12 +107,24 @@ export default function ApplicationDetailPanelContent({
           onHistoryClick={onHistoryClick || (() => {})}
           onManualClick={onManualClick || (() => {})}
           onInfoClick={onInfoClick || (() => {})}
+          emailSendStatus={emailSendStatus}
+          onResendEmail={onResendEmail}
+          onResetEmailStatus={onResetEmailStatus}
+          onResendAppealEmail={onResendAppealEmail}
+          appealId={appealId}
+          applicationStatus={application?.status || application?.applicationStatus}
           actionButtons={actionButtons}
           isBookmarked={isBookmarked}
           onBookmarkToggle={onBookmarkToggle}
           hasPendingAction={hasPendingAction}
           onGoToBusiness={handleGoToBusiness}
-          applicationStatus={application?.status || application?.applicationStatus}
+          isOfficerDraft={isOfficerDraft}
+          isAutosaving={saving}
+          hasUnsavedChanges={hasUnsavedChanges}
+          _loadApplicationDetails={_loadApplicationDetails}
+          applicationId={application?.applicationId || application?.businessId}
+          businessId={application?.businessId}
+          permitService={_permitService}
         />
 
         {/* Content */}

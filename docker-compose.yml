@@ -8,8 +8,8 @@ services:
       - "27017:27017"
     environment:
       MONGO_INITDB_DATABASE: capstone_project
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-devrootpass}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-devrootpass}
       MONGO_APP_USER: ${MONGO_APP_USER:-capstone_app}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-devapppass}
     volumes:
@@ -20,28 +20,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Ganache (Blockchain)
-  ganache:
-    image: trufflesuite/ganache:latest
-    container_name: capstone-ganache
-    ports:
-      - "7545:8545"
-    command:
-      - "--mnemonic"
-      - "test test test test test test test test test test test junk"
-      - "--host"
-      - "0.0.0.0"
-      - "--port"
-      - "8545"
-      - "--accounts"
-      - "10"
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('net').createConnection(8545,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))\" || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
 
   # IPFS Node
   ipfs:
@@ -62,21 +40,7 @@ services:
       retries: 5
       start_period: 45s
 
-  # ClamAV (optional: set CLAMAV_HOST=clamav for virus scanning on uploads)
-  clamav:
-    image: clamav/clamav:latest
-    platform: linux/amd64
-    container_name: capstone-clamav
-    ports:
-      - "3310:3310"
-    healthcheck:
-      test: ["CMD-SHELL", "echo 'PING' | nc -w 5 localhost 3310 || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-
-  # Wait for core services (mongodb, ipfs). Ganache is not waited for here; deploy-contracts command waits for RPC.
+  # Wait for core services (mongodb, ipfs)
   wait-for-services:
     image: alpine:latest
     depends_on:
@@ -88,50 +52,6 @@ services:
       sh -c "
         echo 'All dependent services are healthy and ready!' &&
         exit 0
-      "
-
-  # LOB Model Service (Python Flask: /predict and /train for line-of-business recommendations)
-  lob-model:
-    build:
-      context: .
-      dockerfile: ai/Dockerfile
-    container_name: capstone-lob-model
-    ports:
-      - "5050:5050"
-    restart: unless-stopped
-    environment:
-      - LOB_RETRAIN_ON_START=${LOB_RETRAIN_ON_START:-0}
-      - LOB_MODEL_ADMIN_TOKEN=${LOB_MODEL_ADMIN_TOKEN:-}
-
-  # Deploy contracts (runs once). Waits for wait-for-services then for Ganache RPC (see command); uses GANACHE_* env.
-  deploy-contracts:
-    build:
-      context: ./blockchain
-      dockerfile: Dockerfile
-    container_name: capstone-deploy-contracts
-    depends_on:
-      wait-for-services:
-        condition: service_completed_successfully
-    environment:
-      - GANACHE_HOST=ganache
-      - GANACHE_PORT=8545
-      - GANACHE_RPC_URL=http://ganache:8545
-      - DEPLOYER_PRIVATE_KEY=${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
-    volumes:
-      - contract_addresses:/app/build/contracts
-      - ./.env:/env/.env
-    command: >
-      sh -c "
-        echo 'Waiting for Ganache RPC...' &&
-        until node -e \"require('net').createConnection(process.env.GANACHE_PORT || 8545, process.env.GANACHE_HOST || 'ganache').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))\" 2>/dev/null; do sleep 2; done &&
-        echo 'Ganache is up.' &&
-        sleep 2 &&
-        (rm -rf /app/build/contracts/* 2>/dev/null; rm -f /app/build/migrations.json 2>/dev/null; true) &&
-        npm run compile &&
-        npm run migrate:ganache &&
-        echo 'Contracts deployed!' &&
-        node extract-addresses.js &&
-        node write-env.js /env/.env
       "
 
   # Auth Service
@@ -147,8 +67,6 @@ services:
         condition: service_healthy
       ipfs:
         condition: service_healthy
-      deploy-contracts:
-        condition: service_completed_successfully
     env_file: .env
     environment:
       - MONGO_URI=mongodb://${MONGO_APP_USER:-capstone_app}:${MONGO_APP_PASSWORD:-devapppass}@mongodb:27017/capstone_project?authSource=admin
@@ -156,6 +74,7 @@ services:
       - IPFS_GATEWAY_URL=${DOCKER_IPFS_GATEWAY_URL}
       - AUDIT_SERVICE_URL=${DOCKER_AUDIT_SERVICE_URL}
       - ADMIN_SERVICE_URL=${DOCKER_ADMIN_SERVICE_URL}
+      - BUSINESS_SERVICE_URL=${DOCKER_BUSINESS_SERVICE_URL}
       - SEED_DEV=true
       - SEED_TEMP_PASSWORD=${SEED_TEMP_PASSWORD:-TempPass123!}
       - EMAIL_DEV_REDIRECT_TO=${EMAIL_DEV_REDIRECT_TO:-}
@@ -168,8 +87,12 @@ services:
       - DEV_EMAIL_INSPECTOR=${DEV_EMAIL_INSPECTOR:-}
       - DEV_EMAIL_CSO=${DEV_EMAIL_CSO:-}
       - DEV_EMAIL_BUSINESS=${DEV_EMAIL_BUSINESS:-}
-    volumes:
-      - contract_addresses:/app/contract-addresses:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
   # Business Service
@@ -185,8 +108,6 @@ services:
         condition: service_healthy
       ipfs:
         condition: service_healthy
-      deploy-contracts:
-        condition: service_completed_successfully
     env_file: .env
     environment:
       - MONGO_URI=mongodb://${MONGO_APP_USER:-capstone_app}:${MONGO_APP_PASSWORD:-devapppass}@mongodb:27017/capstone_project?authSource=admin
@@ -195,12 +116,12 @@ services:
       - AUDIT_SERVICE_URL=${DOCKER_AUDIT_SERVICE_URL}
       - AUTH_SERVICE_URL=${DOCKER_AUTH_SERVICE_URL}
       - SEED_FEE_CONFIGURATION=true
-      - LOB_MODEL_SERVICE_URL=http://lob-model:5050
-      - LOB_MODEL_ADMIN_TOKEN=${LOB_MODEL_ADMIN_TOKEN:-}
-    volumes:
-      - contract_addresses:/app/contract-addresses:ro
-      - ./ai/datasets:/backend/ai/datasets:ro
-      - ./ai/datasets:/ai/datasets:ro
+      - EMAIL_API_PROVIDER=${EMAIL_API_PROVIDER:-}
+      - EMAIL_API_KEY=${EMAIL_API_KEY:-}
+      - EMAIL_API_URL=${EMAIL_API_URL:-}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-}
+      - EMAIL_DEV_REDIRECT_TO=${EMAIL_DEV_REDIRECT_TO:-}
+      - DISABLE_EMAIL_NOTIFICATIONS=${DISABLE_EMAIL_NOTIFICATIONS:-false}
     restart: unless-stopped
 
   # Admin Service
@@ -214,19 +135,15 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
-      deploy-contracts:
-        condition: service_completed_successfully
     env_file: .env
     environment:
       - MONGO_URI=mongodb://${MONGO_APP_USER:-capstone_app}:${MONGO_APP_PASSWORD:-devapppass}@mongodb:27017/capstone_project?authSource=admin
       - AUTH_SERVICE_URL=${DOCKER_AUTH_SERVICE_URL}
       - AUDIT_SERVICE_URL=${DOCKER_AUDIT_SERVICE_URL}
       - BUSINESS_SERVICE_URL=${DOCKER_BUSINESS_SERVICE_URL}
-      - AI_SERVICE_URL=http://lob-model:5050
       - SEED_FORM_DEFINITIONS=true
+      - SEED_PERMIT_FORMS=true
       - SEED_DEV=true
-    volumes:
-      - contract_addresses:/app/contract-addresses:ro
     restart: unless-stopped
 
   # Audit Service
@@ -239,15 +156,10 @@ services:
       - "3004:3004"
     depends_on:
       - mongodb
-      - deploy-contracts
     env_file: .env
     environment:
       - MONGO_URI=mongodb://${MONGO_APP_USER:-capstone_app}:${MONGO_APP_PASSWORD:-devapppass}@mongodb:27017/capstone_project?authSource=admin
-      - GANACHE_RPC_URL=http://ganache:8545
-      - CONTRACT_ABI_PATH=/app/contract-addresses
       - ADMIN_SERVICE_URL=${DOCKER_ADMIN_SERVICE_URL}
-    volumes:
-      - contract_addresses:/app/contract-addresses:ro
     restart: unless-stopped
 
   # Dozzle - Live log viewer for all containers (open in browser for POST/GET/fetch logs)
@@ -263,4 +175,3 @@ services:
 volumes:
   mongodb_data:
   ipfs_data:
-  contract_addresses:

@@ -9,7 +9,7 @@ const {
   requireRole,
   requireAdminStepUp,
 } = require("../middleware/auth");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const router = express.Router();
 
 // In-memory store (replace with MongoDB/Redis for production persistence across restarts)
@@ -89,17 +89,25 @@ router.put(
       );
       store = { ...(store || DEFAULT_REQUIREMENTS), ...body };
       if (changedCategories.length > 0) {
-        createAuditLog(
-          req._userId,
+        logAuditEvent(
           "general_permit_config_updated",
-          "general_permit_config",
-          changedCategories.length ? JSON.stringify(changedCategories) : "",
-          JSON.stringify(changedCategories),
-          "admin",
-          { changedCategories, ip: req.ip, userAgent: req.get("user-agent") },
+          req._userId,
+          "GeneralPermitConfig",
+          "singleton",
+          {
+            role: "admin",
+            fieldChanged: "general_permit_config",
+            oldValue: changedCategories.length
+              ? JSON.stringify(changedCategories)
+              : "",
+            newValue: JSON.stringify(changedCategories),
+            changedCategories,
+            ip: req.ip,
+            userAgent: req.get("user-agent"),
+          },
         ).catch((err) =>
           console.error(
-            "Failed to create audit log for general permit config update",
+            "Failed to log audit event for general permit config update",
             err,
           ),
         );

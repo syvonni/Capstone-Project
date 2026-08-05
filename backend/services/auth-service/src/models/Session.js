@@ -96,7 +96,9 @@ SessionSchema.methods.invalidate = function (reason = "manual") {
   this.isActive = false;
   this.invalidatedAt = new Date();
   this.invalidationReason = reason;
-  return this.save();
+  // Don't call save() here - let the caller handle saving to avoid ParallelSaveError
+  // when called during validation or other hooks
+  return Promise.resolve();
 };
 
 module.exports =

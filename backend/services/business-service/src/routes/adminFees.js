@@ -1,27 +1,98 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Fee = require("../models/Fee");
+const Variable = require("../models/Variable");
+const User = require("../models/User");
 const axios = require("axios");
 const {
   requireJwt,
   requireRole,
   requireAdminStepUp,
 } = require("../middleware/auth");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
+const { getUserInfo } = require("../../../../shared/lib/getUserInfo");
+const FeeAuditHelper = require("../lib/auditHelpers/feeAuditHelper");
 
 const router = express.Router();
+
+// Internal service-to-service authentication (shared secret)
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'internal-service-secret';
+
+const requireInternalAuth = (req, res, next) => {
+  const apiKey = req.headers['x-internal-api-key'];
+  if (apiKey === INTERNAL_API_KEY) {
+    next();
+  } else {
+    return res.status(401).json({
+      error: { code: "UNAUTHORIZED", message: "Invalid or missing internal API key" },
+    });
+  }
+};
+
+// POST /api/business/admin/fees/internal - Internal endpoint for service-to-service fee creation
+// This bypasses user auth and step-up requirements, using a shared secret instead
+router.post("/internal", requireInternalAuth, async (req, res) => {
+  try {
+    const { name, notes, amount, category, isActive } = req.body;
+
+    if (!name || amount == null) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "name and amount are required",
+        },
+      });
+    }
+
+    const fee = await Fee.create({
+      name: String(name).trim(),
+      notes: notes ? String(notes).trim() : '',
+      amount: Number(amount),
+      category: category || 'general_application',
+      isActive: isActive !== undefined ? isActive : true,
+      version: 1,
+      effectiveDate: new Date(),
+    });
+
+    // Internal service audit - use direct logAuditEvent since no user context
+    logAuditEvent("fee_created", "internal-service", "fee", String(fee._id), {
+      role: "internal",
+      fieldChanged: "fee",
+      oldValue: "",
+      newValue: JSON.stringify(fee),
+      feeId: String(fee._id),
+      name: fee.name,
+      notes: fee.notes,
+      amount: fee.amount,
+      category: fee.category,
+      isActive: fee.isActive,
+      version: fee.version,
+      source: "internal-service",
+    }).catch((err) =>
+      console.error("Failed to log audit event for internal fee create", err),
+    );
+
+    return res.status(201).json({ data: fee });
+  } catch (err) {
+    console.error("POST /admin/fees/internal error:", err);
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL",
+        message: "Failed to create fee",
+      },
+    });
+  }
+});
 
 // GET /api/business/admin/fees — list all fees (excluding drafts)
 router.get("/", requireJwt, async (req, res) => {
   try {
-    const { category, isActive, includeDrafts } = req.query;
-    const filter = { isDraft: { $ne: true } };
-    if (includeDrafts === "true") delete filter.isDraft;
-    if (category) filter.category = category;
+    const { isActive, category } = req.query;
+    const filter = {};
     if (isActive !== undefined) filter.isActive = isActive === "true";
+    if (category) filter.category = category;
 
-    const fees = await Fee.find(filter)
-      .sort({ createdAt: -1 })
-      .lean();
+    const fees = await Fee.find(filter).sort({ createdAt: -1 }).lean();
     return res.json({ data: fees });
   } catch (err) {
     console.error("GET /admin/fees error:", err);
@@ -59,232 +130,61 @@ router.get("/:id", requireJwt, async (req, res) => {
 });
 
 // GET /api/business/admin/fees/:id/audit — get audit history for a fee
-router.get("/:id/audit", requireJwt, requireRole(["admin"]), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { page = 1, limit = 20 } = req.query;
+router.get(
+  "/:id/audit",
+  requireJwt,
+  requireRole(["admin"]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { page = 1, limit = 20 } = req.query;
 
-    const fee = await Fee.findById(id);
-    if (!fee) {
-      return res.status(404).json({
-        error: {
-          code: "NOT_FOUND",
-          message: "Fee not found",
-        },
-      });
-    }
+      const fee = await Fee.findById(id);
+      if (!fee) {
+        return res.status(404).json({
+          error: {
+            code: "NOT_FOUND",
+            message: "Fee not found",
+          },
+        });
+      }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const filter = {
-      entityType: "fee",
-      entityId: id,
-    };
+      // Query audit-service for logs using specific endpoint
+      const auditServiceUrl =
+        process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
+      const headers = { "Content-Type": "application/json" };
+      if (process.env.AUDIT_SERVICE_API_KEY)
+        headers["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;
 
-    // Query audit-service for logs
-    const auditServiceUrl = process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-    const headers = { "Content-Type": "application/json" };
-    if (process.env.AUDIT_SERVICE_API_KEY)
-      headers["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;
-
-    const params = {
-      skip,
-      limit: parseInt(limit),
-      sort: "createdAt:-1",
-    };
-
-    // Handle complex query objects
-    if (filter.eventType && Array.isArray(filter.eventType.$in)) {
-      params.eventType = filter.eventType.$in[0];
-    }
-
-    const response = await axios.get(`${auditServiceUrl}/api/audit/logs`, {
-      headers,
-      params,
-    });
-
-    const logs = response.data.logs || [];
-    const total = response.data.total || 0;
-    const totalPages = Math.ceil(total / parseInt(limit));
-
-    return res.json({
-      success: true,
-      logs,
-      pagination: {
+      const params = {
         page: parseInt(page),
         limit: parseInt(limit),
-        total,
-        totalPages,
-      },
-    });
-  } catch (err) {
-    console.error("GET /admin/fees/:id/audit error:", err);
-    return res.status(500).json({
-      error: {
-        code: "INTERNAL",
-        message: "Failed to fetch audit history",
-      },
-    });
-  }
-});
+      };
 
-// GET /api/business/admin/fees/:id/draft — get draft for a fee
-router.get("/:id/draft", requireJwt, async (req, res) => {
-  try {
-    const draft = await Fee.findOne({ draftOf: req.params.id }).lean();
-    return res.json({ data: draft || null });
-  } catch (err) {
-    console.error("GET /admin/fees/:id/draft error:", err);
-    return res.status(500).json({
-      error: {
-        code: "INTERNAL",
-        message: "Failed to fetch draft",
-      },
-    });
-  }
-});
+      const response = await axios.get(`${auditServiceUrl}/api/audit/fee/${id}`, {
+        headers,
+        params,
+      });
 
-// POST /api/business/admin/fees/:id/draft — create or update draft
-router.post("/:id/draft", requireJwt, requireRole(["admin"]), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description, amount, category } = req.body;
+      const logs = response.data.logs || [];
+      const pagination = response.data.pagination || {};
 
-    const originalFee = await Fee.findById(id);
-    if (!originalFee) {
-      return res.status(404).json({
+      return res.json({
+        success: true,
+        logs,
+        pagination,
+      });
+    } catch (err) {
+      console.error("GET /admin/fees/:id/audit error:", err);
+      return res.status(500).json({
         error: {
-          code: "NOT_FOUND",
-          message: "Fee not found",
+          code: "INTERNAL",
+          message: "Failed to fetch audit history",
         },
       });
     }
-
-    // Check if draft already exists
-    let draft = await Fee.findOne({ draftOf: id });
-
-    if (draft) {
-      // Update existing draft
-      if (name !== undefined) draft.name = String(name).trim();
-      if (description !== undefined) draft.description = String(description).trim();
-      if (amount !== undefined) draft.amount = Number(amount);
-      if (category !== undefined) draft.category = category;
-      await draft.save();
-    } else {
-      // Create new draft
-      draft = new Fee({
-        name: name !== undefined ? String(name).trim() : originalFee.name,
-        description: description !== undefined ? String(description).trim() : originalFee.description,
-        amount: amount !== undefined ? Number(amount) : originalFee.amount,
-        category: category !== undefined ? category : originalFee.category,
-        isActive: originalFee.isActive,
-        isDraft: true,
-        draftOf: id,
-        version: originalFee.version,
-        effectiveDate: originalFee.effectiveDate,
-      });
-      await draft.save();
-    }
-
-    return res.json({ data: draft });
-  } catch (err) {
-    console.error("POST /admin/fees/:id/draft error:", err);
-    return res.status(500).json({
-      error: {
-        code: "INTERNAL",
-        message: "Failed to save draft",
-      },
-    });
-  }
-});
-
-// POST /api/business/admin/fees/:id/publish — publish draft to original fee
-router.post("/:id/publish", requireJwt, requireRole(["admin"]), requireAdminStepUp, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const draft = await Fee.findOne({ draftOf: id });
-    if (!draft) {
-      return res.status(404).json({
-        error: {
-          code: "NOT_FOUND",
-          message: "Draft not found",
-        },
-      });
-    }
-
-    const originalFee = await Fee.findById(id);
-    if (!originalFee) {
-      return res.status(404).json({
-        error: {
-          code: "NOT_FOUND",
-          message: "Original fee not found",
-        },
-      });
-    }
-
-    const oldValues = {
-      name: originalFee.name,
-      description: originalFee.description,
-      amount: originalFee.amount,
-      category: originalFee.category,
-      isActive: originalFee.isActive,
-      version: originalFee.version,
-    };
-
-    // Update original fee with draft values
-    originalFee.name = draft.name;
-    originalFee.description = draft.description;
-    originalFee.amount = draft.amount;
-    originalFee.category = draft.category;
-    originalFee.version += 1;
-    originalFee.effectiveDate = new Date();
-
-    await originalFee.save();
-
-    // Delete the draft
-    await Fee.deleteOne({ _id: draft._id });
-
-    const changes = {
-      name: { from: oldValues.name, to: originalFee.name },
-      description: { from: oldValues.description, to: originalFee.description },
-      amount: { from: oldValues.amount, to: originalFee.amount },
-      category: { from: oldValues.category, to: originalFee.category },
-    };
-
-    createAuditLog(
-      req._userId,
-      "fee_published",
-      "fee",
-      JSON.stringify(oldValues),
-      JSON.stringify({
-        name: originalFee.name,
-        description: originalFee.description,
-        amount: originalFee.amount,
-        category: originalFee.category,
-        isActive: originalFee.isActive,
-        version: originalFee.version,
-      }),
-      "admin",
-      {
-        feeId: String(originalFee._id),
-        changes,
-        version: originalFee.version,
-        ip: req.ip,
-        userAgent: req.get("user-agent"),
-      },
-    ).catch((err) => console.error("Failed to create audit log for fee publish", err));
-
-    return res.json({ data: originalFee });
-  } catch (err) {
-    console.error("POST /admin/fees/:id/publish error:", err);
-    return res.status(500).json({
-      error: {
-        code: "INTERNAL",
-        message: "Failed to publish draft",
-      },
-    });
-  }
-});
+  },
+);
 
 // POST /api/business/admin/fees — create fee
 router.post(
@@ -294,46 +194,31 @@ router.post(
   requireAdminStepUp,
   async (req, res) => {
     try {
-      const { name, description, amount, category } = req.body;
+      const { name, notes, amount, category, isActive } = req.body;
 
-      if (!name || !description || amount == null) {
+      if (!name || amount == null) {
         return res.status(400).json({
           error: {
             code: "VALIDATION_ERROR",
-            message: "name, description, and amount are required",
+            message: "name and amount are required",
           },
         });
       }
 
       const fee = await Fee.create({
         name: String(name).trim(),
-        description: String(description).trim(),
+        notes: notes ? String(notes).trim() : '',
         amount: Number(amount),
-        category: category || "permit",
-        isActive: true,
+        category: category || 'general_application',
+        isActive: isActive !== undefined ? isActive : true,
         version: 1,
         effectiveDate: new Date(),
       });
 
-      createAuditLog(
-        req._userId,
-        "fee_created",
-        "fee",
-        "",
-        String(fee._id),
-        "admin",
-        {
-          feeId: String(fee._id),
-          name: fee.name,
-          amount: fee.amount,
-          category: fee.category,
-          version: fee.version,
-          ip: req.ip,
-          userAgent: req.get("user-agent"),
-        },
-      ).catch((err) =>
-        console.error("Failed to create audit log for fee create", err),
-      );
+      const userInfo = await getUserInfo(req._userId);
+
+      FeeAuditHelper.logCreated(req, req._userId, userInfo, fee, "admin")
+        .catch((err) => console.error("Failed to log audit event for fee create", err));
 
       return res.status(201).json({ data: fee });
     } catch (err) {
@@ -349,102 +234,84 @@ router.post(
 );
 
 // PUT /api/business/admin/fees/:id — update fee (creates new version)
-router.put(
-  "/:id",
-  requireJwt,
-  requireRole(["admin"]),
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { name, description, amount, category, isActive } = req.body;
+router.put("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, notes, amount, isActive } = req.body;
 
-      const fee = await Fee.findById(id);
-      if (!fee) {
-        return res.status(404).json({
-          error: {
-            code: "NOT_FOUND",
-            message: "Fee not found",
-          },
-        });
-      }
-
-      const oldValues = {
-        name: fee.name,
-        description: fee.description,
-        amount: fee.amount,
-        category: fee.category,
-        isActive: fee.isActive,
-        version: fee.version,
-      };
-
-      // Track changes
-      const changes = {};
-      if (name !== undefined && name !== fee.name) {
-        fee.name = String(name).trim();
-        changes.name = { from: oldValues.name, to: fee.name };
-      }
-      if (description !== undefined && description !== fee.description) {
-        fee.description = String(description).trim();
-        changes.description = { from: oldValues.description, to: fee.description };
-      }
-      if (amount !== undefined && amount !== fee.amount) {
-        fee.amount = Number(amount);
-        changes.amount = { from: oldValues.amount, to: fee.amount };
-      }
-      if (category !== undefined && category !== fee.category) {
-        fee.category = category;
-        changes.category = { from: oldValues.category, to: fee.category };
-      }
-      if (isActive !== undefined && isActive !== fee.isActive) {
-        fee.isActive = isActive;
-        changes.isActive = { from: oldValues.isActive, to: fee.isActive };
-      }
-
-      // Increment version if there are changes
-      if (Object.keys(changes).length > 0) {
-        fee.version += 1;
-        fee.effectiveDate = new Date();
-      }
-
-      await fee.save();
-
-      createAuditLog(
-        req._userId,
-        "fee_updated",
-        "fee",
-        JSON.stringify(oldValues),
-        JSON.stringify({
-          name: fee.name,
-          description: fee.description,
-          amount: fee.amount,
-          category: fee.category,
-          isActive: fee.isActive,
-          version: fee.version,
-        }),
-        "admin",
-        {
-          feeId: String(fee._id),
-          changes,
-          version: fee.version,
-          ip: req.ip,
-          userAgent: req.get("user-agent"),
-        },
-      ).catch((err) =>
-        console.error("Failed to create audit log for fee update", err),
-      );
-
-      return res.json({ data: fee });
-    } catch (err) {
-      console.error("PUT /admin/fees/:id error:", err);
-      return res.status(500).json({
+    const fee = await Fee.findById(id);
+    if (!fee) {
+      return res.status(404).json({
         error: {
-          code: "INTERNAL",
-          message: "Failed to update fee",
+          code: "NOT_FOUND",
+          message: "Fee not found",
         },
       });
     }
-  },
-);
+
+    // Migrate legacy category values
+    if (fee.category === 'general_application') {
+      fee.category = 'global';
+    }
+
+    const oldValues = {
+      name: fee.name,
+      notes: fee.notes,
+      amount: fee.amount,
+      isActive: fee.isActive,
+      version: fee.version,
+    };
+
+    // Track changes
+    const changes = {};
+    if (name !== undefined && name !== fee.name) {
+      fee.name = String(name).trim();
+      changes.name = { from: oldValues.name, to: fee.name };
+    }
+    if (notes !== undefined && notes !== fee.notes) {
+      fee.notes = String(notes).trim();
+      changes.notes = {
+        from: oldValues.notes,
+        to: fee.notes,
+      };
+    }
+    if (amount !== undefined && amount !== fee.amount) {
+      fee.amount = Number(amount);
+      changes.amount = { from: oldValues.amount, to: fee.amount };
+    }
+    if (isActive !== undefined && isActive !== fee.isActive) {
+      fee.isActive = isActive;
+      changes.isActive = { from: oldValues.isActive, to: isActive };
+    }
+
+    // Increment version if there are changes
+    if (Object.keys(changes).length > 0) {
+      fee.version += 1;
+      fee.effectiveDate = new Date();
+    }
+
+    await fee.save();
+
+    const userInfo = await getUserInfo(req._userId);
+
+    // Create old fee object for comparison
+    const oldFee = new Fee(oldValues);
+    oldFee._id = fee._id;
+
+    FeeAuditHelper.logUpdated(req, req._userId, userInfo, oldFee, fee, "admin")
+      .catch((err) => console.error("Failed to log audit event for fee update", err));
+
+    return res.json({ data: fee });
+  } catch (err) {
+    console.error("PUT /admin/fees/:id error:", err);
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL",
+        message: "Failed to update fee",
+      },
+    });
+  }
+});
 
 // DELETE /api/business/admin/fees/:id — soft-disable fee
 router.delete(
@@ -476,24 +343,16 @@ router.delete(
       fee.effectiveDate = new Date();
       await fee.save();
 
-      createAuditLog(
-        req._userId,
-        "fee_disabled",
-        "fee",
-        JSON.stringify(oldValues),
-        JSON.stringify({ isActive: false, version: fee.version }),
-        "admin",
-        {
-          feeId,
-          name: fee.name,
-          deactivated: true,
-          version: fee.version,
-          ip: req.ip,
-          userAgent: req.get("user-agent"),
-        },
-      ).catch((err) =>
-        console.error("Failed to create audit log for fee disable", err),
-      );
+      const userInfo = await getUserInfo(req._userId);
+
+      // Create old fee object for snapshot
+      const oldFee = new Fee(oldValues);
+      oldFee._id = fee._id;
+      oldFee.notes = fee.notes;
+      oldFee.amount = fee.amount;
+
+      FeeAuditHelper.logDisabled(req, req._userId, userInfo, oldFee, "admin")
+        .catch((err) => console.error("Failed to log audit event for fee disable", err));
 
       return res.json({ data: { disabled: true } });
     } catch (err) {
@@ -507,5 +366,118 @@ router.delete(
     }
   },
 );
+
+// PUT /api/business/admin/fees/variables/:id - update variable calculation fields only
+router.put(
+  "/variables/:id",
+  requireJwt,
+  requireRole(["admin"]),
+  requireAdminStepUp,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        calculationMethod,
+        brackets,
+        classifications,
+        baseRate,
+        unit,
+        fixedAmount,
+        customCalculationMethod
+      } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          error: { code: "INVALID_ID", message: "Invalid variable ID" },
+        });
+      }
+
+      const variable = await Variable.findById(id);
+      if (!variable) {
+        return res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Variable not found" },
+        });
+      }
+
+      // Store old values for audit logging
+      const oldValues = {
+        calculationMethod: variable.calculationMethod,
+        brackets: variable.brackets,
+        classifications: variable.classifications,
+        baseRate: variable.baseRate,
+        unit: variable.unit,
+        fixedAmount: variable.fixedAmount,
+        customCalculationMethod: variable.customCalculationMethod,
+      };
+
+      // Only update calculation fields (not definition fields)
+      const updates = {
+        ...(calculationMethod && { calculationMethod }),
+        ...(brackets !== undefined && { brackets }),
+        ...(classifications !== undefined && { classifications }),
+        ...(baseRate !== undefined && { baseRate }),
+        ...(unit && { unit }),
+        ...(fixedAmount !== undefined && { fixedAmount }),
+        ...(customCalculationMethod !== undefined && { customCalculationMethod }),
+        updatedBy: req._userId,
+      };
+
+      const updated = await Variable.findByIdAndUpdate(id, updates, {
+        new: true,
+      });
+
+      const updatedValues = {
+        calculationMethod: updated.calculationMethod,
+        brackets: updated.brackets,
+        classifications: updated.classifications,
+        baseRate: updated.baseRate,
+        unit: updated.unit,
+        fixedAmount: updated.fixedAmount,
+        customCalculationMethod: updated.customCalculationMethod,
+      };
+
+      const changes = Object.keys(updates).filter(key => key !== 'updatedBy');
+
+      const userInfo = await getUserInfo(req._userId);
+      
+      // Use VariableAuditHelper for variable calculation updates
+      const VariableAuditHelper = require("../lib/auditHelpers/variableAuditHelper");
+      VariableAuditHelper.logCalculationUpdated(
+        req,
+        req._userId,
+        userInfo,
+        variable,
+        JSON.stringify(oldValues),
+        JSON.stringify(updatedValues),
+        "admin"
+      ).catch((err) => console.error("Failed to log audit event for variable calculation update", err));
+
+      return res.json({ data: updated });
+    } catch (err) {
+      console.error("PUT /fees/variables/:id error:", err);
+      return res.status(500).json({
+        error: { code: "INTERNAL", message: "Failed to update variable calculation" },
+      });
+    }
+  },
+);
+
+// GET /api/business/admin/fees/by-category/:category - Get fees by category
+router.get("/by-category/:category", requireJwt, async (req, res) => {
+  try {
+    const { category } = req.params;
+    const { isActive } = req.query;
+    const filter = { category };
+    if (isActive !== undefined) filter.isActive = isActive === "true";
+
+    const fees = await Fee.find(filter).sort({ createdAt: -1 }).lean();
+    return res.json({ data: fees });
+  } catch (err) {
+    console.error("GET /fees/by-category error:", err);
+    return res.status(500).json({
+      error: { code: "INTERNAL", message: "Failed to fetch fees by category" },
+    });
+  }
+});
 
 module.exports = router;

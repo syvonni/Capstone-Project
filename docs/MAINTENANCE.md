@@ -68,13 +68,6 @@ pip list --outdated
 pip install -r requirements.txt --upgrade
 ```
 
-### Blockchain
-```bash
-cd blockchain
-npm audit
-npm outdated
-```
-
 ## 4. Monitoring
 
 ### Health Checks
@@ -86,7 +79,6 @@ Each service exposes a health endpoint:
 | Business | `GET /api/health` | `{ ok: true, service: 'business-service' }` |
 | Admin | `GET /api/health` | `{ ok: true, service: 'admin-service' }` |
 | Audit | `GET /api/health` | `{ ok: true, service: 'audit-service' }` |
-| AI | `GET /health` | `{ status: 'ok', model_loaded: true }` |
 
 ### Log Monitoring
 ```bash
@@ -108,49 +100,7 @@ docker logs capstone-auth-service -f --tail 100
 - `performanceMonitor.js` tracks API response times and database query durations
 - Performance stats via `GET /api/admin/monitoring/performance` (admin only)
 
-## 5. AI Model Maintenance
-
-### Retrain Model
-When new training data is available:
-```bash
-cd ai
-python3 scripts/train_lob_model.py
-python3 scripts/evaluate_lob_model.py --output-json models/evaluation_metrics.json
-```
-
-### Evaluate Current Model
-```bash
-cd ai
-python3 scripts/evaluate_lob_model.py
-```
-
-### Model Artifact Integrity
-Model artifacts are checksum-verified on load:
-- `ai/models/lob_model.joblib` — trained classifier
-- `ai/models/lob_vectorizer.joblib` — TF-IDF vectorizer
-- `ai/models/lob_labels.json` — class labels
-- `ai/models/lob_artifact_checksums.json` — SHA-256 checksums
-
-## 6. Smart Contract Maintenance
-
-### Redeploy Contracts (Development)
-```bash
-cd blockchain
-npx truffle migrate --reset --network development
-node write-env.js
-node GRANT_ROLES.js
-```
-
-### Verify Contract State
-```bash
-cd blockchain
-npx truffle console
-# In console:
-let ac = await AccessControl.deployed()
-await ac.hasRole(accounts[0], await ac.AUDITOR_ROLE())  // Should be true
-```
-
-## 7. Scheduled Tasks
+## 5. Scheduled Tasks
 
 The auth-service runs background jobs via `node-cron`:
 

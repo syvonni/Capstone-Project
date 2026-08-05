@@ -1,5 +1,3 @@
-const blockchainService = require("./blockchainService");
-const blockchainQueue = require("./blockchainQueue");
 const {
   sendAdminAlert,
   createInAppNotificationsForAdmins,
@@ -56,25 +54,19 @@ async function alertRestrictedFieldAttempt(
     const eventType = "profile_update"; // Use valid enum value
 
     // Create audit log via centralized audit-service
-    await logAuditEvent(
-      eventType,
-      userId,
-      "AdminAlert",
-      userId,
-      {
-        field,
-        oldValue: "",
-        newValue:
-          typeof attemptedValue === "string"
-            ? attemptedValue
-            : JSON.stringify(attemptedValue),
-        role: roleSlug,
-        ...metadata,
-        priority: "high",
-        alertSent: false,
-        restrictedFieldAttempt: true,
-      },
-    );
+    await logAuditEvent(eventType, userId, "AdminAlert", userId, {
+      field,
+      oldValue: "",
+      newValue:
+        typeof attemptedValue === "string"
+          ? attemptedValue
+          : JSON.stringify(attemptedValue),
+      role: roleSlug,
+      ...metadata,
+      priority: "high",
+      alertSent: false,
+      restrictedFieldAttempt: true,
+    });
 
     // Send email notification to admins (non-blocking)
     sendAdminAlert(userId, field, attemptedValue, roleSlug, metadata).catch(

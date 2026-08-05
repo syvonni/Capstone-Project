@@ -1,136 +1,128 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Form, Input, InputNumber, Button, Space, Typography, theme, App, Select, message, Tag } from 'antd'
-import { SaveOutlined, InfoCircleOutlined, HistoryOutlined, UndoOutlined, RedoOutlined, RollbackOutlined } from '@ant-design/icons'
+import { useState, useEffect, useMemo } from 'react'
+import { App, theme } from 'antd'
+import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
+import DetailHeader from '@/shared/components/DetailHeader'
 import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
-import { createFee, updateFee, disableFee, getFeeDraft, saveFeeDraft, publishFeeDraft, getFeeAuditHistory } from '@/features/admin/services/feeService'
-import useFeesAutosave from '../hooks/useFeesAutosave'
-import useFeesUndoRedo from '../hooks/useFeesUndoRedo'
-import { useAdminStepUp } from '@/features/admin/hooks/useAdminStepUp'
-
-const { Text } = Typography
-const { TextArea } = Input
+import FeeOverview from './FeeOverview'
+import FeeConfiguration from './FeeConfiguration'
+import FeeAuditDetailPanel from './FeeAuditDetailPanel'
+import { createFee, updateFee, disableFee } from '@/features/admin/services/feeService'
+import { getViolationsByFee } from '@/features/admin/services/violationService'
+import { getPermitFormByFeeId } from '@/features/admin/services/permitFormService'
+import { get } from '@/lib/http.js'
+import { useFeeForm } from '../hooks/useFeeForm'
+import { useStepUp } from '@/shared/hooks/useStepUp'
+import { useAudit } from '@/shared/hooks/useAudit'
+import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
   { value: 'disabled', label: 'Disabled' },
 ]
 
-export default function FeeDetailPanel({ feeId, fee, onSave, onDelete, isMobile = false }) {
+export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile = false, hideStatusToggle = false, allowCreation = true }) {
+  const { modal, message } = App.useApp()
   const { token } = theme.useToken()
-  const { modal } = App.useApp()
-  const [form] = Form.useForm()
-  const [saving, setSaving] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
-  const [hasChanges, setHasChanges] = useState(false)
-  const [draft, setDraft] = useState(null)
-  const [formValues, setFormValues] = useState({})
-  const [auditLogs, setAuditLogs] = useState([])
-  const [auditLoading, setAuditLoading] = useState(false)
-  const { runWithStepUp, stepUpModal } = useAdminStepUp()
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [violations, setViolations] = useState([])
+  const [loadingViolations, setLoadingViolations] = useState(false)
+  const [claimableDocument, setClaimableDocument] = useState(null)
+  const [permitForm, setPermitForm] = useState(null)
 
-  const isNew = feeId === 'new'
+  const isNew = allowCreation && feeId === 'new'
+  const isPenaltyFee = fee?.category === 'penalty'
+  const isClaimableDocumentFee = fee?.category === 'claimable_document'
+  const isApplicationFee = fee?.category === 'application_fee'
 
-  const initialValues = draft || {
-    name: fee?.name || '',
-    description: fee?.description || '',
-    amount: fee?.amount || 0,
-  }
+  const { runWithStepUp, stepUpModal } = useStepUp()
 
-  const { undo, redo, pushHistory, resetHistory, canUndo, canRedo } = useFeesUndoRedo()
+  const { auditLogs, auditLoading, refreshAudit: _refreshAudit } = useAudit('fee', feeId)
 
-  const handleUndo = useCallback(() => {
-    const entry = undo()
-    if (entry) {
-      form.setFieldsValue(entry)
-      setFormValues(entry)
-    }
-  }, [form, undo])
-
-  const handleRedo = useCallback(() => {
-    const entry = redo()
-    if (entry) {
-      form.setFieldsValue(entry)
-      setFormValues(entry)
-    }
-  }, [form, redo])
-
-  const handleRevert = useCallback(() => {
-    const revertValues = draft || {
-      name: fee?.name || '',
-      description: fee?.description || '',
-      amount: fee?.amount || 0,
-    }
-    form.setFieldsValue(revertValues)
-    setFormValues(revertValues)
-    setHasChanges(false)
-    resetHistory(revertValues)
-    message.success('Reverted to original')
-  }, [draft, fee, form, resetHistory])
-
-  const loadAuditLogs = useCallback(async () => {
-    if (isNew) return
-    try {
-      setAuditLoading(true)
-      const logs = await getFeeAuditHistory(feeId, { limit: 20 })
-      setAuditLogs(logs)
-    } catch {
-      setAuditLogs([])
-    } finally {
-      setAuditLoading(false)
-    }
-  }, [feeId, isNew])
-
-  const handleHistoryModalOpen = useCallback(() => {
-    loadAuditLogs()
-    setHistoryModalOpen(true)
-  }, [loadAuditLogs])
-
-  // Load draft when fee changes
+  // Fetch violations by fee ID when viewing a penalty fee
   useEffect(() => {
-    const loadDraft = async () => {
-      if (!isNew && feeId) {
-        try {
-          const draftData = await getFeeDraft(feeId)
-          setDraft(draftData)
-          const loadedValues = draftData || {
-            name: fee?.name || '',
-            description: fee?.description || '',
-            amount: fee?.amount || 0,
-          }
-          form.setFieldsValue(loadedValues)
-          setFormValues(loadedValues)
-          resetHistory(loadedValues)
-        } catch (err) {
-          console.error('Failed to load draft:', err)
-        }
+    const fetchViolations = async () => {
+      if (!feeId || feeId === 'new') {
+        setViolations([])
+        return
+      }
+      try {
+        setLoadingViolations(true)
+        const data = await getViolationsByFee(feeId)
+        setViolations(data || [])
+      } catch (error) {
+        console.error('Failed to fetch violations:', error)
+        setViolations([])
+      } finally {
+        setLoadingViolations(false)
       }
     }
-    loadDraft()
-  }, [feeId, fee, isNew, form, resetHistory])
 
-  // Autosave to draft
-  const handleAutosave = async (values) => {
-    if (isNew) return
-    await saveFeeDraft(feeId, values, { requireStepUp: false })
-  }
+    fetchViolations()
+  }, [feeId])
 
-  useFeesAutosave(
-    isNew ? null : formValues,
-    handleAutosave,
-    !isNew,
-    hasChanges
-  )
-
+  // Fetch claimable document by fee ID when viewing a claimable_document fee
   useEffect(() => {
-    if (!draft) {
-      form.setFieldsValue({
-        name: fee?.name || '',
-        description: fee?.description || '',
-        amount: fee?.amount || 0,
-      })
+    const fetchClaimableDocument = async () => {
+      if (!feeId || feeId === 'new' || !isClaimableDocumentFee) {
+        setClaimableDocument(null)
+        return
+      }
+      try {
+        const res = await get(`/api/business/admin/documents?feeId=${feeId}`)
+        setClaimableDocument(res?.data?.[0] || null)
+      } catch (error) {
+        console.error('Failed to fetch claimable document:', error)
+        setClaimableDocument(null)
+      }
     }
-  }, [fee?.name, fee?.description, fee?.amount, form, draft])
+
+    fetchClaimableDocument()
+  }, [feeId, isClaimableDocumentFee])
+
+  // Fetch permit form by fee ID when viewing application_fee
+  useEffect(() => {
+    const fetchPermitForm = async () => {
+      if (!feeId || feeId === 'new' || !isApplicationFee) {
+        setPermitForm(null)
+        return
+      }
+      try {
+        const data = await getPermitFormByFeeId(feeId)
+        setPermitForm(data)
+      } catch (error) {
+        console.error('Failed to fetch permit form:', error)
+        setPermitForm(null)
+      }
+    }
+
+    fetchPermitForm()
+  }, [feeId, isApplicationFee])
+
+  const initialValues = useMemo(() => ({
+    name: fee?.name || '',
+    notes: fee?.notes || '',
+    amount: fee?.amount || 0,
+  }), [fee?.name, fee?.notes, fee?.amount])
+
+  const {
+    form,
+    formValues: _formValues,
+    setFormValues: _setFormValues,
+    saving,
+    setSaving,
+    hasChanges,
+    changedFields: _changedFields,
+    resetChangeTracking,
+    handleValuesChange: _handleValuesChange,
+    handleUndo,
+    handleRedo,
+    handleFormValuesChange,
+    canUndo,
+    canRedo,
+  } = useFeeForm(initialValues)
+
 
   const handleSave = async () => {
     try {
@@ -144,13 +136,12 @@ export default function FeeDetailPanel({ feeId, fee, onSave, onDelete, isMobile 
         })
         message.success('Fee created successfully')
       } else {
-        // Publish draft to original fee
         await runWithStepUp(async (stepUpToken) => {
-          await publishFeeDraft(feeId, { stepUpToken })
+          await updateFee(feeId, values, { stepUpToken })
         })
-        message.success('Fee published successfully')
-        setDraft(null) // Clear draft after publishing
+        message.success('Fee updated successfully')
       }
+      resetChangeTracking(initialValues)
       onSave()
     } catch (error) {
       if (error?.message !== 'Step-up cancelled') {
@@ -162,16 +153,14 @@ export default function FeeDetailPanel({ feeId, fee, onSave, onDelete, isMobile 
     }
   }
 
-  const handleValuesChange = () => {
-    const currentValues = form.getFieldsValue()
-    setFormValues(currentValues)
-    const changed = Object.keys(initialValues).some(
-      (key) => currentValues[key] !== initialValues[key]
-    )
-    setHasChanges(changed)
-    if (changed) {
-      pushHistory(currentValues)
-    }
+  const handleEnterEditMode = () => {
+    setIsEditMode(true)
+  }
+
+  const handleExitEditMode = () => {
+    setIsEditMode(false)
+    form.setFieldsValue(initialValues)
+    resetChangeTracking(initialValues)
   }
 
   const handleStatusChange = async (status) => {
@@ -180,9 +169,9 @@ export default function FeeDetailPanel({ feeId, fee, onSave, onDelete, isMobile 
     const getStatusMessage = (newStatus) => {
       switch (newStatus) {
         case 'active':
-          return 'This will activate the fee and make it available for use in fee groups and business permits.'
+          return 'This will activate the fee and make it available for use in business permits.'
         case 'disabled':
-          return 'This will disable the fee. It will no longer be available for new fee groups or business permits.'
+          return 'This will disable the fee. It will no longer be available for new business permits.'
         default:
           return `Are you sure you want to change the status to ${newStatusLabel}?`
       }
@@ -196,18 +185,22 @@ export default function FeeDetailPanel({ feeId, fee, onSave, onDelete, isMobile 
       onOk: async () => {
         setUpdatingStatus(true)
         try {
-          if (status === 'disabled') {
-            await disableFee(feeId, { requireStepUp: true })
-            message.success('Fee disabled successfully')
-            if (onDelete) onDelete()
-          } else {
-            await updateFee(feeId, { isActive: true }, { requireStepUp: true })
-            message.success('Fee activated successfully')
-            if (onSave) onSave()
-          }
+          await runWithStepUp(async (stepUpToken) => {
+            if (status === 'disabled') {
+              await disableFee(feeId, { stepUpToken })
+              message.success('Fee disabled successfully')
+              if (onSave) onSave()
+            } else {
+              await updateFee(feeId, { isActive: true }, { stepUpToken })
+              message.success('Fee activated successfully')
+              if (onSave) onSave()
+            }
+          })
         } catch (error) {
-          console.error('Failed to update status:', error)
-          message.error(error.message || 'Failed to update status')
+          if (error?.message !== 'Step-up cancelled') {
+            console.error('Failed to update status:', error)
+            message.error(error.message || 'Failed to update status')
+          }
         } finally {
           setUpdatingStatus(false)
         }
@@ -215,114 +208,48 @@ export default function FeeDetailPanel({ feeId, fee, onSave, onDelete, isMobile 
     })
   }
 
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div
-        style={{
-          padding: '16px 20px',
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
-          background: token.colorBgContainer,
-          flexShrink: 0,
+      <DetailHeader
+        primaryButton={{
+          text: isNew ? 'Create Fee' : 'Save',
+          icon: <SaveOutlined />,
+          onClick: handleSave,
+          loading: saving,
+          disabled: !hasChanges && !isNew,
+          type: 'primary',
         }}
-      >
-        <div style={{ marginBottom: 12 }}>
-          <Space>
-            <Text strong style={{ fontSize: 16 }}>
-              {isNew ? 'New Fee' : 'Fee Detail'}
-            </Text>
-            {!isNew && (
-              <Tag color={draft ? 'blue' : hasChanges ? 'warning' : 'success'} style={{ fontWeight: 'normal' }}>
-                {draft ? 'Draft' : hasChanges ? 'Unsaved' : 'Published'}
-              </Tag>
-            )}
-          </Space>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 8 : 0 }}>
-          <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : 'auto' }}>
-            <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving} disabled={!hasChanges && !isNew} style={{ flex: isMobile ? 1 : 'auto' }}>
-              Publish Changes
-            </Button>
-            {!isNew && (
-              <>
-                <Space.Compact>
-                  <Button icon={<UndoOutlined />} onClick={handleUndo} disabled={!canUndo} />
-                  <Button icon={<RedoOutlined />} onClick={handleRedo} disabled={!canRedo} />
-                  <Button icon={<RollbackOutlined />} onClick={handleRevert} />
-                </Space.Compact>
-                <Space.Compact>
-                  <Button icon={<InfoCircleOutlined />} disabled />
-                  <Button icon={<HistoryOutlined />} onClick={handleHistoryModalOpen} />
-                </Space.Compact>
-              </>
-            )}
-          </div>
-          {!isMobile && (
-            <Space>
-              {!isNew && (
-                <Form.Item label="Status" style={{ marginBottom: 0 }}>
-                  <Select
-                    value={fee?.isActive ? 'active' : 'disabled'}
-                    onChange={handleStatusChange}
-                    loading={updatingStatus}
-                    style={{ width: 120 }}
-                    options={STATUS_OPTIONS}
-                  />
-                </Form.Item>
-              )}
-            </Space>
-          )}
-        </div>
-        {isMobile && !isNew && (
-          <div style={{ marginTop: 12 }}>
-            <Form.Item label="Status" style={{ marginBottom: 0 }}>
-              <Select
-                value={fee?.isActive ? 'active' : 'disabled'}
-                onChange={handleStatusChange}
-                loading={updatingStatus}
-                style={{ width: '100%' }}
-                options={STATUS_OPTIONS}
-              />
-            </Form.Item>
-          </div>
+        showUndoRedo={!isNew}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={canUndo()}
+        canRedo={canRedo()}
+        iconButtons={!isNew ? [
+          { icon: <HistoryOutlined />, onClick: () => setHistoryModalOpen(true), title: 'History' },
+        ] : []}
+        actionButtons={isEditMode
+          ? [{ text: 'Exit Edit Mode', icon: <CloseOutlined />, onClick: handleExitEditMode, type: 'default' }]
+          : [{ text: 'Edit', icon: <EditOutlined />, onClick: handleEnterEditMode, type: 'default' }]}
+        selectFields={!isNew && !isPenaltyFee && !hideStatusToggle ? [
+          {
+            label: 'Status',
+            value: fee?.isActive ? 'active' : 'disabled',
+            onChange: handleStatusChange,
+            loading: updatingStatus,
+            width: 120,
+            options: STATUS_OPTIONS,
+          }
+        ] : []}
+        instructionSlotId="admin-general-application-fees"
+      />
+
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        {isEditMode ? (
+          <FeeConfiguration form={form} handleFormValuesChange={handleFormValuesChange} token={token} initialValues={initialValues} />
+        ) : (
+          <FeeOverview fee={fee} token={token} violations={violations} loading={loadingViolations} claimableDocument={claimableDocument} permitForm={permitForm} />
         )}
-      </div>
-
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={initialValues}
-          onValuesChange={handleValuesChange}
-        >
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Name is required' }]}
-          >
-            <Input placeholder="Enter fee name" />
-          </Form.Item>
-
-          <Form.Item
-            name="description"
-            label="Description"
-            rules={[{ required: true, message: 'Description is required' }]}
-          >
-            <TextArea rows={3} placeholder="Enter description" />
-          </Form.Item>
-
-          <Form.Item
-            name="amount"
-            label="Amount (₱)"
-            rules={[{ required: true, message: 'Amount is required' }]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              precision={2}
-              placeholder="Enter amount"
-            />
-          </Form.Item>
-        </Form>
       </div>
 
       <AuditHistoryModal
@@ -330,6 +257,8 @@ export default function FeeDetailPanel({ feeId, fee, onSave, onDelete, isMobile 
         onClose={() => setHistoryModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
+        DetailPanelComponent={FeeAuditDetailPanel}
+        eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('fee_'))}
       />
       {stepUpModal}
     </div>

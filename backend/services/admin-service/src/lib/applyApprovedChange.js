@@ -6,7 +6,7 @@
 
 const User = require("../models/User");
 const MaintenanceWindow = require("../models/MaintenanceWindow");
-const FormDefinition = require("../models/FormDefinition");
+// FormDefinition has been removed - this import is no longer needed
 // bcrypt and passwordHistory are lazy-required inside the cases that need them
 // so maintenance_mode approval works even if bcryptjs is not installed
 const { logToBlockchain } = require("./interServiceClient");
@@ -52,24 +52,20 @@ async function createAuditLog(
   newValue,
   role,
   metadata = {},
+  entityType = "AdminApproval",
+  entityId = null,
 ) {
   try {
     // Use centralized audit-service
-    await logAuditEvent(
-      eventType,
-      userId,
-      "AdminApproval",
-      userId,
-      {
-        fieldChanged,
-        oldValue: oldValue || "",
-        newValue: newValue || "",
-        role,
-        ...metadata,
-        ip: metadata.ip || "unknown",
-        userAgent: metadata.userAgent || "unknown",
-      },
-    );
+    await logAuditEvent(eventType, userId, entityType, entityId || userId, {
+      fieldChanged,
+      oldValue: oldValue || "",
+      newValue: newValue || "",
+      role,
+      ...metadata,
+      ip: metadata.ip || "unknown",
+      userAgent: metadata.userAgent || "unknown",
+    });
 
     return { success: true };
   } catch (error) {
@@ -152,6 +148,8 @@ async function applyApprovedChange(approval) {
             approvedBy: approval.approvals.map((a) => String(a.adminId)),
             allChangedFields: changedFields,
           },
+          "User",
+          approval.userId,
         );
 
         return { success: true };
@@ -182,6 +180,8 @@ async function applyApprovedChange(approval) {
             approvedBy: approval.approvals.map((a) => String(a.adminId)),
             mfaReEnrollmentRequired: true,
           },
+          "User",
+          user._id,
         );
 
         return { success: true };
@@ -238,6 +238,8 @@ async function applyApprovedChange(approval) {
             tokenVersion: user.tokenVersion,
             mfaReEnrollmentRequired: true,
           },
+          "User",
+          user._id,
         );
 
         return { success: true };
@@ -302,74 +304,19 @@ async function applyApprovedChange(approval) {
             scheduledStartAt: hasValidScheduledDate ? scheduledDate : null,
             approvedBy,
           },
+          "MaintenanceWindow",
+          approval._id,
         );
 
         return { success: true };
       }
 
       case "form_definition": {
-        const { formDefinitionId } = approval.requestDetails || {};
-        if (!formDefinitionId) {
-          return {
-            success: false,
-            error: "Form definition ID not found in approval details",
-          };
-        }
-
-        const formDefinition = await FormDefinition.findById(formDefinitionId);
-        if (!formDefinition) {
-          return { success: false, error: "Form definition not found" };
-        }
-
-        if (formDefinition.status !== "pending_approval") {
-          return {
-            success: false,
-            error: "Form definition is not pending approval",
-          };
-        }
-
-        const now = new Date();
-        const approvedBy = approval.approvals.map((a) => String(a.adminId));
-
-        // Update the form definition to published
-        formDefinition.status = "published";
-        formDefinition.publishedBy =
-          approval.approvals[approval.approvals.length - 1]?.adminId ||
-          approval.requestedBy;
-        formDefinition.publishedAt = now;
-        formDefinition.approvalId = "";
-        formDefinition.addChangeLog("published", formDefinition.publishedBy, {
-          approvalId: approval.approvalId,
-          approvedBy,
-        });
-
-        await formDefinition.save();
-
-        // Create audit log
-        await createAuditLog(
-          approval.requestedBy,
-          "form_definition_published",
-          "form_definition",
-          "pending_approval",
-          "published",
-          "admin",
-          {
-            approvalId: approval.approvalId,
-            formDefinitionId: String(formDefinition._id),
-            formType: formDefinition.formType,
-            version: formDefinition.version,
-            approvedBy,
-          },
-        );
-
-        logger.info("Form definition published", {
-          formDefinitionId: String(formDefinition._id),
-          formType: formDefinition.formType,
-          version: formDefinition.version,
-          approvalId: approval.approvalId,
-        });
-
-        return { success: true, formDefinition };
+        // FormDefinition has been removed - this case is obsolete
+        return {
+          success: false,
+          error: "FormDefinition has been removed. Use permit_form approval type instead.",
+        };
       }
 
       case "account_status_change": {
@@ -404,6 +351,8 @@ async function applyApprovedChange(approval) {
             reason: details.reason || "",
             targetIsAdmin: !!details.targetIsAdmin,
           },
+          "User",
+          user._id,
         );
 
         return { success: true };
@@ -481,6 +430,8 @@ async function applyApprovedChange(approval) {
             mustChangeCredentials: true,
             mustSetupMfa: true,
           },
+          "User",
+          user._id,
         );
 
         return { success: true };

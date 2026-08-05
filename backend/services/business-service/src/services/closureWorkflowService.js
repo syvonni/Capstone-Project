@@ -1,11 +1,9 @@
 const mongoose = require("mongoose");
 const BusinessProfile = require("../models/BusinessProfile");
 const Payment = require("../models/Payment");
-const Violation = require("../models/Violation");
-const Inspection = require("../models/Inspection");
 const Permit = require("../models/Permit");
 const PDFDocument = require("pdfkit");
-const { logAuditEvent } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 
 // Helper: build query that matches either businessId or subdoc _id
 function buildBusinessLookupQuery(identifier) {
@@ -22,25 +20,11 @@ function buildBusinessLookupQuery(identifier) {
  */
 async function checkClosurePrerequisites(businessId) {
   const checks = {
-    violations: { cleared: false, count: 0, details: [] },
+    violations: { cleared: true, count: 0, details: [] }, // Violation model removed - auto-clear
     payments: { settled: false, outstanding: 0, details: [] },
-    inspection: { completed: false, required: true },
+    inspection: { completed: true, required: false }, // Inspection model removed - auto-complete
     eligible: false,
   };
-
-  // Check for outstanding violations
-  const openViolations = await Violation.find({
-    businessId,
-    status: "open",
-  }).lean();
-
-  checks.violations.count = openViolations.length;
-  checks.violations.cleared = openViolations.length === 0;
-  checks.violations.details = openViolations.map((v) => ({
-    violationId: v.violationId,
-    description: v.description,
-    severity: v.severity,
-  }));
 
   // Check for outstanding payments
   const outstandingPayments = await Payment.find({
@@ -61,22 +45,8 @@ async function checkClosurePrerequisites(businessId) {
     dueDate: p.dueDate,
   }));
 
-  // Check if final inspection is required
-  const lastInspection = await Inspection.findOne({
-    businessId,
-    inspectionType: "closure",
-  }).sort({ createdAt: -1 });
-
-  if (lastInspection && lastInspection.status === "completed") {
-    checks.inspection.completed = true;
-    checks.inspection.required = false;
-  }
-
   // Determine eligibility
-  checks.eligible =
-    checks.violations.cleared &&
-    checks.payments.settled &&
-    (!checks.inspection.required || checks.inspection.completed);
+  checks.eligible = checks.payments.settled;
 
   return checks;
 }
@@ -145,41 +115,6 @@ async function calculateFinalSettlement(businessId) {
     settlement.processingFee;
 
   return settlement;
-}
-
-/**
- * Clear all violations for closure
- */
-async function clearViolationsForClosure(businessId, userId, notes) {
-  const openViolations = await Violation.find({
-    businessId,
-    status: "open",
-  });
-
-  const clearedViolations = [];
-
-  for (const violation of openViolations) {
-    violation.status = "resolved";
-    violation.resolvedAt = new Date();
-    violation.resolvedBy = userId;
-    violation.resolutionNotes = notes || "Cleared for business closure";
-    await violation.save();
-
-    clearedViolations.push(violation.violationId);
-  }
-
-  logAuditEvent(
-    "violations_cleared_for_closure",
-    userId,
-    "Business",
-    businessId,
-    {
-      violationCount: clearedViolations.length,
-      violationIds: clearedViolations,
-    },
-  );
-
-  return clearedViolations;
 }
 
 /**
@@ -447,7 +382,6 @@ async function completeBusinessClosure(businessId, closureData, userId) {
 module.exports = {
   checkClosurePrerequisites,
   calculateFinalSettlement,
-  clearViolationsForClosure,
   processFinalSettlement,
   generateClosureCertificate,
   completeBusinessClosure,

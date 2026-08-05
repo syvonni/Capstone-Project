@@ -362,7 +362,7 @@ router.post(
         allowedOrigins.some((origin) => requestOrigin?.startsWith(origin)) ||
         (process.env.NODE_ENV === "development" &&
           (requestOrigin?.includes("localhost:517") ||
-           requestOrigin?.includes("192.168.18.12:517")));
+            requestOrigin?.includes("192.168.18.12:517")));
       const expectedRPID = process.env.WEBAUTHN_RPID || "localhost";
 
       console.log("[WebAuthn] Register complete:", {
@@ -690,6 +690,10 @@ router.post(
         user.mustSetupMfa = false;
         if (user.isStaff) {
           user.isActive = !(user.mustChangeCredentials === true);
+          // Update accountStatus for staff when onboarding is complete
+          if (!user.mustChangeCredentials && !user.mustSetupMfa) {
+            user.accountStatus = "active";
+          }
         }
       }
 
@@ -899,7 +903,7 @@ function withStepUpIfNeeded(req, res, rest) {
   const purpose = req.body.purpose;
   if (purpose === "admin_step_up") {
     return requireJwt(req, res, () => {
-      requireRole(["admin"])(req, res, async () => {
+      requireRole(["admin", "lgu_officer"])(req, res, async () => {
         try {
           const stepUpKey = "step_up_" + req._userId;
           let expectedChallenge = authenticationChallenges.get(stepUpKey);
@@ -2857,6 +2861,10 @@ router.post(
           dbUser.mustSetupMfa = false;
           if (dbUser.isStaff) {
             dbUser.isActive = !(dbUser.mustChangeCredentials === true);
+            // Update accountStatus for staff when onboarding is complete
+            if (!dbUser.mustChangeCredentials && !dbUser.mustSetupMfa) {
+              dbUser.accountStatus = "active";
+            }
           }
         }
         await dbUser.save();

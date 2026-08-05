@@ -44,11 +44,8 @@ const AuditDigestSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    txHash: {
-      type: String,
-      default: "",
-      index: true,
-    },
+    // txHash field removed - blockchain feature deleted
+    // Previously: transaction hash from blockchain anchoring
     blockNumber: {
       type: Number,
       default: null,
@@ -105,12 +102,8 @@ AuditDigestSchema.methods.getInclusionProof = function (leafHash) {
   };
 };
 
-/**
- * Verify that a leaf hash is included in this digest
- */
-AuditDigestSchema.methods.verifyInclusion = function (leafHash) {
-  return this.leafHashes.includes(leafHash);
-};
+// verifyInclusion method removed - blockchain feature deleted
+// Previously: Verify that a leaf hash is included in this digest
 
 /**
  * Static: find digest containing a specific audit log

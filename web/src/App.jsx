@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { ProtectedRoute, PublicRoute } from "@/features/authentication"
 import { useNavigationNotifications, useSessionActivity, useAuthSync, useSessionTimeout, useAuthSession } from "@/features/authentication/hooks"
 import PageSlide from "@/shared/components/PageTransition.jsx"
+import StaffLayout from "@/shared/components/StaffLayout"
 
 // Eager-load only the homepage (LCP) and auth shell - everything else is lazy
 import Home from "@/features/public/pages/Home"
@@ -22,34 +23,34 @@ const Dashboard = lazy(() => import("@/features/user").then(m => ({ default: m.D
 const ProfileSettings = lazy(() => import("@/features/user").then(m => ({ default: m.ProfileSettings })))
 const NotificationHistoryPage = lazy(() => import("@/features/user/pages/NotificationHistoryPage.jsx"))
 const AdminOnboarding = lazy(() => import("@/features/admin/pages/AdminOnboarding.jsx"))
-const AdminDashboard = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminDashboard })))
-const AdminUsers = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminUsers })))
-const AdminContentManagement = lazy(() => import("@/features/admin/pages/content-management").then(m => ({ default: m.ContentManagementPage })))
-const AdminSiteSettings = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminSiteSettings })))
-const AdminForms = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminForms })))
-const AdminFormDefinitions = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminFormDefinitions })))
-const AdminFormGroupDetail = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminFormGroupDetail })))
-const AdminFormDefinitionEditor = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminFormDefinitionEditor })))
-const AdminAuditTamper = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminAuditTamper })))
-const AdminRequests = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminRequests })))
-const AdminFinance = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminFinance })))
-const AdminLobTrainer = lazy(() => import("@/features/admin").then(m => ({ default: m.AdminLobTrainer })))
+const AdminDashboard = lazy(() => import("@/features/admin/pages/dashboard/index.jsx"))
+const AdminContentManagement = lazy(() => import("@/features/admin/pages/content-management").then(m => ({ default: m.ContentManagementView })))
+const AdminRequests = lazy(() => import("@/features/admin/pages/requests").then(m => ({ default: m.RequestsView })))
+const AdminMaintenance = lazy(() => import("@/features/admin/pages/maintenance").then(m => ({ default: m.MaintenancePage })))
 // Phase 2 admin pages
-const AdminFeeConfiguration = lazy(() => import("@/features/admin/pages/AdminFeeConfiguration.jsx"))
-const AdminFees = lazy(() => import("@/features/admin/pages/AdminFees.jsx"))
+const AdminFees = lazy(() => import("@/features/admin/pages/fees").then(m => ({ default: m.AdminFeesView })))
+const AdminDocuments = lazy(() => import("@/features/admin/pages/documents").then(m => ({ default: m.DocumentsView })))
+const AdminLob = lazy(() => import("@/features/admin/pages/lob").then(m => ({ default: m.AdminLobView })))
+const AdminForms = lazy(() => import("@/features/admin/pages/forms/views/AdminFormsView"))
+const AdminUnifiedBusinessPermit = lazy(() => import("@/features/admin/pages/forms/views/UnifiedBusinessPermitView"))
+const AdminTemporaryPermits = lazy(() => import("@/features/admin/pages/forms/views/TemporaryPermitsView"))
+const AdminPostRequirements = lazy(() => import("@/features/admin/pages/post-requirements").then(m => ({ default: m.PostRequirementsView })))
+const AdminVariables = lazy(() => import("@/features/admin/pages/variables").then(m => ({ default: m.VariablesView })))
+const AdminViolations = lazy(() => import("@/features/admin/pages/violations").then(m => ({ default: m.ViolationsView })))
+const AdminInspections = lazy(() => import("@/features/admin/pages/inspections").then(m => ({ default: m.InspectionsView })))
 const BusinessOwnerDashboard = lazy(() => import("@/features/business-owner").then(m => ({ default: m.BusinessOwnerDashboard })))
 const BusinessOwnerOnboarding = lazy(() => import("@/features/business-owner/pages/BusinessOwnerOnboarding.jsx"))
 const BusinessOwnerApplications = lazy(() => import("@/features/business-owner/pages/applications/index.jsx"))
 const BusinessOwnerBusinesses = lazy(() => import("@/features/business-owner/pages/businesses/index.jsx"))
 
 // const ClearanceTracker = lazy(() => import("@/features/business-owner/components/clearance/ClearanceTracker.jsx"))
-// const InspectionCalendar = lazy(() => import("@/features/business-owner/components/inspections/InspectionCalendar.jsx"))
 
 const StaffDashboard = lazy(() => import("@/features/staffs").then(m => ({ default: m.StaffDashboard })))
 const StaffOnboarding = lazy(() => import("@/features/staffs").then(m => ({ default: m.StaffOnboarding })))
 const OfficerDashboard = lazy(() => import("@/features/staffs/lgu-officer/pages/OfficerDashboard.jsx"))
 const OfficerDashboardPage = lazy(() => import("@/features/staffs/lgu-officer/pages/OfficerDashboardPage.jsx"))
 const OfficerApplications = lazy(() => import("@/features/staffs/lgu-officer/pages/applications/index.jsx"))
+const OfficerPermitProcessing = lazy(() => import("@/features/staffs/lgu-officer/pages/permit-processing/index.jsx"))
 const OfficerHelpRequests = lazy(() => import("@/features/staffs/lgu-officer/pages/help-requests/index.jsx"))
 const OfficerLedger = lazy(() => import("@/features/staffs/lgu-officer/pages/OfficerLedger.jsx"))
 const OfficerBookmarks = lazy(() => import("@/features/staffs/lgu-officer/pages/bookmarks/index.jsx"))
@@ -74,7 +75,7 @@ function App() {
   const { logout } = useAuthSession()
   
   useSessionTimeout({
-    timeoutMs: 60 * 60 * 1000, // 1 hour
+    timeoutMs: (Number(import.meta.env.VITE_SESSION_TIMEOUT_HOURS) || 4) * 60 * 60 * 1000, // Configurable via env var, default 4 hours
     warningMs: 5 * 60 * 1000, // 5 minutes
     onTimeout: () => logout(),
     onWarning: () => {
@@ -104,27 +105,26 @@ function App() {
       <Route path="/business-owner/onboarding" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerOnboarding /></ProtectedRoute>} />
 
       {/* Admin Routes */}
-      <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><Outlet /></ProtectedRoute>}>
+      <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><StaffLayout><Outlet /></StaffLayout></ProtectedRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="users" element={<AdminUsers />} />
         <Route path="requests" element={<AdminRequests />} />
         <Route path="content-management" element={<AdminContentManagement />} />
-        <Route path="site-settings" element={<AdminSiteSettings />} />
-        <Route path="maintenance" element={<Navigate to="/admin/site-settings" replace />} />
-        <Route path="forms" element={<AdminForms />} />
-        <Route path="form-definitions" element={<AdminFormDefinitions />} />
-        <Route path="form-definitions/group/:groupId" element={<AdminFormGroupDetail />} />
-        <Route path="form-definitions/:id" element={<AdminFormDefinitionEditor />} />
-        <Route path="penalty-configuration" element={<Navigate to="/admin/fee-configuration?tab=penalty" replace />} />
-        <Route path="fee-configuration" element={<AdminFeeConfiguration />} />
+        <Route path="maintenance" element={<AdminMaintenance />} />
         <Route path="fees" element={<AdminFees />} />
-        <Route path="finance" element={<AdminFinance />} />
-        <Route path="security" element={<AdminAuditTamper />} />
-        <Route path="audit-tamper" element={<Navigate to="/admin/security" replace />} />
-        <Route path="lob-trainer" element={<AdminLobTrainer />} />
-        <Route path="announcements" element={<Navigate to="/admin/site-settings" replace />} />
+        <Route path="variables" element={<AdminVariables />} />
+        <Route path="documents" element={<AdminDocuments />} />
+        <Route path="post-requirements" element={<AdminPostRequirements />} />
+        <Route path="violations" element={<AdminViolations />} />
+        <Route path="inspections" element={<AdminInspections />} />
+        <Route path="lob" element={<AdminLob />} />
+        <Route path="forms" element={<Navigate to="business-permit" replace />} />
+        <Route path="forms/business-permit" element={<AdminUnifiedBusinessPermit />} />
+        <Route path="forms/temporary-permits" element={<AdminTemporaryPermits />} />
       </Route>
+
+      {/* Admin Onboarding - separate route with hideSidebar */}
+      <Route path="/admin/onboarding" element={<ProtectedRoute allowedRoles={['admin']}><AdminOnboarding /></ProtectedRoute>} />
 
       {/* Business Owner Routes */}
       <Route path="/owner" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerDashboard /></ProtectedRoute>} />
@@ -136,13 +136,13 @@ function App() {
       <Route path="/application/new" element={<ProtectedRoute allowedRoles={['business_owner']}><Navigate to="/business-owner/applications" replace /></ProtectedRoute>} />
       <Route path="/applications" element={<ProtectedRoute allowedRoles={['business_owner']}><Navigate to="/owner" replace /></ProtectedRoute>} />
       {/* <Route path="/clearance" element={<ProtectedRoute allowedRoles={['business_owner']}><ClearanceTracker /></ProtectedRoute>} /> */}
-      {/* <Route path="/inspections/schedule" element={<ProtectedRoute allowedRoles={['business_owner']}><InspectionCalendar /></ProtectedRoute>} /> */}
       
       {/* Staff Routes */}
       <Route path="/staff" element={<ProtectedRoute allowedRoles={['staff', 'lgu_officer', 'inspector']}><OfficerDashboard /></ProtectedRoute>}>
         <Route index element={<OfficerDashboardPage />} />
         <Route path="to-review" element={<OfficerToReview />} />
         <Route path="applications" element={<OfficerApplications />} />
+        <Route path="permit-processing" element={<OfficerPermitProcessing />} />
         <Route path="businesses" element={<OfficerBusinesses />} />
         <Route path="businesses/:businessId" element={<OfficerBusinesses />} />
         <Route path="business-owners" element={<OfficerBusinessOwners />} />

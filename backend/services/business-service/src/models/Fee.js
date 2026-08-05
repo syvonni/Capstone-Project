@@ -2,13 +2,19 @@ const mongoose = require("mongoose");
 
 const FeeSchema = new mongoose.Schema(
   {
+    customId: {
+      type: String,
+      required: false,
+      unique: true,
+      sparse: true,
+    },
     name: {
       type: String,
       required: true,
     },
-    description: {
+    notes: {
       type: String,
-      required: true,
+      required: false,
     },
     amount: {
       type: Number,
@@ -17,21 +23,12 @@ const FeeSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["permit", "regulatory", "penalty", "appeal", "other"],
-      default: "permit",
+      enum: ['global', 'claimable_document', 'appeal', 'conditional', 'penalty', 'variable_fee', 'application_fee'],
+      default: 'global',
     },
     isActive: {
       type: Boolean,
       default: true,
-    },
-    isDraft: {
-      type: Boolean,
-      default: false,
-    },
-    draftOf: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Fee",
-      default: null,
     },
     version: {
       type: Number,
@@ -47,7 +44,7 @@ const FeeSchema = new mongoose.Schema(
 
 const { encryptionPlugin } = require("../../../../shared/lib/encryptionPlugin");
 FeeSchema.plugin(encryptionPlugin, {
-  fields: ["name", "description"],
+  fields: ["name", "notes"],
   deterministicFields: [],
   nestedPaths: [],
   arrayPaths: [],
@@ -56,6 +53,7 @@ FeeSchema.plugin(encryptionPlugin, {
 
 // Index for faster queries
 FeeSchema.index({ isActive: 1, category: 1 });
+FeeSchema.index({ category: 1 });
 FeeSchema.index({ version: 1 });
 
 module.exports = mongoose.models.Fee || mongoose.model("Fee", FeeSchema);

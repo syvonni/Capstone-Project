@@ -2,12 +2,88 @@ const express = require("express");
 const GeneralPermit = require("../models/GeneralPermit");
 const Business = require("../models/Business");
 const BusinessProfile = require("../models/BusinessProfile");
+const User = require("../models/User");
 const { requireJwt, requireRole } = require("../middleware/auth");
 const {
   GENERAL_PERMIT_CATEGORY_VALUES,
 } = require("../../../../shared/constants/generalPermitCategories");
 
 const router = express.Router();
+
+// Helper to send application email
+async function sendApplicationEmail(application, emailType, metadata = {}) {
+  try {
+    const user = await User.findById(application.userId || application.applicantId).select(
+      "firstName lastName email",
+    );
+    if (!user || !user.email) {
+      console.warn(
+        `User or email not found for application ${application._id}`,
+      );
+      return;
+    }
+
+    const emailData = {
+      to: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      businessName: application.businessName || "Unnamed Business",
+      applicationReferenceNumber: application.applicationReferenceNumber,
+      applicationId: application.businessId || application._id,
+      ...metadata,
+    };
+
+    // Import mailer functions dynamically to avoid circular dependency
+    const mailer = require("../../auth-service/src/lib/mailer");
+
+    switch (emailType) {
+      case "approved":
+        await mailer.sendApplicationApprovedEmail(emailData);
+        break;
+      case "rejected":
+        await mailer.sendApplicationRejectedEmail({
+          ...emailData,
+          rejectionReason: metadata.rejectionReason,
+        });
+        break;
+      case "returned":
+        await mailer.sendApplicationReturnedEmail({
+          ...emailData,
+          reviewComments: metadata.reviewComments,
+        });
+        break;
+      default:
+        console.warn(`Unknown email type: ${emailType}`);
+        return;
+    }
+
+    // Update emailSendStatus to sent
+    application.emailSendStatus = application.emailSendStatus || {};
+    application.emailSendStatus[emailType] = {
+      status: "sent",
+      retryCount: 0,
+      lastAttempt: new Date(),
+      lockUntil: null,
+    };
+    await application.save();
+  } catch (err) {
+    console.error(
+      `Failed to send ${emailType} email for application ${application._id}:`,
+      err.message,
+    );
+    // Update emailSendStatus to failed
+    application.emailSendStatus = application.emailSendStatus || {};
+    const currentRetry =
+      (application.emailSendStatus[emailType]?.retryCount || 0) + 1;
+    application.emailSendStatus[emailType] = {
+      status: "failed",
+      retryCount: currentRetry,
+      lastAttempt: new Date(),
+      lockUntil: null,
+    };
+    await application.save();
+  }
+}
 
 // GET /api/business/general-permits — list user's general permits
 router.get("/", requireJwt, async (req, res) => {
@@ -118,13 +194,19 @@ router.put("/:id", requireJwt, async (req, res) => {
         permit.issuedAt = new Date();
 
         // Create Business object for approved temporary permit
-        const generatedBusinessId = `BIZ-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
+        const generatedBusinessId =
+          `BIZ-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
 
         // Get BusinessProfile
-        const businessProfile = await BusinessProfile.findOne({ userId: permit.applicantId });
+        const businessProfile = await BusinessProfile.findOne({
+          userId: permit.applicantId,
+        });
         if (!businessProfile) {
           return res.status(404).json({
-            error: { code: "PROFILE_NOT_FOUND", message: "Business profile not found" },
+            error: {
+              code: "PROFILE_NOT_FOUND",
+              message: "Business profile not found",
+            },
           });
         }
 
@@ -158,6 +240,13 @@ router.put("/:id", requireJwt, async (req, res) => {
 
         // Update permit with business reference
         permit.businessId = business._id;
+
+        // Send approval email (await to ensure emailSendStatus is updated)
+        try {
+          await sendApplicationEmail(business, "approved");
+        } catch (err) {
+          console.error("Failed to send approval email:", err);
+        }
       }
     }
     await permit.save();

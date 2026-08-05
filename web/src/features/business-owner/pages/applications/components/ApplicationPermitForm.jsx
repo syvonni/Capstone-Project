@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, forwardRef, useImperativeHandle, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle, useCallback } from 'react'
 import { Form } from '@/shared/components/AppForm'
 import { Typography, Button, Space, Result, Grid, theme, App, Empty } from 'antd'
 import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
@@ -185,6 +185,10 @@ export default forwardRef(function PermitApplicationForm({
     onFaqClick,
   })
 
+  // Store handleTabChange in a ref to access it in receipt modal onClose
+  const handleTabChangeRef = useRef(handleTabChange)
+  handleTabChangeRef.current = handleTabChange
+
   // Draft creation hook
   const { handleTypeSelect, handleCategorySelect } = useApplicationDraftCreation({
     isEditing,
@@ -335,7 +339,8 @@ export default forwardRef(function PermitApplicationForm({
       return handleSubmit(values, true)
     },
     fillTestData: doFillTestData,
-  }), [form, doFillTestData, handleSubmit])
+    handleTabChange: handleTabChange,
+  }), [form, doFillTestData, handleSubmit, handleTabChange])
 
 
   return (
@@ -510,8 +515,7 @@ export default forwardRef(function PermitApplicationForm({
           </div>
         </div>
       ) : (
-        <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+        <div>
             {loading ? (
               <div style={{ textAlign: 'center', padding: 48 }}>
                 <LottieSpinner size="large" />
@@ -530,11 +534,16 @@ export default forwardRef(function PermitApplicationForm({
             ) : step === 'category_selection' ? (
               <GeneralPermitCategorySelector
                 onSelect={handleCategorySelect}
+                onBack={() => {
+                  if (_onBack) {
+                    _onBack()
+                  }
+                }}
+                title="Select Temporary Permit Type"
               />
             ) : (
               <Empty description="No form available" />
             )}
-          </div>
           {/* Keep form instance connected when not on form step (avoids Ant Design useForm warning) */}
           <Form form={form} style={{ display: 'none' }} />
         </div>
@@ -559,7 +568,11 @@ export default forwardRef(function PermitApplicationForm({
 
       <PaymentReceiptModal
         visible={showReceiptModal}
-        onClose={() => setShowReceiptModal(false)}
+        onClose={() => {
+          setShowReceiptModal(false)
+          // Navigate to overview tab after payment completion
+          handleTabChangeRef.current('overview')
+        }}
         receiptId={receiptData?.receiptId}
         receiptNumber={receiptData?.receiptNumber}
         transactionDate={receiptData?.transactionDate}

@@ -46,9 +46,14 @@ router.get(
       });
     } catch (err) {
       console.error("GET /api/lgu-officer/businesses error:", err);
-      return respond.error(res, 500, "fetch_error", "Failed to fetch businesses");
+      return respond.error(
+        res,
+        500,
+        "fetch_error",
+        "Failed to fetch businesses",
+      );
     }
-  }
+  },
 );
 
 /**
@@ -74,7 +79,7 @@ router.get(
       console.error("GET /api/lgu-officer/businesses/:id error:", err);
       return respond.error(res, 500, "fetch_error", "Failed to fetch business");
     }
-  }
+  },
 );
 
 module.exports = router;

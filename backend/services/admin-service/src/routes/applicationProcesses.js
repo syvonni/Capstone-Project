@@ -3,7 +3,7 @@ const router = express.Router();
 const { requireJwt, requireRole } = require("../middleware/auth");
 const respond = require("../middleware/respond");
 const ApplicationProcess = require("../models/ApplicationProcess");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 
 // GET / — fetch all application processes (admin only)
 router.get("/", requireJwt, requireRole(["admin"]), async (req, res) => {
@@ -48,8 +48,13 @@ router.put("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
       );
     }
 
-    const { title, description, steps, totalEstimatedTime, totalEstimatedCost } =
-      req.body;
+    const {
+      title,
+      description,
+      steps,
+      totalEstimatedTime,
+      totalEstimatedCost,
+    } = req.body;
 
     // Validate required fields
     if (title !== undefined) process.title = title;
@@ -83,15 +88,24 @@ router.put("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
     process.updatedBy = req._userId;
     await process.save();
 
-    await createAuditLog({
-      action: "application_process_updated",
-      performedBy: req._userId,
-      targetId: process._id,
-      details: {
+    await logAuditEvent(
+      "application_process_updated",
+      req._userId,
+      "ApplicationProcess",
+      String(process._id),
+      {
+        role: req._userRole || "admin",
         applicationType: process.applicationType,
         title: process.title,
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
       },
-    });
+    ).catch((err) =>
+      console.error(
+        "Failed to log audit event for application_process_updated:",
+        err,
+      ),
+    );
 
     return respond.success(res, 200, process);
   } catch (err) {
@@ -132,15 +146,24 @@ router.post(
       process.updatedBy = req._userId;
       await process.save();
 
-      await createAuditLog({
-        action: "application_process_published",
-        performedBy: req._userId,
-        targetId: process._id,
-        details: {
+      await logAuditEvent(
+        "application_process_published",
+        req._userId,
+        "ApplicationProcess",
+        String(process._id),
+        {
+          role: req._userRole || "admin",
           applicationType: process.applicationType,
           title: process.title,
+          ip: req.ip,
+          userAgent: req.get("user-agent"),
         },
-      });
+      ).catch((err) =>
+        console.error(
+          "Failed to log audit event for application_process_published:",
+          err,
+        ),
+      );
 
       return respond.success(res, 200, process);
     } catch (err) {
@@ -170,15 +193,24 @@ router.post(
       process.updatedBy = req._userId;
       await process.save();
 
-      await createAuditLog({
-        action: "application_process_archived",
-        performedBy: req._userId,
-        targetId: process._id,
-        details: {
+      await logAuditEvent(
+        "application_process_archived",
+        req._userId,
+        "ApplicationProcess",
+        String(process._id),
+        {
+          role: req._userRole || "admin",
           applicationType: process.applicationType,
           title: process.title,
+          ip: req.ip,
+          userAgent: req.get("user-agent"),
         },
-      });
+      ).catch((err) =>
+        console.error(
+          "Failed to log audit event for application_process_archived:",
+          err,
+        ),
+      );
 
       return respond.success(res, 200, process);
     } catch (err) {
@@ -208,15 +240,24 @@ router.post(
       process.updatedBy = req._userId;
       await process.save();
 
-      await createAuditLog({
-        action: "application_process_unarchived",
-        performedBy: req._userId,
-        targetId: process._id,
-        details: {
+      await logAuditEvent(
+        "application_process_unarchived",
+        req._userId,
+        "ApplicationProcess",
+        String(process._id),
+        {
+          role: req._userRole || "admin",
           applicationType: process.applicationType,
           title: process.title,
+          ip: req.ip,
+          userAgent: req.get("user-agent"),
         },
-      });
+      ).catch((err) =>
+        console.error(
+          "Failed to log audit event for application_process_unarchived:",
+          err,
+        ),
+      );
 
       return respond.success(res, 200, process);
     } catch (err) {

@@ -14,7 +14,7 @@ const {
   addToPasswordHistory,
 } = require("../lib/passwordHistory");
 const { sanitizeString } = require("../lib/sanitizer");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const {
   sendPasswordChangeNotification,
 } = require("../lib/notificationService");
@@ -246,20 +246,16 @@ router.post(
         "unknown";
       const userAgent = req.headers["user-agent"] || "unknown";
 
-      await createAuditLog(
-        doc._id,
-        "password_change",
-        "password",
-        "[REDACTED]", // Don't log actual passwords
-        "[REDACTED]",
-        roleSlug,
-        {
-          ip,
-          userAgent,
-          tokenVersion: doc.tokenVersion,
-          mfaReEnrollmentRequired: !!doc.mfaReEnrollmentRequired,
-        },
-      );
+      await logAuditEvent("password_change", doc._id, "User", doc._id, {
+        role: roleSlug,
+        fieldChanged: "password",
+        oldValue: "[REDACTED]",
+        newValue: "[REDACTED]",
+        ip,
+        userAgent,
+        tokenVersion: doc.tokenVersion,
+        mfaReEnrollmentRequired: !!doc.mfaReEnrollmentRequired,
+      });
 
       // Send password change notification (non-blocking)
       sendPasswordChangeNotification(doc._id, {
@@ -653,21 +649,17 @@ router.post(
         "unknown";
       const userAgent = req.headers["user-agent"] || "unknown";
 
-      await createAuditLog(
-        doc._id,
-        "password_change",
-        "password",
-        "[REDACTED]", // Don't log actual passwords
-        "[REDACTED]",
-        roleSlug,
-        {
-          ip,
-          userAgent,
-          tokenVersion: doc.tokenVersion,
-          mfaReEnrollmentRequired: !!doc.mfaReEnrollmentRequired,
-          method: "otp_verification",
-        },
-      );
+      await logAuditEvent("password_change", doc._id, "User", doc._id, {
+        role: roleSlug,
+        fieldChanged: "password",
+        oldValue: "[REDACTED]",
+        newValue: "[REDACTED]",
+        ip,
+        userAgent,
+        tokenVersion: doc.tokenVersion,
+        mfaReEnrollmentRequired: !!doc.mfaReEnrollmentRequired,
+        method: "otp_verification",
+      });
 
       // Send password change notification (non-blocking)
       sendPasswordChangeNotification(doc._id, {

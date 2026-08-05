@@ -1,624 +1,2079 @@
 /**
- * Seeder for initial Permit Forms section.
- *
- * The business_permits_sample folder contains PNG images of actual permit
- * requirements. Since extracting text from images at seed time requires OCR
- * dependencies that may not be available in all environments, this seeder
- * uses manually transcribed content from those images as initial data.
- *
- * Usage: node seedPermitForms.js
+ * Seed permit forms from frontend metadata
+ * 
+ * This script creates permit form records in the database based on the frontend form metadata.
+ * It's designed to be called from the main index.js or from a seed runner.
  */
 
-const mongoose = require("mongoose");
-const path = require("path");
-const dotenv = require("dotenv");
+const PermitForm = require("../models/PermitForm");
+const axios = require("axios");
+const logger = require("../lib/logger");
 
-dotenv.config({
-  path: path.join(__dirname, "..", "..", ".env"),
-  override: false,
-});
-dotenv.config({
-  path: path.join(__dirname, "..", "..", "..", "..", "..", ".env"),
-  override: false,
-});
-
-const connectDB = require("../config/db");
-
-// Helper: create a date N days ago from now
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d;
-}
-
-const SAMPLE_CARDS = [
+// Section definitions from frontend formDefinitions.constants.js
+const UNIFIED_BUSINESS_PERMIT_SECTIONS = [
   {
-    cardId: "seed-business-permit",
-    title: "Business Permit (New Application)",
-    description:
-      "Required for all new business establishments within the municipality. Submit the completed form along with the listed requirements.",
-    requirements: [
-      "DTI/SEC/CDA Registration Certificate",
-      "Barangay Business Clearance",
-      "Community Tax Certificate (Cedula)",
-      "Contract of Lease / Land Title (if applicable)",
-      "Fire Safety Inspection Certificate",
-      "Sanitary Permit",
-      "Environmental Compliance Certificate (if applicable)",
-      "Location Map / Sketch",
-      "2x2 ID Photo of Owner (2 copies)",
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload government-issued IDs, business registration certificates, and other required documents to verify your business eligibility and compliance with LGU regulations',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Valid Government-Issued ID of the Business Owner',
+        type: 'category_upload',
+        required: true,
+        notes: '',
+        helpText: 'Upload a valid government-issued ID to verify your identity and business ownership for permit application',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [
+          {
+            label: 'Philippine Passport',
+            metadataFields: [
+              { label: 'ID Number', type: 'text', required: true, placeholder: 'Enter ID number' },
+              { label: 'Date of Issue', type: 'date', required: true },
+              { label: 'Expiry Date', type: 'date', required: false },
+              { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+            ],
+          },
+          {
+            label: "Driver's License",
+            metadataFields: [
+              { label: 'ID Number', type: 'text', required: true, placeholder: 'Enter ID number' },
+              { label: 'Date of Issue', type: 'date', required: true },
+              { label: 'Expiry Date', type: 'date', required: false },
+              { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+            ],
+          },
+          {
+            label: 'SSS UMID Card',
+            metadataFields: [
+              { label: 'ID Number', type: 'text', required: true, placeholder: 'Enter ID number' },
+              { label: 'Date of Issue', type: 'date', required: true },
+              { label: 'Expiry Date', type: 'date', required: false },
+              { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+            ],
+          },
+          {
+            label: 'PhilSys National ID',
+            metadataFields: [
+              { label: 'ID Number', type: 'text', required: true, placeholder: 'Enter ID number' },
+              { label: 'Date of Issue', type: 'date', required: true },
+              { label: 'Expiry Date', type: 'date', required: false },
+              { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+            ],
+          },
+          {
+            label: 'Voter\'s ID',
+            metadataFields: [
+              { label: 'ID Number', type: 'text', required: true, placeholder: 'Enter ID number' },
+              { label: 'Date of Issue', type: 'date', required: true },
+              { label: 'Expiry Date', type: 'date', required: false },
+              { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+            ],
+          },
+          {
+            label: 'Postal ID',
+            metadataFields: [
+              { label: 'ID Number', type: 'text', required: true, placeholder: 'Enter ID number' },
+              { label: 'Date of Issue', type: 'date', required: true },
+              { label: 'Expiry Date', type: 'date', required: false },
+              { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+            ],
+          },
+          {
+            label: 'Senior Citizen ID',
+            metadataFields: [
+              { label: 'ID Number', type: 'text', required: true, placeholder: 'Enter ID number' },
+              { label: 'Date of Issue', type: 'date', required: true },
+              { label: 'Expiry Date', type: 'date', required: false },
+              { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+            ],
+          },
+          {
+            label: 'PWD ID',
+            metadataFields: [
+              { label: 'ID Number', type: 'text', required: true, placeholder: 'Enter ID number' },
+              { label: 'Date of Issue', type: 'date', required: true },
+              { label: 'Expiry Date', type: 'date', required: false },
+              { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+            ],
+          },
+        ],
+      },
+      {
+        label: 'Business Registration Certificate',
+        type: 'category_upload',
+        required: true,
+        notes: '',
+        helpText: 'Upload your business registration certificate to verify your business legal status and ownership for permit application',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [
+          {
+            label: 'Sole Proprietorship',
+            definition: 'A business owned and operated by a single individual',
+            whereToGet: 'you can acquire a DTI Certificate from your provincial office',
+            metadataFields: [
+              { label: 'Registration Number', type: 'text', required: true, placeholder: 'Enter registration number' },
+              { label: 'Date of Registration', type: 'date', required: true },
+            ],
+          },
+          {
+            label: 'Corporation',
+            definition: 'A legal entity separate from its owners with limited liability',
+            whereToGet: 'you can acquire a SEC Registration Certificate from SEC office',
+            metadataFields: [
+              { label: 'Registration Number', type: 'text', required: true, placeholder: 'Enter registration number' },
+              { label: 'Date of Registration', type: 'date', required: true },
+            ],
+          },
+          {
+            label: 'Partnership',
+            definition: 'A business owned by two or more individuals who share profits and losses',
+            whereToGet: 'you can acquire a SEC Registration Certificate from SEC office',
+            metadataFields: [
+              { label: 'Registration Number', type: 'text', required: true, placeholder: 'Enter registration number' },
+              { label: 'Date of Registration', type: 'date', required: true },
+            ],
+          },
+          {
+            label: 'Cooperative',
+            definition: 'An organization owned and operated for the benefit of its members',
+            whereToGet: 'you can acquire a CDA Certificate from CDA regional office',
+            metadataFields: [
+              { label: 'Registration Number', type: 'text', required: true, placeholder: 'Enter registration number' },
+              { label: 'Date of Registration', type: 'date', required: true },
+            ],
+          },
+        ],
+      },
+      {
+        label: 'Proof of Business Premises',
+        type: 'category_upload',
+        required: false,
+        notes: '',
+        helpText: 'Upload proof of your right to use the business premises to verify your business location compliance with LGU zoning regulations',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [
+          {
+            label: 'Lease Contract',
+            definition: 'A written agreement between a landlord and tenant for the use of property',
+            whereToGet: 'you can acquire this from your landlord or property owner',
+            metadataFields: [
+              { label: 'Contract Number', type: 'text', required: true, placeholder: 'Enter contract number' },
+              { label: 'Date of Contract', type: 'date', required: true },
+              { label: 'Property Address', type: 'address_alaminos', required: true },
+              { label: 'Landlord Name', type: 'text', required: true, placeholder: 'Enter landlord name' },
+              { label: 'Monthly Rental (₱)', type: 'number', required: true, placeholder: 'Enter monthly rental amount' },
+              { label: 'Landlord Address', type: 'address', required: true },
+            ],
+          },
+          {
+            label: 'Contract of Sale',
+            definition: 'A legal document that transfers ownership of property from seller to buyer',
+            whereToGet: 'you can acquire this from the seller or through a notary public',
+            metadataFields: [
+              { label: 'Contract Number', type: 'text', required: true, placeholder: 'Enter contract number' },
+              { label: 'Date of Contract', type: 'date', required: true },
+              { label: 'Property Address', type: 'address_alaminos', required: true },
+            ],
+          },
+          {
+            label: 'Land Title',
+            definition: 'A legal document proving ownership of land or property',
+            whereToGet: 'you can acquire this from the Registry of Deeds or Land Registration Authority',
+            metadataFields: [
+              { label: 'Title Number', type: 'text', required: true, placeholder: 'Enter title number' },
+              { label: 'Date of Registration', type: 'date', required: true },
+              { label: 'Property Address', type: 'address_alaminos', required: true },
+            ],
+          },
+        ],
+      },
+      {
+        label: 'Occupancy Permit',
+        type: 'category_upload',
+        required: true,
+        notes: '',
+        helpText: 'Upload occupancy certificate to verify your building meets safety and building code requirements for business operation',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [
+          {
+            label: 'Own Building',
+            definition: 'You own the building where your business operates',
+            whereToGet: 'You can acquire this from the City Engineering Office or Building Official',
+            metadataFields: [
+              { label: 'Permit Number', type: 'text', required: true, placeholder: 'Enter permit number' },
+              { label: 'Date Issued', type: 'date', required: true },
+              { label: 'Building Name/Number', type: 'text', required: true, placeholder: 'Enter building name or number' },
+              { label: 'Floor Area (sqm)', type: 'text', required: false, placeholder: 'Enter floor area in sqm' },
+              { label: 'Building Value (₱)', type: 'number', required: false, placeholder: 'Enter declared building value' },
+            ],
+          },
+          {
+            label: 'Leased Property',
+            definition: 'You lease the property where your business operates',
+            whereToGet: 'You can acquire this from the building owner',
+            metadataFields: [
+              { label: 'Permit Number', type: 'text', required: true, placeholder: 'Enter permit number' },
+              { label: 'Date Issued', type: 'date', required: true },
+              { label: 'Building Name/Number', type: 'text', required: true, placeholder: 'Enter building name or number' },
+              { label: 'Floor Area (sqm)', type: 'text', required: false, placeholder: 'Enter floor area in sqm' },
+              { label: 'Monthly Rental (₱)', type: 'number', required: true, placeholder: 'Enter monthly rental amount' },
+              { label: 'Landlord Name', type: 'text', required: true, placeholder: 'Enter landlord name' },
+              { label: 'Landlord Address', type: 'address', required: true },
+            ],
+          },
+        ],
+      },
+      {
+        label: 'Barangay Business Clearance',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload barangay clearance to verify your business operates within the barangay jurisdiction and complies with local requirements',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'Clearance Number', type: 'text', required: true, placeholder: 'Enter clearance number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Barangay Name', type: 'text', required: true, placeholder: 'Enter barangay name' },
+        ],
+      },
+      {
+        label: 'Community Tax Certificate (CTC / Cedula)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload CTC to verify you have paid your community tax obligations to the LGU',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'CTC Number', type: 'text', required: true, placeholder: 'Enter CTC number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+        ],
+      },
     ],
-    processingSteps: [
-      {
-        stepId: "bp-new-1",
-        title: "Submit Application Online",
-        description:
-          "Complete the online application form, upload all required documents, and submit for initial processing.",
-        estimatedDurationDays: 0,
-        order: 0,
-      },
-      {
-        stepId: "bp-new-2",
-        title: "Document Completeness Check",
-        description:
-          "BPLO staff reviews uploaded documents and verifies that all requirements are present and legible.",
-        estimatedDurationDays: 1,
-        order: 1,
-      },
-      {
-        stepId: "bp-new-3",
-        title: "Zoning Clearance Verification",
-        description:
-          "System cross-references your business address with the municipal zoning map and land use plan.",
-        estimatedDurationDays: 2,
-        order: 2,
-      },
-      {
-        stepId: "bp-new-4",
-        title: "Fire Safety Inspection",
-        description:
-          "Bureau of Fire Protection conducts on-site or desk inspection, depending on business category and floor area.",
-        estimatedDurationDays: 4,
-        order: 3,
-      },
-      {
-        stepId: "bp-new-5",
-        title: "Sanitary / Health Clearance",
-        description:
-          "Municipal Health Office validates health certificates and sanitary conditions of the premises.",
-        estimatedDurationDays: 2,
-        order: 4,
-      },
-      {
-        stepId: "bp-new-6",
-        title: "Assessment & Fee Computation",
-        description:
-          "BPLO computes applicable fees based on business type, capitalization, floor area, and number of employees.",
-        estimatedDurationDays: 1,
-        order: 5,
-      },
-      {
-        stepId: "bp-new-7",
-        title: "Payment Processing",
-        description:
-          "Pay the assessed fees online or at the Municipal Treasurer's Office. A digital receipt is generated upon confirmation.",
-        estimatedDurationDays: 1,
-        order: 6,
-      },
-      {
-        stepId: "bp-new-8",
-        title: "Permit Issuance",
-        description:
-          "Once payment is verified, your Business Permit is generated digitally and recorded on the blockchain for tamper-proof audit.",
-        estimatedDurationDays: 1,
-        order: 7,
-      },
-    ],
-    downloadableFile: {
-      cid: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-      fileName: "Business_Permit_New_Application.pdf",
-      size: 13264,
-    },
-    lastUpdatedAt: daysAgo(3),
-    order: 0,
   },
   {
-    cardId: "seed-business-renewal",
-    title: "Business Permit (Renewal)",
-    description:
-      "For annual renewal of existing business permits. Ensure all previous year requirements and clearances are current.",
-    requirements: [
-      "Previous year Business Permit (photocopy)",
-      "Barangay Business Clearance (current year)",
-      "Community Tax Certificate (Cedula)",
-      "Updated DTI/SEC/CDA Registration",
-      "Fire Safety Inspection Certificate (current year)",
-      "Sanitary Permit (current year)",
-      "Official Receipt of previous year permit fees",
+    sectionName: 'Business Information',
+    description: 'Provide your business name, address, contact information, and tax identification number for official business registration and tax purposes',
+    notes: '',
+    items: [
+      {
+        label: 'Business / Trade / Doing Business As Name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: 'As registered with DTI / SEC / CDA',
+        placeholder: 'Enter business name',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Business address',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Physical location of the business',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Business telephone / mobile number',
+        type: 'text',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'e.g. 09171234567',
+        span: 12,
+        validation: { maxLength: 15 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Business email',
+        type: 'text',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'e.g. business@example.com',
+        span: 12,
+        validation: { maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'TIN (Tax Identification Number)',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'e.g. 123-456-789-000',
+        span: 24,
+        validation: { minLength: 9, maxLength: 20 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
     ],
-    processingSteps: [
-      {
-        stepId: "bp-ren-1",
-        title: "Submit Renewal Application",
-        description:
-          "Log in to your account, select your existing business, and submit the renewal application with updated documents.",
-        estimatedDurationDays: 0,
-        order: 0,
-      },
-      {
-        stepId: "bp-ren-2",
-        title: "Previous Permit Validation",
-        description:
-          "System verifies your previous permit record and checks for outstanding violations or unpaid balances.",
-        estimatedDurationDays: 1,
-        order: 1,
-      },
-      {
-        stepId: "bp-ren-3",
-        title: "Document Review",
-        description:
-          "BPLO staff verifies that current-year clearances and updated registrations are complete and valid.",
-        estimatedDurationDays: 2,
-        order: 2,
-      },
-      {
-        stepId: "bp-ren-4",
-        title: "Clearance Cross-Check",
-        description:
-          "Fire safety, sanitary, and zoning clearances are validated against agency records.",
-        estimatedDurationDays: 2,
-        order: 3,
-      },
-      {
-        stepId: "bp-ren-5",
-        title: "Fee Assessment",
-        description:
-          "Renewal fees are computed based on gross sales/receipts declared for the previous year.",
-        estimatedDurationDays: 1,
-        order: 4,
-      },
-      {
-        stepId: "bp-ren-6",
-        title: "Payment Processing",
-        description:
-          "Pay the assessed renewal fees. Late renewals may incur surcharges as per local ordinance.",
-        estimatedDurationDays: 1,
-        order: 5,
-      },
-      {
-        stepId: "bp-ren-7",
-        title: "Permit Renewal Issuance",
-        description:
-          "Renewed Business Permit is issued digitally and the blockchain audit trail is updated.",
-        estimatedDurationDays: 1,
-        order: 6,
-      },
-    ],
-    downloadableFile: {
-      cid: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-      fileName: "Business_Permit_Renewal.pdf",
-      size: 13264,
-    },
-    lastUpdatedAt: daysAgo(7),
-    order: 1,
   },
   {
-    cardId: "seed-occupational-permit",
-    title: "Occupational Permit",
-    description:
-      "Required for individuals working within the municipality. Must be secured annually.",
-    requirements: [
-      "Community Tax Certificate (Cedula)",
-      "Barangay Clearance",
-      "Police Clearance",
-      "Health Certificate / Medical Certificate",
-      "1x1 ID Photo (2 copies)",
-      "Certificate of Employment or Appointment",
-    ],
-    processingSteps: [
-      {
-        stepId: "occ-1",
-        title: "Submit Application",
-        description:
-          "Fill out the occupational permit form online and upload your personal clearances and employment certificate.",
-        estimatedDurationDays: 0,
-        order: 0,
-      },
-      {
-        stepId: "occ-2",
-        title: "Identity & Clearance Verification",
-        description:
-          "Staff validates your barangay clearance, police clearance, and community tax certificate.",
-        estimatedDurationDays: 1,
-        order: 1,
-      },
-      {
-        stepId: "occ-3",
-        title: "Health Certificate Review",
-        description:
-          "Municipal Health Office confirms the validity of your medical or health certificate.",
-        estimatedDurationDays: 1,
-        order: 2,
-      },
-      {
-        stepId: "occ-4",
-        title: "Fee Payment",
-        description:
-          "Pay the occupational permit fee online or at the treasurer's office.",
-        estimatedDurationDays: 1,
-        order: 3,
-      },
-      {
-        stepId: "occ-5",
-        title: "Permit Issuance",
-        description:
-          "Your Occupational Permit is generated and made available for download in your account.",
-        estimatedDurationDays: 1,
-        order: 4,
-      },
-    ],
-    downloadableFile: {
-      cid: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-      fileName: "Occupational_Permit.pdf",
-      size: 13264,
-    },
-    lastUpdatedAt: daysAgo(14),
-    order: 2,
-  },
-  {
-    cardId: "seed-fire-safety",
-    title: "Fire Safety Inspection Certificate",
-    description:
-      "Issued by the Bureau of Fire Protection. Required for all business permit applications.",
-    requirements: [
-      "Accomplished FSIC Application Form",
-      "Building Permit / Occupancy Permit",
-      "Fire Insurance Policy",
-      "Floor Plan / Building Plan",
-      "Fire Safety Compliance Report",
-    ],
-    processingSteps: [
-      {
-        stepId: "fsic-1",
-        title: "Submit FSIC Application",
-        description:
-          "Upload the completed FSIC application form and supporting building/floor plans online.",
-        estimatedDurationDays: 0,
-        order: 0,
-      },
-      {
-        stepId: "fsic-2",
-        title: "Document Pre-Screening",
-        description:
-          "Bureau of Fire Protection reviews submitted documents for completeness before scheduling inspection.",
-        estimatedDurationDays: 2,
-        order: 1,
-      },
-      {
-        stepId: "fsic-3",
-        title: "On-Site Fire Safety Inspection",
-        description:
-          "A fire safety inspector visits the premises to assess fire exits, extinguishers, alarms, and overall compliance.",
-        estimatedDurationDays: 5,
-        order: 2,
-      },
-      {
-        stepId: "fsic-4",
-        title: "Compliance Evaluation",
-        description:
-          "Inspector files a report. If deficiencies are found, a corrective action notice is issued.",
-        estimatedDurationDays: 2,
-        order: 3,
-      },
-      {
-        stepId: "fsic-5",
-        title: "Fee Payment",
-        description:
-          "Pay the FSIC inspection fee based on building floor area and occupancy type.",
-        estimatedDurationDays: 1,
-        order: 4,
-      },
-      {
-        stepId: "fsic-6",
-        title: "Certificate Issuance",
-        description:
-          "Fire Safety Inspection Certificate is issued once all requirements and fees are cleared.",
-        estimatedDurationDays: 1,
-        order: 5,
-      },
-    ],
-    downloadableFile: {
-      cid: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-      fileName: "Fire_Safety_Inspection.pdf",
-      size: 13264,
-    },
-    lastUpdatedAt: daysAgo(10),
-    order: 3,
-  },
-  {
-    cardId: "seed-sanitary-permit",
-    title: "Sanitary Permit",
-    description:
-      "Required for businesses handling food, beverages, or health-related services.",
-    requirements: [
-      "Health Certificate of all employees",
-      "Water Potability Test Result",
-      "Sanitary inspection of premises",
-      "Pest Control Certificate (if food establishment)",
-      "Valid Business Permit or application proof",
-    ],
-    processingSteps: [
-      {
-        stepId: "san-1",
-        title: "Submit Application",
-        description:
-          "Upload the sanitary permit application along with employee health certificates and water test results.",
-        estimatedDurationDays: 0,
-        order: 0,
-      },
-      {
-        stepId: "san-2",
-        title: "Document Review",
-        description:
-          "Municipal Health Office reviews all submitted health and sanitation documents.",
-        estimatedDurationDays: 2,
-        order: 1,
-      },
-      {
-        stepId: "san-3",
-        title: "Sanitary Inspection",
-        description:
-          "A sanitary inspector visits the establishment to check hygiene standards, waste disposal, and food handling practices.",
-        estimatedDurationDays: 3,
-        order: 2,
-      },
-      {
-        stepId: "san-4",
-        title: "Inspection Report & Compliance",
-        description:
-          "Inspector submits findings. Non-compliant establishments receive corrective action requirements before approval.",
-        estimatedDurationDays: 2,
-        order: 3,
-      },
-      {
-        stepId: "san-5",
-        title: "Fee Payment & Issuance",
-        description:
-          "Pay the sanitary permit fee and receive your Sanitary Permit upon clearance.",
-        estimatedDurationDays: 1,
-        order: 4,
-      },
-    ],
-    downloadableFile: {
-      cid: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-      fileName: "Sanitary_Permit.pdf",
-      size: 13264,
-    },
-    lastUpdatedAt: daysAgo(18),
-    order: 4,
-  },
-  {
-    cardId: "seed-building-permit",
-    title: "Building Permit",
-    description:
-      "Required before construction, renovation, or demolition of any structure.",
-    requirements: [
-      "Architectural Plans (signed by licensed architect)",
-      "Structural Plans (signed by licensed civil engineer)",
-      "Electrical Plans",
-      "Plumbing / Sanitary Plans",
-      "Land Title / Tax Declaration",
-      "Lot Plan with vicinity map",
-      "Barangay Clearance",
-      "Locational Clearance / Zoning Certificate",
-    ],
-    processingSteps: [
-      {
-        stepId: "bld-1",
-        title: "Submit Building Permit Application",
-        description:
-          "Upload architectural, structural, electrical, and plumbing plans along with land ownership documents.",
-        estimatedDurationDays: 0,
-        order: 0,
-      },
-      {
-        stepId: "bld-2",
-        title: "Plan Review by Municipal Engineer",
-        description:
-          "The Municipal Engineering Office reviews all submitted plans for structural integrity and code compliance.",
-        estimatedDurationDays: 5,
-        order: 1,
-      },
-      {
-        stepId: "bld-3",
-        title: "Zoning Compliance Check",
-        description:
-          "Municipal Planning Office verifies that the proposed construction complies with the local zoning ordinance.",
-        estimatedDurationDays: 3,
-        order: 2,
-      },
-      {
-        stepId: "bld-4",
-        title: "Fire Safety Plan Review",
-        description:
-          "Bureau of Fire Protection reviews fire safety provisions in the building plans.",
-        estimatedDurationDays: 3,
-        order: 3,
-      },
-      {
-        stepId: "bld-5",
-        title: "Environmental Clearance (if applicable)",
-        description:
-          "For larger projects, an environmental compliance certificate from DENR may be required.",
-        estimatedDurationDays: 5,
-        order: 4,
-      },
-      {
-        stepId: "bld-6",
-        title: "Fee Computation & Payment",
-        description:
-          "Building permit fees are computed based on project scope, floor area, and estimated cost.",
-        estimatedDurationDays: 2,
-        order: 5,
-      },
-      {
-        stepId: "bld-7",
-        title: "Building Permit Issuance",
-        description:
-          "Building Permit is issued after all clearances and fees are settled. Valid for one year from issuance.",
-        estimatedDurationDays: 1,
-        order: 6,
-      },
-    ],
-    downloadableFile: {
-      cid: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-      fileName: "Building_Permit.pdf",
-      size: 13264,
-    },
-    lastUpdatedAt: daysAgo(25),
-    order: 5,
-  },
-  {
-    cardId: "seed-zoning-clearance",
-    title: "Zoning / Locational Clearance",
-    description:
-      "Certifies that the business location complies with local zoning regulations.",
-    requirements: [
-      "Accomplished Application Form",
-      "Land Title / Tax Declaration",
-      "Lot Plan / Vicinity Map",
-      "Contract of Lease (if applicable)",
-      "Barangay Clearance",
-    ],
-    processingSteps: [
-      {
-        stepId: "zon-1",
-        title: "Submit Zoning Application",
-        description:
-          "Upload the completed application form with land title, lot plan, and barangay clearance.",
-        estimatedDurationDays: 0,
-        order: 0,
-      },
-      {
-        stepId: "zon-2",
-        title: "Location Mapping & Verification",
-        description:
-          "Municipal Planning Office plots your business address on the official zoning map.",
-        estimatedDurationDays: 2,
-        order: 1,
-      },
-      {
-        stepId: "zon-3",
-        title: "Land Use Compatibility Review",
-        description:
-          "Staff checks whether the intended business activity is allowed under the zone classification of the location.",
-        estimatedDurationDays: 2,
-        order: 2,
-      },
-      {
-        stepId: "zon-4",
-        title: "Fee Payment",
-        description:
-          "Pay the zoning clearance fee at the Municipal Treasurer's Office or online.",
-        estimatedDurationDays: 1,
-        order: 3,
-      },
-      {
-        stepId: "zon-5",
-        title: "Clearance Issuance",
-        description:
-          "Zoning / Locational Clearance certificate is issued and made available for download.",
-        estimatedDurationDays: 1,
-        order: 4,
-      },
-    ],
-    downloadableFile: {
-      cid: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-      fileName: "Zoning_Clearance.pdf",
-      size: 13264,
-    },
-    lastUpdatedAt: daysAgo(5),
-    order: 6,
+    sectionName: 'Line of Business',
+    type: 'lob_section',
+    description: 'Select your business category and classification to determine applicable fees and requirements.',
+    notes: 'This section uses prebuilt LOB selection interface',
+    items: [],
   },
 ];
 
-async function seed() {
-  try {
-    await connectDB(process.env.MONGO_URI);
-    const PermitFormsSection = require("../models/PermitFormsSection");
+const COOPERATIVE_PERMIT_SECTIONS = [
+  {
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload the required documents to verify your cooperative eligibility and compliance with local cooperative regulations.',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Community Tax Certificate (CTC)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload your Community Tax Certificate to verify you have paid your local taxes for business operation',
+        whereToGet: 'You can acquire this from your local City Treasurer\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'CTC Number', type: 'text', required: true, placeholder: 'Enter CTC number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+        ],
+      },
+      {
+        label: 'Barangay Clearance where business is located',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload barangay business clearance to verify your business has been cleared to operate in the barangay',
+        whereToGet: 'You can acquire this from your barangay captain\'s office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'Clearance Number', type: 'text', required: true, placeholder: 'Enter clearance number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Barangay Name', type: 'text', required: true, placeholder: 'Enter barangay name' },
+        ],
+      },
+      {
+        label: 'Cooperative Development Authority Registration',
+        type: 'category_upload',
+        required: true,
+        notes: '',
+        helpText: 'Upload your CDA registration certificate to verify your cooperative is legally registered with the Cooperative Development Authority',
+        whereToGet: 'You can acquire this from the CDA regional office or via CDA online registration system',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [
+          {
+            label: 'NEW Registration',
+            definition: 'Certificate of Registration for newly registered cooperatives',
+            whereToGet: 'You can acquire this from the CDA regional office upon initial registration',
+            metadataFields: [
+              { label: 'CDA Registration Number', type: 'text', required: true, placeholder: 'Enter CDA registration number' },
+              { label: 'Date of Registration', type: 'date', required: true },
+            ],
+          },
+          {
+            label: 'RENEWAL Registration',
+            definition: 'Certificate of Registration for cooperative renewals',
+            whereToGet: 'You can acquire this from the CDA regional office upon renewal',
+            metadataFields: [
+              { label: 'CDA Registration Number', type: 'text', required: true, placeholder: 'Enter CDA registration number' },
+              { label: 'Date of Renewal', type: 'date', required: true },
+            ],
+          },
+        ],
+      },
+      {
+        label: 'Certificate of Compliance from City Cooperatives Office',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload certificate of compliance from the City Cooperatives Office to verify your cooperative meets local cooperative standards',
+        whereToGet: 'You can acquire this from the City Cooperatives Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Contract of Lease and xerox copy of Mayor\'s Permit of Lessor (if lessee)',
+        type: 'file',
+        required: false,
+        notes: '',
+        helpText: 'Upload contract of lease and lessor\'s Mayor\'s Permit if you are leasing the property for your cooperative operations',
+        whereToGet: 'You can acquire the contract of lease from your landlord and the Mayor\'s Permit from the City Mayor\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+  {
+    sectionName: 'Activity Details',
+    description: 'Provide details about your cooperative operations, including business name, location, duration, and nature of activities',
+    notes: '',
+    items: [
+      {
+        label: 'Business / activity name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'Enter name of cooperative or activity',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Location of activity',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Where the cooperative or activity is located',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Duration of activity',
+        type: 'date_range',
+        required: false,
+        notes: '',
+        helpText: 'For temporary activities, specify the start and end dates',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Brief description of activity',
+        type: 'textarea',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'Describe the cooperative activities...',
+        span: 24,
+        validation: { maxLength: 1000 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+];
 
-    const existing = await PermitFormsSection.findOne();
-    if (existing) {
-      console.log("PermitFormsSection already exists. Skipping seed.");
-      return;
-    }
+const ASSOCIATION_FOUNDATION_PERMIT_SECTIONS = [
+  {
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload the required documents to verify your association or foundation eligibility and compliance with LGU regulations.',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Community Tax Certificate (CTC)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload your Community Tax Certificate to verify you have paid your local taxes for business operation',
+        whereToGet: 'You can acquire this from your local City Treasurer\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'CTC Number', type: 'text', required: true, placeholder: 'Enter CTC number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+        ],
+      },
+      {
+        label: 'Barangay Clearance where business is located',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload barangay business clearance to verify your business has been cleared to operate in the barangay',
+        whereToGet: 'You can acquire this from your barangay captain\'s office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'Clearance Number', type: 'text', required: true, placeholder: 'Enter clearance number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Barangay Name', type: 'text', required: true, placeholder: 'Enter barangay name' },
+        ],
+      },
+      {
+        label: 'Registration Certificate',
+        type: 'category_upload',
+        required: true,
+        notes: '',
+        helpText: 'Upload your registration certificate to verify your organization is legally registered with the appropriate government agency',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [
+          {
+            label: 'SEC Registration',
+            definition: 'Securities and Exchange Commission registration for corporations, partnerships, and associations',
+            whereToGet: 'You can acquire this from the SEC office or via SEC online registration system',
+            metadataFields: [
+              { label: 'SEC Registration Number', type: 'text', required: true, placeholder: 'Enter SEC registration number' },
+              { label: 'Date of Registration', type: 'date', required: true },
+            ],
+          },
+          {
+            label: 'DOLE Registration',
+            definition: 'Department of Labor and Employment registration for labor organizations and worker associations',
+            whereToGet: 'You can acquire this from the DOLE regional office',
+            metadataFields: [
+              { label: 'DOLE Registration Number', type: 'text', required: true, placeholder: 'Enter DOLE registration number' },
+              { label: 'Date of Registration', type: 'date', required: true },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    sectionName: 'Activity Details',
+    description: 'Provide details about your association or foundation operations, including organization name, location, duration, and nature of activities',
+    notes: '',
+    items: [
+      {
+        label: 'Business / activity name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'Enter name of association/foundation or activity',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Location of activity',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Where the association/foundation or activity is located',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Duration of activity',
+        type: 'date_range',
+        required: false,
+        notes: '',
+        helpText: 'For temporary activities, specify the start and end dates',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Brief description of activity',
+        type: 'textarea',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'Describe the association/foundation activities...',
+        span: 24,
+        validation: { maxLength: 1000 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+];
 
-    await PermitFormsSection.create({
-      sectionDescription:
-        "Below are the permit forms and their requirements. Please download the applicable form, fill it out completely, and submit along with the listed requirements.",
-      cards: SAMPLE_CARDS,
-      publishedSectionDescription:
-        "Below are the permit forms and their requirements. Please download the applicable form, fill it out completely, and submit along with the listed requirements.",
-      publishedCards: SAMPLE_CARDS,
-      isPublished: true,
-      isEnabled: true,
-      lastPublishedAt: new Date(),
-    });
+const CHAINSAW_PERMIT_SECTIONS = [
+  {
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload the required documents to verify your chainsaw permit eligibility and compliance with LGU regulations.',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Community Tax Certificate (CTC)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload your Community Tax Certificate to verify you have paid your local taxes for business operation',
+        whereToGet: 'You can acquire this from your local City Treasurer\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'CTC Number', type: 'text', required: true, placeholder: 'Enter CTC number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+        ],
+      },
+      {
+        label: 'Barangay Clearance where business is located',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload barangay business clearance to verify your business has been cleared to operate in the barangay',
+        whereToGet: 'You can acquire this from your barangay captain\'s office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'Clearance Number', type: 'text', required: true, placeholder: 'Enter clearance number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Barangay Name', type: 'text', required: true, placeholder: 'Enter barangay name' },
+        ],
+      },
+      {
+        label: 'Certification of Chainsaw Ownership',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload certification of chainsaw ownership to verify you legally own the chainsaw equipment',
+        whereToGet: 'You can acquire this from the DENR or local environment office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Stencil of Chainsaw Serial No.',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload a clear stencil or rubbing of the chainsaw serial number for equipment identification',
+        whereToGet: 'You can create this by placing paper over the serial number and rubbing with a pencil',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+  {
+    sectionName: 'Activity Details',
+    description: 'Provide details about your chainsaw operations, including business name, location, duration, and nature of activities',
+    notes: '',
+    items: [
+      {
+        label: 'Business / activity name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'Enter name of business or activity',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Location of activity',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Where the chainsaw activity is located',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Duration of activity',
+        type: 'date_range',
+        required: false,
+        notes: '',
+        helpText: 'For temporary activities, specify the start and end dates',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Brief description of activity',
+        type: 'textarea',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'Describe the chainsaw activities...',
+        span: 24,
+        validation: { maxLength: 1000 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+];
 
-    console.log(
-      `Seeded PermitFormsSection with ${SAMPLE_CARDS.length} cards (published).`,
-    );
-  } catch (err) {
-    console.error("Seed failed:", err);
-    process.exit(1);
-  } finally {
-    await mongoose.disconnect();
-  }
-}
+const FIRECRACKERS_STALLHOLDERS_PERMIT_SECTIONS = [
+  {
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload the required documents to verify your firecrackers stallholder eligibility and compliance with LGU regulations.',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Community Tax Certificate (CTC)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload your Community Tax Certificate to verify you have paid your local taxes for business operation',
+        whereToGet: 'You can acquire this from your local City Treasurer\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'CTC Number', type: 'text', required: true, placeholder: 'Enter CTC number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+        ],
+      },
+      {
+        label: 'Barangay Clearance where business is located',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload barangay business clearance to verify your business has been cleared to operate in the barangay',
+        whereToGet: 'You can acquire this from your barangay captain\'s office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'Clearance Number', type: 'text', required: true, placeholder: 'Enter clearance number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Barangay Name', type: 'text', required: true, placeholder: 'Enter barangay name' },
+        ],
+      },
+      {
+        label: 'Letter of Approval by City Market and Cemetery Section Head with assessment of fees',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload letter of approval from the City Market and Cemetery Section Head with fee assessment',
+        whereToGet: 'You can acquire this from the City Market and Cemetery Section Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Authenticated photocopy of Dealers/Manufacturer\'s License of Source from Camp Crame',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload authenticated photocopy of the dealer\'s or manufacturer\'s license from PNP-Camp Crame to verify legal sourcing of firecrackers',
+        whereToGet: 'You can acquire this from the Philippine National Police (PNP) at Camp Crame',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Authorization/Certification of Dealers/Licensee of Source',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload authorization or certification from your dealer or licensee confirming your source of firecrackers',
+        whereToGet: 'You can acquire this from your authorized firecrackers dealer or licensee',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Fireworks Retailers Seminar Certificate',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload certificate of completion from the Fireworks Retailers Seminar to verify you have completed safety training',
+        whereToGet: 'You can acquire this by attending the Fireworks Retailers Seminar conducted by PNP or LGU',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+  {
+    sectionName: 'Activity Details',
+    description: 'Provide details about your firecrackers stall, including business name, location, duration, and nature of activities',
+    notes: '',
+    items: [
+      {
+        label: 'Business / activity name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'Enter name of business or stall',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Location of activity',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Where the stall will be located',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Duration of activity',
+        type: 'date_range',
+        required: false,
+        notes: '',
+        helpText: 'For temporary permits, specify the start and end dates',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Brief description of activity',
+        type: 'textarea',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'Describe the firecrackers stall activity...',
+        span: 24,
+        validation: { maxLength: 1000 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+];
 
-/**
- * Idempotent seed function for startup.
- * Seeds permit forms only when the collection is empty.
- * Returns result object for logging.
- */
+const BAZAAR_FESTIVAL_VENDORS_PERMIT_SECTIONS = [
+  {
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload the required documents to verify your bazaar/festival vendor eligibility and compliance with LGU regulations.',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Community Tax Certificate (CTC)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload your Community Tax Certificate to verify you have paid your local taxes for business operation',
+        whereToGet: 'You can acquire this from your local City Treasurer\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'CTC Number', type: 'text', required: true, placeholder: 'Enter CTC number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+        ],
+      },
+      {
+        label: 'Barangay Clearance where business is located',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload barangay business clearance to verify your business has been cleared to operate in the barangay',
+        whereToGet: 'You can acquire this from your barangay captain\'s office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'Clearance Number', type: 'text', required: true, placeholder: 'Enter clearance number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Barangay Name', type: 'text', required: true, placeholder: 'Enter barangay name' },
+        ],
+      },
+      {
+        label: 'Certification from City Tourism Office (Lucap Wharf only)',
+        type: 'file',
+        required: false,
+        notes: '',
+        helpText: 'Upload certification from the City Tourism Office if your stall will be located at Lucap Wharf',
+        whereToGet: 'You can acquire this from the City Tourism Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Letter of Approval by City Market and Cemetery Section Head with assessment of fees',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload letter of approval from the City Market and Cemetery Section Head with fee assessment',
+        whereToGet: 'You can acquire this from the City Market and Cemetery Section Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+  {
+    sectionName: 'Activity Details',
+    description: 'Provide details about your bazaar or festival stall, including business name, location, duration, and nature of activities',
+    notes: '',
+    items: [
+      {
+        label: 'Business / activity name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'Enter name of business or stall',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Location of activity',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Where the stall will be located',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Duration of activity',
+        type: 'date_range',
+        required: false,
+        notes: '',
+        helpText: 'For temporary permits, specify the start and end dates',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Brief description of activity',
+        type: 'textarea',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'Describe the bazaar/festival stall activity...',
+        span: 24,
+        validation: { maxLength: 1000 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+];
+
+const PEDDLERS_PERMIT_SECTIONS = [
+  {
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload the required documents to verify your peddler eligibility and compliance with LGU regulations.',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Community Tax Certificate (CTC)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload your Community Tax Certificate to verify you have paid your local taxes for business operation',
+        whereToGet: 'You can acquire this from your local City Treasurer\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'CTC Number', type: 'text', required: true, placeholder: 'Enter CTC number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+        ],
+      },
+      {
+        label: 'Barangay Clearance where business is located',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload barangay business clearance to verify your business has been cleared to operate in the barangay',
+        whereToGet: 'You can acquire this from your barangay captain\'s office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'Clearance Number', type: 'text', required: true, placeholder: 'Enter clearance number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Barangay Name', type: 'text', required: true, placeholder: 'Enter barangay name' },
+        ],
+      },
+      {
+        label: 'Certification from City Tourism Office (Lucap Wharf only)',
+        type: 'file',
+        required: false,
+        notes: '',
+        helpText: 'Upload certification from the City Tourism Office if your peddling activity will be at Lucap Wharf',
+        whereToGet: 'You can acquire this from the City Tourism Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Letter of Approval by City Market and Cemetery Section Head with assessment of fees',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload letter of approval from the City Market and Cemetery Section Head with fee assessment',
+        whereToGet: 'You can acquire this from the City Market and Cemetery Section Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+  {
+    sectionName: 'Activity Details',
+    description: 'Provide details about your peddling activities, including business name, location, duration, and nature of activities',
+    notes: '',
+    items: [
+      {
+        label: 'Business / activity name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'Enter name of business or activity',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Location of activity',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Where the peddling activity is located',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Duration of activity',
+        type: 'date_range',
+        required: false,
+        notes: '',
+        helpText: 'For temporary activities, specify the start and end dates',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Brief description of activity',
+        type: 'textarea',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'Describe the peddling activity...',
+        span: 24,
+        validation: { maxLength: 1000 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+];
+
+const PROMOTIONS_EXHIBITORS_PERMIT_SECTIONS = [
+  {
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload the required documents to verify your promotion/exhibitor eligibility and compliance with LGU regulations.',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Request letter approved by City Administrator',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload your request letter that has been approved by the City Administrator for your promotional or exhibition activity',
+        whereToGet: 'You can acquire this by submitting a request letter to the City Administrator\'s Office for approval',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Letter of Approval by City Market and Cemetery Section Head with assessment of fees',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload letter of approval from the City Market and Cemetery Section Head with fee assessment for your activity',
+        whereToGet: 'You can acquire this from the City Market and Cemetery Section Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+  {
+    sectionName: 'Activity Details',
+    description: 'Provide details about your promotional or exhibition activity, including business name, location, duration, and nature of activities',
+    notes: '',
+    items: [
+      {
+        label: 'Business / activity name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'Enter name of business or activity',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Location of activity',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Where the promotion/exhibition is located',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Duration of activity',
+        type: 'date_range',
+        required: false,
+        notes: '',
+        helpText: 'For temporary activities, specify the start and end dates',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Brief description of activity',
+        type: 'textarea',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'Describe the promotion/exhibition activity...',
+        span: 24,
+        validation: { maxLength: 1000 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+];
+
+const CEMETERY_STALLHOLDERS_PERMIT_SECTIONS = [
+  {
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload the required documents to verify your cemetery stallholder eligibility and compliance with LGU regulations.',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Community Tax Certificate (CTC)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload your Community Tax Certificate to verify you have paid your local taxes for business operation',
+        whereToGet: 'You can acquire this from your local City Treasurer\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'CTC Number', type: 'text', required: true, placeholder: 'Enter CTC number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+        ],
+      },
+      {
+        label: 'Barangay Clearance where business is located',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload barangay business clearance to verify your business has been cleared to operate in the barangay',
+        whereToGet: 'You can acquire this from your barangay captain\'s office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'Clearance Number', type: 'text', required: true, placeholder: 'Enter clearance number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Barangay Name', type: 'text', required: true, placeholder: 'Enter barangay name' },
+        ],
+      },
+      {
+        label: 'Letter of Approval by City Market and Cemetery Section Head with assessment of fees',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload letter of approval from the City Market and Cemetery Section Head with fee assessment for your cemetery stall',
+        whereToGet: 'You can acquire this from the City Market and Cemetery Section Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+  {
+    sectionName: 'Activity Details',
+    description: 'Provide details about your cemetery stall, including business name, location, duration, and nature of activities',
+    notes: '',
+    items: [
+      {
+        label: 'Business / activity name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'Enter name of business or stall',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Location of activity',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Where the cemetery stall is located',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Duration of activity',
+        type: 'date_range',
+        required: false,
+        notes: '',
+        helpText: 'For temporary permits, specify the start and end dates',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Brief description of activity',
+        type: 'text',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'Describe the cemetery stall activity...',
+        span: 24,
+        validation: { maxLength: 1000 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+];
+
+const FISH_TRAP_FISH_PEN_PERMIT_SECTIONS = [
+  {
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload the required documents to verify your fish trap/fish pen eligibility and compliance with LGU regulations.',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Community Tax Certificate (CTC)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload your Community Tax Certificate to verify you have paid your local taxes for business operation',
+        whereToGet: 'You can acquire this from your local City Treasurer\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'CTC Number', type: 'text', required: true, placeholder: 'Enter CTC number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+        ],
+      },
+      {
+        label: 'Barangay Clearance where business is located',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload barangay business clearance to verify your business has been cleared to operate in the barangay',
+        whereToGet: 'You can acquire this from your barangay captain\'s office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'Clearance Number', type: 'text', required: true, placeholder: 'Enter clearance number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Barangay Name', type: 'text', required: true, placeholder: 'Enter barangay name' },
+        ],
+      },
+      {
+        label: 'Certification from the Brgy. Captain & duly noted by CFARMC Chairman',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload certification from the Barangay Captain duly noted by the CFARMC Chairman to verify community approval for your fishery operation',
+        whereToGet: 'You can acquire this from your barangay captain and have it noted by the CFARMC Chairman',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Certification from City Agriculturist (City Agriculture Office)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload certification from the City Agriculturist to verify technical feasibility and compliance with fishery regulations',
+        whereToGet: 'You can acquire this from the City Agriculture Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Contract of Lease (NEW) from City Agriculture Office',
+        type: 'file',
+        required: false,
+        notes: '',
+        helpText: 'Upload contract of lease from the City Agriculture Office for new fish trap or fish pen installations',
+        whereToGet: 'You can acquire this from the City Agriculture Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Assessment of fees (City Agriculture Office)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload fee assessment from the City Agriculture Office for your fish trap or fish pen operation',
+        whereToGet: 'You can acquire this from the City Agriculture Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+  {
+    sectionName: 'Activity Details',
+    description: 'Provide details about your fish trap or fish pen operation, including business name, location, duration, and nature of activities',
+    notes: '',
+    items: [
+      {
+        label: 'Business / activity name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'Enter name of business or activity',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Location of activity',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Where the fish trap/pen is located',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Duration of activity',
+        type: 'date_range',
+        required: false,
+        notes: '',
+        helpText: 'For temporary activities, specify the start and end dates',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Brief description of activity',
+        type: 'textarea',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'Describe the fish trap/pen activity...',
+        span: 24,
+        validation: { maxLength: 1000 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+];
+
+const FISH_POND_PERMIT_SECTIONS = [
+  {
+    sectionName: 'Required Documents',
+    type: 'required_documents',
+    description: 'Upload the required documents to verify your fish pond eligibility and compliance with LGU regulations.',
+    notes: 'Applicant/owner details are taken from the PIS (account registration)',
+    items: [
+      {
+        label: 'Community Tax Certificate (CTC)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload your Community Tax Certificate to verify you have paid your local taxes for business operation',
+        whereToGet: 'You can acquire this from your local City Treasurer\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'CTC Number', type: 'text', required: true, placeholder: 'Enter CTC number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Place Issued', type: 'text', required: true, placeholder: 'Enter city/municipality' },
+        ],
+      },
+      {
+        label: 'Barangay Clearance where business is located',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload barangay business clearance to verify your business has been cleared to operate in the barangay',
+        whereToGet: 'You can acquire this from your barangay captain\'s office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [
+          { label: 'Clearance Number', type: 'text', required: true, placeholder: 'Enter clearance number' },
+          { label: 'Date Issued', type: 'date', required: true },
+          { label: 'Barangay Name', type: 'text', required: true, placeholder: 'Enter barangay name' },
+        ],
+      },
+      {
+        label: 'Tax Declaration of property (Photocopy)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload photocopy of the tax declaration for the property where the fish pond is located to verify ownership or lease rights',
+        whereToGet: 'You can acquire this from the City Assessor\'s Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Assessment of fees (City Agriculture Office)',
+        type: 'file',
+        required: true,
+        notes: '',
+        helpText: 'Upload fee assessment from the City Agriculture Office for your fish pond operation',
+        whereToGet: 'You can acquire this from the City Agriculture Office',
+        placeholder: '',
+        span: 24,
+        validation: { acceptedFileTypes: 'pdf,jpg,png', maxFileSize: 10 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+  {
+    sectionName: 'Activity Details',
+    description: 'Provide details about your fish pond operation, including business name, location, duration, and nature of activities',
+    notes: '',
+    items: [
+      {
+        label: 'Business / activity name',
+        type: 'text',
+        required: true,
+        notes: '',
+        helpText: '',
+        placeholder: 'Enter name of business or activity',
+        span: 24,
+        validation: { minLength: 2, maxLength: 200 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Location of activity',
+        type: 'address_alaminos',
+        required: true,
+        notes: '',
+        helpText: 'Where the fish pond is located',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Duration of activity',
+        type: 'date_range',
+        required: false,
+        notes: '',
+        helpText: 'For temporary activities, specify the start and end dates',
+        placeholder: '',
+        span: 24,
+        validation: {},
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+      {
+        label: 'Brief description of activity',
+        type: 'textarea',
+        required: false,
+        notes: '',
+        helpText: '',
+        placeholder: 'Describe the fish pond activity...',
+        span: 24,
+        validation: { maxLength: 1000 },
+        dropdownSource: 'static',
+        dropdownOptions: [],
+        metadataFields: [],
+      },
+    ],
+  },
+];
+
+// Form metadata from frontend (will be synced with formMetadata.constants.js)
+const FORM_METADATA = {
+  'unified-business-permit': {
+    formId: 'unified-business-permit',
+    name: 'Unified Business Permit Form',
+    description: 'For businesses with ongoing operations that are valid for one calendar year and require annual renewal. This permit is for establishments that operate year-round such as retail stores, restaurants, service providers, and other permanent businesses.',
+    sections: UNIFIED_BUSINESS_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500, // Default application fee amount
+    claimableDocumentCustomIds: ['unified-business-permit'],
+  },
+  'cooperative-permit': {
+    formId: 'cooperative-permit',
+    name: 'Cooperative Permit',
+    description: 'For cooperatives (registered with CDA) applying for business permit renewal or new registration. Covers agricultural, consumer, marketing, service, and multi-purpose cooperatives operating within the city.',
+    sections: COOPERATIVE_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500,
+    claimableDocumentCustomIds: ['cooperative-permit'],
+  },
+  'association-foundation-permit': {
+    formId: 'association-foundation-permit',
+    name: 'Association/Foundation Permit',
+    description: 'For non-profit associations and foundations (registered with SEC or DOLE) applying for business permit. Covers civic organizations, foundations, trade associations, labor unions, and other non-profit entities operating within the city.',
+    sections: ASSOCIATION_FOUNDATION_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500,
+    claimableDocumentCustomIds: ['real-property-tax-clearance', 'account-clearance', 'association-foundation-permit'],
+  },
+  'chainsaw-permit': {
+    formId: 'chainsaw-permit',
+    name: 'Chainsaw Permit',
+    description: 'For chainsaw operators and owners applying for permit to use chainsaws for logging, land clearing, or tree cutting activities. Required for all chainsaw operations within city jurisdiction per DENR regulations.',
+    sections: CHAINSAW_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500,
+    claimableDocumentCustomIds: ['real-property-tax-clearance', 'account-clearance', 'chainsaw-permit'],
+  },
+  'firecrackers-stallholders-permit': {
+    formId: 'firecrackers-stallholders-permit',
+    name: 'Firecrackers Stallholders Permit',
+    description: 'For individuals or businesses applying to sell firecrackers and pyrotechnic products during the designated holiday period (typically December to January). Required for all temporary firecrackers retail stalls in authorized selling zones.',
+    sections: FIRECRACKERS_STALLHOLDERS_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500,
+    claimableDocumentCustomIds: ['firecrackers-stallholders-permit'],
+  },
+  'bazaar-festival-vendors-permit': {
+    formId: 'bazaar-festival-vendors-permit',
+    name: 'Bazaar/Festival Vendors Permit',
+    description: 'For vendors applying to operate temporary selling stalls during city-sponsored bazaars, festivals, trade fairs, or special events. Covers food stalls, merchandise booths, and temporary retail spaces in designated event areas.',
+    sections: BAZAAR_FESTIVAL_VENDORS_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500,
+    claimableDocumentCustomIds: ['bazaar-festival-vendors-permit'],
+  },
+  'peddlers-permit': {
+    formId: 'peddlers-permit',
+    name: 'Peddlers Permit',
+    description: 'For mobile vendors (itinerant sellers) applying to sell goods while moving from place to place within the city. Covers street vendors, hawkers, and ambulant sellers of food, merchandise, or other products.',
+    sections: PEDDLERS_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500,
+    claimableDocumentCustomIds: ['peddlers-permit'],
+  },
+  'promotions-exhibitors-permit': {
+    formId: 'promotions-exhibitors-permit',
+    name: 'Promotions/Exhibitors Permit',
+    description: 'For businesses or organizations applying to conduct promotional activities, product launches, sales promotions, or exhibitions in public or private spaces. Covers roadshows, mall activations, product demonstrations, and temporary promotional displays.',
+    sections: PROMOTIONS_EXHIBITORS_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500,
+    claimableDocumentCustomIds: ['promotions-exhibitors-permit'],
+  },
+  'cemetery-stallholders-permit': {
+    formId: 'cemetery-stallholders-permit',
+    name: 'Cemetery Stallholders Permit',
+    description: 'For vendors applying to operate temporary selling stalls within public or private cemeteries during All Saints Day (November 1) and All Souls Day (November 2) observance period. Covers flower, candle, food, and merchandise stalls in designated cemetery areas.',
+    sections: CEMETERY_STALLHOLDERS_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500,
+    claimableDocumentCustomIds: ['cemetery-stallholders-permit'],
+  },
+  'fish-trap-fish-pen-permit': {
+    formId: 'fish-trap-fish-pen-permit',
+    name: 'Fish Trap/Fish Pen Permit',
+    description: 'For fishery operators seeking to establish fish traps or fish pens in designated water areas. This permit regulates aquaculture activities to ensure sustainable fishing practices and environmental protection.',
+    sections: FISH_TRAP_FISH_PEN_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500,
+    claimableDocumentCustomIds: ['real-property-tax-clearance', 'account-clearance', 'fish-trap-fish-pen-permit'],
+  },
+  'fish-pond-permit': {
+    formId: 'fish-pond-permit',
+    name: 'Fish Pond Permit',
+    description: 'For fishery operators seeking to establish or operate fish ponds for aquaculture purposes. This permit regulates fish pond operations to ensure sustainable aquaculture practices and environmental compliance.',
+    sections: FISH_POND_PERMIT_SECTIONS,
+    lastUpdated: 'January 15, 2025',
+    version: 1,
+    createdAt: '2024-01-15',
+    notes: '',
+    isActive: true,
+    applicationFeeAmount: 500,
+    claimableDocumentCustomIds: ['real-property-tax-clearance', 'account-clearance', 'fish-pond-permit'],
+  },
+};
+
 async function seedPermitFormsIfEmpty() {
-  const enabled =
-    process.env.SEED_PERMIT_FORMS === "true" || process.env.SEED_DEV === "true";
-  if (!enabled) {
-    return { seeded: false, reason: "SEED_PERMIT_FORMS or SEED_DEV not set" };
-  }
-
   try {
-    const PermitFormsSection = require("../models/PermitFormsSection");
-    const existing = await PermitFormsSection.findOne();
-    if (existing) {
-      return {
-        seeded: false,
-        reason: "already has permit forms section",
-        count: SAMPLE_CARDS.length,
-      };
+    logger.info("Starting permit forms seed...");
+
+    // Fetch all claimable documents directly from MongoDB to map customIds to ObjectIds
+    let claimableDocuments = [];
+    try {
+      // Query claimable documents collection directly using mongoose
+      const mongoose = require('mongoose');
+      // Use the existing connection if available, otherwise connect
+      if (mongoose.connection.readyState !== 1) {
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://mongodb:27017/capstone_project');
+      }
+      const db = mongoose.connection.db;
+      const claimableDocsCollection = db.collection('claimabledocuments');
+      claimableDocuments = await claimableDocsCollection.find({}).toArray();
+      logger.info(`Fetched ${claimableDocuments.length} claimable documents from MongoDB`);
+    } catch (error) {
+      console.error("Failed to fetch claimable documents from MongoDB:", error);
+      logger.error("Failed to fetch claimable documents from MongoDB:", error);
+      logger.warn("Continuing without claimable documents mapping - permit forms will be seeded without claimableDocumentIds");
     }
 
-    await PermitFormsSection.create({
-      sectionDescription:
-        "Below are the permit forms and their requirements. Please download the applicable form, fill it out completely, and submit along with the listed requirements.",
-      cards: SAMPLE_CARDS,
-      publishedSectionDescription:
-        "Below are the permit forms and their requirements. Please download the applicable form, fill it out completely, and submit along with the listed requirements.",
-      publishedCards: SAMPLE_CARDS,
-      isPublished: true,
-      isEnabled: true,
-      lastPublishedAt: new Date(),
-    });
+    // Create a map of customId to ObjectId
+    const customIdToDocIdMap = claimableDocuments.reduce((acc, doc) => {
+      acc[doc.customId] = doc._id;
+      return acc;
+    }, {});
 
-    return { seeded: true, created: SAMPLE_CARDS.length };
-  } catch (err) {
-    return { seeded: false, error: err.message };
+    // Create a map of documentId to array of formIds (reverse mapping)
+    const docIdToFormIdsMap = {};
+    const formIds = Object.keys(FORM_METADATA);
+    let created = 0;
+    let updated = 0;
+
+    for (const formId of formIds) {
+      const metadata = FORM_METADATA[formId];
+
+      // Map claimable document customIds to ObjectIds
+      let claimableDocumentIds = [];
+      if (metadata.claimableDocumentCustomIds && metadata.claimableDocumentCustomIds.length > 0) {
+        claimableDocumentIds = metadata.claimableDocumentCustomIds
+          .map(customId => customIdToDocIdMap[customId])
+          .filter(id => id); // Filter out undefined values
+      }
+
+      // Build reverse mapping: documentId -> formIds
+      for (const docId of claimableDocumentIds) {
+        if (!docIdToFormIdsMap[docId]) {
+          docIdToFormIdsMap[docId] = [];
+        }
+        docIdToFormIdsMap[docId].push(formId);
+      }
+
+      // Check if form already exists
+      const existingForm = await PermitForm.findOne({ formId });
+
+      if (existingForm) {
+        // Create application fee if form doesn't have one and metadata has amount
+        let feeId = existingForm.feeId;
+        if (!feeId && metadata.applicationFeeAmount && metadata.applicationFeeAmount > 0) {
+          try {
+            const feeResponse = await axios.post(
+              `${process.env.BUSINESS_SERVICE_URL || 'http://business-service:3002'}/api/business/admin/fees/internal`,
+              {
+                name: `${metadata.name} Fee`,
+                amount: metadata.applicationFeeAmount,
+                category: 'application_fee',
+                isActive: true,
+              },
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-internal-api-key': process.env.INTERNAL_API_KEY || 'internal-service-secret',
+                },
+              }
+            );
+            feeId = feeResponse.data.data._id;
+            logger.info(`Created application fee for ${formId}: ₱${metadata.applicationFeeAmount}`);
+          } catch (error) {
+            console.error("Failed to create application fee:", error);
+            logger.error("Failed to create application fee:", error);
+          }
+        }
+
+        // Update existing form (include sections from metadata)
+        await PermitForm.updateOne(
+          { formId },
+          {
+            $set: {
+              name: metadata.name,
+              description: metadata.description,
+              sections: metadata.sections,
+              notes: metadata.notes,
+              isActive: true, // Force active for now
+              lastUpdated: new Date(),
+              ...(feeId && { feeId }),
+              ...(claimableDocumentIds.length > 0 && { claimableDocumentIds }),
+            }
+          }
+        );
+        updated++;
+        logger.info(`Updated permit form: ${formId}`);
+      } else {
+        // Create application fee if metadata has amount
+        let feeId = null;
+        if (metadata.applicationFeeAmount && metadata.applicationFeeAmount > 0) {
+          try {
+            const feeResponse = await axios.post(
+              `${process.env.BUSINESS_SERVICE_URL || 'http://business-service:3002'}/api/business/admin/fees/internal`,
+              {
+                name: `${metadata.name} Fee`,
+                amount: metadata.applicationFeeAmount,
+                category: 'application_fee',
+                isActive: true,
+              },
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-internal-api-key': process.env.INTERNAL_API_KEY || 'internal-service-secret',
+                },
+              }
+            );
+            feeId = feeResponse.data.data._id;
+            logger.info(`Created application fee for ${formId}: ₱${metadata.applicationFeeAmount}`);
+          } catch (error) {
+            console.error("Failed to create application fee:", error);
+            logger.error("Failed to create application fee:", error);
+          }
+        }
+
+        // Create new form (with sections from metadata)
+        await PermitForm.create({
+          formId: metadata.formId,
+          name: metadata.name,
+          description: metadata.description,
+          sections: metadata.sections,
+          version: metadata.version,
+          notes: metadata.notes,
+          isActive: true, // Force active for now
+          createdAt: new Date(metadata.createdAt),
+          lastUpdated: new Date(metadata.lastUpdated),
+          feeId,
+          claimableDocumentIds,
+        });
+        created++;
+        logger.info(`Created permit form: ${formId}`);
+      }
+    }
+
+    // Update ClaimableDocument records with formIds (reverse mapping)
+    try {
+      const mongoose = require('mongoose');
+      const db = mongoose.connection.db;
+      const claimableDocsCollection = db.collection('claimabledocuments');
+      const permitFormsCollection = db.collection('permitforms');
+
+      // Get all permit forms with their claimableDocumentIds
+      const permitForms = await permitFormsCollection.find({}).toArray();
+
+      // Build formId -> ObjectId map
+      const formIdToObjectIdMap = {};
+      for (const form of permitForms) {
+        formIdToObjectIdMap[form.formId] = form._id;
+      }
+
+      // Update each claimable document with its associated formIds
+      for (const [docId, formIdStrings] of Object.entries(docIdToFormIdsMap)) {
+        const formObjectIds = formIdStrings
+          .map(formId => formIdToObjectIdMap[formId])
+          .filter(id => id); // Filter out undefined values
+
+        if (formObjectIds.length > 0) {
+          // Convert docId string back to ObjectId for the query
+          const docObjectId = new mongoose.Types.ObjectId(docId);
+          await claimableDocsCollection.updateOne(
+            { _id: docObjectId },
+            { $set: { formIds: formObjectIds } }
+          );
+          logger.info(`Updated claimable document ${docId} with ${formObjectIds.length} associated forms`);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update claimable documents with formIds:", error);
+      logger.error("Failed to update claimable documents with formIds:", error);
+    }
+
+    logger.info(`Permit forms seed completed. Created: ${created}, Updated: ${updated}`);
+    return { seeded: true, created, updated };
+  } catch (error) {
+    logger.error("Error seeding permit forms:", { error: error.message, stack: error.stack });
+    return { seeded: false, error: error.message };
   }
 }
 
-if (require.main === module) {
-  seed();
-}
-
-module.exports = { seed, seedPermitFormsIfEmpty, SAMPLE_CARDS };
+module.exports = { seedPermitFormsIfEmpty };

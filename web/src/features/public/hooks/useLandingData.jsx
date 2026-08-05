@@ -21,20 +21,14 @@ export default function useLandingData() {
     expectedResumeAt: null,
     scheduledStartAt: null,
   })
-  const [permitForms, setPermitForms] = useState({
-    cards: [],
-    sectionDescription: '',
-    isEnabled: false,
-  })
   const [publicStats, setPublicStats] = useState(null)
 
   useEffect(() => {
     const fetchLandingData = async () => {
       try {
-        const [res, maintenance, permitFormsRes] = await Promise.all([
+        const [res, maintenance] = await Promise.all([
           get('/api/admin/announcements', { skipAuth: true }),
           getMaintenanceStatus().catch(() => ({ active: false, scheduled: false })),
-          get('/api/admin/permit-forms', { skipAuth: true }).catch(() => null),
         ])
 
         const rawAnnouncements = Array.isArray(res)
@@ -64,13 +58,6 @@ export default function useLandingData() {
           expectedResumeAt: maintenance?.expectedResumeAt || null,
           scheduledStartAt: maintenance?.scheduledStartAt || null,
         })
-        if (permitFormsRes && permitFormsRes.isEnabled !== false && permitFormsRes.cards?.length > 0) {
-          setPermitForms({
-            cards: permitFormsRes.cards || [],
-            sectionDescription: permitFormsRes.sectionDescription || '',
-            isEnabled: true,
-          })
-        }
       } catch (err) {
         console.error('[useLandingData] fetchLandingData error:', err)
         setAnnouncements([])
@@ -133,7 +120,6 @@ export default function useLandingData() {
   return {
     announcements,
     maintenanceStatus,
-    permitForms,
     publicStats,
     hasMaintenanceNotice,
     announcementItems,

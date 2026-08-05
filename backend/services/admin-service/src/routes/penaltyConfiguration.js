@@ -5,7 +5,7 @@ const {
   requireRole,
   requireAdminStepUp,
 } = require("../middleware/auth");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 
 const router = express.Router();
 
@@ -92,14 +92,16 @@ router.post(
         updatedBy: req._userId,
       });
 
-      createAuditLog(
-        req._userId,
+      logAuditEvent(
         "penalty_config_created",
-        "penalty_config",
-        "",
+        req._userId,
+        "PenaltyConfiguration",
         String(config._id),
-        "admin",
         {
+          role: "admin",
+          fieldChanged: "penalty_config",
+          oldValue: "",
+          newValue: String(config._id),
           configId: String(config._id),
           surchargePercentage: config.surchargePercentage,
           monthlyInterestRate: config.monthlyInterestRate,
@@ -110,7 +112,7 @@ router.post(
         },
       ).catch((err) =>
         console.error(
-          "Failed to create audit log for penalty config create",
+          "Failed to log audit event for penalty config create",
           err,
         ),
       );
@@ -206,26 +208,28 @@ router.put(
 
       await config.save();
 
-      createAuditLog(
-        req._userId,
+      logAuditEvent(
         "penalty_config_updated",
-        "penalty_config",
-        JSON.stringify(oldValues),
-        JSON.stringify({
-          surchargePercentage: config.surchargePercentage,
-          monthlyInterestRate: config.monthlyInterestRate,
-          penaltyStartDay: config.penaltyStartDay,
-          isActive: config.isActive,
-        }),
-        "admin",
+        req._userId,
+        "PenaltyConfiguration",
+        String(config._id),
         {
+          role: "admin",
+          fieldChanged: "penalty_config",
+          oldValue: JSON.stringify(oldValues),
+          newValue: JSON.stringify({
+            surchargePercentage: config.surchargePercentage,
+            monthlyInterestRate: config.monthlyInterestRate,
+            penaltyStartDay: config.penaltyStartDay,
+            isActive: config.isActive,
+          }),
           configId: String(config._id),
           ip: req.ip,
           userAgent: req.get("user-agent"),
         },
       ).catch((err) =>
         console.error(
-          "Failed to create audit log for penalty config update",
+          "Failed to log audit event for penalty config update",
           err,
         ),
       );
@@ -276,28 +280,30 @@ router.post(
         updatedBy: req._userId,
       });
 
-      createAuditLog(
-        req._userId,
+      logAuditEvent(
         "penalty_config_reset",
-        "penalty_config",
-        previousConfigs.length
-          ? JSON.stringify(
-              previousConfigs.map((c) => ({
-                id: String(c._id),
-                surchargePercentage: c.surchargePercentage,
-                monthlyInterestRate: c.monthlyInterestRate,
-                penaltyStartDay: c.penaltyStartDay,
-              })),
-            )
-          : "",
-        JSON.stringify({
-          configId: String(config._id),
-          surchargePercentage: 25,
-          monthlyInterestRate: 2,
-          penaltyStartDay: 20,
-        }),
-        "admin",
+        req._userId,
+        "PenaltyConfiguration",
+        String(config._id),
         {
+          role: "admin",
+          fieldChanged: "penalty_config",
+          oldValue: previousConfigs.length
+            ? JSON.stringify(
+                previousConfigs.map((c) => ({
+                  id: String(c._id),
+                  surchargePercentage: c.surchargePercentage,
+                  monthlyInterestRate: c.monthlyInterestRate,
+                  penaltyStartDay: c.penaltyStartDay,
+                })),
+              )
+            : "",
+          newValue: JSON.stringify({
+            configId: String(config._id),
+            surchargePercentage: 25,
+            monthlyInterestRate: 2,
+            penaltyStartDay: 20,
+          }),
           previousActiveCount: previousConfigs.length,
           newConfigId: String(config._id),
           ip: req.ip,
@@ -305,7 +311,7 @@ router.post(
         },
       ).catch((err) =>
         console.error(
-          "Failed to create audit log for penalty config reset",
+          "Failed to log audit event for penalty config reset",
           err,
         ),
       );

@@ -2,10 +2,16 @@ const PageContent = require("../models/PageContent");
 const PageChapter = require("../models/PageChapter");
 const FaqSection = require("../models/FaqSection");
 const InstructionContent = require("../models/InstructionContent");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const logger = require("../lib/logger");
 
-const VALID_PAGE_SLOT_IDS = ["privacy-policy", "terms-of-service", "bizclear-manual"];
+const VALID_PAGE_SLOT_IDS = [
+  "privacy-policy",
+  "terms-of-service",
+  "bizclear-manual",
+  "business-owners-manual",
+  "lgu-officer-business-owners",
+];
 
 // ─── FAQ Functions ─────────────────────────────────────────────────────────────
 
@@ -86,21 +92,16 @@ async function updateFaq(slotId, items, subtitle, publish, userId) {
     if (previousState.subtitle !== newState.subtitle)
       changedFields.push("subtitle");
 
-    createAuditLog(
-      userId,
-      "faq_updated",
-      null,
-      JSON.stringify(previousState),
-      JSON.stringify(newState),
-      "admin",
-      {
-        slotId: doc.slotId,
-        contentType: "faq",
-        changedFields,
-      },
-      doc.slotId,
-    ).catch((err) =>
-      logger.warn("Failed to create audit log for FAQ update", {
+    logAuditEvent("faq_updated", userId, "CMSContent", doc.slotId, {
+      role: "admin",
+      fieldChanged: "faq",
+      oldValue: JSON.stringify(previousState),
+      newValue: JSON.stringify(newState),
+      slotId: doc.slotId,
+      contentType: "faq",
+      changedFields,
+    }).catch((err) =>
+      logger.warn("Failed to log audit event for FAQ update", {
         error: err.message,
       }),
     );
@@ -128,7 +129,8 @@ async function getInstructionBySlotId(slotId) {
     doc.isPublished &&
     doc.publishedData &&
     (doc.publishedData.description ||
-      (doc.publishedData.bulletPoints && doc.publishedData.bulletPoints.length > 0) ||
+      (doc.publishedData.bulletPoints &&
+        doc.publishedData.bulletPoints.length > 0) ||
       (doc.publishedData.faqItems && doc.publishedData.faqItems.length > 0));
   return hasPublishedData
     ? {
@@ -160,7 +162,9 @@ async function listInstructions() {
     return {
       ...doc,
       description: hasDraftData ? doc.draftData.description : doc.description,
-      bulletPoints: hasDraftData ? doc.draftData.bulletPoints : doc.bulletPoints,
+      bulletPoints: hasDraftData
+        ? doc.draftData.bulletPoints
+        : doc.bulletPoints,
       faqItems: hasDraftData ? doc.draftData.faqItems : doc.faqItems,
     };
   });
@@ -190,7 +194,14 @@ async function getInstructionBySlotIdAdmin(slotId) {
 /**
  * Update instruction content (admin)
  */
-async function updateInstruction(slotId, description, bulletPoints, faqItems, publish, userId) {
+async function updateInstruction(
+  slotId,
+  description,
+  bulletPoints,
+  faqItems,
+  publish,
+  userId,
+) {
   const doc = await InstructionContent.findOne({ slotId });
   if (!doc) throw new Error("Instruction content not found");
 
@@ -228,21 +239,16 @@ async function updateInstruction(slotId, description, bulletPoints, faqItems, pu
     )
       changedFields.push("faqItems");
 
-    createAuditLog(
-      userId,
-      "instruction_updated",
-      null,
-      JSON.stringify(previousState),
-      JSON.stringify(newState),
-      "admin",
-      {
-        slotId: doc.slotId,
-        contentType: "instruction",
-        changedFields,
-      },
-      doc.slotId,
-    ).catch((err) =>
-      logger.warn("Failed to create audit log for instruction update", {
+    logAuditEvent("instruction_updated", userId, "CMSContent", doc.slotId, {
+      role: "admin",
+      fieldChanged: "instruction",
+      oldValue: JSON.stringify(previousState),
+      newValue: JSON.stringify(newState),
+      slotId: doc.slotId,
+      contentType: "instruction",
+      changedFields,
+    }).catch((err) =>
+      logger.warn("Failed to log audit event for instruction update", {
         error: err.message,
       }),
     );
@@ -377,7 +383,15 @@ async function createChapter(pageSlotId, title, description, userId) {
 /**
  * Update a chapter (admin)
  */
-async function updateChapter(id, title, description, introText, sections, publish, userId) {
+async function updateChapter(
+  id,
+  title,
+  description,
+  introText,
+  sections,
+  publish,
+  userId,
+) {
   if (sections !== undefined && !Array.isArray(sections)) {
     throw new Error("sections must be an array");
   }
@@ -398,16 +412,15 @@ async function updateChapter(id, title, description, introText, sections, publis
       legacyDoc.updatedBy = userId;
       await legacyDoc.save();
       const newState = legacyDoc.toObject();
-      createAuditLog(
-        userId,
-        "page_updated",
-        null,
-        JSON.stringify(previousState),
-        JSON.stringify(newState),
-        "admin",
-        { slotId: legacyDoc.slotId, contentType: "page", changedFields: ["sections"] },
-        legacyDoc.slotId,
-      ).catch(() => {});
+      logAuditEvent("page_updated", userId, "CMSContent", legacyDoc.slotId, {
+        role: "admin",
+        fieldChanged: "page",
+        oldValue: JSON.stringify(previousState),
+        newValue: JSON.stringify(newState),
+        slotId: legacyDoc.slotId,
+        contentType: "page",
+        changedFields: ["sections"],
+      }).catch(() => {});
     } else {
       legacyDoc.draftData = { introText, sections };
       legacyDoc.updatedBy = userId;
@@ -418,7 +431,8 @@ async function updateChapter(id, title, description, introText, sections, publis
 
   const updatedData = {
     title: title !== undefined ? title.trim() : doc.title,
-    description: description !== undefined ? description.trim() : doc.description,
+    description:
+      description !== undefined ? description.trim() : doc.description,
     introText: introText !== undefined ? introText : doc.introText,
     sections: sections !== undefined ? sections : doc.sections,
   };
@@ -437,26 +451,32 @@ async function updateChapter(id, title, description, introText, sections, publis
     const newState = doc.toObject();
     const changedFields = [];
     if (previousState.title !== newState.title) changedFields.push("title");
-    if (previousState.description !== newState.description) changedFields.push("description");
-    if (previousState.introText !== newState.introText) changedFields.push("introText");
-    if (JSON.stringify(previousState.sections) !== JSON.stringify(newState.sections))
+    if (previousState.description !== newState.description)
+      changedFields.push("description");
+    if (previousState.introText !== newState.introText)
+      changedFields.push("introText");
+    if (
+      JSON.stringify(previousState.sections) !==
+      JSON.stringify(newState.sections)
+    )
       changedFields.push("sections");
 
-    createAuditLog(
-      userId,
+    logAuditEvent(
       "page_updated",
-      null,
-      JSON.stringify(previousState),
-      JSON.stringify(newState),
-      "admin",
+      userId,
+      "CMSContent",
+      `${doc.pageSlotId}:${doc._id}`,
       {
+        role: "admin",
+        fieldChanged: "page_chapter",
+        oldValue: JSON.stringify(previousState),
+        newValue: JSON.stringify(newState),
         slotId: `${doc.pageSlotId}:${doc._id}`,
         contentType: "page_chapter",
         changedFields,
       },
-      `${doc.pageSlotId}:${doc._id}`,
     ).catch((err) =>
-      logger.warn("Failed to create audit log for chapter update", {
+      logger.warn("Failed to log audit event for chapter update", {
         error: err.message,
       }),
     );
@@ -477,7 +497,9 @@ async function deleteChapter(id) {
   if (!doc) throw new Error("Chapter not found");
 
   // Re-order remaining chapters
-  const remaining = await PageChapter.find({ pageSlotId: doc.pageSlotId }).sort({ order: 1 });
+  const remaining = await PageChapter.find({ pageSlotId: doc.pageSlotId }).sort(
+    { order: 1 },
+  );
   for (let i = 0; i < remaining.length; i++) {
     if (remaining[i].order !== i) {
       remaining[i].order = i;
@@ -507,7 +529,9 @@ async function reorderChapters(pageSlotId, orderedIds) {
   }));
   await PageChapter.bulkWrite(bulkOps);
 
-  const updated = await PageChapter.find({ pageSlotId }).sort({ order: 1 }).lean();
+  const updated = await PageChapter.find({ pageSlotId })
+    .sort({ order: 1 })
+    .lean();
   return updated;
 }
 

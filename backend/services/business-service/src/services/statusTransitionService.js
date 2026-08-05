@@ -210,9 +210,13 @@ class StatusTransitionService {
         try {
           const { logAuditEvent } = require("../lib/auditClient");
           const User = require("mongoose").model("User");
-          const officer = await User.findById(reviewedBy || userId).select("firstName lastName").lean();
-          const officerName = officer ? `${officer.firstName} ${officer.lastName}`.trim() : "Officer";
-          
+          const officer = await User.findById(reviewedBy || userId)
+            .select("firstName lastName")
+            .lean();
+          const officerName = officer
+            ? `${officer.firstName} ${officer.lastName}`.trim()
+            : "Officer";
+
           await logAuditEvent(
             "application_rejected",
             reviewedBy || userId,
@@ -228,7 +232,10 @@ class StatusTransitionService {
             },
           );
         } catch (auditError) {
-          console.error("Failed to log application_rejected audit event:", auditError);
+          console.error(
+            "Failed to log application_rejected audit event:",
+            auditError,
+          );
         }
       }
 
@@ -237,9 +244,13 @@ class StatusTransitionService {
         try {
           const { logAuditEvent } = require("../lib/auditClient");
           const User = require("mongoose").model("User");
-          const officer = await User.findById(reviewedBy || userId).select("firstName lastName").lean();
-          const officerName = officer ? `${officer.firstName} ${officer.lastName}`.trim() : "Officer";
-          
+          const officer = await User.findById(reviewedBy || userId)
+            .select("firstName lastName")
+            .lean();
+          const officerName = officer
+            ? `${officer.firstName} ${officer.lastName}`.trim()
+            : "Officer";
+
           await logAuditEvent(
             "application_returned",
             reviewedBy || userId,
@@ -254,7 +265,10 @@ class StatusTransitionService {
             },
           );
         } catch (auditError) {
-          console.error("Failed to log application_returned audit event:", auditError);
+          console.error(
+            "Failed to log application_returned audit event:",
+            auditError,
+          );
         }
       }
 
@@ -263,9 +277,13 @@ class StatusTransitionService {
         try {
           const { logAuditEvent } = require("../lib/auditClient");
           const User = require("mongoose").model("User");
-          const officer = await User.findById(reviewedBy || userId).select("firstName lastName").lean();
-          const officerName = officer ? `${officer.firstName} ${officer.lastName}`.trim() : "Officer";
-          
+          const officer = await User.findById(reviewedBy || userId)
+            .select("firstName lastName")
+            .lean();
+          const officerName = officer
+            ? `${officer.firstName} ${officer.lastName}`.trim()
+            : "Officer";
+
           await logAuditEvent(
             "completed_review",
             reviewedBy || userId,
@@ -279,7 +297,10 @@ class StatusTransitionService {
             },
           );
         } catch (auditError) {
-          console.error("Failed to log completed_review audit event:", auditError);
+          console.error(
+            "Failed to log completed_review audit event:",
+            auditError,
+          );
         }
       }
 
@@ -319,7 +340,7 @@ class StatusTransitionService {
    * @param {string} userId - User ID
    * @param {string} businessId - Business ID
    */
-  static async getValidTransitions(userId, businessId) {
+  static async getValidTransitionsForBusiness(userId, businessId) {
     try {
       const profile = await BusinessProfile.findOne({ userId });
       if (!profile) {

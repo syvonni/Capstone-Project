@@ -26,7 +26,6 @@ import { useAppTheme, THEMES } from '@/shared/theme/ThemeProvider'
 import { logoutApi } from '@/features/authentication/services/authService'
 import { setIsLoggingOut, setLogoutNotification } from '@/features/authentication/lib/authEvents.js'
 import AnimatedBrandLogo from '@/shared/components/AnimatedBrandLogo.jsx'
-import SiteStatusPill from '@/shared/components/SiteStatusPill'
 import DynamicInfoModal from '@/shared/components/DynamicInfoModal.jsx'
 
 dayjs.extend(relativeTime)
@@ -36,16 +35,6 @@ const { Text } = Typography
 
 const NOTIFICATIONS_POLL_MS = 30000
 const NOTIFICATIONS_PAGE_SIZE = 5
-
-function getAvatarInitials(currentUser) {
-  if (!currentUser) return 'U'
-  const first = (currentUser.firstName || '').trim()
-  const last = (currentUser.lastName || '').trim()
-  if (first || last) return ((first[0] || '') + (last[0] || '')).toUpperCase() || 'U'
-  const email = (currentUser.email || currentUser.name || '').trim()
-  if (email.length >= 2) return email.slice(0, 2).toUpperCase()
-  return email[0]?.toUpperCase() || 'U'
-}
 
 function getNotificationIcon(type, token) {
   switch (type) {
@@ -87,11 +76,8 @@ export default function LayoutPageHeader({
   showBrandLogo = false,
   brandLogoClickable = true,
   onRefresh,
-  lastUpdated,
-  socketConnected,
   infoSlotId,
   infoModalTitle,
-  statusText,
   _mobileOpen,
   setMobileOpen,
 }) {
@@ -101,7 +87,6 @@ export default function LayoutPageHeader({
   const screens = useBreakpoint()
   const { token } = theme.useToken()
   const isMobile = !screens.md
-  const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loadingNotifications, setLoadingNotifications] = useState(false)
@@ -350,13 +335,14 @@ export default function LayoutPageHeader({
           flexWrap: 'wrap',
           gap: 12,
           borderBottom: `1px solid ${token.colorBorder}`,
-          background: token.colorBgElevated, // Use proper theme token for elevated surfaces
+          background: token.colorBgContainer, // Match sidebar background
           ...(isMobile ? {
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             zIndex: 1000,
+            touchAction: 'none',
           } : {}),
         }}
       >
@@ -379,8 +365,9 @@ export default function LayoutPageHeader({
               <span
                 style={{
                   fontSize: 16,
-                  color: '#fff',
-                  background: token.colorPrimary,
+                  color: token.colorText,
+                  border: '1px solid',
+                  borderColor: token.colorText,
                   padding: 6,
                   height: 32,
                   width: 32,
@@ -417,8 +404,9 @@ export default function LayoutPageHeader({
               <span
                 style={{
                   fontSize: 16,
-                  color: '#fff',
-                  background: token.colorPrimary,
+                  color: token.colorText,
+                  border: '1px solid',
+                  borderColor: token.colorBorder,
                   padding: 6,
                   height: 32,
                   width: 32,
@@ -440,26 +428,6 @@ export default function LayoutPageHeader({
         )}
 
         <Space size="middle" wrap>
-          {!isMobile && (
-            <SiteStatusPill
-              lastUpdated={lastUpdated}
-              socketConnected={socketConnected}
-              statusText={statusText}
-              onRefresh={async () => {
-                if (onRefresh) {
-                  setRefreshing(true)
-                  try {
-                    await onRefresh()
-                  } finally {
-                    setRefreshing(false)
-                  }
-                }
-              }}
-              loading={refreshing}
-              showRefreshButton={false}
-              showSocketStatus={socketConnected !== undefined}
-            />
-          )}
           <Space.Compact>
             {!isMobile && onRefresh && (
               <Button

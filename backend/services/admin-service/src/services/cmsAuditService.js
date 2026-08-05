@@ -15,7 +15,8 @@ async function getCmsAuditLogs(slotId, page = 1, limit = 20) {
   };
 
   // Query audit-service for logs
-  const auditServiceUrl = process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
+  const auditServiceUrl =
+    process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
   const headers = { "Content-Type": "application/json" };
   if (process.env.AUDIT_SERVICE_API_KEY)
     headers["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;

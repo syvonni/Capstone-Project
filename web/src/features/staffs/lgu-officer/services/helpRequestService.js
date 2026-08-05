@@ -13,17 +13,19 @@ export async function getHelpRequestById(requestId) {
 /**
  * Claim a help request
  * @param {string} requestId - Help request ID
+ * @param {object} options - Additional options (e.g., headers for step-up)
  */
-export async function claimHelpRequest(requestId) {
-  return put(`${BASE_PATH}/${requestId}/claim`)
+export async function claimHelpRequest(requestId, options = {}) {
+  return put(`${BASE_PATH}/${requestId}/claim`, {}, options)
 }
 
 /**
  * Release a help request
  * @param {string} requestId - Help request ID
+ * @param {object} options - Additional options (e.g., headers for step-up)
  */
-export async function releaseHelpRequest(requestId) {
-  return put(`${BASE_PATH}/${requestId}/release`)
+export async function releaseHelpRequest(requestId, options = {}) {
+  return put(`${BASE_PATH}/${requestId}/release`, {}, options)
 }
 
 /**
@@ -48,18 +50,20 @@ export async function updateHelpRequestPriority(requestId, priority) {
  * Add message to help request conversation
  * @param {string} requestId - Help request ID
  * @param {object} messageData - Message data
+ * @param {object} options - Additional options (e.g., headers for step-up)
  */
-export async function addHelpRequestMessage(requestId, messageData) {
-  return post(`${BASE_PATH}/${requestId}/messages`, messageData)
+export async function addHelpRequestMessage(requestId, messageData, options = {}) {
+  return post(`${BASE_PATH}/${requestId}/messages`, messageData, options)
 }
 
 /**
  * Add internal note to help request
  * @param {string} requestId - Help request ID
  * @param {object} noteData - Note data
+ * @param {object} options - Additional options (e.g., headers for step-up)
  */
-export async function addHelpRequestInternalNote(requestId, noteData) {
-  return post(`${BASE_PATH}/${requestId}/internal-notes`, noteData)
+export async function addHelpRequestInternalNote(requestId, noteData, options = {}) {
+  return post(`${BASE_PATH}/${requestId}/internal-notes`, noteData, options)
 }
 
 /**

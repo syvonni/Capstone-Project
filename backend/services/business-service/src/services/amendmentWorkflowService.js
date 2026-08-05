@@ -1,8 +1,7 @@
 const mongoose = require("mongoose");
 const BusinessProfile = require("../models/BusinessProfile");
-const Inspection = require("../models/Inspection");
 const Permit = require("../models/Permit");
-const { logAuditEvent } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const permitIssuanceService = require("./permitIssuanceService");
 
 // Helper: build query that matches either businessId or subdoc _id
@@ -222,23 +221,6 @@ async function processAmendmentApproval(businessId, amendmentId, userId) {
     },
   );
 
-  // Schedule inspection if required
-  let inspection = null;
-  if (impact.requiresInspection) {
-    inspection = await Inspection.create({
-      businessId,
-      businessProfileId: profile._id,
-      inspectionType: "amendment",
-      permitType: "amendment",
-      status: "pending",
-      notes: `Inspection required due to amendment: ${impact.reasons.join(", ")}`,
-      metadata: {
-        amendmentId,
-        changes: amendment.fields.map((f) => f.fieldName),
-      },
-    });
-  }
-
   // Issue updated permit if required
   let updatedPermit = null;
   if (impact.requiresNewPermit) {
@@ -276,7 +258,6 @@ async function processAmendmentApproval(businessId, amendmentId, userId) {
   return {
     approved: true,
     impact,
-    inspection,
     updatedPermit,
     affectedAgencies: impact.affectedAgencies,
   };
@@ -338,12 +319,6 @@ async function getAmendmentStatus(businessId, amendmentId) {
     throw new Error("Amendment not found");
   }
 
-  // Check for related inspection
-  const inspection = await Inspection.findOne({
-    businessId,
-    "metadata.amendmentId": amendmentId,
-  });
-
   // Check for updated permit
   const updatedPermit = await Permit.findOne({
     businessId,
@@ -355,13 +330,6 @@ async function getAmendmentStatus(businessId, amendmentId) {
     amendment,
     status: amendment.status,
     impact: amendment.impact,
-    inspection: inspection
-      ? {
-          status: inspection.status,
-          scheduledDate: inspection.scheduledDate,
-          completedAt: inspection.completedAt,
-        }
-      : null,
     updatedPermit: updatedPermit
       ? {
           permitNumber: updatedPermit.permitNumber,

@@ -1,0 +1,639 @@
+const mongoose = require('mongoose')
+const Lob = require('../models/Lob')
+const ConditionalFee = require('../models/ConditionalFee')
+const VariableFeeRule = require('../models/VariableFeeRule')
+const { conditionalFees: REFERENCE_CONDITIONAL_FEES, variableFeeRules: REFERENCE_VARIABLE_FEE_RULES } = require('./comprehensiveFeeSeederReference')
+
+// LOB-to-fee reference mappings using actual fee customIds from comprehensiveFeeSeederReference.js
+// These are semantic mappings based on business logic
+const LOB_CONDITIONAL_FEE_MAPPINGS = {
+  // RETAIL
+  'Sari-sari store': [],
+  'Convenience store': [],
+  'General merchandise': [],
+  'Hardware & construction supplies': [],
+  'Pharmacy / drugstore': [],
+  'Clothing & apparel': [],
+  'Electronics & gadgets': [],
+  'Auto parts & accessories': [],
+  'Fuel / gasoline station': [],
+  'Agricultural supplies': [],
+
+  // WHOLESALE
+  'Agricultural raw materials': ['cold-storage-equipment', 'bulk-handling-equipment'],
+  'Food & beverages (wholesale)': ['cold-storage-equipment', 'bulk-handling-equipment'],
+  'Household goods (wholesale)': ['cold-storage-equipment', 'bulk-handling-equipment'],
+  'Industrial machinery & equipment': ['cold-storage-equipment', 'bulk-handling-equipment'],
+  'Construction materials (wholesale)': ['cold-storage-equipment', 'bulk-handling-equipment'],
+  'Chemicals & fertilizers': ['cold-storage-equipment', 'bulk-handling-equipment'],
+
+  // FOOD SERVICE
+  'Restaurant / eatery': [],
+  'Catering services': [],
+  'Food cart / food stall': [],
+  'Bakery / pastry shop': [],
+  'Coffee shop / milk tea': [],
+  'Bar / nightclub': ['videoke-machine', 'swimming-pool-tax', 'billiard-first-table', 'billiard-additional-tables'],
+  'Canteen / commissary': [],
+
+  // MANUFACTURING
+  'Food processing': [],
+  'Garments & textiles': [],
+  'Furniture & woodworks': [],
+  'Metal fabrication': [],
+  'Plastics & rubber products': [],
+  'Printing & publishing': [],
+  'Chemical products': [],
+  'Electronics assembly': [],
+  'Fireworks / pyrotechnics': [],
+
+  // SERVICES
+  'Salon / barbershop': [],
+  'Laundry services': [],
+  'Repair shop (electronics, appliances)': [],
+  'Tutorial / review center': [],
+  'IT / BPO services': [],
+  'Legal services': [],
+  'Accounting / bookkeeping': [],
+  'Medical / dental clinic': [],
+  'Veterinary clinic': [],
+  'Security agency': [],
+  'Manpower / recruitment agency': [],
+  'Advertising services': [],
+
+  // FINANCIAL
+  'Lending / financing company': [],
+  'Pawnshop': [],
+  'Money changer / remittance': [],
+  'Insurance agency': [],
+  'Cooperative (credit)': [],
+  'Microfinance institution': [],
+
+  // REAL ESTATE
+  'Real estate brokerage': [],
+  'Property leasing / rental': [],
+  'Subdivision developer': [],
+  'Boarding house / dormitory': [],
+  'Apartment / condominium rental': [],
+
+  // TRANSPORTATION
+  'Trucking / hauling': [],
+  'Passenger transport (jeepney, bus, UV express)': [],
+  'Delivery / courier service': [],
+  'Freight forwarding': [],
+  'Warehouse / storage': ['cold-storage-equipment'],
+  'Parking lot operation': [],
+
+  // AGRICULTURE
+  'Crop farming': [],
+  'Livestock / poultry raising': [],
+  'Aquaculture / fishpond': [],
+  'Plant nursery': [],
+  'Rice / corn milling': [],
+  'Agricultural services (spraying, harvesting)': [],
+
+  // CONSTRUCTION
+  'General contractor': [],
+  'Specialty trade contractor': [],
+  'Electrical installation': [],
+  'Plumbing & HVAC': [],
+  'Painting & finishing': [],
+  'Demolition services': [],
+
+  // MINING
+  'Mining operations': ['safety-equipment', 'extraction-equipment'],
+
+  // UTILITIES
+  'Water supply': [],
+  'Electric power distribution': [],
+  'Telecommunications provider': ['cb-radio-tower', 'uhf-vhf-tower', 'cell-site-tower'],
+
+  // EDUCATION
+  'School / educational institution': [],
+
+  // TOURISM
+  'Hotel / resort': ['swimming-pool-tax'],
+  'Tourist destination / attraction': ['swimming-pool-tax'],
+}
+
+const LOB_VARIABLE_FEE_MAPPINGS = {
+  // RETAIL
+  'Sari-sari store': [],
+  'Convenience store': [],
+  'General merchandise': [],
+  'Hardware & construction supplies': [],
+  'Pharmacy / drugstore': [],
+  'Clothing & apparel': [],
+  'Electronics & gadgets': [],
+  'Auto parts & accessories': [],
+  'Fuel / gasoline station': [],
+  'Agricultural supplies': [],
+
+  // WHOLESALE
+  'Agricultural raw materials': [],
+  'Food & beverages (wholesale)': [],
+  'Household goods (wholesale)': [],
+  'Industrial machinery & equipment': [],
+  'Construction materials (wholesale)': [],
+  'Chemicals & fertilizers': [],
+
+  // FOOD SERVICE
+  'Restaurant / eatery': [],
+  'Catering services': [],
+  'Food cart / food stall': [],
+  'Bakery / pastry shop': [],
+  'Coffee shop / milk tea': [],
+  'Bar / nightclub': [],
+  'Canteen / commissary': [],
+
+  // MANUFACTURING
+  'Food processing': [],
+  'Garments & textiles': [],
+  'Furniture & woodworks': [],
+  'Metal fabrication': [],
+  'Plastics & rubber products': [],
+  'Printing & publishing': [],
+  'Chemical products': [],
+  'Electronics assembly': [],
+  'Fireworks / pyrotechnics': [],
+
+  // SERVICES
+  'Salon / barbershop': ['massage-parlor-cubicles'],
+  'Laundry services': [],
+  'Repair shop (electronics, appliances)': [],
+  'Tutorial / review center': [],
+  'IT / BPO services': [],
+  'Legal services': [],
+  'Accounting / bookkeeping': [],
+  'Medical / dental clinic': [],
+  'Veterinary clinic': [],
+  'Security agency': [],
+  'Manpower / recruitment agency': [],
+  'Advertising services': [],
+
+  // FINANCIAL
+  'Lending / financing company': [],
+  'Pawnshop': [],
+  'Money changer / remittance': [],
+  'Insurance agency': [],
+  'Cooperative (credit)': [],
+  'Microfinance institution': [],
+
+  // REAL ESTATE
+  'Real estate brokerage': [],
+  'Property leasing / rental': [],
+  'Subdivision developer': [],
+  'Boarding house / dormitory': [],
+  'Apartment / condominium rental': [],
+
+  // TRANSPORTATION
+  'Trucking / hauling': [],
+  'Passenger transport (jeepney, bus, UV express)': [],
+  'Delivery / courier service': [],
+  'Freight forwarding': [],
+  'Warehouse / storage': [],
+  'Parking lot operation': [],
+
+  // AGRICULTURE
+  'Crop farming': [],
+  'Livestock / poultry raising': [],
+  'Aquaculture / fishpond': [],
+  'Plant nursery': [],
+  'Rice / corn milling': [],
+  'Agricultural services (spraying, harvesting)': [],
+
+  // CONSTRUCTION
+  'General contractor': [],
+  'Specialty trade contractor': [],
+  'Electrical installation': [],
+  'Plumbing & HVAC': [],
+  'Painting & finishing': [],
+  'Demolition services': [],
+
+  // MINING
+  'Mining operations': [],
+
+  // UTILITIES
+  'Water supply': [],
+  'Electric power distribution': [],
+  'Telecommunications provider': [],
+
+  // EDUCATION
+  'School / educational institution': [],
+
+  // TOURISM
+  'Hotel / resort': [],
+  'Tourist destination / attraction': [],
+}
+
+// License mappings by specific LOB name
+// Based on research: DTI and BIR are entity/tax registration, not LOB-specific licenses
+// Only industry-specific licenses are included here
+const LOB_LICENSE_MAPPINGS = {
+  // RETAIL
+  'Sari-sari store': { required: [], optional: [] },
+  'Convenience store': { required: [], optional: [] },
+  'General merchandise': { required: [], optional: [] },
+  'Hardware & construction supplies': { required: [], optional: [] },
+  'Pharmacy / drugstore': { required: ['FDA'], optional: [] },
+  'Clothing & apparel': { required: [], optional: [] },
+  'Electronics & gadgets': { required: [], optional: [] },
+  'Auto parts & accessories': { required: [], optional: [] },
+  'Fuel / gasoline station': { required: ['DOE'], optional: [] },
+  'Agricultural supplies': { required: ['NFA'], optional: [] },
+
+  // WHOLESALE
+  'Agricultural raw materials': { required: [], optional: [] },
+  'Food & beverages (wholesale)': { required: ['FDA'], optional: [] },
+  'Household goods (wholesale)': { required: [], optional: [] },
+  'Industrial machinery & equipment': { required: [], optional: [] },
+  'Construction materials (wholesale)': { required: [], optional: [] },
+  'Chemicals & fertilizers': { required: ['FPA'], optional: [] },
+
+  // FOOD SERVICE
+  'Restaurant / eatery': { required: ['FDA'], optional: [] },
+  'Catering services': { required: ['FDA'], optional: [] },
+  'Food cart / food stall': { required: ['FDA'], optional: [] },
+  'Bakery / pastry shop': { required: ['FDA'], optional: [] },
+  'Coffee shop / milk tea': { required: ['FDA'], optional: [] },
+  'Bar / nightclub': { required: ['FDA'], optional: [] },
+  'Canteen / commissary': { required: ['FDA'], optional: [] },
+
+  // MANUFACTURING
+  'Food processing': { required: ['FDA'], optional: [] },
+  'Garments & textiles': { required: [], optional: [] },
+  'Furniture & woodworks': { required: [], optional: [] },
+  'Metal fabrication': { required: [], optional: [] },
+  'Plastics & rubber products': { required: [], optional: [] },
+  'Printing & publishing': { required: [], optional: [] },
+  'Chemical products': { required: ['FDA'], optional: [] },
+  'Electronics assembly': { required: [], optional: [] },
+  'Fireworks / pyrotechnics': { required: ['PNP-SOSIA'], optional: [] },
+
+  // SERVICES
+  'Salon / barbershop': { required: [], optional: [] },
+  'Laundry services': { required: [], optional: [] },
+  'Repair shop (electronics, appliances)': { required: ['TESDA'], optional: [] },
+  'Tutorial / review center': { required: ['DepEd'], optional: [] },
+  'School / educational institution': { required: ['DepEd'], optional: [] },
+  'University / college': { required: ['CHED'], optional: [] },
+  'IT / BPO services': { required: [], optional: [] },
+  'Legal services': { required: [], optional: ['PRC'] },
+  'Accounting / bookkeeping': { required: [], optional: [] },
+  'Medical / dental clinic': { required: ['FDA'], optional: ['PRC'] },
+  'Hospital': { required: ['DOH'], optional: ['PRC'] },
+  'Veterinary clinic': { required: [], optional: ['PRC'] },
+  'Security agency': { required: ['SAGSD'], optional: [] },
+  'Manpower / recruitment agency': { required: ['DOLE'], optional: [] },
+  'Advertising services': { required: [], optional: [] },
+  'Internet cafe': { required: [], optional: [] },
+
+  // FINANCIAL
+  'Bank': { required: ['BSP'], optional: [] },
+  'Lending / financing company': { required: [], optional: ['SEC'] },
+  'Pawnshop': { required: [], optional: ['SEC'] },
+  'Money changer / remittance': { required: [], optional: ['SEC'] },
+  'Insurance agency': { required: [], optional: ['SEC'] },
+  'Cooperative (credit)': { required: [], optional: ['CDA'] },
+  'Microfinance institution': { required: [], optional: ['SEC'] },
+  'Holding company': { required: [], optional: ['SEC'] },
+  'Fund management': { required: [], optional: ['SEC'] },
+
+  // REAL ESTATE
+  'Real estate brokerage': { required: [], optional: [] },
+  'Property leasing / rental': { required: [], optional: [] },
+  'Subdivision developer': { required: [], optional: [] },
+
+  // ACCOMMODATION
+  'Hotel / resort': { required: ['DOT'], optional: [] },
+  'Boarding house / dormitory': { required: [], optional: [] },
+  'Apartment / condominium rental': { required: [], optional: [] },
+
+  // TRANSPORTATION
+  'Trucking / hauling': { required: [], optional: [] },
+  'Passenger transport (jeepney, bus, UV express)': { required: [], optional: [] },
+  'Delivery / courier service': { required: [], optional: [] },
+  'Freight forwarding': { required: [], optional: [] },
+  'Warehouse / storage': { required: [], optional: [] },
+  'Parking lot operation': { required: [], optional: [] },
+  'Travel agency': { required: ['DOT'], optional: [] },
+  'Tour operator': { required: ['DOT'], optional: [] },
+
+  // AGRICULTURE
+  'Crop farming': { required: ['NFA'], optional: [] },
+  'Livestock / poultry raising': { required: [], optional: [] },
+  'Aquaculture / fishpond': { required: [], optional: [] },
+  'Plant nursery': { required: [], optional: [] },
+  'Rice / corn milling': { required: ['NFA'], optional: [] },
+  'Agricultural services (spraying, harvesting)': { required: [], optional: [] },
+
+  // CONSTRUCTION
+  'General contractor': { required: ['PCAB'], optional: [] },
+  'Specialty trade contractor': { required: ['PCAB'], optional: [] },
+  'Electrical installation': { required: ['PCAB'], optional: [] },
+  'Plumbing & HVAC': { required: ['PCAB'], optional: [] },
+  'Painting & finishing': { required: [], optional: [] },
+  'Demolition services': { required: [], optional: [] },
+
+  // MINING
+  'Mining operations': { required: [], optional: [] },
+
+  // UTILITIES
+  'Water supply': { required: [], optional: [] },
+  'Electric power distribution': { required: [], optional: [] },
+  'Telecommunications provider': { required: [], optional: [] },
+
+  // EDUCATION
+  'School / educational institution': { required: ['DepEd'], optional: [] },
+}
+
+// Helper function to map conditional fee customIds to IDs
+async function mapConditionalFeeCustomIdsToIds(customIds) {
+  if (!customIds || customIds.length === 0) return []
+
+  const fees = await ConditionalFee.find({ customId: { $in: customIds }, isActive: true })
+  const customIdToIdMap = fees.reduce((acc, fee) => {
+    acc[fee.customId] = fee._id
+    return acc
+  }, {})
+
+  return customIds.map(customId => customIdToIdMap[customId]).filter(id => id)
+}
+
+// Helper function to map variable fee rule customIds to IDs
+async function mapVariableFeeRuleCustomIdsToIds(customIds) {
+  if (!customIds || customIds.length === 0) return []
+
+  const rules = await VariableFeeRule.find({ customId: { $in: customIds }, isActive: true })
+  const customIdToIdMap = rules.reduce((acc, rule) => {
+    acc[rule.customId] = rule._id
+    return acc
+  }, {})
+
+  return customIds.map(customId => customIdToIdMap[customId]).filter(id => id)
+}
+
+// Helper function to map license names to IDs
+async function mapLicenseNamesToIds(licenseNames) {
+  if (!licenseNames || licenseNames.length === 0) return []
+
+  // For now, return the license names as-is since we don't have a License model
+  // This will need to be updated when the License model is implemented
+  return licenseNames
+}
+
+async function seed() {
+  console.log('Starting LOB seed...')
+  
+  // Read LOB data from frontend constants (we'll need to inline this since backend can't import frontend)
+  const LINE_OF_BUSINESS = [
+    {
+      taxCode: 'RET',
+      lineOfBusiness: 'retail',
+      detailedLines: [
+        { name: 'Sari-sari store', description: 'Small neighborhood store selling daily essentials' },
+        { name: 'Convenience store', description: '24/7 store selling ready-to-eat food, drinks, and basic supplies' },
+        { name: 'General merchandise', description: 'Store selling various household items and goods' },
+        { name: 'Hardware & construction supplies', description: 'Store selling tools, building materials, and home improvement supplies' },
+        { name: 'Pharmacy / drugstore', description: 'Store selling medicines, health products, and medical supplies' },
+        { name: 'Clothing & apparel', description: 'Store selling clothes, shoes, and fashion accessories' },
+        { name: 'Electronics & gadgets', description: 'Store selling electronic devices, phones, and tech accessories' },
+        { name: 'Auto parts & accessories', description: 'Store selling vehicle parts, tools, and automotive supplies' },
+        { name: 'Fuel / gasoline station', description: 'Station selling fuel, oil, and vehicle services' },
+        { name: 'Agricultural supplies', description: 'Store selling seeds, fertilizers, and farming equipment' },
+      ],
+    },
+    {
+      taxCode: 'WHL',
+      lineOfBusiness: 'wholesale',
+      detailedLines: [
+        { name: 'Agricultural raw materials', description: 'Bulk selling of crops, grains, and farm produce' },
+        { name: 'Food & beverages (wholesale)', description: 'Bulk distribution of food and drink products to retailers' },
+        { name: 'Household goods (wholesale)', description: 'Bulk selling of home items and daily necessities' },
+        { name: 'Industrial machinery & equipment', description: 'Bulk selling of factory and industrial equipment' },
+        { name: 'Construction materials (wholesale)', description: 'Bulk distribution of building supplies and materials' },
+        { name: 'Chemicals & fertilizers', description: 'Bulk selling of industrial chemicals and farming inputs' },
+      ],
+    },
+    {
+      taxCode: 'FDS',
+      lineOfBusiness: 'food_service',
+      detailedLines: [
+        { name: 'Restaurant / eatery', description: 'Establishment serving prepared meals and drinks on-site' },
+        { name: 'Catering services', description: 'Food preparation and service for events and gatherings' },
+        { name: 'Food cart / food stall', description: 'Mobile or small stall selling street food and snacks' },
+        { name: 'Bakery / pastry shop', description: 'Shop selling bread, pastries, cakes, and baked goods' },
+        { name: 'Coffee shop / milk tea', description: 'Cafe serving coffee, tea, and light refreshments' },
+        { name: 'Bar / nightclub', description: 'Establishment serving alcoholic drinks and entertainment' },
+        { name: 'Canteen / commissary', description: 'Food service for schools, offices, or institutions' },
+      ],
+    },
+    {
+      taxCode: 'ACM',
+      lineOfBusiness: 'accommodation',
+      detailedLines: [
+        { name: 'Hotel / resort', description: 'Establishment providing lodging and accommodation services' },
+        { name: 'Boarding house / dormitory', description: 'Providing temporary lodging and accommodation' },
+        { name: 'Apartment / condominium rental', description: 'Renting out apartment units and condominiums' },
+      ],
+    },
+    {
+      taxCode: 'MFG',
+      lineOfBusiness: 'manufacturing',
+      detailedLines: [
+        { name: 'Food processing', description: 'Processing raw ingredients into packaged food products' },
+        { name: 'Garments & textiles', description: 'Producing clothing, fabrics, and textile products' },
+        { name: 'Furniture & woodworks', description: 'Manufacturing furniture and wooden products' },
+        { name: 'Metal fabrication', description: 'Creating metal products through cutting, welding, and assembly' },
+        { name: 'Plastics & rubber products', description: 'Producing plastic items and rubber goods' },
+        { name: 'Printing & publishing', description: 'Printing books, materials, and published content' },
+        { name: 'Chemical products', description: 'Manufacturing industrial and consumer chemicals' },
+        { name: 'Electronics assembly', description: 'Assembling electronic components and devices' },
+        { name: 'Fireworks / pyrotechnics', description: 'Manufacturing fireworks and explosive devices' },
+      ],
+    },
+    {
+      taxCode: 'SVC',
+      lineOfBusiness: 'services',
+      detailedLines: [
+        { name: 'Salon / barbershop', description: 'Hair cutting, styling, and beauty services' },
+        { name: 'Laundry services', description: 'Washing, dry cleaning, and garment care services' },
+        { name: 'Repair shop (electronics, appliances)', description: 'Repairing and maintaining electronic devices and appliances' },
+        { name: 'Tutorial / review center', description: 'Educational support and tutoring services' },
+        { name: 'School / educational institution', description: 'Primary, secondary, and tertiary educational institutions' },
+        { name: 'University / college', description: 'Higher education institutions offering degree programs' },
+        { name: 'IT / BPO services', description: 'Information technology and business process outsourcing' },
+        { name: 'Legal services', description: 'Legal advice, documentation, and representation' },
+        { name: 'Accounting / bookkeeping', description: 'Financial record-keeping and tax preparation services' },
+        { name: 'Medical / dental clinic', description: 'Healthcare and dental treatment services' },
+        { name: 'Hospital', description: 'Medical institution providing inpatient and outpatient healthcare services' },
+        { name: 'Veterinary clinic', description: 'Animal health care and veterinary services' },
+        { name: 'Security agency', description: 'Providing security personnel and protection services' },
+        { name: 'Manpower / recruitment agency', description: 'Staffing and employment placement services' },
+        { name: 'Advertising services', description: 'Marketing, branding, and promotional services' },
+        { name: 'Internet cafe', description: 'Internet access and computer rental services' },
+      ],
+    },
+    {
+      taxCode: 'FIN',
+      lineOfBusiness: 'financial',
+      detailedLines: [
+        { name: 'Bank', description: 'Commercial bank, thrift bank, rural bank, or universal bank accepting deposits and extending credit' },
+        { name: 'Lending / financing company', description: 'Providing loans and financial assistance to individuals and businesses' },
+        { name: 'Pawnshop', description: 'Lending money in exchange for collateral items' },
+        { name: 'Money changer / remittance', description: 'Currency exchange and money transfer services' },
+        { name: 'Insurance agency', description: 'Selling insurance policies and risk protection products' },
+        { name: 'Cooperative (credit)', description: 'Member-owned financial cooperative providing loans and savings' },
+        { name: 'Microfinance institution', description: 'Providing small loans and financial services to low-income individuals' },
+        { name: 'Holding company', description: 'Investment holding company managing portfolio of investments' },
+        { name: 'Fund management', description: 'Investment fund management and trust services' },
+      ],
+    },
+    {
+      taxCode: 'RES',
+      lineOfBusiness: 'real_estate',
+      detailedLines: [
+        { name: 'Real estate brokerage', description: 'Buying, selling, and mediating property transactions' },
+        { name: 'Property leasing / rental', description: 'Renting out properties to tenants' },
+        { name: 'Subdivision developer', description: 'Developing residential subdivisions and housing projects' },
+      ],
+    },
+    {
+      taxCode: 'TRN',
+      lineOfBusiness: 'transportation',
+      detailedLines: [
+        { name: 'Trucking / hauling', description: 'Transporting goods using trucks and heavy vehicles' },
+        { name: 'Passenger transport (jeepney, bus, UV express)', description: 'Public transportation services for passengers' },
+        { name: 'Delivery / courier service', description: 'Package delivery and courier services' },
+        { name: 'Freight forwarding', description: 'Coordinating and managing cargo shipments' },
+        { name: 'Warehouse / storage', description: 'Providing storage facilities for goods and inventory' },
+        { name: 'Parking lot operation', description: 'Operating parking facilities for vehicles' },
+        { name: 'Travel agency', description: 'Booking flights, hotels, and travel arrangements for clients' },
+        { name: 'Tour operator', description: 'Organizing and conducting tour packages and itineraries' },
+      ],
+    },
+    {
+      taxCode: 'AGR',
+      lineOfBusiness: 'agriculture',
+      detailedLines: [
+        { name: 'Crop farming', description: 'Growing and harvesting crops and agricultural produce' },
+        { name: 'Livestock / poultry raising', description: 'Raising animals for meat, eggs, and dairy production' },
+        { name: 'Aquaculture / fishpond', description: 'Breeding and harvesting fish and aquatic organisms' },
+        { name: 'Plant nursery', description: 'Growing and selling plants, seedlings, and flowers' },
+        { name: 'Rice / corn milling', description: 'Processing rice and corn into consumable products' },
+        { name: 'Agricultural services (spraying, harvesting)', description: 'Providing farming services like crop spraying and harvesting' },
+      ],
+    },
+    {
+      taxCode: 'CON',
+      lineOfBusiness: 'construction',
+      detailedLines: [
+        { name: 'General contractor', description: 'Overall management and execution of construction projects' },
+        { name: 'Specialty trade contractor', description: 'Specialized construction work like electrical, plumbing, or HVAC' },
+        { name: 'Electrical installation', description: 'Installing electrical systems and wiring in buildings' },
+        { name: 'Plumbing & HVAC', description: 'Installing water systems, pipes, and air conditioning' },
+        { name: 'Painting & finishing', description: 'Applying paint and finishing touches to structures' },
+        { name: 'Demolition services', description: 'Tearing down and removing structures and buildings' },
+      ],
+    },
+    {
+      taxCode: 'MIN',
+      lineOfBusiness: 'mining',
+      detailedLines: [
+        { name: 'Sand & gravel quarrying', description: 'Extracting sand and gravel for construction use' },
+        { name: 'Stone quarrying', description: 'Extracting stones and rocks for building materials' },
+        { name: 'Non-metallic mineral mining', description: 'Mining non-metallic minerals and earth resources' },
+      ],
+    },
+    {
+      taxCode: 'UTL',
+      lineOfBusiness: 'utilities',
+      detailedLines: [
+        { name: 'Water distribution', description: 'Providing water supply and distribution services' },
+        { name: 'Electric power distribution', description: 'Distributing electricity to consumers and businesses' },
+        { name: 'Waste collection & disposal', description: 'Collecting and disposing of solid waste and garbage' },
+        { name: 'Sewerage services', description: 'Managing sewage and wastewater treatment systems' },
+      ],
+    },
+  ]
+
+  let createdCount = 0
+  let updatedCount = 0
+  let lineIndex = 1
+
+  for (const category of LINE_OF_BUSINESS) {
+    for (const detailedLine of category.detailedLines) {
+      const lobName = detailedLine.name
+      const lobDescription = detailedLine.description
+      const uniqueCode = `${category.taxCode}-${String(lineIndex).padStart(3, '0')}`
+
+      // Map conditional fee customIds to IDs
+      const conditionalFeeCustomIds = LOB_CONDITIONAL_FEE_MAPPINGS[lobName] || []
+      const equipmentFees = await mapConditionalFeeCustomIdsToIds(conditionalFeeCustomIds)
+
+      // Map variable fee rule customIds to IDs
+      const variableFeeRuleCustomIds = LOB_VARIABLE_FEE_MAPPINGS[lobName] || []
+      const variableFeeRules = await mapVariableFeeRuleCustomIdsToIds(variableFeeRuleCustomIds)
+
+      // Map license names to IDs
+      const licenseMapping = LOB_LICENSE_MAPPINGS[lobName] || { required: [], optional: [] }
+      const requiredLicenseNames = licenseMapping.required || []
+      const optionalLicenseNames = licenseMapping.optional || []
+      const requiredLicenses = await mapLicenseNamesToIds(requiredLicenseNames)
+      const optionalLicenses = await mapLicenseNamesToIds(optionalLicenseNames)
+
+      // Check if LOB exists
+      const existingLob = await Lob.findOne({ code: uniqueCode })
+      
+      if (existingLob) {
+        // Update only mutable fields
+        await Lob.updateOne(
+          { code: uniqueCode },
+          {
+            $set: {
+              equipmentFees,
+              variableFeeRules,
+              requiredLicenses,
+              optionalLicenses,
+            },
+          }
+        )
+        updatedCount++
+      } else {
+        // Create new LOB
+        await Lob.create({
+          code: uniqueCode,
+          name: lobName,
+          description: lobDescription,
+          category: category.taxCode,
+          lineOfBusiness: category.lineOfBusiness,
+          equipmentFees,
+          variableFeeRules,
+          requiredLicenses,
+          optionalLicenses,
+        })
+        createdCount++
+      }
+
+      lineIndex++
+    }
+  }
+
+  console.log(`LOB seed completed: ${createdCount} created, ${updatedCount} updated`)
+  return { created: createdCount, updated: updatedCount }
+}
+
+async function seedIfEmpty() {
+  const count = await Lob.countDocuments()
+  if (count === 0) {
+    console.log('No LOBs found, running seed...')
+    const result = await seed()
+    return { seeded: true, count: result.created, updated: result.updated }
+  } else {
+    console.log(`LOBs already exist (${count} records), running update to sync equipmentFees and variableFeeRules...`)
+    const result = await seed()
+    return { seeded: false, updated: result.updated, existing: count }
+  }
+}
+
+module.exports = { seed, seedIfEmpty }

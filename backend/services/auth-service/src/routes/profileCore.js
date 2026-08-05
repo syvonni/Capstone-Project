@@ -6,10 +6,11 @@ const { requireJwt } = require("../middleware/auth");
 const { validateBody, Joi } = require("../middleware/validation");
 const { decryptWithHash, encryptWithHash } = require("../lib/secretCipher");
 const { sanitizeString } = require("../lib/sanitizer");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const inAppNotificationService = require("../services/notificationService");
 const { isStaffRole } = require("../lib/roleHelpers");
 const { isPasswordExpiredByPolicy } = require("../lib/passwordExpiry");
+const { requireRole } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -66,6 +67,7 @@ router.get("/profile", requireJwt, async (req, res) => {
       mfaReEnrollmentRequired: !!doc.mfaReEnrollmentRequired,
       mfaMethod: doc.mfaMethod || "",
       termsAccepted: doc.termsAccepted,
+      welcomeCompleted: !!doc.welcomeCompleted,
       createdAt: doc.createdAt,
       deletionPending: !!doc.deletionPending,
       deletionRequestedAt: doc.deletionRequestedAt,
@@ -148,6 +150,7 @@ router.get("/me", requireJwt, async (req, res) => {
       mfaReEnrollmentRequired: !!doc.mfaReEnrollmentRequired,
       mfaMethod: doc.mfaMethod || "",
       termsAccepted: doc.termsAccepted,
+      welcomeCompleted: !!doc.welcomeCompleted,
       ...(passwordExpiredByPolicy && doc.mustChangeCredentials
         ? { passwordExpired: true }
         : {}),
@@ -311,16 +314,18 @@ router.patch(
       const userAgent = req.headers["user-agent"] || "unknown";
 
       for (const field of changes) {
-        await createAuditLog(
-          doc._id,
+        await logAuditEvent(
           field === "firstName" || field === "lastName"
             ? "name_update"
             : "contact_update",
-          field,
-          oldValues[field] || "",
-          newValues[field] || "",
-          roleSlug,
+          doc._id,
+          "User",
+          doc._id,
           {
+            role: roleSlug,
+            fieldChanged: field,
+            oldValue: oldValues[field] || "",
+            newValue: newValues[field] || "",
             ip,
             userAgent,
             allChanges: changes,
@@ -364,6 +369,90 @@ router.patch(
         500,
         "profile_update_failed",
         "Failed to update profile",
+      );
+    }
+  },
+);
+
+// PATCH /api/auth/welcome-complete - mark welcome inline as completed
+router.patch(
+  "/welcome-complete",
+  requireJwt,
+  requireRole(["business_owner"]),
+  async (req, res) => {
+    try {
+      const doc = await User.findById(req._userId);
+      if (!doc) {
+        return respond.error(res, 404, "not_found", "User not found");
+      }
+
+      doc.welcomeCompleted = true;
+      await doc.save();
+
+      // Return updated user object
+      const updatedDoc = await User.findById(doc._id).populate("role").lean();
+      const roleSlug =
+        updatedDoc.role && updatedDoc.role.slug ? updatedDoc.role.slug : "user";
+      const passwordExpiredByPolicy = isPasswordExpiredByPolicy(
+        updatedDoc.passwordChangedAt,
+      );
+
+      const userSafe = {
+        id: String(updatedDoc._id),
+        role: roleSlug,
+        firstName: updatedDoc.firstName,
+        lastName: updatedDoc.lastName,
+        middleName: updatedDoc.middleName || "",
+        suffix: updatedDoc.suffix || "",
+        sex: updatedDoc.sex || "",
+        dateOfBirth: updatedDoc.dateOfBirth || null,
+        email: updatedDoc.email,
+        phoneNumber: displayPhoneNumber(updatedDoc.phoneNumber),
+        username: updatedDoc.username || "",
+        office: updatedDoc.office || "",
+        isActive: updatedDoc.isActive !== false,
+        isStaff: !!updatedDoc.isStaff,
+        mustChangeCredentials: !!updatedDoc.mustChangeCredentials,
+        mustSetupMfa: !!updatedDoc.mustSetupMfa,
+        isEmailVerified: !!updatedDoc.isEmailVerified,
+        mfaEnabled: !!updatedDoc.mfaEnabled,
+        mfaReEnrollmentRequired: !!updatedDoc.mfaReEnrollmentRequired,
+        mfaMethod: updatedDoc.mfaMethod || "",
+        termsAccepted: updatedDoc.termsAccepted,
+        welcomeCompleted: !!updatedDoc.welcomeCompleted,
+        ...(passwordExpiredByPolicy && updatedDoc.mustChangeCredentials
+          ? { passwordExpired: true }
+          : {}),
+        createdAt: updatedDoc.createdAt,
+        deletionPending: !!updatedDoc.deletionPending,
+        deletionRequestedAt: updatedDoc.deletionRequestedAt,
+        deletionScheduledFor: updatedDoc.deletionScheduledFor,
+        // PIS (Personal Information Sheet) fields
+        address: updatedDoc.address || {
+          street: "",
+          barangay: "",
+          city: "",
+          province: "",
+          zipCode: "",
+        },
+        maritalStatus: updatedDoc.maritalStatus || "",
+        placeOfBirth: updatedDoc.placeOfBirth || "",
+        nationality: updatedDoc.nationality || "",
+        fatherName: updatedDoc.fatherName || "",
+        motherName: updatedDoc.motherName || "",
+        distinctiveMark: updatedDoc.distinctiveMark || "",
+        highestEducationalAttainment:
+          updatedDoc.highestEducationalAttainment || "",
+      };
+
+      return res.json({ updated: true, user: userSafe });
+    } catch (err) {
+      console.error("PATCH /api/auth/welcome-complete error:", err);
+      return respond.error(
+        res,
+        500,
+        "welcome_complete_failed",
+        "Failed to mark welcome as completed",
       );
     }
   },

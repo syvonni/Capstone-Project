@@ -51,7 +51,7 @@ const EXCLUDED_BUSINESS_FIELDS = [
   "businessRegistrationNumber",
   "registrationAgency",
   "formData",
-  "formDefinitionId",
+  "permitFormId",
   "businessRegistration",
   "ownerIdentity",
   "location",

@@ -78,6 +78,7 @@ export default defineConfig([
           '@/features/authentication', // Alias path not resolved by ESLint
           '@/lib/http.js', // Alias path not resolved by ESLint
           '@/shared/components/AppForm', // Alias path not resolved by ESLint
+          '@/shared/services/stepUpService', // Alias path not resolved by ESLint
         ]
       }],
       'import/named': 'error',

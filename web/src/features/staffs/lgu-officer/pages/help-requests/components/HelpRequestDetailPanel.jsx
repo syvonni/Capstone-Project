@@ -11,13 +11,15 @@ import {
   addHelpRequestMessage,
   addHelpRequestInternalNote
 } from '@/features/staffs/lgu-officer/services/helpRequestService'
-import HelpRequestAuditHistoryModal from './HelpRequestAuditHistoryModal'
+import { useStepUp } from '@/shared/hooks/useStepUp'
+import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
+import HelpRequestAuditDetailPanel from './HelpRequestAuditDetailPanel'
 import HelpRequestDetailHeader from './HelpRequestDetailHeader'
 import HelpRequestInfoCard from './HelpRequestInfoCard'
 import HelpRequestConversation from './HelpRequestConversation'
 import HelpRequestInternalNotes from './HelpRequestInternalNotes'
-import DynamicInfoModal from '@/shared/components/DynamicInfoModal'
-import DynamicPageContent from '@/shared/components/DynamicPageContent'
+import { useAudit } from '@/shared/hooks/useAudit'
+import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 
 const { Text, Paragraph } = Typography
 const { useBreakpoint } = Grid
@@ -35,6 +37,7 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
   const { token } = theme.useToken()
   const { modal } = App.useApp()
   const { currentUser } = useAuthSession()
+  const { runWithStepUp, stepUpModal } = useStepUp()
   const screens = useBreakpoint()
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -46,14 +49,14 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
   const [updatingPriority, setUpdatingPriority] = useState(false)
   const [claiming, setClaiming] = useState(false)
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
-  const [manualVisible, setManualVisible] = useState(false)
-  const [infoModalOpen, setInfoModalOpen] = useState(false)
   const [replyConfirmOpen, setReplyConfirmOpen] = useState(false)
   const [noteConfirmOpen, setNoteConfirmOpen] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [bookmarkId, setBookmarkId] = useState(null)
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
+
+  const { auditLogs, auditLoading } = useAudit('help-request', request?.requestId)
 
   const bookmarkService = useMemo(() => new BookmarkService(), [])
 
@@ -170,13 +173,17 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
         onOk: async () => {
           setClaiming(true)
           try {
-            await claimHelpRequest(request.requestId)
+            await runWithStepUp(async (stepUpToken) => {
+              await claimHelpRequest(request.requestId, { headers: { 'X-Step-Up-Token': stepUpToken } })
+            })
             message.success('Request claimed')
             fetchDetail()
             onRefresh?.()
             onReviewComplete?.()
           } catch (err) {
-            message.error(err?.error?.message || 'Failed to claim')
+            if (err?.message !== 'Step-up cancelled') {
+              message.error(err?.error?.message || 'Failed to claim')
+            }
           } finally {
             setClaiming(false)
           }
@@ -191,13 +198,17 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
         onOk: async () => {
           setClaiming(true)
           try {
-            await claimHelpRequest(request.requestId)
+            await runWithStepUp(async (stepUpToken) => {
+              await claimHelpRequest(request.requestId, { headers: { 'X-Step-Up-Token': stepUpToken } })
+            })
             message.success('Request claimed')
             fetchDetail()
             onRefresh?.()
             onReviewComplete?.()
           } catch (err) {
-            message.error(err?.error?.message || 'Failed to claim')
+            if (err?.message !== 'Step-up cancelled') {
+              message.error(err?.error?.message || 'Failed to claim')
+            }
           } finally {
             setClaiming(false)
           }
@@ -215,13 +226,17 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
       onOk: async () => {
         setClaiming(true)
         try {
-          await releaseHelpRequest(request.requestId)
+          await runWithStepUp(async (stepUpToken) => {
+            await releaseHelpRequest(request.requestId, { headers: { 'X-Step-Up-Token': stepUpToken } })
+          })
           message.success('Request released')
           fetchDetail()
           onRefresh?.()
           onReviewComplete?.()
         } catch (err) {
-          message.error(err?.error?.message || 'Failed to release')
+          if (err?.message !== 'Step-up cancelled') {
+            message.error(err?.error?.message || 'Failed to release')
+          }
         } finally {
           setClaiming(false)
         }
@@ -319,16 +334,20 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
     setReplyConfirmOpen(false)
     setSending(true)
     try {
-      await addHelpRequestMessage(request.requestId, {
-        content: replyContent.trim(),
-        attachments: [],
+      await runWithStepUp(async (stepUpToken) => {
+        await addHelpRequestMessage(request.requestId, {
+          content: replyContent.trim(),
+          attachments: [],
+        }, { headers: { 'X-Step-Up-Token': stepUpToken } })
       })
       message.success('Reply sent & email notification delivered')
       setReplyContent('')
       fetchDetail()
       onRefresh?.()
     } catch (err) {
-      message.error(err?.error?.message || 'Failed to send reply')
+      if (err?.message !== 'Step-up cancelled') {
+        message.error(err?.error?.message || 'Failed to send reply')
+      }
     } finally {
       setSending(false)
     }
@@ -343,14 +362,18 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
     setNoteConfirmOpen(false)
     setAddingNote(true)
     try {
-      await addHelpRequestInternalNote(request.requestId, {
-        content: noteContent.trim(),
+      await runWithStepUp(async (stepUpToken) => {
+        await addHelpRequestInternalNote(request.requestId, {
+          content: noteContent.trim(),
+        }, { headers: { 'X-Step-Up-Token': stepUpToken } })
       })
       message.success('Internal note added')
       setNoteContent('')
       fetchDetail()
     } catch (err) {
-      message.error(err?.error?.message || 'Failed to add note')
+      if (err?.message !== 'Step-up cancelled') {
+        message.error(err?.error?.message || 'Failed to add note')
+      }
     } finally {
       setAddingNote(false)
     }
@@ -383,8 +406,6 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
         onStatusChange={handleStatusChange}
         onPriorityChange={handlePriorityChange}
         onHistoryClick={() => setHistoryModalOpen(true)}
-        onManualClick={() => setManualVisible(true)}
-        onInfoClick={() => setInfoModalOpen(true)}
         isBookmarked={isBookmarked}
         onBookmarkToggle={handleBookmarkToggle}
       />
@@ -423,29 +444,16 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
         </div>
       </div>
 
-      <HelpRequestAuditHistoryModal
+      <AuditHistoryModal
         open={historyModalOpen}
         onClose={() => setHistoryModalOpen(false)}
-        requestId={detail.requestId}
+        auditLogs={auditLogs}
+        loading={auditLoading}
+        DetailPanelComponent={HelpRequestAuditDetailPanel}
+        eventDescriptions={AUDIT_EVENT_INFO.filter(e => ['claim', 'release', 'status_update', 'priority_update'].includes(e.event))}
       />
 
-      <Modal
-        title="BizClear Manual"
-        open={manualVisible}
-        onCancel={() => setManualVisible(false)}
-        footer={null}
-        width={800}
-        style={{ top: 20 }}
-      >
-        <DynamicPageContent slotId="bizclear-manual" embedded compact />
-      </Modal>
-
-      <DynamicInfoModal
-        slotId="help-request-info"
-        open={infoModalOpen}
-        onClose={() => setInfoModalOpen(false)}
-        title="About Help Requests"
-      />
+      {stepUpModal}
 
       <Modal
         title="Send Reply"

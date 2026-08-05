@@ -3,13 +3,89 @@ const mongoose = require("mongoose");
 const Appeal = require("../models/Appeal");
 const BusinessProfile = require("../models/BusinessProfile");
 const Application = require("../models/Application");
-const Violation = require("../models/Violation");
 const Payment = require("../models/Payment");
-const { requireJwt, requireRole } = require("../middleware/auth");
+const User = require("../models/User");
+const { requireJwt, requireRole, requireAdminStepUp } = require("../middleware/auth");
 const { logAuditEvent } = require("../lib/auditClient");
 const { crossClaimForBusiness } = require("../lib/crossClaimService");
 
 const router = express.Router();
+
+// Helper to send appeal email (fire and forget, doesn't block status change)
+async function sendAppealEmail(
+  application,
+  appealId,
+  emailType,
+  metadata = {},
+) {
+  try {
+    const user = await User.findById(application.userId).select(
+      "firstName lastName email",
+    );
+    if (!user || !user.email) {
+      console.warn(
+        `User or email not found for application ${application.applicationId}`,
+      );
+      return;
+    }
+
+    const emailData = {
+      to: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      businessName: application.businessName || "Unnamed Business",
+      appealId,
+      ...metadata,
+    };
+
+    // Import mailer functions dynamically to avoid circular dependency
+    const mailer = require("../../../auth-service/src/lib/mailer");
+
+    switch (emailType) {
+      case "appeal_submitted":
+        await mailer.sendAppealSubmittedEmail(emailData);
+        break;
+      case "appeal_approved":
+        await mailer.sendAppealApprovedEmail(emailData);
+        break;
+      case "appeal_denied":
+        await mailer.sendAppealDeniedEmail({
+          ...emailData,
+          resolution: metadata.resolution,
+        });
+        break;
+      default:
+        console.warn(`Unknown email type: ${emailType}`);
+        return;
+    }
+
+    // Update emailSendStatus to sent
+    application.emailSendStatus = application.emailSendStatus || {};
+    application.emailSendStatus[emailType] = {
+      status: "sent",
+      retryCount: 0,
+      lastAttempt: new Date(),
+      lockUntil: null,
+    };
+    await application.save();
+  } catch (err) {
+    console.error(
+      `Failed to send ${emailType} email for appeal ${appealId}:`,
+      err.message,
+    );
+    // Update emailSendStatus to failed
+    application.emailSendStatus = application.emailSendStatus || {};
+    const currentRetry =
+      (application.emailSendStatus[emailType]?.retryCount || 0) + 1;
+    application.emailSendStatus[emailType] = {
+      status: "failed",
+      retryCount: currentRetry,
+      lastAttempt: new Date(),
+      lockUntil: null,
+    };
+    await application.save();
+  }
+}
 
 // Helper: build query that matches either applicationId or _id in Application collection
 function buildApplicationLookupQuery(identifier) {
@@ -206,13 +282,13 @@ router.get("/:id", requireJwt, async (req, res) => {
   try {
     const { id } = req.params;
     const appeal = await Appeal.findById(id).lean();
-    
+
     if (!appeal) {
       return res.status(404).json({
         error: { code: "NOT_FOUND", message: "Appeal not found" },
       });
     }
-    
+
     return res.json({ data: appeal });
   } catch (err) {
     console.error("GET /appeals/:id error:", err);
@@ -231,8 +307,6 @@ router.post("/", requireJwt, async (req, res) => {
       appealType,
       description,
       evidence,
-      violationId,
-      inspectionId,
     } = req.body;
 
     // Validation
@@ -294,18 +368,18 @@ router.post("/", requireJwt, async (req, res) => {
           application.reviewedAt &&
           application.applicationStatus === "rejected"
         ) {
-            const rejectionDate = new Date(application.reviewedAt);
-            const deadlineDate = new Date(rejectionDate);
-            deadlineDate.setDate(deadlineDate.getDate() + APPEAL_DEADLINE_DAYS);
+          const rejectionDate = new Date(application.reviewedAt);
+          const deadlineDate = new Date(rejectionDate);
+          deadlineDate.setDate(deadlineDate.getDate() + APPEAL_DEADLINE_DAYS);
 
-            if (new Date() > deadlineDate) {
-              return res.status(400).json({
-                error: {
-                  code: "APPEAL_DEADLINE_PASSED",
-                  message: `The ${APPEAL_DEADLINE_DAYS}-day deadline to file an appeal has passed.`,
-                },
-              });
-            }
+          if (new Date() > deadlineDate) {
+            return res.status(400).json({
+              error: {
+                code: "APPEAL_DEADLINE_PASSED",
+                message: `The ${APPEAL_DEADLINE_DAYS}-day deadline to file an appeal has passed.`,
+              },
+            });
+          }
         }
       }
     }
@@ -315,9 +389,6 @@ router.post("/", requireJwt, async (req, res) => {
       businessId,
       status: { $in: ["submitted", "under_review"] },
     };
-    if (violationId) {
-      existingFilter.violationId = violationId;
-    }
     const existing = await Appeal.findOne(existingFilter);
     if (existing) {
       return res.status(409).json({
@@ -372,8 +443,6 @@ router.post("/", requireJwt, async (req, res) => {
       appealType,
       description,
       evidence: evidence || [],
-      violationId: violationId || undefined,
-      inspectionId: inspectionId || undefined,
       requestedBy: req._userId,
       status: "submitted",
       ...(claimingOfficerId ? { reviewedBy: claimingOfficerId } : {}),
@@ -402,7 +471,13 @@ router.post("/", requireJwt, async (req, res) => {
         status: "paid",
         paymentMethod: "demo_auto",
         paidAt: new Date(),
-        breakdown: { baseFee: appealFeeAmount, surcharge: 0, penalty: 0, discount: 0, tax: 0 },
+        breakdown: {
+          baseFee: appealFeeAmount,
+          surcharge: 0,
+          penalty: 0,
+          discount: 0,
+          tax: 0,
+        },
         metadata: {
           isMockPayment: true,
           appealId: appeal._id.toString(),
@@ -430,12 +505,27 @@ router.post("/", requireJwt, async (req, res) => {
       );
     }
 
+    // Send appeal submitted email (await to ensure emailSendStatus is updated)
+    try {
+      const application = await Application.findOne(buildApplicationLookupQuery(businessId));
+      if (application) {
+        await sendAppealEmail(application, appeal._id.toString(), "appeal_submitted");
+      }
+    } catch (emailErr) {
+      console.error("Failed to send appeal submitted email:", emailErr);
+      // Don't fail the appeal submission if email fails
+    }
+
     logAuditEvent(
       "appeal_submitted",
       req._userId,
       "Appeal",
       appeal._id.toString(),
-      { businessId: appeal.businessId },
+      {
+        businessId: appeal.businessId,
+        businessName: appeal.businessName,
+        applicationReferenceNumber: appeal.applicationReferenceNumber,
+      },
     );
     return res.status(201).json({ data: appeal });
   } catch (err) {
@@ -496,13 +586,28 @@ router.put("/:id", requireJwt, async (req, res) => {
           );
 
           if (application) {
+            // Send appeal email BEFORE clearing appealId (await to ensure emailSendStatus is updated)
+            const emailType =
+              normalizedStatus === "approved"
+                ? "appeal_approved"
+                : "appeal_denied";
+            try {
+              await sendAppealEmail(application, appeal._id.toString(), emailType, {
+                resolution: appeal.resolution,
+              });
+            } catch (err) {
+              console.error("Failed to send appeal email:", err);
+            }
+
+            // Now clear appealId and update status
             application.hasActiveAppeal = false;
             application.appealId = "";
 
             if (normalizedStatus === "approved") {
               // Preserve original rejection reason before clearing
               if (!application.originalRejectionReason) {
-                application.originalRejectionReason = application.rejectionReason;
+                application.originalRejectionReason =
+                  application.rejectionReason;
               }
               application.hadAppealGranted = true;
 
@@ -521,6 +626,14 @@ router.put("/:id", requireJwt, async (req, res) => {
               );
             }
 
+            // Re-fetch application to get the latest emailSendStatus (in case sendAppealEmail modified it)
+            const updatedApplication = await Application.findOne(
+              buildApplicationLookupQuery(businessId),
+            );
+            if (updatedApplication) {
+              // Preserve emailSendStatus from the updated application
+              application.emailSendStatus = updatedApplication.emailSendStatus;
+            }
             await application.save();
 
             // Also update BusinessProfile businesses subdoc for officer view
@@ -560,7 +673,7 @@ router.put("/:id", requireJwt, async (req, res) => {
       }
     }
     await appeal.save();
-    
+
     // Log appropriate audit event based on resolution
     if (normalizedStatus === "rejected") {
       logAuditEvent(
@@ -568,7 +681,7 @@ router.put("/:id", requireJwt, async (req, res) => {
         req._userId,
         "Appeal",
         appeal._id.toString(),
-        { 
+        {
           status: appeal.status,
           resolution: appeal.resolution,
           businessId: appeal.businessId,
@@ -583,7 +696,12 @@ router.put("/:id", requireJwt, async (req, res) => {
         { status: appeal.status },
       );
     }
-    return res.json({ data: appeal });
+
+    // Return appeal and application (with updated emailSendStatus)
+    const application = await Application.findOne(
+      buildApplicationLookupQuery(businessId),
+    );
+    return res.json({ data: appeal, application });
   } catch (err) {
     console.error("PUT /appeals error:", err);
     return res.status(500).json({
@@ -661,8 +779,7 @@ router.put(
       }
 
       const userRole = req._userRole;
-      const isManagerOrAdmin =
-        userRole === "admin";
+      const isManagerOrAdmin = userRole === "admin";
       if (
         appeal.reviewedBy &&
         String(appeal.reviewedBy) !== String(req._userId) &&
@@ -724,8 +841,7 @@ router.put(
       }
 
       const userRole = req._userRole;
-      const isManagerOrAdmin =
-        userRole === "admin";
+      const isManagerOrAdmin = userRole === "admin";
       if (
         appeal.reviewedBy &&
         String(appeal.reviewedBy) !== String(req._userId) &&
@@ -762,4 +878,137 @@ router.put(
   },
 );
 
-module.exports = router;
+/**
+ * POST /api/lgu-officer/appeals/:id/resend-email
+ * Resend appeal email (with step-up authentication)
+ */
+router.post(
+  "/appeals/:id/resend-email",
+  requireJwt,
+  requireRole(["lgu_officer", "staff", "admin"]),
+  requireAdminStepUp,
+  async (req, res) => {
+    try {
+      const officerId = req._userId || req.user?.id;
+      const { emailType } = req.body;
+
+      if (
+        !emailType ||
+        !["appeal_submitted", "appeal_approved", "appeal_denied"].includes(emailType)
+      ) {
+        return respond.error(
+          res,
+          400,
+          "invalid_email_type",
+          "Invalid email type",
+        );
+      }
+
+      const appeal = await Appeal.findById(req.params.id);
+      if (!appeal) {
+        return respond.error(res, 404, "not_found", "Appeal not found");
+      }
+
+      // Find the application
+      const application = await Application.findOne({
+        $or: [
+          { applicationId: appeal.applicationId },
+          { _id: appeal.applicationId },
+        ],
+      });
+
+      if (!application) {
+        return respond.error(res, 404, "not_found", "Application not found");
+      }
+
+      // Check if retry count is exhausted
+      const emailStatus = application.emailSendStatus?.[emailType];
+      if (emailStatus && emailStatus.retryCount >= 3) {
+        return respond.error(
+          res,
+          429,
+          "retry_exhausted",
+          "Maximum retry attempts reached. Please reset email status.",
+        );
+      }
+
+      // Check lock
+      const now = new Date();
+      const lockUntil = emailStatus?.lockUntil;
+      if (lockUntil && new Date(lockUntil) > now) {
+        return respond.error(
+          res,
+          429,
+          "rate_limited",
+          "Please wait before retrying.",
+        );
+      }
+
+      // Set lock for 30 seconds
+      application.emailSendStatus = application.emailSendStatus || {};
+      application.emailSendStatus[emailType] =
+        application.emailSendStatus[emailType] || {};
+      application.emailSendStatus[emailType].lockUntil = new Date(
+        Date.now() + 30 * 1000,
+      );
+      await application.save();
+
+      // Send email
+      try {
+        await sendAppealEmail(application, appeal._id, emailType, {
+          resolution: appeal.resolution,
+        });
+
+        // Log audit event
+        await logAuditEvent(
+          officerId,
+          "appeal_email_resent",
+          "appeal",
+          JSON.stringify({ appealId: appeal._id, emailType }),
+          JSON.stringify({
+            applicationId: application.applicationId,
+            businessId: appeal.businessId,
+          }),
+        ).catch((err) => console.error("Failed to log audit event:", err));
+
+        return respond.success(res, 200, {
+          message: "Email sent successfully",
+        });
+      } catch (emailErr) {
+        // Update status to failed
+        const retryCount =
+          (application.emailSendStatus[emailType].retryCount || 0) + 1;
+        application.emailSendStatus[emailType].status = "failed";
+        application.emailSendStatus[emailType].retryCount = retryCount;
+        application.emailSendStatus[emailType].lastAttempt = new Date();
+        application.emailSendStatus[emailType].lockUntil = null;
+        await application.save();
+
+        // Log audit event
+        await logAuditEvent(
+          officerId,
+          "appeal_email_failed",
+          "appeal",
+          JSON.stringify({ appealId: appeal._id, emailType, error: emailErr.message }),
+          JSON.stringify({
+            applicationId: application.applicationId,
+            businessId: appeal.businessId,
+          }),
+        ).catch((err) => console.error("Failed to log audit event:", err));
+
+        console.error("Failed to resend appeal email", {
+          error: emailErr.message,
+          appealId: appeal._id,
+          emailType,
+        });
+
+        return respond.error(res, 500, "email_error", "Failed to send email");
+      }
+    } catch (err) {
+      console.error("POST /api/lgu-officer/appeals/:id/resend-email error:", err);
+      return respond.error(res, 500, "resend_error", "Failed to resend email");
+    }
+  },
+);
+
+module.exports = { router, sendAppealEmail };

@@ -1,14 +1,13 @@
-import { get, post, put, del, fetchJsonWithFallback } from '@/lib/http.js'
+import { get, fetchJsonWithFallback } from '@/lib/http.js'
 import { authHeaders } from '@/lib/authHeaders.js'
 import { getCurrentUser } from '@/features/authentication/lib/authEvents.js'
 
 // Fee API
 export const getFees = async (params = {}) => {
-  const { category, isActive, includeDrafts } = params
+  const { category, isActive } = params
   const queryParams = new URLSearchParams()
   if (category) queryParams.append('category', category)
   if (isActive !== undefined) queryParams.append('isActive', isActive)
-  if (includeDrafts) queryParams.append('includeDrafts', 'true')
   
   const res = await get(`/api/business/admin/fees?${queryParams.toString()}`)
   return res?.data || []
@@ -19,27 +18,17 @@ export const getFee = async (id) => {
   return res?.data
 }
 
-export const getFeeDraft = async (id) => {
-  const res = await get(`/api/business/admin/fees/${id}/draft`)
-  return res?.data
+export const getFeesByCategory = async (category, params = {}) => {
+  const { isActive } = params
+  const queryParams = new URLSearchParams()
+  if (isActive !== undefined) queryParams.append('isActive', isActive)
+
+  const res = await get(`/api/business/admin/fees/by-category/${category}?${queryParams.toString()}`)
+  return res?.data || []
 }
 
-export const saveFeeDraft = async (id, data, options = {}) => {
-  const res = await post(`/api/business/admin/fees/${id}/draft`, data, options)
-  return res?.data
-}
-
-export const publishFeeDraft = async (id, options = {}) => {
-  const current = getCurrentUser()
-  const headers = authHeaders(current, 'admin', {
-    'Content-Type': 'application/json',
-    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
-  })
-  const res = await fetchJsonWithFallback(`/api/business/admin/fees/${id}/publish`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({}),
-  })
+export const getFeesByPermitForm = async (permitFormId) => {
+  const res = await get(`/api/business/admin/fees/by-permit-form/${permitFormId}`)
   return res?.data
 }
 
@@ -58,76 +47,28 @@ export const createFee = async (data, options = {}) => {
 }
 
 export const updateFee = async (id, data, options = {}) => {
-  const res = await put(`/api/business/admin/fees/${id}`, data, options)
-  return res?.data
-}
-
-export const disableFee = async (id, options = {}) => {
-  const res = await del(`/api/business/admin/fees/${id}`, options)
-  return res?.data
-}
-
-// Fee Group API
-export const getFeeGroups = async (params = {}) => {
-  const { isActive, includeDrafts } = params
-  const queryParams = new URLSearchParams()
-  if (isActive !== undefined) queryParams.append('isActive', isActive)
-  if (includeDrafts) queryParams.append('includeDrafts', 'true')
-  
-  const res = await get(`/api/business/admin/fee-groups?${queryParams.toString()}`)
-  return res?.data || []
-}
-
-export const getFeeGroup = async (id) => {
-  const res = await get(`/api/business/admin/fee-groups/${id}`)
-  return res?.data
-}
-
-export const getFeeGroupDraft = async (id) => {
-  const res = await get(`/api/business/admin/fee-groups/${id}/draft`)
-  return res?.data
-}
-
-export const saveFeeGroupDraft = async (id, data, options = {}) => {
-  const res = await post(`/api/business/admin/fee-groups/${id}/draft`, data, options)
-  return res?.data
-}
-
-export const publishFeeGroupDraft = async (id, options = {}) => {
   const current = getCurrentUser()
   const headers = authHeaders(current, 'admin', {
     'Content-Type': 'application/json',
     ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
   })
-  const res = await fetchJsonWithFallback(`/api/business/admin/fee-groups/${id}/publish`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({}),
-  })
-  return res?.data
-}
-
-export const createFeeGroup = async (data, options = {}) => {
-  const current = getCurrentUser()
-  const headers = authHeaders(current, 'admin', {
-    'Content-Type': 'application/json',
-    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
-  })
-  const res = await fetchJsonWithFallback('/api/business/admin/fee-groups', {
-    method: 'POST',
+  const res = await fetchJsonWithFallback(`/api/business/admin/fees/${id}`, {
+    method: 'PUT',
     headers,
     body: JSON.stringify(data),
   })
   return res?.data
 }
 
-export const updateFeeGroup = async (id, data, options = {}) => {
-  const res = await put(`/api/business/admin/fee-groups/${id}`, data, options)
-  return res?.data
-}
-
-export const disableFeeGroup = async (id, options = {}) => {
-  const res = await del(`/api/business/admin/fee-groups/${id}`, options)
+export const disableFee = async (id, options = {}) => {
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin', {
+    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
+  })
+  const res = await fetchJsonWithFallback(`/api/business/admin/fees/${id}`, {
+    method: 'DELETE',
+    headers,
+  })
   return res?.data
 }
 
@@ -148,30 +89,6 @@ export const getPenaltyRule = async (id) => {
   return res?.data
 }
 
-export const getPenaltyRuleDraft = async (id) => {
-  const res = await get(`/api/business/admin/penalty-rules/${id}/draft`)
-  return res?.data
-}
-
-export const savePenaltyRuleDraft = async (id, data, options = {}) => {
-  const res = await post(`/api/business/admin/penalty-rules/${id}/draft`, data, options)
-  return res?.data
-}
-
-export const publishPenaltyRuleDraft = async (id, options = {}) => {
-  const current = getCurrentUser()
-  const headers = authHeaders(current, 'admin', {
-    'Content-Type': 'application/json',
-    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
-  })
-  const res = await fetchJsonWithFallback(`/api/business/admin/penalty-rules/${id}/publish`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({}),
-  })
-  return res?.data
-}
-
 export const createPenaltyRule = async (data, options = {}) => {
   const current = getCurrentUser()
   const headers = authHeaders(current, 'admin', {
@@ -187,12 +104,28 @@ export const createPenaltyRule = async (data, options = {}) => {
 }
 
 export const updatePenaltyRule = async (id, data, options = {}) => {
-  const res = await put(`/api/business/admin/penalty-rules/${id}`, data, options)
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin', {
+    'Content-Type': 'application/json',
+    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
+  })
+  const res = await fetchJsonWithFallback(`/api/business/admin/penalty-rules/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(data),
+  })
   return res?.data
 }
 
 export const disablePenaltyRule = async (id, options = {}) => {
-  const res = await del(`/api/business/admin/penalty-rules/${id}`, options)
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin', {
+    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
+  })
+  const res = await fetchJsonWithFallback(`/api/business/admin/penalty-rules/${id}`, {
+    method: 'DELETE',
+    headers,
+  })
   return res?.data
 }
 
@@ -203,14 +136,138 @@ export const getFeeAuditHistory = async (id, params = {}) => {
   return res?.logs || []
 }
 
-export const getFeeGroupAuditHistory = async (id, params = {}) => {
-  const { page = 1, limit = 20 } = params
-  const res = await get(`/api/business/admin/fee-groups/${id}/audit?page=${page}&limit=${limit}`)
-  return res?.logs || []
-}
-
 export const getPenaltyRuleAuditHistory = async (id, params = {}) => {
   const { page = 1, limit = 20 } = params
   const res = await get(`/api/business/admin/penalty-rules/${id}/audit?page=${page}&limit=${limit}`)
+  return res?.logs || []
+}
+
+// Variable Fee Rule API
+export const getVariableFeeRules = async (params = {}) => {
+  const { isActive, category } = params
+  const queryParams = new URLSearchParams()
+  if (isActive !== undefined) queryParams.append('isActive', isActive)
+  if (category) queryParams.append('category', category)
+  
+  const res = await get(`/api/business/admin/variable-fee-rules?${queryParams.toString()}`)
+  return res?.data || []
+}
+
+export const getVariableFeeRule = async (id) => {
+  const res = await get(`/api/business/admin/variable-fee-rules/${id}`)
+  return res?.data
+}
+
+export const createVariableFeeRule = async (data, options = {}) => {
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin', {
+    'Content-Type': 'application/json',
+    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
+  })
+  const res = await fetchJsonWithFallback('/api/business/admin/variable-fee-rules', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  })
+  return res?.data
+}
+
+export const updateVariableFeeRule = async (id, data, options = {}) => {
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin', {
+    'Content-Type': 'application/json',
+    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
+  })
+  const res = await fetchJsonWithFallback(`/api/business/admin/variable-fee-rules/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(data),
+  })
+  return res?.data
+}
+
+export const disableVariableFeeRule = async (id, options = {}) => {
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin', {
+    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
+  })
+  const res = await fetchJsonWithFallback(`/api/business/admin/variable-fee-rules/${id}`, {
+    method: 'DELETE',
+    headers,
+  })
+  return res?.data
+}
+
+export const getVariableFeeRuleAuditHistory = async (id, params = {}) => {
+  const { page = 1, limit = 20 } = params
+  const res = await get(`/api/business/admin/variable-fee-rules/${id}/audit?page=${page}&limit=${limit}`)
+  return res?.logs || []
+}
+
+export const getVariableFeeRuleLobs = async (id) => {
+  const res = await get(`/api/business/admin/variable-fee-rules/${id}/lobs`)
+  return res?.data || []
+}
+
+// Tax Bracket API
+export const getTaxBrackets = async (params = {}) => {
+  const { taxBasis, isActive, lobId } = params
+  const queryParams = new URLSearchParams()
+  if (taxBasis) queryParams.append('taxBasis', taxBasis)
+  if (isActive !== undefined) queryParams.append('isActive', isActive)
+  if (lobId) queryParams.append('lobId', lobId)
+
+  const res = await get(`/api/business/admin/tax-brackets?${queryParams.toString()}`)
+  return res?.data || []
+}
+
+export const getTaxBracket = async (id) => {
+  const res = await get(`/api/business/admin/tax-brackets/${id}`)
+  return res?.data
+}
+
+export const createTaxBracket = async (data, options = {}) => {
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin', {
+    'Content-Type': 'application/json',
+    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
+  })
+  const res = await fetchJsonWithFallback('/api/business/admin/tax-brackets', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  })
+  return res?.data
+}
+
+export const updateTaxBracket = async (id, data, options = {}) => {
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin', {
+    'Content-Type': 'application/json',
+    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
+  })
+  const res = await fetchJsonWithFallback(`/api/business/admin/tax-brackets/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(data),
+  })
+  return res?.data
+}
+
+export const deleteTaxBracket = async (id, options = {}) => {
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin', {
+    ...(options.stepUpToken && { stepUpToken: options.stepUpToken }),
+  })
+  const res = await fetchJsonWithFallback(`/api/business/admin/tax-brackets/${id}`, {
+    method: 'DELETE',
+    headers,
+  })
+  return res?.data
+}
+
+export const getTaxBracketAuditHistory = async (id, params = {}) => {
+  const { page = 1, limit = 20 } = params
+  const res = await get(`/api/business/admin/tax-brackets/${id}/audit?page=${page}&limit=${limit}`)
   return res?.logs || []
 }

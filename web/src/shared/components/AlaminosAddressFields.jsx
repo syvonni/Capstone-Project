@@ -7,11 +7,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Form } from '@/shared/components/AppForm'
-import { Select, Input, Col } from 'antd'
+import { Select, Input, theme } from 'antd'
 import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
 import { fetchBarangays } from '@/shared/services/psgcService'
 
 const { Option } = Select
+const { useToken } = theme
 
 // Alaminos City, Pangasinan – PSGC code
 const ALAMINOS_CITY_CODE = '015503000'
@@ -28,6 +29,7 @@ export default function AlaminosAddressFields({
   initialPostalCode = '',
   onAddressChange,
 }) {
+  const { token } = useToken()
   const field = useCallback(
     (name) => fieldName(namePrefix, name),
     [namePrefix],
@@ -62,63 +64,73 @@ export default function AlaminosAddressFields({
 
   return (
     <>
-      <Col span={24}>
+      <div style={{ marginBottom: 12 }}>
         <Form.Item
+          layout='vertical'
           name={field('streetAddress')}
-          label="House/Bldg No. & Street"
+          label={required ? <span>House/Building Number & Street<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'House/Building Number & Street'}
           initialValue={initialStreet}
           rules={required ? [{ required: true, message: 'Please enter house/building no. & street' }] : []}
+          required={false}
+          style={{ marginBottom: 12 }}
         >
           <Input
             placeholder="e.g., 123 Rizal Street"
             disabled={disabled}
           />
         </Form.Item>
-      </Col>
-      <Col xs={24} sm={12}>
-        <Form.Item
-          name={field('barangay')}
-          label="Barangay"
-          rules={required ? [{ required: true, message: 'Please select barangay' }] : []}
-        >
-          <Select
-            showSearch
-            placeholder="Select Barangay"
-            loading={loadingBarangays}
-            disabled={disabled || loadingBarangays}
-            onChange={handleBarangayChange}
-            filterOption={(input, option) =>
-              (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
-            }
-            notFoundContent={loadingBarangays ? <LottieSpinner size="small" /> : 'No barangays found'}
+      </div>
+      <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <Form.Item
+            layout='vertical'
+            name={field('barangay')}
+            label={required ? <span>Barangay in Alaminos<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span> : 'Barangay'}
+            rules={required ? [{ required: true, message: 'Please select barangay' }] : []}
+            required={false}
+            style={{ marginBottom: 12 }}
           >
-            {barangays.map((brgy) => (
-              <Option key={brgy.code} value={brgy.code}>
-                {brgy.name}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-        <Form.Item name={field('barangayName')} hidden>
-          <Input />
-        </Form.Item>
-      </Col>
-      <Col xs={24} sm={12}>
-        <Form.Item
-          name={field('postalCode')}
-          label="Postal Code (optional)"
-          initialValue={initialPostalCode}
-          rules={[
-            { pattern: /^\d{4}$/, message: 'Postal code must be 4 digits', required: false },
-          ]}
-        >
-          <Input
-            placeholder="e.g., 2404"
-            maxLength={4}
-            disabled={disabled}
-          />
-        </Form.Item>
-      </Col>
+            <Select
+              showSearch
+              placeholder="Select Barangay"
+              loading={loadingBarangays}
+              disabled={disabled || loadingBarangays}
+              onChange={handleBarangayChange}
+              filterOption={(input, option) =>
+                (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              notFoundContent={loadingBarangays ? <LottieSpinner size="small" /> : 'No barangays found'}
+            >
+              {barangays.map((brgy) => (
+                <Option key={brgy.code} value={brgy.code}>
+                  {brgy.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item name={field('barangayName')} layout='vertical' style={{ marginBottom: 12 }} hidden>
+            <Input />
+          </Form.Item>
+        </div>
+        <div style={{ flex: 1 }}>
+          <Form.Item
+            layout='vertical'
+            name={field('postalCode')}
+            label="Postal Code (optional)"
+            initialValue={initialPostalCode}
+            rules={[
+              { pattern: /^\d{4}$/, message: 'Postal code must be 4 digits', required: false },
+            ]}
+            style={{ marginBottom: 12 }}
+          >
+            <Input
+              placeholder="e.g., 2404"
+              maxLength={4}
+              disabled={disabled}
+            />
+          </Form.Item>
+        </div>
+      </div>
     </>
   )
 }

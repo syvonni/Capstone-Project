@@ -6,7 +6,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AppSidebar as Sidebar } from '@/features/authentication'
 import LayoutPageHeader from '@/shared/components/LayoutPageHeader'
 import BusinessOwnerLayout from '@/features/business-owner/components/shared/BusinessOwnerLayout'
-import AdminLayout from '@/features/admin/components/AdminLayout'
+import StaffLayout from '@/shared/components/StaffLayout'
 import ConsolidatedProfileNav from './ConsolidatedProfileNav'
 import ConsolidatedContentRenderer from './ConsolidatedContentRenderer'
 import { CONSOLIDATED_NAV_ITEMS } from './constants'
@@ -244,9 +244,9 @@ export default function UserSettingsView({
 
     if (isStaffOrAdmin) {
       return (
-        <AdminLayout>
+        <StaffLayout>
           {content}
-        </AdminLayout>
+        </StaffLayout>
       )
     }
 

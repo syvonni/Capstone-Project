@@ -1,6 +1,11 @@
 /**
  * Audit Logger Utility (Simplified for Admin Service)
- * Creates audit logs via centralized audit-service
+ * Creates audit logs via centralized audit-service (blockchain anchoring removed)
+ *
+ * @deprecated Use logAuditEvent from auditClient.js instead.
+ * createAuditLog hardcodes entityType as "AdminApproval" and entityId as userId,
+ * which is incorrect for various entities like LGUs, announcements, permit forms, etc.
+ * Migrate to logAuditEvent(eventType, userId, entityType, entityId, metadata).
  */
 
 const { logAuditEvent } = require("./auditClient");
@@ -8,6 +13,8 @@ const { logAuditEvent } = require("./auditClient");
 /**
  * Create audit log via centralized audit-service
  * Non-blocking - operation succeeds even if logging fails
+ *
+ * @deprecated Use logAuditEvent from auditClient.js instead.
  */
 async function createAuditLog(
   userId,
@@ -19,6 +26,11 @@ async function createAuditLog(
   metadata = {},
   slotId = null,
 ) {
+  console.warn(
+    "[DEPRECATED] createAuditLog is deprecated. Use logAuditEvent from auditClient.js instead. " +
+      "createAuditLog hardcodes entityType as 'AdminApproval' and entityId as userId.",
+  );
+
   try {
     // Prepare metadata
     const fullMetadata = {

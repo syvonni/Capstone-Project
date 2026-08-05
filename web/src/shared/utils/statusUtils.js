@@ -8,6 +8,7 @@
  */
 export const STATUS_LABELS = {
   draft: 'Draft',
+  officer_draft: 'Officer Draft',
   submitted: 'Pending Review',
   under_review: 'Under Review',
   pending_renewal: 'For Renewal',
@@ -29,6 +30,7 @@ export const STATUS_LABELS = {
  */
 export const STATUS_COLORS = {
   draft: 'default',
+  officer_draft: 'cyan',
   submitted: 'blue',
   under_review: 'gold',
   pending_renewal: 'gold',

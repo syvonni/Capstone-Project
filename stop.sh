@@ -78,6 +78,27 @@ if pgrep -f "vite.*5173" > /dev/null || pgrep -f "vite preview" > /dev/null || p
   echo -e "${GREEN}✅ All web servers stopped${NC}\n"
 fi
 
+# Stop ngrok tunnel if running
+if [ -f "/tmp/ngrok.pid" ]; then
+  NGROK_PID=$(cat /tmp/ngrok.pid)
+  if ps -p $NGROK_PID > /dev/null 2>&1; then
+    echo -e "${CYAN}🛑 Stopping ngrok tunnel...${NC}"
+    kill $NGROK_PID 2>/dev/null || true
+    rm -f /tmp/ngrok.pid
+    echo -e "${GREEN}✅ Ngrok tunnel stopped${NC}\n"
+  else
+    rm -f /tmp/ngrok.pid
+  fi
+fi
+
+# Also kill any remaining ngrok processes (cleanup)
+if pgrep -f "ngrok" > /dev/null; then
+  echo -e "${CYAN}🛑 Stopping any remaining ngrok processes...${NC}"
+  pkill -f "ngrok" 2>/dev/null || true
+  rm -f /tmp/ngrok.pid
+  echo -e "${GREEN}✅ All ngrok processes stopped${NC}\n"
+fi
+
 # Ask user if they want to preserve data before removing volumes
 if [ "$USING_ATLAS" = true ]; then
     echo -e "${CYAN}ℹ️  Using MongoDB Atlas (cloud database)${NC}"

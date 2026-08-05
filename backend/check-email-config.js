@@ -210,7 +210,9 @@ if (hasErrors || hasWarnings) {
     console.log(
       "Your email configuration has warnings. Please review them above.",
     );
-    console.log("Emails may still work, but some settings may need adjustment.");
+    console.log(
+      "Emails may still work, but some settings may need adjustment.",
+    );
     process.exit(0);
   }
 } else {

@@ -9,11 +9,13 @@ export const STATUS_CONFIG = {
   appeal_pending: { color: 'purple', label: 'Appeal Pending' },
   appeal_rejected: { color: 'red', label: 'Appeal Rejected' },
   draft: { color: 'default', label: 'Draft' },
+  officer_draft: { color: 'orange', label: 'Officer Draft' },
 }
 
 export const STATUS_FILTER_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'draft', label: 'Draft' },
+  { value: 'officer_draft', label: 'Officer Draft' },
   { value: 'submitted', label: 'Pending Review' },
   { value: 'under_review', label: 'Under Review' },
   { value: 'resubmit', label: 'Resubmitted' },

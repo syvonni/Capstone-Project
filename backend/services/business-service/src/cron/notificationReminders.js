@@ -1,4 +1,4 @@
-const PostRequirement = require("../models/PostRequirement");
+const PostDocument = require("../models/PostDocument");
 const Payment = require("../models/Payment");
 
 async function createNotification(
@@ -29,10 +29,10 @@ async function createNotification(
   }
 }
 
-async function checkPostRequirementDue() {
+async function checkPostDocumentDue() {
   const threeDaysFromNow = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
   const now = new Date();
-  const dueItems = await PostRequirement.find({
+  const dueItems = await PostDocument.find({
     status: "pending",
     dueDate: { $gte: now, $lte: threeDaysFromNow },
   }).lean();
@@ -53,8 +53,8 @@ async function checkPostRequirementDue() {
   return dueItems.length;
 }
 
-async function checkOverduePostRequirements() {
-  const overdueItems = await PostRequirement.find({
+async function checkOverduePostDocuments() {
+  const overdueItems = await PostDocument.find({
     status: "overdue",
   }).lean();
 
@@ -74,4 +74,4 @@ async function checkOverduePostRequirements() {
   return overdueItems.length;
 }
 
-module.exports = { checkPostRequirementDue, checkOverduePostRequirements };
+module.exports = { checkPostDocumentDue, checkOverduePostDocuments };

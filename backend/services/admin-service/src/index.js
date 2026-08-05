@@ -103,7 +103,6 @@ app.use(
     cookieName: "csrf-token-admin",
     skipPaths: [
       "/api/admin/csrf-token",
-      "/api/admin/tamper/incidents", // server-to-server: audit-service creates incidents via X-Internal-API-Key
     ],
     disabled: csrfDisabled,
   }),
@@ -167,45 +166,33 @@ require("./models/User");
 require("./models/BusinessProfile");
 require("./models/LGU");
 require("./models/FormGroup");
-require("./models/FormDefinition");
 require("./models/PenaltyConfiguration");
-require("./models/TamperIncident");
 require("./models/Notification");
-require("./models/PermitFormsSection");
 require("./models/ApplicationProcess");
+require("./models/PermitForm");
 
 // Admin routes
 const adminRouter = require("./routes/approvals");
-const monitoringRouter = require("./routes/monitoring");
 const maintenanceRouter = require("./routes/maintenance");
-const tamperIncidentsRouter = require("./routes/tamperIncidents");
-const lguOfficerPermitRouter = require("./routes/permitApplications");
 const lgusRouter = require("./routes/lgus");
-const formDefinitionsRouter = require("./routes/formDefinitions");
-const publicFormsRouter = require("./routes/publicForms");
 const penaltyConfigRouter = require("./routes/penaltyConfiguration");
 const generalPermitConfigRouter = require("./routes/generalPermitConfig");
-const feeConfigurationLogsRouter = require("./routes/feeConfigurationLogs");
+const permitFormsRouter = require("./routes/permitForms");
+const publicPermitFormsRouter = require("./routes/publicPermitForms");
 
 app.use("/api/admin", adminRouter);
-app.use("/api/admin/monitoring", monitoringRouter);
-app.use("/api/admin/maintenance", maintenanceRouter);
-app.use("/api/admin/tamper", tamperIncidentsRouter);
-app.use("/api/admin/lgus", lgusRouter);
-app.use("/api/admin/forms", formDefinitionsRouter);
+app.use("/api/admin/mgus", lgusRouter);
+app.use("/api/admin/permit-forms", permitFormsRouter);
 app.use("/api/admin/penalty-configuration", penaltyConfigRouter);
 app.use("/api/admin/general-permit-config", generalPermitConfigRouter);
-app.use("/api/admin/fee-configuration-logs", feeConfigurationLogsRouter);
 // Public maintenance status endpoint (for frontend to check)
 app.use("/api/maintenance", maintenanceRouter);
 // Public LGU endpoints
 app.use("/api/lgus", lgusRouter);
-// Public form definitions endpoints
-app.use("/api/forms", publicFormsRouter);
+// Public permit forms endpoints
+app.use("/api/public/permit-forms", publicPermitFormsRouter);
 const announcementsRouter = require("./routes/announcements");
 app.use("/api/admin/announcements", announcementsRouter);
-const permitFormsRouter = require("./routes/permitForms");
-app.use("/api/admin/permit-forms", permitFormsRouter);
 const applicationProcessesRouter = require("./routes/applicationProcesses");
 app.use("/api/admin/application-processes", applicationProcessesRouter);
 const publicApplicationProcessesRouter = require("./routes/publicApplicationProcesses");
@@ -217,9 +204,6 @@ const {
 app.use("/api/cms", cmsPublicRouter);
 app.use("/api/admin/cms", cmsAdminRouter);
 
-// LGU Officer permit applications routes
-app.use("/api/lgu-officer/permit-applications", lguOfficerPermitRouter);
-
 // Staff personal activity endpoint
 const axios = require("axios");
 const {
@@ -230,12 +214,7 @@ const respondActivity = require("./middleware/respond");
 app.get(
   "/api/admin/my-activity",
   requireJwtForActivity,
-  requireRoleForActivity([
-    "staff",
-    "lgu_officer",
-    "inspector",
-    "admin",
-  ]),
+  requireRoleForActivity(["staff", "lgu_officer", "inspector", "admin"]),
   async (req, res) => {
     try {
       const period = req.query.period || "month";
@@ -248,7 +227,8 @@ app.get(
             : null;
 
       // Query audit-service for logs
-      const auditServiceUrl = process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
+      const auditServiceUrl =
+        process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
       const headers = { "Content-Type": "application/json" };
       if (process.env.AUDIT_SERVICE_API_KEY)
         headers["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;
@@ -346,30 +326,24 @@ async function start() {
       (process.env.SEED_FORM_DEFINITIONS === "true" ||
         process.env.NODE_ENV !== "production");
 
-    if (shouldSeed) {
-      const maxSeedRetries = 5;
-      const seedRetryDelayMs = 3000;
-      for (let attempt = 1; attempt <= maxSeedRetries; attempt++) {
-        try {
-          const { seedIfEmpty } = require("./migrations/seedFormDefinitions");
-          const result = await seedIfEmpty();
-          if (result.seeded) {
-            logger.info("Form definitions seeded", { count: result.count });
-          }
-          break;
-        } catch (error) {
-          logger.warn(
-            `Form definitions seed attempt ${attempt}/${maxSeedRetries} failed`,
-            { error: error.message },
-          );
-          if (attempt === maxSeedRetries) {
-            logger.warn("Form definitions seed failed after retries", {
-              error: error.message,
-            });
-          } else {
-            await new Promise((r) => setTimeout(r, seedRetryDelayMs));
-          }
+    // FormDefinition seeding removed - FormDefinition has been deleted
+
+    // Seed permit forms if empty (idempotent)
+    // Runs when SEED_PERMIT_FORMS=true (Docker) or in non-test dev
+    const shouldSeedPermitForms =
+      process.env.NODE_ENV !== "test" &&
+      (process.env.SEED_PERMIT_FORMS === "true" ||
+        process.env.NODE_ENV !== "production");
+
+    if (shouldSeedPermitForms) {
+      try {
+        const { seedPermitFormsIfEmpty } = require("./seed/seedPermitForms");
+        const result = await seedPermitFormsIfEmpty();
+        if (result.seeded) {
+          logger.info("Permit forms seeded", { created: result.created, updated: result.updated });
         }
+      } catch (error) {
+        logger.warn("Permit forms seed failed", { error: error.message });
       }
     }
 
@@ -392,26 +366,6 @@ async function start() {
       }
     }
 
-    // Seed tamper incidents when SEED_TAMPER_INCIDENTS or SEED_DEV is set (idempotent)
-    // DISABLED: Prevents fake security events from contributing to noise
-    // if (
-    //   process.env.NODE_ENV !== "test" &&
-    //   (process.env.SEED_TAMPER_INCIDENTS === "true" ||
-    //     process.env.SEED_DEV === "true")
-    // ) {
-    //   try {
-    //     const {
-    //       seedTamperIncidentsIfEmpty,
-    //     } = require("./seed/seedTamperIncidents");
-    //     const result = await seedTamperIncidentsIfEmpty();
-    //     if (result.seeded) {
-    //       logger.info("Tamper incidents seeded", { created: result.created });
-    //     }
-    //   } catch (error) {
-    //     logger.warn("Tamper incidents seed failed", { error: error.message });
-    //   }
-    // }
-
     // Seed audit logs for dashboard "Recent admin activity" when SEED_DEV is set (idempotent)
     // DISABLED: Prevents fake audit events from contributing to noise
     // if (process.env.NODE_ENV !== "test" && process.env.SEED_DEV === "true") {
@@ -432,33 +386,47 @@ async function start() {
       (process.env.SEED_ANNOUNCEMENTS === "true" ||
         process.env.SEED_DEV === "true")
     ) {
-      try {
-        const {
-          seedAnnouncementsIfEmpty,
-        } = require("./seed/seedAnnouncements");
-        const result = await seedAnnouncementsIfEmpty();
-        if (result.seeded) {
-          logger.info("Announcements seeded", { created: result.created });
+      const maxSeedRetries = 5;
+      const seedRetryDelayMs = 3000;
+      for (let attempt = 1; attempt <= maxSeedRetries; attempt++) {
+        try {
+          const {
+            seedAnnouncementsIfEmpty,
+          } = require("./seed/seedAnnouncements");
+          const result = await seedAnnouncementsIfEmpty();
+          if (result.seeded) {
+            logger.info("Announcements seeded", { created: result.created });
+            break;
+          } else if (result.reason === "missing admin role" || result.reason === "missing admin user") {
+            // Retry if admin user/role not ready yet (race condition with auth-service)
+            logger.warn(
+              `Announcements seed attempt ${attempt}/${maxSeedRetries} failed: ${result.reason}`,
+            );
+            if (attempt === maxSeedRetries) {
+              logger.warn("Announcements seed failed after retries", {
+                reason: result.reason,
+              });
+            } else {
+              await new Promise((r) => setTimeout(r, seedRetryDelayMs));
+            }
+          } else {
+            // Don't retry for other reasons (e.g., already has documents)
+            logger.info("Announcements seed skipped", { reason: result.reason });
+            break;
+          }
+        } catch (error) {
+          logger.warn(
+            `Announcements seed attempt ${attempt}/${maxSeedRetries} failed with error`,
+            { error: error.message },
+          );
+          if (attempt === maxSeedRetries) {
+            logger.warn("Announcements seed failed after retries", {
+              error: error.message,
+            });
+          } else {
+            await new Promise((r) => setTimeout(r, seedRetryDelayMs));
+          }
         }
-      } catch (error) {
-        logger.warn("Announcements seed failed", { error: error.message });
-      }
-    }
-
-    // Seed permit forms when SEED_PERMIT_FORMS or SEED_DEV is set (idempotent)
-    if (
-      process.env.NODE_ENV !== "test" &&
-      (process.env.SEED_PERMIT_FORMS === "true" ||
-        process.env.SEED_DEV === "true")
-    ) {
-      try {
-        const { seedPermitFormsIfEmpty } = require("./seed/seedPermitForms");
-        const result = await seedPermitFormsIfEmpty();
-        if (result.seeded) {
-          logger.info("Permit forms seeded", { created: result.created });
-        }
-      } catch (error) {
-        logger.warn("Permit forms seed failed", { error: error.message });
       }
     }
 

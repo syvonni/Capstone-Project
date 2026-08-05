@@ -18,15 +18,13 @@ async function backfillReferenceNumbers() {
     const Application = mongoose.connection.collection("applications");
 
     // Find businesses without applicationReferenceNumber
-    const businessesWithoutRef = await Business
-      .find({
-        $or: [
-          { applicationReferenceNumber: { $exists: false } },
-          { applicationReferenceNumber: null },
-          { applicationReferenceNumber: "" },
-        ],
-      })
-      .toArray();
+    const businessesWithoutRef = await Business.find({
+      $or: [
+        { applicationReferenceNumber: { $exists: false } },
+        { applicationReferenceNumber: null },
+        { applicationReferenceNumber: "" },
+      ],
+    }).toArray();
 
     console.log(
       `Found ${businessesWithoutRef.length} businesses without reference numbers`,
@@ -51,15 +49,13 @@ async function backfillReferenceNumbers() {
     }
 
     // Find applications without applicationReferenceNumber
-    const applicationsWithoutRef = await Application
-      .find({
-        $or: [
-          { applicationReferenceNumber: { $exists: false } },
-          { applicationReferenceNumber: null },
-          { applicationReferenceNumber: "" },
-        ],
-      })
-      .toArray();
+    const applicationsWithoutRef = await Application.find({
+      $or: [
+        { applicationReferenceNumber: { $exists: false } },
+        { applicationReferenceNumber: null },
+        { applicationReferenceNumber: "" },
+      ],
+    }).toArray();
 
     console.log(
       `Found ${applicationsWithoutRef.length} applications without reference numbers`,

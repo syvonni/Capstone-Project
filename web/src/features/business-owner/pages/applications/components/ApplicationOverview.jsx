@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Typography, Card, Grid, Modal, Drawer, Spin, Progress } from 'antd'
 import {
   BookOutlined,
   CustomerServiceOutlined
 } from '@ant-design/icons'
 import DynamicPageContent from '@/shared/components/DynamicPageContent'
-import { getFeeGroupForForm } from '../../../services/feeService'
 import ApplicationInfoCard from './ApplicationInfoCard'
 import ApplicationFeeBreakdownModal from './modals/ApplicationFeeBreakdownModal'
 import { isReturnedStatus } from '../utils/statusUtils'
@@ -27,22 +26,6 @@ export default function ApplicationOverview({ visibleSections, sectionCompleteMa
   const completedCount = visibleSections.filter((_, idx) => sectionCompleteMap[idx] === true).length
   const totalCount = visibleSections.length
   const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
-
-  useEffect(() => {
-    const fetchFeeData = async () => {
-      setLoadingFees(true)
-      try {
-        const data = await getFeeGroupForForm(formType, category)
-        setFeeData(data)
-      } catch (err) {
-        console.error('Failed to fetch fee data:', err)
-        setFeeData(null)
-      } finally {
-        setLoadingFees(false)
-      }
-    }
-    fetchFeeData()
-  }, [formType, category])
 
   // Different cards for returned state vs new application
   const overviewCards = isReturned ? [

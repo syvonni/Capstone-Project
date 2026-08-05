@@ -3,7 +3,7 @@ import { HistoryOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { CMS_AUDIT_FIELD_LABELS } from '../constants/cmsAudit.constants'
 
-const { Text, Title } = Typography
+const { Text } = Typography
 
 function userName(user) {
   if (!user) return '—'
@@ -77,9 +77,9 @@ export default function CmsAuditDetailPanel({ audit, token: tokenProp }) {
           <HistoryOutlined style={{ fontSize: 16 }} />
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <Title level={5} style={{ margin: 0, lineHeight: 1.3 }}>
+          <Text strong style={{ fontSize: 14, lineHeight: 1.3 }}>
             {actionLabel}
-          </Title>
+          </Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
             {userName(audit.userId)} {userEmail(audit.userId) ? `(${userEmail(audit.userId)})` : ''}
           </Text>

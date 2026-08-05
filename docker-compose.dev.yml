@@ -31,13 +31,9 @@ services:
   business-service:
     environment:
       - SEED_FEE_CONFIGURATION=true
-      - LOB_MODEL_SERVICE_URL=http://lob-model:5050
-      - LOB_MODEL_ADMIN_TOKEN=${LOB_MODEL_ADMIN_TOKEN:-}
     volumes:
       - ./backend/shared:/backend/shared:ro
       - ./backend/services/business-service/src:/backend/services/business-service/src
-      - ./ai/datasets:/backend/ai/datasets:ro
-      - ./ai/datasets:/ai/datasets:ro
       - ./.env:/backend/services/business-service/.env
     command: npm run dev
 
@@ -59,12 +55,3 @@ services:
       - ./backend/shared:/backend/shared:ro
       - ./.env:/backend/services/audit-service/.env
     command: npm run dev
-
-  # LOB Model - dev: persist models and datasets on host so retraining from Admin UI is kept
-  lob-model:
-    environment:
-      - LOB_RETRAIN_ON_START=${LOB_RETRAIN_ON_START:-0}
-      - LOB_MODEL_ADMIN_TOKEN=${LOB_MODEL_ADMIN_TOKEN:-}
-    volumes:
-      - ./ai/models:/app/models
-      - ./ai/datasets:/app/datasets

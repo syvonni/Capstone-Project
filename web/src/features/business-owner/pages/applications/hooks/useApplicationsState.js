@@ -26,7 +26,6 @@ export function useApplicationsState() {
   // Refs
   const initialFetchDone = useRef(false)
   const isFirstRender = useRef(true)
-  const hasCompletedOnboarding = useRef(false)
 
   // Composed hooks
   const businessSelection = useBusinessSelection()
@@ -106,7 +105,6 @@ export function useApplicationsState() {
     // Refs
     initialFetchDone,
     isFirstRender,
-    hasCompletedOnboarding,
     // Actions
     toggleSettings,
     handleAnnouncementRead

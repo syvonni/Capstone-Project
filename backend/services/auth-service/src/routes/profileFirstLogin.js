@@ -5,7 +5,7 @@ const respond = require("../middleware/respond");
 const { requireJwt } = require("../middleware/auth");
 const { validateBody, Joi } = require("../middleware/validation");
 const { decryptWithHash, encryptWithHash } = require("../lib/secretCipher");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { validatePasswordStrength } = require("../lib/passwordValidator");
 
 const router = express.Router();
@@ -107,16 +107,30 @@ router.post(
 
       doc.mustChangeCredentials = false;
       if (doc.isStaff) doc.isActive = doc.mustSetupMfa ? false : true;
+      // Update accountStatus based on role and completion state
+      if (doc.isStaff) {
+        // Staff: active only when both password and MFA are set up
+        doc.accountStatus =
+          !doc.mustChangeCredentials && !doc.mustSetupMfa
+            ? "active"
+            : "pending_setup";
+      } else {
+        // Business owners: active after password change
+        doc.accountStatus = "active";
+      }
       await doc.save();
 
-      createAuditLog(
+      logAuditEvent(
         req._userId,
         "first_login_credentials_changed",
-        "password",
-        "",
-        "changed",
-        req._role || "staff",
-        {},
+        "User",
+        req._userId,
+        {
+          role: req._role || "staff",
+          fieldChanged: "password",
+          oldValue: "",
+          newValue: "changed",
+        },
       ).catch(() => {});
 
       const roleSlug = doc.role && doc.role.slug ? doc.role.slug : "user";

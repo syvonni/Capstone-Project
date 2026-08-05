@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const respond = require("../middleware/respond");
 const BusinessProfile = require("../models/BusinessProfile");
+const Lob = require("../models/Lob");
+const PostRequirement = require("../models/PostRequirement");
 
 // Public endpoint for landing page transparency statistics
 router.get("/stats", async (req, res) => {
@@ -61,6 +63,53 @@ router.get("/stats", async (req, res) => {
       500,
       "stats_error",
       "Failed to fetch public stats",
+    );
+  }
+});
+
+// Public endpoint for LOBs (no authentication required)
+router.get("/lobs", async (req, res) => {
+  try {
+    const { category, isActive, _id } = req.query;
+    const filter = { isActive: true };
+    if (category) filter.category = category;
+    if (isActive !== undefined) filter.isActive = isActive === "true";
+    if (_id) filter._id = _id;
+
+    const lobs = await Lob.find(filter)
+      .populate('variables')
+      .populate('documents')
+      .populate('postRequirements.required')
+      .populate('postRequirements.conditional')
+      .sort({ category: 1, name: 1 });
+    return respond.success(res, 200, { data: lobs });
+  } catch (err) {
+    console.error("GET /api/public/business/lobs error:", err);
+    return respond.error(
+      res,
+      500,
+      "lobs_error",
+      "Failed to fetch LOBs"
+    );
+  }
+});
+
+// Public endpoint for PostRequirements (no authentication required)
+router.get("/post-requirements", async (req, res) => {
+  try {
+    const { isActive } = req.query;
+    const filter = { isActive: true };
+    if (isActive !== undefined) filter.isActive = isActive === "true";
+
+    const postRequirements = await PostRequirement.find(filter).sort({ code: 1 });
+    return respond.success(res, 200, { data: postRequirements });
+  } catch (err) {
+    console.error("GET /api/public/business/post-requirements error:", err);
+    return respond.error(
+      res,
+      500,
+      "post_requirements_error",
+      "Failed to fetch PostRequirements"
     );
   }
 });

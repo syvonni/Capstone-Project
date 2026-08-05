@@ -4,12 +4,21 @@ const { requireJwt, requireRole } = require("../middleware/auth");
 const respond = require("../middleware/respond");
 const {
   auditLogRateLimit,
-  auditVerifyRateLimit,
 } = require("../middleware/rateLimit");
 const { requireServiceAuth } = require("../middleware/requireServiceAuth");
 const logger = require("../lib/logger");
 const AuditLog = require("../models/AuditLog");
-const blockchainService = require("../lib/blockchainService");
+const feesRouter = require("./audit/fees");
+const applicationsRouter = require("./audit/applications");
+const requirementsRouter = require("./audit/requirements");
+const taxBracketsRouter = require("./audit/taxBrackets");
+const lobsRouter = require("./audit/lobs");
+const violationsRouter = require("./audit/violations");
+const inspectionItemsRouter = require("./audit/inspectionItems");
+const checklistsRouter = require("./audit/checklists");
+const postRequirementsRouter = require("./audit/postRequirements");
+const permitFormsRouter = require("./audit/permitForms");
+const variablesRouter = require("./audit/variables");
 const router = express.Router();
 
 // GET /api/audit/my-actions - Get current user's FULL action history (work events + personal security events)
@@ -65,6 +74,7 @@ router.get("/my-actions", requireJwt, async (req, res) => {
       "application_released",
       "application_transferred",
       "decision_revoked",
+      "walkin_application_created",
     ];
     const workQuery = {
       eventType: { $in: workEventTypes },
@@ -231,7 +241,8 @@ router.get("/history/:auditLogId", requireJwt, async (req, res) => {
 
     // Check permissions
     const isOwner = String(auditLog.userId) === String(req._userId);
-    const isAdmin = req._userRole === "admin" || req._userRole === "super_admin";
+    const isAdmin =
+      req._userRole === "admin" || req._userRole === "super_admin";
 
     if (!isOwner && !isAdmin) {
       return respond.error(
@@ -267,7 +278,8 @@ router.get("/export", requireJwt, async (req, res) => {
       endDate,
       userId,
     } = req.query;
-    const isAdmin = req._userRole === "admin" || req._userRole === "super_admin";
+    const isAdmin =
+      req._userRole === "admin" || req._userRole === "super_admin";
 
     // Determine target user
     let targetUserId = req._userId;
@@ -293,7 +305,17 @@ router.get("/export", requireJwt, async (req, res) => {
     const auditLogs = await AuditLog.find(query).sort({ createdAt: -1 }).lean();
 
     if (format === "csv") {
-      const csvHeaders = ["ID", "Event Type", "Field Changed", "Old Value", "New Value", "Role", "Created At", "Verified", "TX Hash"];
+      const csvHeaders = [
+        "ID",
+        "Event Type",
+        "Field Changed",
+        "Old Value",
+        "New Value",
+        "Role",
+        "Created At",
+        "Verified",
+        "TX Hash",
+      ];
       const csvRows = auditLogs.map((log) => [
         String(log._id),
         log.eventType || "",
@@ -314,11 +336,17 @@ router.get("/export", requireJwt, async (req, res) => {
       ].join("\n");
 
       res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="audit-history-${Date.now()}.csv"`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="audit-history-${Date.now()}.csv"`,
+      );
       return res.send(csvContent);
     } else {
       res.setHeader("Content-Type", "application/json");
-      res.setHeader("Content-Disposition", `attachment; filename="audit-history-${Date.now()}.json"`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="audit-history-${Date.now()}.json"`,
+      );
       return res.json({
         exportedAt: new Date().toISOString(),
         userId: String(targetUserId),
@@ -338,69 +366,85 @@ router.get("/export", requireJwt, async (req, res) => {
 });
 
 // GET /api/audit/admin/all - Get all audit logs (admin only)
-router.get("/admin/all", requireJwt, requireRole(["admin"]), async (req, res) => {
-  try {
-    const limit = Math.min(Number(req.query.limit) || 50, 100);
-    const skip = Number(req.query.skip) || 0;
-    const eventType = req.query.eventType;
-    const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-    const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+router.get(
+  "/admin/all",
+  requireJwt,
+  requireRole(["admin"]),
+  async (req, res) => {
+    try {
+      const limit = Math.min(Number(req.query.limit) || 50, 100);
+      const skip = Number(req.query.skip) || 0;
+      const eventType = req.query.eventType;
+      const startDate = req.query.startDate
+        ? new Date(req.query.startDate)
+        : null;
+      const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
-    const query = {};
-    if (eventType) query.eventType = eventType;
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = startDate;
-      if (endDate) query.createdAt.$lte = endDate;
+      const query = {};
+      if (eventType) query.eventType = eventType;
+      if (startDate || endDate) {
+        query.createdAt = {};
+        if (startDate) query.createdAt.$gte = startDate;
+        if (endDate) query.createdAt.$lte = endDate;
+      }
+
+      const [auditLogs, total] = await Promise.all([
+        AuditLog.find(query)
+          .sort({ createdAt: -1 })
+          .limit(limit)
+          .skip(skip)
+          .lean(),
+        AuditLog.countDocuments(query),
+      ]);
+
+      return res.json({
+        success: true,
+        logs: auditLogs,
+        total,
+        limit,
+        skip,
+        hasMore: skip + limit < total,
+      });
+    } catch (err) {
+      console.error("GET /api/audit/admin/all error:", err);
+      return respond.error(
+        res,
+        500,
+        "admin_audit_failed",
+        "Failed to retrieve admin audit logs",
+      );
     }
-
-    const [auditLogs, total] = await Promise.all([
-      AuditLog.find(query).sort({ createdAt: -1 }).limit(limit).skip(skip).lean(),
-      AuditLog.countDocuments(query),
-    ]);
-
-    return res.json({
-      success: true,
-      logs: auditLogs,
-      total,
-      limit,
-      skip,
-      hasMore: skip + limit < total,
-    });
-  } catch (err) {
-    console.error("GET /api/audit/admin/all error:", err);
-    return respond.error(
-      res,
-      500,
-      "admin_audit_failed",
-      "Failed to retrieve admin audit logs",
-    );
-  }
-});
+  },
+);
 
 // GET /api/audit/admin/recent - Get recent audit logs (admin only)
-router.get("/admin/recent", requireJwt, requireRole(["admin"]), async (req, res) => {
-  try {
-    const limit = Math.min(Number(req.query.limit) || 20, 50);
-    const auditLogs = await AuditLog.find()
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean();
+router.get(
+  "/admin/recent",
+  requireJwt,
+  requireRole(["admin"]),
+  async (req, res) => {
+    try {
+      const limit = Math.min(Number(req.query.limit) || 20, 50);
+      const auditLogs = await AuditLog.find()
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean();
 
-    return res.json({
-      success: true,
-      logs: auditLogs,
-    });
-  } catch (err) {
-    console.error("GET /api/audit/admin/recent error:", err);
-    return respond.error(
-      res,
-      500,
-      "recent_audit_failed",
-      "Failed to retrieve recent audit logs",
-    );
-  }
-});
+      return res.json({
+        success: true,
+        logs: auditLogs,
+      });
+    } catch (err) {
+      console.error("GET /api/audit/admin/recent error:", err);
+      return respond.error(
+        res,
+        500,
+        "recent_audit_failed",
+        "Failed to retrieve recent audit logs",
+      );
+    }
+  },
+);
 
 // GET /api/audit/staff/all - Get staff audit logs
 router.get("/staff/all", requireJwt, async (req, res) => {
@@ -408,7 +452,9 @@ router.get("/staff/all", requireJwt, async (req, res) => {
     const limit = Math.min(Number(req.query.limit) || 100, 200);
     const skip = Number(req.query.skip) || 0;
     const eventType = req.query.eventType;
-    const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
+    const startDate = req.query.startDate
+      ? new Date(req.query.startDate)
+      : null;
     const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
     const query = {};
@@ -420,7 +466,11 @@ router.get("/staff/all", requireJwt, async (req, res) => {
     }
 
     const [auditLogs, total] = await Promise.all([
-      AuditLog.find(query).sort({ createdAt: -1 }).limit(limit).skip(skip).lean(),
+      AuditLog.find(query)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .lean(),
       AuditLog.countDocuments(query),
     ]);
 
@@ -474,299 +524,103 @@ router.get("/stats", requireServiceAuth, async (req, res) => {
   }
 });
 
-// GET /api/audit/verify/:auditLogId - Verify audit log integrity
-router.get(
-  "/verify/:auditLogId",
-  requireJwt,
-  auditVerifyRateLimit(),
-  async (req, res) => {
-    try {
-      const { auditLogId } = req.params;
-      const auditLog = await AuditLog.findById(auditLogId);
-
-      if (!auditLog) {
-        return respond.error(
-          res,
-          404,
-          "audit_log_not_found",
-          "Audit log not found",
-        );
-      }
-
-      // Verify hash matches blockchain
-      const verifyResult = await blockchainService.verifyHash(auditLog.hash);
-
-      return res.json({
-        success: true,
-        verified: verifyResult.exists || false,
-        auditLog: {
-          id: String(auditLog._id),
-          hash: auditLog.hash,
-          eventType: auditLog.eventType,
-          createdAt: auditLog.createdAt,
-        },
-        blockchain: {
-          exists: verifyResult.exists,
-          timestamp: verifyResult.timestamp,
-        },
-      });
-    } catch (err) {
-      console.error("GET /api/audit/verify/:auditLogId error:", err);
-      return respond.error(
-        res,
-        500,
-        "verification_failed",
-        "Failed to verify audit log",
-      );
-    }
-  },
-);
-
-// POST /api/audit/verify-data - Verify raw data against on-chain hash (hash is one-way; we verify data matches)
-router.post(
-  "/verify-data",
-  requireJwt,
-  auditVerifyRateLimit(),
-  async (req, res) => {
-    try {
-      const { data } = req.body;
-      if (data == null || (typeof data === "string" && !data.trim())) {
-        return respond.error(
-          res,
-          400,
-          "missing_data",
-          'Request body must include "data" (string) to verify',
-        );
-      }
-      const dataStr =
-        typeof data === "object" ? JSON.stringify(data) : String(data);
-      const hash = crypto.createHash("sha256").update(dataStr).digest("hex");
-      const verifyResult = await blockchainService.verifyHash(hash);
-
-      return res.json({
-        success: true,
-        verified: verifyResult.exists || false,
-        hash,
-        blockchain: {
-          exists: verifyResult.exists,
-          timestamp: verifyResult.timestamp,
-        },
-        message: verifyResult.exists
-          ? "Data matches a hash stored on-chain."
-          : "Data does not match any stored hash.",
-      });
-    } catch (err) {
-      console.error("POST /api/audit/verify-data error:", err);
-      return respond.error(
-        res,
-        500,
-        "verification_failed",
-        "Failed to verify data",
-      );
-    }
-  },
-);
+// Blockchain verify endpoints removed - blockchain feature deleted
+// Previously: GET /api/audit/verify/:auditLogId and POST /api/audit/verify-data
+// These endpoints returned hardcoded responses after blockchain was removed
 
 // POST /api/audit/ingest - Ingest audit event from other services (centralized audit log creation)
-router.post(
-  "/ingest",
-  requireServiceAuth,
-  async (req, res) => {
-    try {
-      const {
-        userId,
-        eventType,
-        entityType,
-        entityId,
-        fieldChanged,
-        oldValue,
-        newValue,
-        role,
-        metadata,
-      } = req.body;
+router.post("/ingest", requireServiceAuth, async (req, res) => {
+  try {
+    const {
+      userId,
+      eventType,
+      entityType,
+      entityId,
+      fieldChanged,
+      oldValue,
+      newValue,
+      role,
+      metadata,
+    } = req.body;
 
-      // Validate required fields
-      if (!userId || !eventType || !entityType || !entityId) {
-        return respond.error(
-          res,
-          400,
-          "missing_params",
-          "userId, eventType, entityType, and entityId are required",
-        );
-      }
+    logger.info("POST /api/audit/ingest received", {
+      userId,
+      eventType,
+      entityType,
+      entityId,
+      fieldChanged,
+      oldValue,
+      newValue,
+      role,
+      metadataKeys: metadata ? Object.keys(metadata) : [],
+    });
 
-      // Calculate hash - use one timestamp for both hash and createdAt so verification passes
-      const timestamp = new Date();
-      const timestampISO = timestamp.toISOString();
-      const hashableData = {
-        userId: String(userId),
-        eventType,
-        fieldChanged: fieldChanged || "",
-        oldValue: oldValue || "",
-        newValue: newValue || "",
-        role: role || "system",
-        metadata: JSON.stringify(metadata || {}),
-        timestamp: timestampISO,
-      };
-      const dataString = JSON.stringify(hashableData);
-      const hash = crypto.createHash("sha256").update(dataString).digest("hex");
-
-      // Create audit log in audit-service database with explicit createdAt to match hash timestamp
-      const auditLog = await AuditLog.create({
-        userId,
-        eventType,
-        fieldChanged: fieldChanged || null,
-        oldValue: oldValue || "",
-        newValue: newValue || "",
-        role: role || "system",
-        metadata: metadata || {},
-        entityType,
-        entityId,
-        hash,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      });
-
-      logger.info("Audit log ingested", {
-        auditLogId: String(auditLog._id),
-        eventType,
-        entityType,
-        entityId,
-      });
-
-      // Queue blockchain operation (non-blocking)
-      const blockchainQueue = require("../lib/blockchainQueue");
-      blockchainQueue.queueBlockchainOperation(
-        "logAuditHash",
-        [hash, eventType],
-        String(auditLog._id),
-      );
-
-      return respond.success(res, 201, {
-        auditLogId: String(auditLog._id),
-        hash,
-        queued: true,
-      });
-    } catch (err) {
-      logger.error("POST /api/audit/ingest error", { error: err.message });
+    // Validate required fields
+    if (!userId || !eventType || !entityType || !entityId) {
       return respond.error(
         res,
-        500,
-        "audit_ingest_failed",
-        "Failed to ingest audit log",
+        400,
+        "missing_params",
+        "userId, eventType, entityType, and entityId are required",
       );
     }
-  },
-);
 
-// POST /api/audit/log - Queue blockchain operation (called by other services)
-router.post(
-  "/log",
-  requireServiceAuth,
-  auditLogRateLimit(),
-  async (req, res) => {
-    try {
-      const { operation, params, auditLogId } = req.body;
-      const eventType =
-        Array.isArray(params) && params[1] != null ? params[1] : operation;
-      logger.info("Audit log received from service", {
-        operation,
-        eventType,
-        auditLogId,
-      });
+    // Calculate hash - use one timestamp for both hash and createdAt so verification passes
+    const timestamp = new Date();
+    const timestampISO = timestamp.toISOString();
+    const hashableData = {
+      userId: String(userId),
+      eventType,
+      fieldChanged: fieldChanged || "",
+      oldValue: oldValue || "",
+      newValue: newValue || "",
+      role: role || "system",
+      metadata: JSON.stringify(metadata || {}),
+      timestamp: timestampISO,
+    };
+    const dataString = JSON.stringify(hashableData);
+    const hash = crypto.createHash("sha256").update(dataString).digest("hex");
 
-      // Gas policy: classify event tier
-      const gasPolicy = require("../lib/gasPolicy");
-      const policy = gasPolicy.classify(operation, eventType);
-      logger.info("Gas policy classification", {
-        operation,
-        eventType,
-        tier: policy.tier,
-      });
+    // Create audit log in audit-service database with explicit createdAt to match hash timestamp
+    const auditLog = await AuditLog.create({
+      userId,
+      eventType,
+      fieldChanged: fieldChanged || null,
+      oldValue: oldValue || "",
+      newValue: newValue || "",
+      role: role || "system",
+      metadata: metadata || {},
+      entityType,
+      entityId,
+      hash,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
 
-      // Tier C: off-chain only — skip blockchain entirely
-      if (policy.skip) {
-        if (auditLogId) {
-          await AuditLog.findByIdAndUpdate(auditLogId, {
-            blockchainStatus: "skipped",
-            blockchainError: "off-chain-only tier",
-          }).catch(() => {});
-        }
-        return res.json({
-          success: true,
-          queued: false,
-          tier: policy.tier,
-          message: "Event classified as off-chain only",
-        });
-      }
+    logger.info("Audit log ingested", {
+      auditLogId: String(auditLog._id),
+      eventType,
+      entityType,
+      entityId,
+    });
 
-      // Dedup check: if logAuditHash and we have a hash param, skip if already anchored
-      if (operation === "logAuditHash" && Array.isArray(params) && params[0]) {
-        const existingAnchored = await AuditLog.findOne({
-          hash: params[0],
-          blockchainStatus: "anchored",
-        }).lean();
-        if (existingAnchored) {
-          logger.info("Dedup: hash already anchored, skipping", {
-            hash: params[0],
-          });
-          return res.json({
-            success: true,
-            queued: false,
-            dedup: true,
-            message: "Hash already anchored on-chain",
-          });
-        }
-      }
+    // Blockchain queue removed - blockchain feature deleted
 
-      // This endpoint is called by other services to log to blockchain
-      if (
-        blockchainService &&
-        blockchainService.isAvailable &&
-        blockchainService.isAvailable()
-      ) {
-        const blockchainQueue = require("../lib/blockchainQueue");
-
-        if (policy.anchor) {
-          // Tier A: immediate queue (high priority)
-          blockchainQueue.queueBlockchainOperation(
-            operation,
-            params,
-            auditLogId,
-          );
-          return res.json({ success: true, queued: true, tier: policy.tier });
-        } else if (policy.batch) {
-          // Tier B: add to batch buffer for scheduled commit
-          blockchainQueue.addToBatchBuffer(operation, params, auditLogId);
-          return res.json({
-            success: true,
-            queued: true,
-            tier: policy.tier,
-            batched: true,
-          });
-        }
-
-        // Fallback: queue normally
-        blockchainQueue.queueBlockchainOperation(operation, params, auditLogId);
-        return res.json({ success: true, queued: true, tier: policy.tier });
-      } else {
-        // Blockchain not available, but don't fail the request
-        return res.json({
-          success: true,
-          queued: false,
-          message: "Blockchain service not available",
-        });
-      }
-    } catch (err) {
-      console.error("POST /api/audit/log error:", err);
-      return respond.error(
-        res,
-        500,
-        "audit_log_failed",
-        "Failed to queue audit log",
-      );
-    }
-  },
+    return respond.success(res, 201, {
+      auditLogId: String(auditLog._id),
+      hash,
+      queued: false,
+    });
+  } catch (err) {
+    logger.error("POST /api/audit/ingest error", { error: err.message });
+    return respond.error(
+      res,
+      500,
+      "audit_ingest_failed",
+      "Failed to ingest audit log",
+    );
+  }
+},
 );
 
 // POST /api/audit/store-document - Store document CID in DocumentStorage contract (called by other services)
@@ -862,41 +716,8 @@ router.post("/register-user", requireServiceAuth, async (req, res) => {
   }
 });
 
-// GET /api/audit/queue-status — blockchain queue health (service-to-service)
-router.get("/queue-status", requireServiceAuth, async (req, res) => {
-  try {
-    const blockchainQueue = require("../lib/blockchainQueue");
-    const status = blockchainQueue.getQueueStatus();
-    const batchStatus = blockchainQueue.getBatchBufferStatus();
-    const pendingCount = await AuditLog.countDocuments({
-      blockchainStatus: "pending",
-      txHash: { $in: ["", null] },
-    });
-    const failedCount = await AuditLog.countDocuments({
-      blockchainStatus: "failed",
-    });
-    const skippedCount = await AuditLog.countDocuments({
-      blockchainStatus: "skipped",
-    });
-    const digestCount = await AuditLog.countDocuments({
-      blockchainStatus: "anchored_via_digest",
-    });
-
-    return res.json({
-      queue: status,
-      batchBuffer: batchStatus,
-      unanchored: {
-        pending: pendingCount,
-        failed: failedCount,
-        skipped: skippedCount,
-        digestAnchored: digestCount,
-      },
-    });
-  } catch (err) {
-    logger.error("GET /api/audit/queue-status error", { error: err.message });
-    return respond.error(res, 500, "queue_status_failed", "Failed to get queue status");
-  }
-});
+// queue-status endpoint removed - blockchain queue deleted
+// Previously: GET /api/audit/queue-status — blockchain queue health (service-to-service)
 
 // GET /api/audit/logs - Generic admin query endpoint for audit logs (service-to-service)
 router.get("/logs", requireServiceAuth, async (req, res) => {
@@ -907,10 +728,28 @@ router.get("/logs", requireServiceAuth, async (req, res) => {
       fieldChanged,
       startDate,
       endDate,
+      entityType,
+      entityId,
       limit = 50,
       skip = 0,
       sort = "createdAt:-1",
     } = req.query;
+
+    // Import decryption utility (safe wrapper that never throws)
+    let _decrypt;
+    try {
+      _decrypt = require("../../../../shared/lib/fieldCipher").decrypt;
+    } catch (e) {
+      _decrypt = null;
+    }
+    const decrypt = (v) => {
+      if (!_decrypt) return v;
+      try {
+        return _decrypt(v);
+      } catch {
+        return v;
+      }
+    };
 
     const query = {};
     if (eventType) {
@@ -927,6 +766,8 @@ router.get("/logs", requireServiceAuth, async (req, res) => {
     }
     if (userId) query.userId = userId;
     if (fieldChanged) query.fieldChanged = fieldChanged;
+    if (entityType) query.entityType = entityType;
+    if (entityId) query.entityId = entityId;
     if (startDate || endDate) {
       query.createdAt = {};
       if (startDate) query.createdAt.$gte = new Date(startDate);
@@ -952,9 +793,18 @@ router.get("/logs", requireServiceAuth, async (req, res) => {
       AuditLog.countDocuments(query),
     ]);
 
+    // Decrypt encrypted fields before returning
+    const decryptedLogs = logs.map((log) => ({
+      ...log,
+      oldValue: decrypt(log.oldValue) || log.oldValue || "",
+      newValue: decrypt(log.newValue) || log.newValue || "",
+      role: decrypt(log.role) || log.role || "",
+      // blockchainError decryption removed - blockchain feature deleted
+    }));
+
     return res.json({
       success: true,
-      logs,
+      logs: decryptedLogs,
       total,
       limit: Number(limit),
       skip: Number(skip),
@@ -970,55 +820,35 @@ router.get("/logs", requireServiceAuth, async (req, res) => {
   }
 });
 
-// GET /api/audit/application/:applicationId - Get audit logs for a specific application
+// Mount fee-specific and application-specific audit routes
+router.use(feesRouter);
+router.use(requirementsRouter);
+router.use(applicationsRouter);
+router.use(taxBracketsRouter);
+router.use(lobsRouter);
+router.use(violationsRouter);
+router.use(inspectionItemsRouter);
+router.use(checklistsRouter);
+router.use(postRequirementsRouter);
+router.use(permitFormsRouter);
+router.use(variablesRouter);
+
+// GET /api/audit/business-owner/:ownerId - Get audit logs for a specific business owner
 router.get(
-  "/application/:applicationId",
+  "/business-owner/:ownerId",
   requireJwt,
   requireRole(["lgu_officer", "staff", "admin"]),
   async (req, res) => {
     try {
-      const { applicationId } = req.params;
-      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
-      const skip = (page - 1) * limit;
+      const { ownerId } = req.params;
+      const { page = 1, limit = 20 } = req.query;
 
-      // Application-specific event types only
-      const applicationEventTypes = [
-        "application_submitted",
-        "application_rejected",
-        "application_returned",
-        "review_completed",
-        "decision_revoked",
-        "application_claimed",
-        "application_released",
-        "application_transferred",
-        "claimed",
-        "released",
-        "appeal_submitted",
-        "appeal_resolved",
-        "appeal_rejected",
-        "edit_request_submitted",
-        "edit_request_applied",
-        "field_reviewed",
-        "field_decisions_updated",
-        "pending_action_created",
-        "pending_action_cancelled",
-      ];
-
-      // Find audit logs for this application, filtered to application-specific events
+      const skip = (parseInt(page) - 1) * parseInt(limit);
       const filter = {
-        $and: [
-          {
-            $or: [
-              { "metadata.applicationId": applicationId },
-              { "metadata.entityId": applicationId },
-              { "metadata.businessId": applicationId },
-              { entityId: applicationId },
-            ],
-          },
-          {
-            eventType: { $in: applicationEventTypes },
-          },
+        $or: [
+          { "metadata.ownerId": ownerId },
+          { "metadata.entityId": ownerId },
+          { userId: ownerId },
         ],
       };
 
@@ -1026,22 +856,20 @@ router.get(
         AuditLog.find(filter)
           .sort({ createdAt: -1 })
           .skip(skip)
-          .limit(limit)
+          .limit(parseInt(limit))
           .lean(),
         AuditLog.countDocuments(filter),
       ]);
 
       return respond.success(res, 200, {
         logs,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit)),
       });
     } catch (err) {
-      logger.error("GET /api/audit/application/:applicationId error", {
+      logger.error("GET /api/audit/business-owner/:ownerId error", {
         error: err.message,
       });
       return respond.error(
@@ -1141,14 +969,7 @@ router.get("/forensic/:auditLogId", requireServiceAuth, async (req, res) => {
     const storedHash = auditLog.hash;
     const tampered = currentHash !== storedHash;
 
-    let blockchainRecord = null;
-    if (auditLog.txHash && blockchainService.isAvailable()) {
-      try {
-        blockchainRecord = await blockchainService.verifyHash(storedHash);
-      } catch {
-        blockchainRecord = null;
-      }
-    }
+    // Blockchain verification removed - feature deleted
 
     return res.json({
       auditLog,
@@ -1157,14 +978,12 @@ router.get("/forensic/:auditLogId", requireServiceAuth, async (req, res) => {
         storedHash,
         hashMatch: !tampered,
         tampered,
-        blockchainRecord,
-        blockchainAnchored: !!auditLog.txHash,
-        blockchainVerified: blockchainRecord?.exists || false,
+        blockchainRecord: null,
+        blockchainAnchored: false,
+        blockchainVerified: false,
         diagnosis: tampered
-          ? "The MongoDB record has been modified after it was hashed. The stored hash (anchored on blockchain) represents the ORIGINAL data."
-          : auditLog.txHash
-            ? "Record integrity verified. MongoDB data matches the blockchain-anchored hash."
-            : "Record has not been anchored to blockchain. Integrity cannot be verified against an immutable source.",
+          ? "The MongoDB record has been modified after it was hashed."
+          : "Record integrity verified (MongoDB-only).",
       },
     });
   } catch (err) {

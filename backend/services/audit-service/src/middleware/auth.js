@@ -25,7 +25,10 @@ async function requireJwt(req, res, next) {
     const m = auth.match(/^Bearer\s+(.+)$/i);
     const token = m ? m[1] : "";
     if (!token) {
-      console.error("[requireJwt] Missing token, auth header:", auth.substring(0, 20));
+      console.error(
+        "[requireJwt] Missing token, auth header:",
+        auth.substring(0, 20),
+      );
       return res.status(401).json({
         error: {
           code: "unauthorized",

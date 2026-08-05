@@ -25,6 +25,11 @@ const UserSchema = new mongoose.Schema(
     office: { type: String, default: "" },
     isStaff: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+    accountStatus: {
+      type: String,
+      enum: ["pending_setup", "active", "suspended", "locked"],
+      default: "pending_setup",
+    },
     mustChangeCredentials: { type: Boolean, default: false },
     mustSetupMfa: { type: Boolean, default: false },
     avatarUrl: { type: String, default: "" }, // Legacy: local file URL (for backward compatibility)
@@ -138,12 +143,50 @@ const UserSchema = new mongoose.Schema(
     },
     // Flag indicating PIS profile has been completed (required before first permit application)
     pisCompleted: { type: Boolean, default: false },
+    // Flag indicating welcome inline has been completed (user selected a permit type)
+    welcomeCompleted: { type: Boolean, default: false },
     // Blockchain integration fields (for migration tracking)
     profileHash: { type: String, default: "" }, // SHA256 hash of profile data
     profileIpfsCid: { type: String, default: "" }, // IPFS CID of full profile JSON
     userEthereumAddress: { type: String, default: "" }, // Ethereum address (for blockchain registration)
     // Who created this account: ObjectId (staff/admin), or string marker ('seeder', 'self')
     createdBy: { type: mongoose.Schema.Types.Mixed, default: null },
+    // Email send status tracking for resend functionality
+    emailSendStatus: {
+      credentials: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      editInfo: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      emailChange: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+    },
+    // Temporary password storage for credential resend (expires after 24h)
+    tempPassword: { type: String, default: null },
+    tempPasswordExpiresAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
@@ -151,11 +194,6 @@ const UserSchema = new mongoose.Schema(
 const { encryptionPlugin } = require("../../../../shared/lib/encryptionPlugin");
 UserSchema.plugin(encryptionPlugin, {
   fields: [
-    "firstName",
-    "lastName",
-    "middleName",
-    "suffix",
-    "phoneNumber",
     "office",
     "mfaSecret",
     "authProvider",
@@ -177,6 +215,9 @@ UserSchema.plugin(encryptionPlugin, {
   nestedPaths: ["address"],
   arrayPaths: ["recentLoginIPs", "webauthnCredentials"],
   mixedPaths: [],
+  // Exclude timestamp fields from encryption - they're used for display and sorting
+  arrayPathsExclude: [],
+  excludeFields: ["lastLoginAt", "passwordChangedAt", "createdAt", "updatedAt"],
 });
 
 UserSchema.set("toJSON", {

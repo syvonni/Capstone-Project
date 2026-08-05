@@ -4,6 +4,7 @@
  */
 
 const logger = require("../lib/logger");
+const TaxBracket = require("../models/TaxBracket");
 
 class WhatIfFeeService {
   /**
@@ -286,11 +287,81 @@ class WhatIfFeeService {
    * Calculate tax brackets
    * @param {number} totalFees - Total fees
    * @param {number} grossSales - Gross annual sales
+   * @param {object} options - Additional options
+   * @param {string} options.lobId - LOB ID
+   * @param {string} options.taxBasis - Tax basis ('capitalization' or 'gross_sales')
+   * @param {boolean} options.isRenewal - Whether this is a renewal (for gross sales basis)
+   * @param {Date} options.registrationDate - Registration date for pro-ration
    */
-  static calculateTaxBrackets(totalFees, grossSales) {
+  static async calculateTaxBrackets(totalFees, grossSales, options = {}) {
+    const { lobId, taxBasis = 'capitalization', isRenewal = false, registrationDate } = options;
     const brackets = [];
 
-    // Simple progressive tax calculation
+    // If lobId and taxBasis are provided, fetch actual tax brackets from database
+    if (lobId && taxBasis) {
+      try {
+        const taxBrackets = await TaxBracket.find({
+          lobId,
+          taxBasis,
+          isActive: true
+        }).sort({ minValue: 1 });
+
+        if (taxBrackets.length > 0) {
+          // Find applicable bracket based on capital or gross sales
+          const value = taxBasis === 'gross_sales' ? grossSales : totalFees;
+          const applicableBracket = taxBrackets.find(
+            bracket => value >= bracket.minValue && (bracket.maxValue === null || value <= bracket.maxValue)
+          );
+
+          if (applicableBracket) {
+            let tax = 0;
+
+            // Calculate fixed amount
+            if (applicableBracket.fixedAmount) {
+              tax += applicableBracket.fixedAmount;
+            }
+
+            // Calculate excess rate
+            if (applicableBracket.excessRate && applicableBracket.excessRateType) {
+              const excess = value - applicableBracket.minValue;
+              if (applicableBracket.excessRateType === 'direct') {
+                tax += excess * applicableBracket.excessRate;
+              } else if (applicableBracket.excessRateType === 'percentage_of_percentage') {
+                tax += excess * applicableBracket.excessRate * 0.01;
+              }
+            }
+
+            // Apply pro-ration for monthly tax brackets on new registrations
+            if (applicableBracket.paymentFrequency === 'monthly' && !isRenewal && registrationDate) {
+              const currentMonth = registrationDate.getMonth(); // 0-11
+              const monthsRemaining = 12 - currentMonth; // Months from current month to December
+              tax = tax * monthsRemaining;
+            }
+
+            brackets.push({
+              range: `₱${applicableBracket.minValue?.toLocaleString() || '0'} - ₱${applicableBracket.maxValue?.toLocaleString() || 'Unlimited'}`,
+              rate: applicableBracket.excessRate || 0,
+              tax: tax,
+              bracketName: applicableBracket.name,
+              paymentFrequency: applicableBracket.paymentFrequency || 'annual'
+            });
+
+            const totalTax = brackets.reduce((sum, bracket) => sum + bracket.tax, 0);
+
+            return {
+              brackets,
+              totalTax: Math.round(totalTax),
+              effectiveRate: value > 0 ? ((totalTax / value) * 100).toFixed(2) : 0,
+            };
+          }
+        }
+      } catch (error) {
+        logger.error('Error fetching tax brackets:', error);
+        // Fall back to default calculation if database query fails
+      }
+    }
+
+    // Fallback to simple progressive tax calculation
     if (grossSales <= 100000) {
       brackets.push({ range: "0-100K", rate: 0.02, tax: grossSales * 0.02 });
     } else if (grossSales <= 500000) {

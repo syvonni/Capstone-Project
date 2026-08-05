@@ -33,6 +33,7 @@ const ApplicationSchema = new mongoose.Schema(
       type: String,
       enum: [
         "draft",
+        "officer_draft",
         "requirements_viewed",
         "form_completed",
         "documents_uploaded",
@@ -65,15 +66,17 @@ const ApplicationSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    reviewers: [{
-      officerId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+    reviewers: [
+      {
+        officerId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        officerName: {
+          type: String,
+        },
       },
-      officerName: {
-        type: String,
-      },
-    }],
+    ],
     reviewComments: {
       type: String,
       default: "",
@@ -114,11 +117,11 @@ const ApplicationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: () => ({}),
     },
-    // Pending action with undo window (for complete_review, reject, return)
+    // Pending action with undo window (for complete_review, reject, return, reject_appeal)
     pendingAction: {
       actionType: {
         type: String,
-        enum: ["complete_review", "reject", "return"],
+        enum: ["complete_review", "reject", "return", "reject_appeal"],
         default: null,
       },
       scheduledAt: { type: Date, default: null },
@@ -136,8 +139,8 @@ const ApplicationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    formDefinitionId: {
-      type: mongoose.Schema.Types.Mixed,
+    permitFormId: {
+      type: String,
       default: null,
     },
     formData: {
@@ -315,8 +318,81 @@ const ApplicationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Email send status tracking for resend functionality
+    emailSendStatus: {
+      submitted: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      resubmitted: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      approved: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      rejected: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      returned: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      appeal_denied: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+      appeal_approved: {
+        status: {
+          type: String,
+          enum: ["pending", "sent", "failed"],
+          default: "pending",
+        },
+        retryCount: { type: Number, default: 0 },
+        lastAttempt: { type: Date, default: null },
+        lockUntil: { type: Date, default: null },
+      },
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const { encryptionPlugin } = require("../../../../shared/lib/encryptionPlugin");
@@ -324,10 +400,16 @@ ApplicationSchema.plugin(encryptionPlugin, {
   fields: [],
   deterministicFields: ["applicationReferenceNumber", "reviewedByName"],
   // applicationStatus excluded from encryption - needed for filtering queries
-  nestedPaths: ["ownerAddress", "lessorInfo", "emergencyContact", "birRegistration", "otherAgencyRegistrations"],
+  nestedPaths: [
+    "ownerAddress",
+    "lessorInfo",
+    "emergencyContact",
+    "birRegistration",
+    "otherAgencyRegistrations",
+  ],
   arrayPaths: ["businessActivities", "capital.mev"],
   arrayPathsExclude: {
-    "reviewers": ["officerId", "officerName"]
+    reviewers: ["officerId", "officerName"],
   },
   // fieldReviewDecisions removed from mixedPaths - needs to be readable for frontend status checks
 });

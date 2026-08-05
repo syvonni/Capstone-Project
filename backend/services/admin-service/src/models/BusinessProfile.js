@@ -154,12 +154,6 @@ const BusinessProfileSchema = new mongoose.Schema(
         certificationAccepted: { type: Boolean, default: false },
         declarantName: { type: String, default: "" },
         declarationDate: { type: Date },
-        requirementsChecklist: {
-          confirmed: { type: Boolean, default: false },
-          confirmedAt: { type: Date },
-          pdfDownloaded: { type: Boolean, default: false },
-          pdfDownloadedAt: { type: Date },
-        },
         lguDocuments: {
           idPicture: { type: String, default: "" }, // 2x2 ID Picture
           ctc: { type: String, default: "" }, // Community Tax Certificate
@@ -220,9 +214,9 @@ const BusinessProfileSchema = new mongoose.Schema(
         isSubmitted: { type: Boolean, default: false },
         // Walk-in flag: true when created by an LGU officer on behalf of the business owner
         createdByOfficer: { type: Boolean, default: false },
-        // Permit / form application (driven by form definitions)
+        // Permit / form application (driven by permit forms)
         formType: { type: String, default: "" },
-        formDefinitionId: { type: mongoose.Schema.Types.Mixed, default: null },
+        permitFormId: { type: String, default: null },
         formData: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
         // Per-field accept/reject by officer (key: sectionIdx.itemKey or sectionIdx.itemKey.rowIdx, value: { status, reasonCode?, reasonOther?, decidedAt? })
         fieldReviewDecisions: {
@@ -298,7 +292,7 @@ BusinessProfileSchema.plugin(encryptionPlugin, {
       "businessRegistrationNumber",
       "registrationAgency",
       "formData",
-      "formDefinitionId",
+      "permitFormId",
       "businessRegistration",
       "ownerIdentity",
       "location",

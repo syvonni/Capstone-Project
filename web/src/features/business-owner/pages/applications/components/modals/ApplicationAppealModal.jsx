@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Modal, Form, Input, Upload, Typography, List, theme } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import DocumentPreviewModal from '@/shared/components/DocumentPreviewModal'
@@ -21,6 +21,13 @@ export default function AppealModal({ open, onCancel, onSubmit, submitting }) {
   const [fileList, setFileList] = useState([])
   const [previewModal, setPreviewModal] = useState({ open: false, url: null, label: '', type: 'other' })
   const { token } = useToken()
+
+  useEffect(() => {
+    if (!open) {
+      form.resetFields()
+      setFileList([])
+    }
+  }, [open, form])
 
   const handleOk = () => {
     form.submit()
@@ -67,11 +74,12 @@ export default function AppealModal({ open, onCancel, onSubmit, submitting }) {
         okText="Continue to Payment"
         confirmLoading={submitting}
         destroyOnHidden
+        cancelButtonProps={{ style: { display: 'none' } }}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
           <Form.Item
             name="description"
-            label="Appeal Letter"
+            label={<span>Appeal Letter <span style={{ color: 'red' }}>*</span></span>}
             rules={[{ required: true, message: 'Please provide appeal details' }]}
           >
             <Input.TextArea

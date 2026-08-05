@@ -57,17 +57,10 @@ export function useSectionCompletion(visibleSections, formValues) {
     const map = {}
     visibleSections.forEach((section, idx) => {
       const items = section.items || []
-      const isLobSection = items.some((f) => f.type === 'ai_lob_recommendation' || f.key === 'aiLobRecommendation')
-      if (isLobSection) {
-        map[idx] =
-          Array.isArray(formValues.businessActivities) &&
-          formValues.businessActivities.length > 0
-        return
-      }
       const requiredFields = items.filter((f) => f.required)
       if (requiredFields.length > 0) {
         const allFilled = requiredFields.every((field) => {
-          const key = field.key || field.label
+          const key = field.key
           const val = formValues[key]
           return hasValue(val)
         })
@@ -83,7 +76,7 @@ export function useSectionCompletion(visibleSections, formValues) {
       }
       // Check if at least one field has a meaningful value
       const hasAtLeastOneValue = formFields.some((field) => {
-        const key = field.key || field.label
+        const key = field.key
         const val = formValues[key]
         return hasValue(val)
       })

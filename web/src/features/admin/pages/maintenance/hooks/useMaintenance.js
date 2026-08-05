@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Form, App } from 'antd'
-import { requestMaintenance, getMaintenanceCurrent, getMaintenanceApprovals, approveMaintenance, undoVote,  cancelApprovedMaintenance, getMaintenancePublicStatus } from '@/features/admin/services'
-import { useAdminStepUp } from '@/features/admin/hooks/useAdminStepUp'
+import { requestMaintenance, getMaintenanceCurrent, getMaintenanceApprovals, approveMaintenance, undoVote, cancelApprovedMaintenance, getMaintenancePublicStatus } from '@/features/admin/services/maintenanceService'
+import { useStepUp } from '@/shared/hooks/useStepUp'
 import { REASON_PRESET_OTHER, REASON_PRESET_OPTIONS, DISABLE_REASON_PRESET_OPTIONS, DISABLE_PRESET_REASONS } from '../constants/maintenance.constants.js'
 
 export default function useMaintenance() {
   const { modal } = App.useApp()
-  const { runWithStepUp, stepUpModal } = useAdminStepUp()
+  const { runWithStepUp, stepUpModal } = useStepUp()
   const [form] = Form.useForm()
   const [current, setCurrent] = useState(null)
   const [approvals, setApprovals] = useState([])

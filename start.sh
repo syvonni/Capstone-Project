@@ -1277,11 +1277,11 @@ USE_NGROK=false
 # Check if ngrok is already running
 if pgrep -f "ngrok" > /dev/null 2>&1; then
   echo -e "${CYAN}🌐 ngrok is already running, detecting URL...${NC}"
-  # Try to get URL from ngrok API
-  NGROK_URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null | grep -o "https://[a-zA-Z0-9.-]*\.ngrok-free\.dev" | head -n 1)
+  # Try to get URL from ngrok API - support both .ngrok-free.dev and .ngrok.app
+  NGROK_URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null | grep -o "https://[a-zA-Z0-9.-]*\.\(ngrok-free\.dev\|ngrok\.app\)" | head -n 1)
   if [ -n "$NGROK_URL" ]; then
     echo -e "${GREEN}   ✅ Detected ngrok URL: $NGROK_URL${NC}"
-    USE_NGROK=true
+    USE_NGROK=1
   fi
 fi
 
@@ -1305,27 +1305,44 @@ if [ "$NGROK_MODE" = true ] && [ "$USE_NGROK" = false ]; then
     pkill -f "ngrok" 2>/dev/null || true
     sleep 1
     
-    # Start ngrok in background
+    # Start ngrok in background with nohup to prevent SIGHUP
     echo -e "${CYAN}   Starting ngrok on port 5173 (attempt $NGROK_ATTEMPT/$MAX_NGROK_ATTEMPTS)...${NC}"
-    (ngrok http 5173 > /tmp/ngrok.log 2>&1) &
+    nohup ngrok http 5173 > /tmp/ngrok.log 2>&1 &
     NGROK_PID=$!
     echo $NGROK_PID > /tmp/ngrok.pid
     
     # Wait for ngrok to start and get the URL
     echo -e "${CYAN}   Waiting for ngrok to start...${NC}"
-    sleep 5
+    sleep 15
     
     # Extract ngrok URL from log
     for i in {1..10}; do
-      NGROK_URL=$(grep -o "https://[a-zA-Z0-9.-]*\.ngrok-free\.dev" /tmp/ngrok.log 2>/dev/null | head -n 1)
+      NGROK_URL=$(grep -o "https://[a-zA-Z0-9.-]*\.\(ngrok-free\.dev\|ngrok\.app\)" /tmp/ngrok.log 2>/dev/null | head -n 1)
       if [ -n "$NGROK_URL" ]; then
         break
       fi
       sleep 1
     done
+
+    # Fallback: try ngrok API if log grep failed (with retries)
+    if [ -z "$NGROK_URL" ]; then
+      echo -e "${CYAN}   Log grep failed, trying ngrok API...${NC}"
+      for api_attempt in {1..5}; do
+        NGROK_URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null | grep -o "https://[a-zA-Z0-9.-]*\.\(ngrok-free\.dev\|ngrok\.app\)" | head -n 1)
+        if [ -n "$NGROK_URL" ]; then
+          echo -e "${GREEN}   ✅ Got URL from API: $NGROK_URL${NC}"
+          break
+        fi
+        if [ $api_attempt -lt 5 ]; then
+          echo -e "${CYAN}   API not ready yet, retrying in 2s...${NC}"
+          sleep 2
+        fi
+      done
+    fi
     
     if [ -n "$NGROK_URL" ]; then
       # Success - break out of retry loop
+      USE_NGROK=1
       break
     else
       # Failed - retry if not at max attempts
@@ -1334,21 +1351,30 @@ if [ "$NGROK_MODE" = true ] && [ "$USE_NGROK" = false ]; then
         NGROK_ATTEMPT=$((NGROK_ATTEMPT + 1))
         sleep 2
       else
-        echo -e "${YELLOW}   ⚠️  Failed to get ngrok URL after $MAX_NGROK_ATTEMPTS attempts. Continuing with localhost.${NC}"
-        echo -e "${YELLOW}   💡 Check: tail /tmp/ngrok.log${NC}"
+        # Max attempts reached - give up and use localhost
+        echo -e "${RED}   ❌ Failed to start ngrok after $MAX_NGROK_ATTEMPTS attempts.${NC}"
+        echo -e "${YELLOW}   💡 Check ngrok logs: tail /tmp/ngrok.log${NC}"
+        echo -e "${YELLOW}   💡 ngrok log content:${NC}"
+        cat /tmp/ngrok.log 2>/dev/null || echo "   (log file empty or missing)"
+        echo -e "${YELLOW}   💡 You may need to: 1) Check your ngrok account status, 2) Restart ngrok, or 3) Remove --ngrok flag${NC}"
+        echo -e "${CYAN}   ⏭️  Continuing with localhost...${NC}"
         USE_NGROK=false
         NGROK_URL=""
+        # Kill any lingering ngrok processes
+        pkill -f "ngrok" 2>/dev/null || true
+        rm -f /tmp/ngrok.pid
+        break
       fi
     fi
   done
   
-  if [ "$USE_NGROK" = true ] && [ -n "$NGROK_URL" ]; then
+  if [ "$USE_NGROK" = 1 ] && [ -n "$NGROK_URL" ]; then
     echo -e "${GREEN}   ✅ ngrok tunnel started: $NGROK_URL${NC}"
   fi
 fi
 
 # Update web/.env and root .env based on detected/started ngrok or localhost
-if [ "$USE_NGROK" = true ] && [ -n "$NGROK_URL" ]; then
+if [ "$USE_NGROK" = 1 ] && [ -n "$NGROK_URL" ]; then
   # Extract domain from ngrok URL (remove https://)
   NGROK_DOMAIN=$(echo "$NGROK_URL" | sed 's|https://||')
   
@@ -1381,7 +1407,7 @@ if [ "$USE_NGROK" = true ] && [ -n "$NGROK_URL" ]; then
   fi
   
   export NGROK_URL="$NGROK_URL"
-  export USE_NGROK=true
+  export USE_NGROK=1
 else
   # Use localhost
   if [ -f "web/.env" ]; then
@@ -1390,9 +1416,29 @@ else
     else
       echo "VITE_WEBAUTHN_ORIGIN=http://localhost:5173" >> web/.env
     fi
+    if grep -q "^VITE_WEBAUTHN_RPID=" web/.env; then
+      sed -i '' "s|^VITE_WEBAUTHN_RPID=.*|VITE_WEBAUTHN_RPID=localhost|" web/.env
+    else
+      echo "VITE_WEBAUTHN_RPID=localhost" >> web/.env
+    fi
     echo -e "${GREEN}   ✅ Updated web/.env with localhost${NC}"
   fi
-  
+
+  # Also update web/.env.local (overrides web/.env)
+  if [ -f "web/.env.local" ]; then
+    if grep -q "^VITE_WEBAUTHN_ORIGIN=" web/.env.local; then
+      sed -i '' "s|^VITE_WEBAUTHN_ORIGIN=.*|VITE_WEBAUTHN_ORIGIN=http://localhost:5173|" web/.env.local
+    else
+      echo "VITE_WEBAUTHN_ORIGIN=http://localhost:5173" >> web/.env.local
+    fi
+    if grep -q "^VITE_WEBAUTHN_RPID=" web/.env.local; then
+      sed -i '' "s|^VITE_WEBAUTHN_RPID=.*|VITE_WEBAUTHN_RPID=localhost|" web/.env.local
+    else
+      echo "VITE_WEBAUTHN_RPID=localhost" >> web/.env.local
+    fi
+    echo -e "${GREEN}   ✅ Updated web/.env.local with localhost${NC}"
+  fi
+
   # Update root .env for backend WebAuthn
   if [ -f ".env" ]; then
     # Update or add WEBAUTHN_RPID
@@ -1409,7 +1455,7 @@ else
     fi
     echo -e "${GREEN}   ✅ Updated root .env with localhost WebAuthn config${NC}"
   fi
-  
+
   export USE_NGROK=false
 fi
 
@@ -1420,17 +1466,19 @@ if [ "$DEMO_MODE" = true ]; then
 fi
 if [ "$OPEN_WEB_ONLY" = true ]; then
   export OPEN_WEB_ONLY=1
+  export USE_NGROK="$USE_NGROK"
+  export NGROK_URL="$NGROK_URL"
   ./scripts/open-services.sh --web-only
 elif [ "$GANACHE_GUI" = true ]; then
-  GANACHE_GUI=1 ./scripts/open-services.sh
+  GANACHE_GUI=1 USE_NGROK="$USE_NGROK" NGROK_URL="$NGROK_URL" ./scripts/open-services.sh
 elif [ "$SKIP_IPFS" = true ] && [ "$ATLAS_MODE" = true ]; then
-  SKIP_IPFS=1 ATLAS_MODE=1 ./scripts/open-services.sh
+  SKIP_IPFS=1 ATLAS_MODE=1 USE_NGROK="$USE_NGROK" NGROK_URL="$NGROK_URL" ./scripts/open-services.sh
 elif [ "$SKIP_IPFS" = true ]; then
-  SKIP_IPFS=1 ./scripts/open-services.sh
+  SKIP_IPFS=1 USE_NGROK="$USE_NGROK" NGROK_URL="$NGROK_URL" ./scripts/open-services.sh
 elif [ "$ATLAS_MODE" = true ]; then
-  ATLAS_MODE=1 ./scripts/open-services.sh
+  ATLAS_MODE=1 USE_NGROK="$USE_NGROK" NGROK_URL="$NGROK_URL" ./scripts/open-services.sh
 else
-  ./scripts/open-services.sh
+  USE_NGROK="$USE_NGROK" NGROK_URL="$NGROK_URL" ./scripts/open-services.sh
 fi
 
 echo ""
@@ -1480,7 +1528,7 @@ if [ -n "$WEB_PORT" ]; then
 fi
 
 # Show ngrok URL if active
-if [ "$USE_NGROK" = true ] && [ -n "$NGROK_URL" ]; then
+if [ "$USE_NGROK" = 1 ] && [ -n "$NGROK_URL" ]; then
   echo ""
   echo -e "${CYAN}🌐 Ngrok tunnel (HTTPS/WebAuthn):${NC}"
   echo -e "   • $NGROK_URL"

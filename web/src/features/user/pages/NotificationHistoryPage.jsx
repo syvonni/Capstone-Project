@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { getNotifications, markAsRead, deleteNotification } from '../services/notificationService'
 import dayjs from 'dayjs'
 import { useAuthSession } from '@/features/authentication'
-import AdminLayout from '@/features/admin/components/AdminLayout'
+import StaffLayout from '@/shared/components/StaffLayout'
 import BusinessOwnerLayout from '@/features/business-owner/components/shared/BusinessOwnerLayout'
 
 const { Text } = Typography
@@ -345,9 +345,9 @@ export default function NotificationHistoryPage() {
 
   if (role === 'admin') {
     return (
-      <AdminLayout>
+      <StaffLayout>
         {content}
-      </AdminLayout>
+      </StaffLayout>
     )
   }
 
@@ -360,8 +360,8 @@ export default function NotificationHistoryPage() {
   }
 
   return (
-    <AdminLayout>
+    <StaffLayout>
       {content}
-    </AdminLayout>
+    </StaffLayout>
   )
 }

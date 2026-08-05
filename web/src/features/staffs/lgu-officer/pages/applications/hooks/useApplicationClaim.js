@@ -1,9 +1,11 @@
 import { useCallback } from 'react'
 import { App } from 'antd'
 import { put } from '@/lib/http.js'
+import { useStepUp } from '@/shared/hooks/useStepUp'
 
 export function useApplicationClaim(application, loadApplicationDetails, onReviewComplete, isClaimedByMe) {
   const { message, modal } = App.useApp()
+  const { runWithStepUp, stepUpModal } = useStepUp()
   const isClaimed = application?.reviewedBy
 
   const handleClaim = useCallback(async () => {
@@ -19,12 +21,16 @@ export function useApplicationClaim(application, loadApplicationDetails, onRevie
         cancelText: 'Cancel',
         onOk: async () => {
           try {
-            await put(`/api/lgu-officer/permit-applications/${appId}/claim`)
+            await runWithStepUp(async (stepUpToken) => {
+              await put(`/api/lgu-officer/permit-applications/${appId}/claim?force=true`, {}, { headers: { 'X-Step-Up-Token': stepUpToken } })
+            })
             message.success('Application claimed')
             await loadApplicationDetails()
             onReviewComplete?.()
           } catch (err) {
-            message.error(err?.error?.message || 'Failed to claim')
+            if (err?.message !== 'Step-up cancelled') {
+              message.error(err?.error?.message || 'Failed to claim')
+            }
           }
         },
       })
@@ -36,17 +42,21 @@ export function useApplicationClaim(application, loadApplicationDetails, onRevie
         cancelText: 'Cancel',
         onOk: async () => {
           try {
-            await put(`/api/lgu-officer/permit-applications/${appId}/claim`)
+            await runWithStepUp(async (stepUpToken) => {
+              await put(`/api/lgu-officer/permit-applications/${appId}/claim`, {}, { headers: { 'X-Step-Up-Token': stepUpToken } })
+            })
             message.success('Application claimed')
             await loadApplicationDetails()
             onReviewComplete?.()
           } catch (err) {
-            message.error(err?.error?.message || 'Failed to claim')
+            if (err?.message !== 'Step-up cancelled') {
+              message.error(err?.error?.message || 'Failed to claim')
+            }
           }
         },
       })
     }
-  }, [application, isClaimed, isClaimedByMe, loadApplicationDetails, onReviewComplete, message, modal])
+  }, [application, isClaimed, isClaimedByMe, loadApplicationDetails, onReviewComplete, message, modal, runWithStepUp])
 
   const handleRelease = useCallback(async () => {
     const appId = application?.applicationId || application?._id || application?.businessId
@@ -59,16 +69,20 @@ export function useApplicationClaim(application, loadApplicationDetails, onRevie
       cancelText: 'Cancel',
       onOk: async () => {
         try {
-          await put(`/api/lgu-officer/permit-applications/${appId}/release`)
+          await runWithStepUp(async (stepUpToken) => {
+            await put(`/api/lgu-officer/permit-applications/${appId}/release`, {}, { headers: { 'X-Step-Up-Token': stepUpToken } })
+          })
           message.success('Application released')
           await loadApplicationDetails()
           onReviewComplete?.()
         } catch (err) {
-          message.error(err?.error?.message || 'Failed to release')
+          if (err?.message !== 'Step-up cancelled') {
+            message.error(err?.error?.message || 'Failed to release')
+          }
         }
       },
     })
-  }, [application, loadApplicationDetails, onReviewComplete, message, modal])
+  }, [application, loadApplicationDetails, onReviewComplete, message, modal, runWithStepUp])
 
-  return { handleClaim, handleRelease, isClaimed }
+  return { handleClaim, handleRelease, isClaimed, stepUpModal }
 }

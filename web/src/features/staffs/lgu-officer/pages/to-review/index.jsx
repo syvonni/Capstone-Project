@@ -10,6 +10,7 @@ import HelpRequestDetailPanel from '../help-requests/components/HelpRequestDetai
 import { CLAIM_STATUS_FILTER_OPTIONS, STATUS_CONFIG, STATUS_FILTER_OPTIONS } from '../applications/constants'
 import { HELP_REQUEST_STATUS_CONFIG } from '../help-requests/constants'
 import dayjs from 'dayjs'
+import { getEmailStatusTag } from '../../utils/emailStatusUtils'
 
 // Stale detection helpers (copied from useOfficerData for use in renderCard)
 const STALE_THRESHOLD_HOURS = 48
@@ -125,9 +126,9 @@ export default function OfficerToReview() {
           if (activeFilters.secondaryFilter === 'needs_attention') {
             // Needs Attention: stale OR active work statuses OR waiting for user action
             if (stale) return true
-            // Active work statuses (submitted, under_review, resubmit)
+            // Active work statuses (submitted, under_review, resubmit, officer_draft)
             const status = String(item.status || item.applicationStatus || '').toLowerCase()
-            const activeWorkStatuses = new Set(['submitted', 'under_review', 'resubmit'])
+            const activeWorkStatuses = new Set(['submitted', 'under_review', 'resubmit', 'officer_draft'])
             if (activeWorkStatuses.has(status)) return true
             // Waiting for user action (returned, appeal_pending)
             const waitingStatuses = new Set(['returned', 'appeal_pending'])
@@ -173,10 +174,15 @@ export default function OfficerToReview() {
       const stale = isStale(item)
       const staleDuration = getStaleDuration(item)
 
+      const emailStatusTag = getEmailStatusTag(item.emailSendStatus)
+
       const tags = [
         { label: 'Application', color: 'blue' },
         { label: statusConf.label, color: statusConf.color },
       ]
+      if (emailStatusTag) {
+        tags.push(emailStatusTag)
+      }
       if (stale && staleDuration) {
         tags.push({ label: `Stale for ${staleDuration}`, color: 'warning' })
       }

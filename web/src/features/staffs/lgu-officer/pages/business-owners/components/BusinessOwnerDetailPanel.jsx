@@ -1,9 +1,25 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Typography, Empty, theme, Space, Grid, Button, message } from 'antd'
-import { UserOutlined, StarOutlined, StarFilled, HistoryOutlined, BookOutlined, InfoCircleOutlined, LockOutlined, IdcardOutlined, FileTextOutlined } from '@ant-design/icons'
-import DetailHeader from '@/shared/components/DetailHeader'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { Typography, Empty, theme, Space, Grid, Button, message, Row, Col } from 'antd'
+import { UserOutlined, LockOutlined, IdcardOutlined, FileTextOutlined } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
 import FormNavigation from '@/shared/components/FormNavigation'
 import InfoGrid from '@/shared/components/InfoGrid'
+import PanelCard from '@/shared/components/PanelCard'
+import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
+import BusinessOwnerDetailHeader from './BusinessOwnerDetailHeader'
+import BusinessOwnerAuditDetailPanel from './BusinessOwnerAuditDetailPanel'
+import BusinessOwnerEditInfoModal from './modals/BusinessOwnerEditInfoModal'
+import BusinessOwnerUpdateEmailModal from './modals/BusinessOwnerUpdateEmailModal'
+import { useBusinessOwnerBookmarks } from '../hooks/useBusinessOwnerBookmarks'
+import { useBusinessOwnerData } from '../hooks/useBusinessOwnerData'
+import { useBusinessOwnerModals } from '../hooks/useBusinessOwnerModals'
+import { useBusinessOwnerHandlers } from '../hooks/useBusinessOwnerHandlers'
+import { useBusinessOwnerForm } from '../hooks/useBusinessOwnerForm'
+import { useStepUp } from '@/shared/hooks/useStepUp'
+import { useAudit } from '@/shared/hooks/useAudit'
+import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
+import BusinessOwnerService from '@/features/staffs/lgu-officer/services/businessOwnerService'
+import { STATUS_CONFIG } from '../../applications/constants'
 
 const { Text, Title } = Typography
 const { useBreakpoint } = Grid
@@ -15,35 +31,182 @@ export default function BusinessOwnerDetailPanel({
   const { token } = theme.useToken()
   const screens = useBreakpoint()
   const isMobile = !screens.lg
-  const [businessOwner, setBusinessOwner] = useState(initialBusinessOwner)
-  const [isBookmarked, setIsBookmarked] = useState(false)
-  const [_historyModalOpen, setHistoryModalOpen] = useState(false)
-  const [_manualModalOpen, setManualModalOpen] = useState(false)
-  const [_infoModalOpen, setInfoModalOpen] = useState(false)
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('personal')
 
-  useEffect(() => {
-    if (initialBusinessOwner) {
-      setBusinessOwner(initialBusinessOwner)
-    }
-  }, [initialBusinessOwner])
+  const ownerId = initialBusinessOwner?._id || initialBusinessOwner?.id
 
-  const handleBookmarkToggle = useCallback(() => {
-    setIsBookmarked(!isBookmarked)
-    // TODO: Implement actual bookmark API call
-  }, [isBookmarked])
+  // Use data hook for fetching business owner, applications, and businesses
+  const {
+    businessOwner,
+    applications,
+    applicationsLoading,
+    businesses: _businesses,
+    updateBusinessOwner,
+  } = useBusinessOwnerData(ownerId)
+
+  // Use modal hook for modal state management
+  const {
+    historyModalOpen,
+    editInfoModalOpen,
+    updateEmailModalOpen,
+    openHistoryModal,
+    closeHistoryModal,
+    openEditInfoModal,
+    closeEditInfoModal,
+    openUpdateEmailModal,
+    closeUpdateEmailModal,
+  } = useBusinessOwnerModals()
+
+  const { auditLogs, auditLoading } = useAudit('business-owner', ownerId)
+
+  // Use form hook for form management
+  const { editForm, emailForm, initializeEditForm, initializeEmailForm, hasChanges, changedFields, resetChangeTracking, handleValuesChange } = useBusinessOwnerForm(businessOwner)
+
+  // Use handlers hook for event handlers
+  const {
+    handleEditInfoSubmit,
+    handleUpdateEmailSubmit,
+    stepUpModal,
+  } = useBusinessOwnerHandlers(businessOwner, updateBusinessOwner)
+
+  // Use bookmark hook
+  const { isBookmarked, toggleBookmark } = useBusinessOwnerBookmarks(businessOwner)
+
+  // Use step-up hook for resend operations
+  const { runWithStepUp } = useStepUp()
+  const businessOwnerService = useMemo(() => new BusinessOwnerService(), [])
+
+  const handleResendCredentials = useCallback(async () => {
+    try {
+      await runWithStepUp(async (stepUpToken) => {
+        await businessOwnerService.resendCredentialsEmail(ownerId, { stepUpToken })
+      })
+      message.success('Credentials email sent successfully')
+      // Refresh business owner data to update emailSendStatus
+      if (updateBusinessOwner) {
+        await updateBusinessOwner()
+      }
+    } catch (err) {
+      if (err?.message !== 'Step-up cancelled') {
+        message.error('Failed to send credentials email')
+      }
+    }
+  }, [runWithStepUp, ownerId, businessOwnerService, updateBusinessOwner])
+
+  const handleResendEditInfo = useCallback(async () => {
+    try {
+      await runWithStepUp(async (stepUpToken) => {
+        await businessOwnerService.resendEditInfoEmail(ownerId, { stepUpToken })
+      })
+      message.success('Edit info email sent successfully')
+      // Refresh business owner data to update emailSendStatus
+      if (updateBusinessOwner) {
+        await updateBusinessOwner()
+      }
+    } catch (err) {
+      if (err?.message !== 'Step-up cancelled') {
+        message.error('Failed to send edit info email')
+      }
+    }
+  }, [runWithStepUp, ownerId, businessOwnerService, updateBusinessOwner])
+
+  const handleResendEmailChange = useCallback(async () => {
+    try {
+      await runWithStepUp(async (stepUpToken) => {
+        await businessOwnerService.resendEmailChangeNotification(ownerId, { stepUpToken })
+      })
+      message.success('Email change notification sent successfully')
+      // Refresh business owner data to update emailSendStatus
+      if (updateBusinessOwner) {
+        await updateBusinessOwner()
+      }
+    } catch (err) {
+      if (err?.message !== 'Step-up cancelled') {
+        message.error('Failed to send email change notification')
+      }
+    }
+  }, [runWithStepUp, ownerId, businessOwnerService, updateBusinessOwner])
+
+  // Auto-retry logic with exponential backoff
+  useEffect(() => {
+    const emailTypes = ['credentials', 'editInfo', 'emailChange']
+    const timers = []
+
+    emailTypes.forEach(emailType => {
+      const status = businessOwner?.emailSendStatus?.[emailType]
+      if (status?.status === 'failed' && status.retryCount < 3) {
+        // Calculate delay: 30s * 2^retryCount
+        const delay = 30 * Math.pow(2, status.retryCount) * 1000
+        const timer = setTimeout(async () => {
+          try {
+            let resendFn
+            if (emailType === 'credentials') resendFn = handleResendCredentials
+            else if (emailType === 'editInfo') resendFn = handleResendEditInfo
+            else if (emailType === 'emailChange') resendFn = handleResendEmailChange
+
+            if (resendFn) await resendFn()
+          } catch (err) {
+            console.error(`Auto-retry failed for ${emailType}:`, err)
+          }
+        }, delay)
+        timers.push(timer)
+      }
+    })
+
+    return () => {
+      timers.forEach(timer => clearTimeout(timer))
+    }
+  }, [businessOwner?.emailSendStatus, handleResendCredentials, handleResendEditInfo, handleResendEmailChange])
+
+  // Polling for status updates (every 10 seconds when there are failed emails)
+  useEffect(() => {
+    const hasFailedEmails = ['credentials', 'editInfo', 'emailChange'].some(
+      emailType => businessOwner?.emailSendStatus?.[emailType]?.status === 'failed' &&
+                   businessOwner.emailSendStatus[emailType].retryCount < 3
+    )
+
+    if (!hasFailedEmails || !updateBusinessOwner) return
+
+    const interval = setInterval(async () => {
+      try {
+        await updateBusinessOwner()
+      } catch (err) {
+        console.error('Failed to poll for status updates:', err)
+      }
+    }, 10000) // Poll every 10 seconds
+
+    return () => clearInterval(interval)
+  }, [businessOwner?.emailSendStatus, updateBusinessOwner])
 
   const handleHistoryClick = useCallback(() => {
-    setHistoryModalOpen(true)
-  }, [])
+    if (openHistoryModal) openHistoryModal()
+  }, [openHistoryModal])
 
-  const handleManualClick = useCallback(() => {
-    setManualModalOpen(true)
-  }, [])
+  const handleEditInfoClick = useCallback(() => {
+    if (openEditInfoModal) openEditInfoModal()
+  }, [openEditInfoModal])
 
-  const handleInfoClick = useCallback(() => {
-    setInfoModalOpen(true)
-  }, [])
+  const handleUpdateEmailClick = useCallback(() => {
+    if (initializeEmailForm) initializeEmailForm()
+    if (openUpdateEmailModal) openUpdateEmailModal()
+  }, [initializeEmailForm, openUpdateEmailModal])
+
+  const handleEditInfoSubmitWithClose = useCallback(async (values) => {
+    if (handleEditInfoSubmit) {
+      await handleEditInfoSubmit(values, () => {
+        if (closeEditInfoModal) closeEditInfoModal()
+      })
+    }
+  }, [handleEditInfoSubmit, closeEditInfoModal])
+
+  const handleUpdateEmailSubmitWithClose = useCallback(async (values) => {
+    if (handleUpdateEmailSubmit) {
+      await handleUpdateEmailSubmit(values, () => {
+        if (closeUpdateEmailModal) closeUpdateEmailModal()
+      })
+    }
+  }, [handleUpdateEmailSubmit, closeUpdateEmailModal])
 
   const handleCopyToClipboard = useCallback(async (text, label) => {
     try {
@@ -68,9 +231,9 @@ export default function BusinessOwnerDetailPanel({
 
   // Determine account status
   let statusLabel = 'Active'
-  if (businessOwner.deletionPending) {
+  if (businessOwner?.deletionPending) {
     statusLabel = 'Pending Deletion'
-  } else if (!businessOwner.isActive) {
+  } else if (businessOwner && !businessOwner.isActive) {
     statusLabel = 'Inactive'
   }
 
@@ -83,6 +246,15 @@ export default function BusinessOwnerDetailPanel({
       .join(' ')
   }
 
+  const getBusinessStatusColor = (status) => {
+    const statusLower = status?.toLowerCase() || 'unknown'
+    return statusLower === 'active' ? 'success'
+         : statusLower === 'suspended' ? 'error'
+         : statusLower === 'under_review' ? 'processing'
+         : statusLower === 'inactive' ? 'default'
+         : 'default'
+  }
+
   // Tab items
   const mainNavItems = [
     {
@@ -90,7 +262,7 @@ export default function BusinessOwnerDetailPanel({
       label: (
         <Space>
           <IdcardOutlined />
-          <span>Personal</span>
+          <span>Personal Information</span>
         </Space>
       ),
     },
@@ -99,7 +271,7 @@ export default function BusinessOwnerDetailPanel({
       label: (
         <Space>
           <LockOutlined />
-          <span>Account</span>
+          <span>Account Settings</span>
         </Space>
       ),
     },
@@ -130,82 +302,125 @@ export default function BusinessOwnerDetailPanel({
           <InfoGrid
             items={[
               { label: 'Status', value: statusLabel },
-              { label: 'Email Verified', value: businessOwner.isEmailVerified ? 'Yes' : 'No' },
-              { label: 'MFA Enabled', value: businessOwner.mfaEnabled ? 'Yes' : 'No' },
-              { label: 'PIS Completed', value: businessOwner.pisCompleted ? 'Yes' : 'No' },
-              { label: 'Registered On', value: businessOwner.createdAt ? new Date(businessOwner.createdAt).toLocaleDateString() : 'N/A' },
-              { label: 'Last Login', value: businessOwner.lastLoginAt ? new Date(businessOwner.lastLoginAt).toLocaleString() : 'N/A' },
+              { label: 'Email Verified', value: businessOwner?.isEmailVerified ? 'Yes' : 'No' },
+              { label: 'MFA Enabled', value: businessOwner?.mfaEnabled ? 'Yes' : 'No' },
+              { label: 'PIS Completed', value: businessOwner?.pisCompleted ? 'Yes' : 'No' },
+              { label: 'Registered On', value: businessOwner?.createdAt ? new Date(businessOwner.createdAt).toLocaleDateString() : 'N/A' },
+              { label: 'Last Login', value: businessOwner?.lastLoginAt ? new Date(businessOwner.lastLoginAt).toLocaleString() : 'N/A' },
             ]}
           />
         )
       case 'personal': {
         const addressParts = [
-          businessOwner.address?.street,
-          businessOwner.address?.barangay,
-          businessOwner.address?.city,
-          businessOwner.address?.province,
-          businessOwner.address?.zipCode,
+          businessOwner?.address?.street,
+          businessOwner?.address?.barangay,
+          businessOwner?.address?.city,
+          businessOwner?.address?.province,
+          businessOwner?.address?.zipCode,
         ].filter(Boolean)
         const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : 'N/A'
         return (
           <InfoGrid
             items={[
-              { label: 'Name', value: [businessOwner.firstName, businessOwner.middleName, businessOwner.lastName, businessOwner.suffix].filter(Boolean).join(' ') || 'N/A' },
-              { label: 'Email', value: businessOwner.email ? <Button type="link" size="small" onClick={() => handleCopyToClipboard(businessOwner.email, 'Email')} style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}>{businessOwner.email}</Button> : 'N/A' },
-              { label: 'Phone Number', value: businessOwner.phoneNumber ? <Button type="link" size="small" onClick={() => handleCopyToClipboard(businessOwner.phoneNumber, 'Phone number')} style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}>{businessOwner.phoneNumber}</Button> : 'N/A' },
-              { label: 'Sex', value: businessOwner.sex ? (businessOwner.sex === 'male' ? 'Male' : businessOwner.sex === 'female' ? 'Female' : businessOwner.sex) : 'N/A' },
-              { label: 'Date of Birth', value: businessOwner.dateOfBirth ? new Date(businessOwner.dateOfBirth).toLocaleDateString() : 'N/A' },
-              { label: 'Marital Status', value: toSentenceCase(businessOwner.maritalStatus) },
+              { label: 'Name', value: [businessOwner?.firstName, businessOwner?.middleName, businessOwner?.lastName, businessOwner?.suffix].filter(Boolean).join(' ') || 'N/A' },
+              { label: 'Email', value: businessOwner?.email ? <Button type="link" size="small" onClick={() => handleCopyToClipboard(businessOwner.email, 'Email')} style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}>{businessOwner.email}</Button> : 'N/A' },
+              { label: 'Phone Number', value: businessOwner?.phoneNumber ? <Button type="link" size="small" onClick={() => handleCopyToClipboard(businessOwner.phoneNumber, 'Phone number')} style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}>{businessOwner.phoneNumber}</Button> : 'N/A' },
+              { label: 'Sex', value: businessOwner?.sex ? (businessOwner.sex === 'male' ? 'Male' : businessOwner.sex === 'female' ? 'Female' : businessOwner.sex) : 'N/A' },
+              { label: 'Date of Birth', value: businessOwner?.dateOfBirth ? new Date(businessOwner.dateOfBirth).toLocaleDateString() : 'N/A' },
+              { label: 'Marital Status', value: toSentenceCase(businessOwner?.maritalStatus) },
               { type: 'divider' },
               { label: 'Address', value: fullAddress },
               { type: 'divider' },
-              { label: 'Place of Birth', value: businessOwner.placeOfBirth || 'N/A' },
-              { label: 'Nationality', value: businessOwner.nationality || 'N/A' },
-              { label: 'Highest Educational Attainment', value: toSentenceCase(businessOwner.highestEducationalAttainment) },
-              { label: "Father's Name", value: businessOwner.fatherName || 'N/A' },
-              { label: "Mother's Name", value: businessOwner.motherName || 'N/A' },
-              { label: 'Distinctive Mark', value: businessOwner.distinctiveMark || 'N/A' },
+              { label: 'Place of Birth', value: businessOwner?.placeOfBirth || 'N/A' },
+              { label: 'Nationality', value: businessOwner?.nationality || 'N/A' },
+              { label: 'Highest Educational Attainment', value: toSentenceCase(businessOwner?.highestEducationalAttainment) },
+              { label: "Father's Name", value: businessOwner?.fatherName || 'N/A' },
+              { label: "Mother's Name", value: businessOwner?.motherName || 'N/A' },
+              { label: 'Distinctive Mark', value: businessOwner?.distinctiveMark || 'N/A' },
             ]}
           />
         )
       }
       case 'applications': {
-        const applications = businessOwner.applications || []
+        if (applicationsLoading) {
+          return (
+            <div style={{ padding: 16 }}>
+              <Text type="secondary">Loading...</Text>
+            </div>
+          )
+        }
         if (applications.length === 0) {
           return (
             <div style={{ padding: 16 }}>
-              <Title level={5}>Applications</Title>
               <Text type="secondary">No applications found</Text>
             </div>
           )
         }
         return (
           <div style={{ padding: 16 }}>
-            <Title level={5}>Applications</Title>
-            {applications.map((app) => (
-              <div key={app._id} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #f0f0f0' }}>
-                <div style={{ marginBottom: 8 }}>
-                  <Text strong>{app.businessName || 'Unnamed Business'}</Text>
-                </div>
-                <InfoGrid
-                  items={[
-                    { label: 'Reference Number', value: app.applicationReferenceNumber || 'N/A' },
-                    { label: 'Status', value: toSentenceCase(app.status) },
-                    { label: 'Submitted', value: app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : 'N/A' },
-                  ]}
-                />
-              </div>
-            ))}
+            <Row gutter={[16, 16]}>
+              {applications.map((app) => {
+                const status = app.status || app.applicationStatus
+                const statusLower = status?.toLowerCase() || 'unknown'
+                const statusConfig = STATUS_CONFIG[statusLower] || { color: 'default', label: toSentenceCase(status) }
+                const metaInfo = [
+                  { label: 'Submitted on', value: app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : 'N/A' },
+                ]
+                if (app.reviewedByName) {
+                  metaInfo.push({ label: 'Claimed by', value: app.reviewedByName })
+                }
+                return (
+                  <Col key={app._id} xs={24} xl={12}>
+                    <PanelCard
+                      title={app.businessName || 'Unnamed Business'}
+                      metaInfo={metaInfo}
+                      tags={[
+                        { color: statusConfig.color, label: statusConfig.label },
+                        { color: 'default', label: app.applicationReferenceNumber || 'Pending Reference Number' },
+                      ]}
+                      onClick={() => navigate(`/staff/applications?selectedId=${app._id}`)}
+                    />
+                  </Col>
+                )
+              })}
+            </Row>
           </div>
         )
       }
-      case 'businesses':
+      case 'businesses': {
+        const businesses = businessOwner?.businesses || []
+        if (businesses.length === 0) {
+          return (
+            <div style={{ padding: 16 }}>
+              <Title level={5}>Businesses</Title>
+              <Text type="secondary">{businessOwner?.businessCount !== undefined ? `${businessOwner.businessCount} registered business${businessOwner.businessCount !== 1 ? 'es' : ''}` : 'No businesses found'}</Text>
+            </div>
+          )
+        }
         return (
           <div style={{ padding: 16 }}>
             <Title level={5}>Businesses</Title>
-            <Text>{businessOwner.businessCount !== undefined ? `${businessOwner.businessCount} registered business${businessOwner.businessCount !== 1 ? 'es' : ''}` : 'N/A'}</Text>
+            <Row gutter={[16, 16]}>
+              {businesses.map((business) => (
+                <Col key={business._id} xs={24} sm={12} lg={8} xl={6}>
+                  {/* Each card is clickable and must redirect to the businesses page and open the detail panel for the clicked business */}
+                  <PanelCard
+                    title={business.businessName || business.registeredBusinessName || 'Unnamed Business'}
+                    description=''
+                    metaInfo={[
+                      { label: 'Location', value: business.address ? (business.address.city || business.address.province || 'N/A') : 'N/A' },
+                    ]}
+                    tags={[
+                      { color: getBusinessStatusColor(business.status), label: toSentenceCase(business.status) },
+                      { color: 'default', label: business.businessType || business.lineOfBusiness || 'N/A' },
+                    ]}
+                  />
+                </Col>
+              ))}
+            </Row>
           </div>
         )
+      }
       default:
         return null
     }
@@ -216,16 +431,16 @@ export default function BusinessOwnerDetailPanel({
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <DetailHeader
-        title="Business Owner Details"
-        iconButtons={[
-          { icon: isBookmarked ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />, onClick: handleBookmarkToggle, title: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark' },
-          { icon: <HistoryOutlined />, onClick: handleHistoryClick, title: 'History' },
-          { icon: <BookOutlined />, onClick: handleManualClick, title: 'Manual' },
-          { icon: <InfoCircleOutlined />, onClick: handleInfoClick, title: 'Info' },
-        ]}
-        actionButtons={[]}
-        desktopOnly={true}
+      <BusinessOwnerDetailHeader
+        isBookmarked={isBookmarked}
+        onBookmarkToggle={toggleBookmark}
+        onHistoryClick={handleHistoryClick}
+        onEditInfoClick={handleEditInfoClick}
+        onUpdateEmailClick={handleUpdateEmailClick}
+        emailSendStatus={businessOwner?.emailSendStatus}
+        onResendCredentials={handleResendCredentials}
+        onResendEditInfo={handleResendEditInfo}
+        onResendEmailChange={handleResendEmailChange}
       />
 
       {/* Content with Form Navigation */}
@@ -268,6 +483,42 @@ export default function BusinessOwnerDetailPanel({
           </div>
         )}
       </div>
+
+      {/* Edit Information Modal */}
+      <BusinessOwnerEditInfoModal
+        open={editInfoModalOpen}
+        onClose={closeEditInfoModal}
+        _businessOwner={businessOwner}
+        form={editForm}
+        onSubmit={handleEditInfoSubmitWithClose}
+        hasChanges={hasChanges}
+        changedFields={changedFields}
+        resetChangeTracking={resetChangeTracking}
+        handleValuesChange={handleValuesChange}
+        initializeEditForm={initializeEditForm}
+      />
+
+      {/* Update Email Modal */}
+      <BusinessOwnerUpdateEmailModal
+        open={updateEmailModalOpen}
+        onClose={closeUpdateEmailModal}
+        businessOwner={businessOwner}
+        form={emailForm}
+        onSubmit={handleUpdateEmailSubmitWithClose}
+      />
+
+      {/* Audit History Modal */}
+      <AuditHistoryModal
+        open={historyModalOpen}
+        onClose={closeHistoryModal}
+        auditLogs={auditLogs}
+        loading={auditLoading}
+        DetailPanelComponent={BusinessOwnerAuditDetailPanel}
+        eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('business_owner') || e.event.startsWith('account') || e.event.startsWith('personal') || e.event.startsWith('address') || e.event.startsWith('contact') || e.event.startsWith('email') || e.event.startsWith('password') || e.event.startsWith('mfa') || e.event.startsWith('name') || e.event.startsWith('pis'))}
+      />
+
+      {/* Step-up Modal */}
+      {stepUpModal}
     </div>
   )
 }

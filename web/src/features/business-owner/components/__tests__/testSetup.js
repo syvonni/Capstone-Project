@@ -47,12 +47,6 @@ vi.mock('../../services/permitService', () => ({
   getPermitApplications: vi.fn()
 }));
 
-vi.mock('../../services/complianceMonitoringService', () => ({
-  getComplianceOverview: vi.fn(),
-  getUpcomingDeadlines: vi.fn(),
-  getActiveViolations: vi.fn()
-}));
-
 vi.mock('../../services/notificationService', () => ({
   getNotifications: vi.fn(),
   markNotificationAsRead: vi.fn(),

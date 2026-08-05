@@ -196,12 +196,6 @@ const BusinessProfileSchema = new mongoose.Schema(
         certificationAccepted: { type: Boolean, default: false },
         declarantName: { type: String, default: "" },
         declarationDate: { type: Date },
-        requirementsChecklist: {
-          confirmed: { type: Boolean, default: false },
-          confirmedAt: { type: Date },
-          pdfDownloaded: { type: Boolean, default: false },
-          pdfDownloadedAt: { type: Date },
-        },
         // LGU documents: Mixed so form-definition-driven keys (from admin) are persisted; legacy keys still work
         lguDocuments: {
           type: mongoose.Schema.Types.Mixed,

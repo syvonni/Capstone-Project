@@ -25,7 +25,8 @@ const publicRouter = express.Router();
 publicRouter.get("/faq/:slotId", async (req, res) => {
   try {
     const result = await getFaqBySlotId(req.params.slotId);
-    if (!result) return res.status(404).json({ error: "FAQ section not found" });
+    if (!result)
+      return res.status(404).json({ error: "FAQ section not found" });
     return res.json(result);
   } catch (err) {
     console.error("GET /api/cms/faq/:slotId failed", err);
@@ -37,7 +38,8 @@ publicRouter.get("/faq/:slotId", async (req, res) => {
 publicRouter.get("/instructions/:slotId", async (req, res) => {
   try {
     const result = await getInstructionBySlotId(req.params.slotId);
-    if (!result) return res.status(404).json({ error: "Instruction content not found" });
+    if (!result)
+      return res.status(404).json({ error: "Instruction content not found" });
     return res.json(result);
   } catch (err) {
     console.error("GET /api/cms/instructions/:slotId failed", err);
@@ -49,7 +51,8 @@ publicRouter.get("/instructions/:slotId", async (req, res) => {
 publicRouter.get("/pages/:slotId", async (req, res) => {
   try {
     const result = await getPageBySlotId(req.params.slotId);
-    if (!result) return res.status(404).json({ error: "Page content not found" });
+    if (!result)
+      return res.status(404).json({ error: "Page content not found" });
     return res.json(result);
   } catch (err) {
     console.error("GET /api/cms/pages/:slotId failed", err);
@@ -76,7 +79,13 @@ adminRouter.put("/faq/:slotId", requireJwt, async (req, res) => {
   try {
     const { items, subtitle } = req.body;
     const { publish = false } = req.query;
-    const result = await updateFaq(req.params.slotId, items, subtitle, publish === "true", req._userId);
+    const result = await updateFaq(
+      req.params.slotId,
+      items,
+      subtitle,
+      publish === "true",
+      req._userId,
+    );
     return res.json(result);
   } catch (err) {
     console.error("PUT /api/admin/cms/faq/:slotId failed", err);
@@ -108,7 +117,8 @@ adminRouter.get("/instructions", requireJwt, async (req, res) => {
 adminRouter.get("/instructions/:slotId", requireJwt, async (req, res) => {
   try {
     const result = await getInstructionBySlotIdAdmin(req.params.slotId);
-    if (!result) return res.status(404).json({ error: "Instruction content not found" });
+    if (!result)
+      return res.status(404).json({ error: "Instruction content not found" });
     return res.json(result);
   } catch (err) {
     console.error("GET /api/admin/cms/instructions/:slotId failed", err);
@@ -132,7 +142,10 @@ adminRouter.put("/instructions/:slotId", requireJwt, async (req, res) => {
     return res.json(result);
   } catch (err) {
     console.error("PUT /api/admin/cms/instructions/:slotId failed", err);
-    if (err.message === "bulletPoints must be an array" || err.message === "faqItems must be an array") {
+    if (
+      err.message === "bulletPoints must be an array" ||
+      err.message === "faqItems must be an array"
+    ) {
       return res.status(400).json({ error: err.message });
     }
     if (err.message === "Instruction content not found") {
@@ -158,11 +171,19 @@ adminRouter.get("/pages", requireJwt, async (req, res) => {
 adminRouter.post("/pages", requireJwt, async (req, res) => {
   try {
     const { pageSlotId, title, description } = req.body;
-    const result = await createChapter(pageSlotId, title, description, req._userId);
+    const result = await createChapter(
+      pageSlotId,
+      title,
+      description,
+      req._userId,
+    );
     return res.status(201).json(result);
   } catch (err) {
     console.error("POST /api/admin/cms/pages failed", err);
-    if (err.message === "Invalid pageSlotId" || err.message === "Title is required") {
+    if (
+      err.message === "Invalid pageSlotId" ||
+      err.message === "Title is required"
+    ) {
       return res.status(400).json({ error: err.message });
     }
     return res.status(500).json({ error: "Internal server error" });
@@ -218,7 +239,10 @@ adminRouter.patch("/pages/reorder", requireJwt, async (req, res) => {
     return res.json(result);
   } catch (err) {
     console.error("PATCH /api/admin/cms/pages/reorder failed", err);
-    if (err.message === "Invalid pageSlotId" || err.message === "orderedIds must be an array") {
+    if (
+      err.message === "Invalid pageSlotId" ||
+      err.message === "orderedIds must be an array"
+    ) {
       return res.status(400).json({ error: err.message });
     }
     return res.status(500).json({ error: "Internal server error" });
@@ -230,7 +254,13 @@ adminRouter.put("/pages/legacy/:slotId", requireJwt, async (req, res) => {
   try {
     const { introText, sections } = req.body;
     const { publish = false } = req.query;
-    const result = await updateLegacyPage(req.params.slotId, introText, sections, publish === "true", req._userId);
+    const result = await updateLegacyPage(
+      req.params.slotId,
+      introText,
+      sections,
+      publish === "true",
+      req._userId,
+    );
     return res.json(result);
   } catch (err) {
     console.error("PUT /api/admin/cms/pages/legacy/:slotId failed", err);

@@ -3,7 +3,7 @@ import { Form } from '@/shared/components/AppForm'
 import { Modal, Input, DatePicker, Select, Button, Typography, Drawer } from 'antd'
 import { theme } from 'antd'
 import dayjs from 'dayjs'
-import { getMaintenanceConflicts } from '../../../services'
+import { getMaintenanceConflicts } from '@/features/admin/services/maintenanceService'
 import { get } from '@/lib/http.js'
 import {
   REASON_PRESET_OTHER,
@@ -140,7 +140,7 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
   const isEndMaintenanceFlow = maintenanceActive && !forceScheduleMode
 
   const content = (
-    <>
+    <div style={{ padding: 16 }}>
       {isEndMaintenanceFlow ? (
         <>
           <div style={{ marginTop: 8, marginBottom: 16 }}>
@@ -148,13 +148,13 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
               Submit a request to end maintenance mode. The request will require approval from two admins before the system returns to normal operation.
             </Text>
           </div>
-          <Form form={form} layout="vertical" initialValues={{ action: 'disable', reasonPreset: 'completed' }}>
+          <Form form={form} layout="vertical" initialValues={{ action: 'disable', reasonPreset: 'completed' }} requiredMark={false}>
             <Form.Item name="action" hidden>
               <input type="hidden" readOnly />
             </Form.Item>
             <Form.Item
               name="reasonPreset"
-              label="Reason"
+              label={<span>Reason<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
               rules={[{ required: true, message: 'Select a reason' }]}
             >
               <Select
@@ -174,7 +174,7 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
             {reasonPreset === REASON_PRESET_OTHER && (
               <Form.Item
                 name="reason"
-                label="Custom reason"
+                label={<span>Custom reason<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
                 rules={[{ required: true, message: 'Enter a reason' }, { max: 100, message: 'Max 100 characters' }]}
               >
                 <Input placeholder="Short reason (e.g., Maintenance completed early)" />
@@ -182,7 +182,7 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
             )}
             <Form.Item
               name="message"
-              label="Message"
+              label={<span>Message<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
               rules={[{ required: true, message: 'Enter a message' }, { max: 500, message: 'Max 500 characters' }]}
             >
               <Input.TextArea placeholder="Message shown to admins" rows={3} />
@@ -190,12 +190,15 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
           </Form>
         </>
       ) : (
-        <Form
-          layout="vertical"
-          form={form}
-          style={{ marginTop: 16 }}
-          initialValues={{ whenToStart: 'now', action: 'enable' }}
-        >
+        <>
+          <Text>Enter the maintenance request details below.</Text>
+          <Form
+            layout="vertical"
+            form={form}
+            style={{ marginTop: 16 }}
+            initialValues={{ whenToStart: 'now', action: 'enable' }}
+            requiredMark={false}
+          >
           {(!maintenanceActive || forceScheduleMode) && (
             <Form.Item name="action" hidden>
               <input type="hidden" readOnly />
@@ -212,7 +215,7 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
               {!forceScheduleMode && (
                 <Form.Item
                   name="whenToStart"
-                  label="When to start"
+                  label={<span>When to start<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
                   rules={[{ required: true, message: 'Select when to start' }]}
                 >
                   <Select
@@ -225,7 +228,7 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
               {(isScheduled || (forceScheduleMode && maintenanceActive)) && (
                 <Form.Item
                   name="scheduledStartAt"
-                  label="Scheduled start date and time"
+                  label={<span>Scheduled start date and time<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
                   rules={[
                     { required: true, message: 'Select date and time' },
                     {
@@ -290,7 +293,7 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
 
           <Form.Item
             name="reasonPreset"
-            label="Reason"
+            label={<span>Reason<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
             rules={[{ required: true, message: 'Select a reason' }]}
             initialValue="scheduled"
           >
@@ -307,7 +310,7 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
           {isReasonOther && (
             <Form.Item
               name="reason"
-              label="Custom reason"
+              label={<span>Custom reason<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
               rules={[{ required: true, message: 'Enter a reason' }, { max: 100, message: 'Max 100 characters' }]}
             >
               <Input placeholder="Short reason (e.g., Emergency maintenance)" />
@@ -315,14 +318,14 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
           )}
           <Form.Item
             name="message"
-            label="Public Announcement Message"
+            label={<span>Public Announcement Message<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
             rules={[{ required: true, message: 'Enter a message' }, { max: 500, message: 'Max 500 characters' }]}
           >
             <Input.TextArea placeholder="Detailed message shown to users" rows={3} />
           </Form.Item>
           <Form.Item
             name="expectedResumeAt"
-            label="Expected resume time"
+            label={<span>Expected resume time<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
             rules={[
               { required: true, message: 'Select expected resume time' },
               {
@@ -388,8 +391,9 @@ export default function MaintenanceRequestModal({ open, onCancel, form, onSubmit
             </>
           )}
         </Form>
+        </>
       )}
-    </>
+    </div>
   )
 
   const footer = [

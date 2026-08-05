@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Space, Button, Typography, Tag, App } from 'antd'
 import { ShopOutlined, BugOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { getBusinessDisplayName } from '../utils/statusUtils'
-import { getFeeGroupForForm } from '../../../services/feeService'
 import MockPaymentModal from './modals/MockPaymentModal'
 import ResubmitConfirmationModal from './modals/ResubmitConfirmationModal'
 
@@ -28,19 +27,6 @@ export default function ApplicationHeader({
   const [feeData, setFeeData] = useState(null)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showResubmitModal, setShowResubmitModal] = useState(false)
-
-  useEffect(() => {
-    const fetchFees = async () => {
-      try {
-        const response = await getFeeGroupForForm('permit')
-        setFeeData(response)
-      } catch (err) {
-        console.error('Failed to fetch fee data:', err)
-        setFeeData(null)
-      }
-    }
-    fetchFees()
-  }, [])
 
   const handleSubmitAndPay = () => {
     if (isReturned) {

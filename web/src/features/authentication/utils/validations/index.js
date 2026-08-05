@@ -9,6 +9,8 @@ export {
   suffixRules,
   phoneNumberRules,
   emailRules,
+  emailDuplicateRule,
+  phoneDuplicateRule,
   termsRules,
   businessOwnerRequiredRules,
   passwordRules as signUpPasswordRules,

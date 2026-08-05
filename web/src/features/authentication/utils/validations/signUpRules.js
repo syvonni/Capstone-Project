@@ -66,6 +66,24 @@ export const phoneNumberRules = [
   })
 ]
 
+export const phoneDuplicateRule = (checkDuplicateFn) => ({
+  validator: async (_, value) => {
+    console.log('[VALIDATION] Checking phone duplicate:', value)
+    if (!value) return Promise.resolve()
+    try {
+      const result = await checkDuplicateFn({ phoneNumber: value })
+      console.log('[VALIDATION] Phone duplicate check result:', result)
+      if (result.exists) {
+        return Promise.reject(new Error('Phone number already registered'))
+      }
+      return Promise.resolve()
+    } catch (err) {
+      console.error('[VALIDATION] Phone duplicate check failed:', err)
+      return Promise.resolve() // Don't block on API errors
+    }
+  },
+})
+
 export const passwordRules = [
   {
     validator: (_, value) => {
@@ -118,6 +136,24 @@ export const emailRules = [
   },
   { type: 'email', message: 'Please enter a valid email address' },
 ]
+
+export const emailDuplicateRule = (checkDuplicateFn) => ({
+  validator: async (_, value) => {
+    console.log('[VALIDATION] Checking email duplicate:', value)
+    if (!value) return Promise.resolve()
+    try {
+      const result = await checkDuplicateFn({ email: value })
+      console.log('[VALIDATION] Email duplicate check result:', result)
+      if (result.exists) {
+        return Promise.reject(new Error('Email already registered'))
+      }
+      return Promise.resolve()
+    } catch (err) {
+      console.error('[VALIDATION] Email duplicate check failed:', err)
+      return Promise.resolve() // Don't block on API errors
+    }
+  },
+})
 
 export const serviceCategoriesRules = [{
   validator: (_, value) => {

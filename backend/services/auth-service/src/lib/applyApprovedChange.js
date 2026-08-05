@@ -2,7 +2,7 @@ const User = require("../models/User");
 const MaintenanceWindow = require("../models/MaintenanceWindow");
 const { addToPasswordHistory } = require("./passwordHistory");
 const { decryptWithHash, encryptWithHash } = require("./secretCipher");
-const { createAuditLog } = require("./auditLogger");
+const { logAuditEvent } = require("./auditClient");
 const logger = require("./logger");
 
 /**
@@ -34,14 +34,16 @@ async function applyApprovedChange(approval) {
         const changedFields = Object.keys(newValues);
         // Use first field for fieldChanged (enum constraint), full list in metadata
         const primaryField = changedFields[0] || "firstName";
-        await createAuditLog(
+        await logAuditEvent(
           user._id,
           "admin_approval_approved",
-          primaryField,
-          JSON.stringify(approval.requestDetails.oldValues),
-          JSON.stringify(newValues),
-          roleSlug,
+          "User",
+          user._id,
           {
+            role: roleSlug,
+            fieldChanged: primaryField,
+            oldValue: JSON.stringify(approval.requestDetails.oldValues),
+            newValue: JSON.stringify(newValues),
             approvalId: approval.approvalId,
             requestType: approval.requestType,
             approvedBy: approval.approvals.map((a) => String(a.adminId)),
@@ -64,14 +66,16 @@ async function applyApprovedChange(approval) {
         await user.save();
 
         // Create audit log
-        await createAuditLog(
+        await logAuditEvent(
           user._id,
           "admin_approval_approved",
-          "email",
-          oldEmail,
-          newEmail,
-          roleSlug,
+          "User",
+          user._id,
           {
+            role: roleSlug,
+            fieldChanged: "email",
+            oldValue: oldEmail,
+            newValue: newEmail,
             approvalId: approval.approvalId,
             requestType: approval.requestType,
             approvedBy: approval.approvals.map((a) => String(a.adminId)),
@@ -140,14 +144,16 @@ async function applyApprovedChange(approval) {
         await approval.save();
 
         // Create audit log
-        await createAuditLog(
+        await logAuditEvent(
           user._id,
           "admin_approval_approved",
-          "password",
-          "[REDACTED]",
-          "[REDACTED]",
-          roleSlug,
+          "User",
+          user._id,
           {
+            role: roleSlug,
+            fieldChanged: "password",
+            oldValue: "[REDACTED]",
+            newValue: "[REDACTED]",
             approvalId: approval.approvalId,
             requestType: approval.requestType,
             approvedBy: approval.approvals.map((a) => String(a.adminId)),
@@ -204,14 +210,16 @@ async function applyApprovedChange(approval) {
           );
         }
 
-        await createAuditLog(
+        await logAuditEvent(
           approval.requestedBy,
           "maintenance_mode",
-          "maintenance",
-          "",
-          action,
-          "admin",
+          "MaintenanceWindow",
+          approval.approvalId,
           {
+            role: "admin",
+            fieldChanged: "maintenance",
+            oldValue: "",
+            newValue: action,
             approvalId: approval.approvalId,
             message: message || "",
             expectedResumeAt: expectedResumeAt || null,

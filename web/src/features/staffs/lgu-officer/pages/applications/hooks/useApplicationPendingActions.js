@@ -1,6 +1,7 @@
 import { App } from 'antd'
 import { PermitApplicationService } from '@/features/staffs/lgu-officer/services/permitApplicationService'
 import { getAppealsByBusiness } from '../../../services/appealsService'
+import { useStepUp } from '@/shared/hooks/useStepUp'
 
 export function useApplicationPendingActions(
   application,
@@ -22,19 +23,24 @@ export function useApplicationPendingActions(
   setReturnModalOpen
 ) {
   const { message } = App.useApp()
+  const { runWithStepUp, stepUpModal: pendingActionsStepUpModal } = useStepUp()
   const permitService = new PermitApplicationService()
 
   const handleReturnConfirm = async () => {
     const appId = application?.applicationId || application?.businessId || application?._id
     try {
-      await permitService.createPendingAction(appId, null, 'return', {
-        requestOther: returnRequestOther,
+      await runWithStepUp(async (stepUpToken) => {
+        await permitService.createPendingAction(appId, null, 'return', {
+          requestOther: returnRequestOther,
+        }, 10, { stepUpToken })
       })
       setReturnModalOpen(false)
       message.success('Return scheduled. You can undo until the deadline.')
       await loadApplicationDetails()
     } catch (error) {
-      message.error(error?.message || 'Failed to schedule return')
+      if (error?.message !== 'Step-up cancelled') {
+        message.error(error?.message || 'Failed to schedule return')
+      }
     }
   }
 
@@ -50,16 +56,20 @@ export function useApplicationPendingActions(
     }
     const appId = application?.applicationId || application?.businessId || application?._id
     try {
-      await permitService.createPendingAction(appId, null, 'reject', {
-        decision: 'other',
-        comments: rejectReason,
-        rejectionReason: rejectReason,
+      await runWithStepUp(async (stepUpToken) => {
+        await permitService.createPendingAction(appId, null, 'reject', {
+          decision: 'other',
+          comments: rejectReason,
+          rejectionReason: rejectReason,
+        }, 10, { stepUpToken })
       })
       setRejectModalOpen(false)
       message.success('Rejection scheduled. You can undo until the deadline.')
       await loadApplicationDetails()
     } catch (error) {
-      message.error(error?.message || 'Failed to schedule rejection')
+      if (error?.message !== 'Step-up cancelled') {
+        message.error(error?.message || 'Failed to schedule rejection')
+      }
     }
   }
 
@@ -99,15 +109,19 @@ export function useApplicationPendingActions(
         message.error('No active appeal found for this application')
         return
       }
-      await permitService.createPendingAction(appId, activeAppeal._id, 'reject_appeal', {
-        appealId: activeAppeal._id,
-        rejectionReason: rejectAppealReason,
+      await runWithStepUp(async (stepUpToken) => {
+        await permitService.createPendingAction(appId, activeAppeal._id, 'reject_appeal', {
+          appealId: activeAppeal._id,
+          rejectionReason: rejectAppealReason,
+        }, 10, { stepUpToken })
       })
       setRejectAppealModalOpen(false)
       message.success('Appeal rejection scheduled. You can undo until the deadline.')
       await loadApplicationDetails()
     } catch (err) {
-      message.error(err?.message || 'Failed to schedule appeal rejection')
+      if (err?.message !== 'Step-up cancelled') {
+        message.error(err?.message || 'Failed to schedule appeal rejection')
+      }
     }
   }
 
@@ -119,14 +133,18 @@ export function useApplicationPendingActions(
   const handleCompleteReviewConfirm = async () => {
     const appId = application?.applicationId || application?.businessId || application?._id
     try {
-      await permitService.createPendingAction(appId, null, 'complete_review', {
-        comments: completeReviewComment,
+      await runWithStepUp(async (stepUpToken) => {
+        await permitService.createPendingAction(appId, null, 'complete_review', {
+          comments: completeReviewComment,
+        }, 10, { stepUpToken })
       })
       setCompleteReviewModalOpen(false)
       message.success('Review completion scheduled. You can undo until the deadline.')
       await loadApplicationDetails()
     } catch (error) {
-      message.error(error?.message || 'Failed to schedule review completion')
+      if (error?.message !== 'Step-up cancelled') {
+        message.error(error?.message || 'Failed to schedule review completion')
+      }
     }
   }
 
@@ -149,12 +167,16 @@ export function useApplicationPendingActions(
   const handleExecutePendingActionNow = async () => {
     const appId = application?.applicationId || application?.businessId || application?._id
     try {
-      await permitService.executePendingActionNow(appId)
+      await runWithStepUp(async (stepUpToken) => {
+        await permitService.executePendingActionNow(appId, { stepUpToken })
+      })
       message.success('Pending action executed immediately')
       await loadApplicationDetails()
       onReviewComplete?.()
     } catch (error) {
-      message.error(error?.message || 'Failed to execute pending action')
+      if (error?.message !== 'Step-up cancelled') {
+        message.error(error?.message || 'Failed to execute pending action')
+      }
     }
   }
 
@@ -169,5 +191,6 @@ export function useApplicationPendingActions(
     handleReturnClick,
     handleUndoPendingAction,
     handleExecutePendingActionNow,
+    stepUpModal: pendingActionsStepUpModal,
   }
 }

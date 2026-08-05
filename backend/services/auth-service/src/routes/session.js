@@ -4,7 +4,7 @@ const Session = require("../models/Session");
 const { requireJwt } = require("../middleware/auth");
 const respond = require("../middleware/respond");
 const { validateBody, Joi } = require("../middleware/validation");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const inAppNotificationService = require("../services/notificationService");
 const { trackIP } = require("../lib/ipTracker");
 const { isAdminRole } = require("../lib/roleHelpers");
@@ -12,9 +12,10 @@ const { isAdminRole } = require("../lib/roleHelpers");
 const router = express.Router();
 
 // Session timeout durations (in milliseconds)
-const SESSION_TIMEOUT_BUSINESS_OWNER = 60 * 60 * 1000; // 1 hour
-const SESSION_TIMEOUT_STAFF = 60 * 60 * 1000; // 1 hour
-const SESSION_TIMEOUT_ADMIN = 10; // 10 minutes
+// Match JWT TTL (ACCESS_TOKEN_TTL_MINUTES=240 = 4 hours) to avoid session/JWT mismatch
+const SESSION_TIMEOUT_BUSINESS_OWNER = 240 * 60 * 1000; // 4 hours
+const SESSION_TIMEOUT_STAFF = 240 * 60 * 1000; // 4 hours
+const SESSION_TIMEOUT_ADMIN = 240 * 60 * 1000; // 4 hours
 
 /**
  * Get session timeout duration based on user role
@@ -246,18 +247,21 @@ router.post(
       }
 
       await session.invalidate("manual");
+      await session.save();
 
       // Log to audit trail
       const user = await User.findById(userId).populate("role").lean();
       const roleSlug = user?.role?.slug || "user";
-      await createAuditLog(
-        userId,
+      await logAuditEvent(
         "session_invalidated",
-        "session",
-        "",
-        "session_manually_invalidated",
-        roleSlug,
+        userId,
+        "Session",
+        session._id,
         {
+          role: roleSlug,
+          fieldChanged: "session",
+          oldValue: "active",
+          newValue: "session_manually_invalidated",
           ip: ipAddress,
           userAgent,
           sessionId: String(session._id),
@@ -320,19 +324,15 @@ router.post("/session/invalidate-all", requireJwt, async (req, res) => {
     // Log to audit trail
     const user = await User.findById(userId).populate("role").lean();
     const roleSlug = user?.role?.slug || "user";
-    await createAuditLog(
-      userId,
-      "session_invalidated",
-      "session",
-      "",
-      "all_sessions_invalidated",
-      roleSlug,
-      {
-        ip: ipAddress,
-        userAgent,
-        sessionsInvalidated: result.modifiedCount,
-      },
-    );
+    await logAuditEvent("session_invalidated", userId, "Session", userId, {
+      role: roleSlug,
+      fieldChanged: "session",
+      oldValue: "active",
+      newValue: "all_sessions_invalidated",
+      ip: ipAddress,
+      userAgent,
+      sessionsInvalidated: result.modifiedCount,
+    });
 
     inAppNotificationService
       .createNotification(

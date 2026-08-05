@@ -31,7 +31,7 @@ const {
   verifyTurnstileToken,
   shouldRequireCaptcha,
 } = require("../lib/turnstile");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 let OAuth2Client = null;
 try {
   ({ OAuth2Client } = require("google-auth-library"));
@@ -174,8 +174,8 @@ async function createSessionForUser(doc, roleSlug, req) {
     const userAgent = req.headers["user-agent"] || "unknown";
     await trackIP(doc._id, ipAddress);
     const getSessionTimeout = (slug) => {
-      if (slug === "admin") return 10 * 60 * 1000; // 10 minutes
-      return 60 * 60 * 1000; // 1 hour for BO/Staff
+      // Match JWT TTL (ACCESS_TOKEN_TTL_MINUTES=240 = 4 hours)
+      return 240 * 60 * 1000; // 4 hours for all roles
     };
     const timeout = getSessionTimeout(roleSlug);
     const expiresAt = new Date(Date.now() + timeout);
@@ -454,6 +454,10 @@ router.post(
             // Clear all onboarding requirements in dev mode
             dbDoc.mustSetupMfa = false;
             dbDoc.mustChangeCredentials = false;
+            // Update accountStatus for business owners when onboarding is complete
+            if (!dbDoc.isStaff && roleSlug === "business_owner") {
+              dbDoc.accountStatus = "active";
+            }
             await dbDoc.save();
           }
         } catch (_) {}
@@ -570,6 +574,14 @@ router.post(
           // Increment token version for new login to create separate session
           const oldTokenVersion = dbDoc.tokenVersion || 0;
           dbDoc.tokenVersion = oldTokenVersion + 1;
+          // Update accountStatus for business owners when they log in and don't need to change credentials
+          if (
+            !dbDoc.isStaff &&
+            roleSlug === "business_owner" &&
+            !dbDoc.mustChangeCredentials
+          ) {
+            dbDoc.accountStatus = "active";
+          }
           console.log(
             `[Login Verify] User: ${dbDoc.email}, Token version: ${oldTokenVersion} -> ${dbDoc.tokenVersion}`,
           );
@@ -1117,8 +1129,8 @@ router.post(
 
           // Determine session timeout based on role
           const getSessionTimeout = (roleSlug) => {
-            if (roleSlug === "admin") return 10 * 60 * 1000; // 10 minutes
-            return 60 * 60 * 1000; // 1 hour for BO/Staff
+            // Match JWT TTL (ACCESS_TOKEN_TTL_MINUTES=240 = 4 hours)
+            return 240 * 60 * 1000; // 4 hours for all roles
           };
 
           const timeout = getSessionTimeout(roleSlug);
@@ -1154,15 +1166,14 @@ router.post(
         .catch((err) =>
           console.error("Failed to create auth notification:", err),
         );
-      createAuditLog(
-        doc._id,
-        "login",
-        "session",
-        "",
-        "active",
-        doc.role?.slug || roleSlug || "business_owner",
-        { method: "email_otp", ip: req.ip },
-      ).catch(() => {});
+      logAuditEvent("login", doc._id, "Session", doc._id, {
+        role: doc.role?.slug || roleSlug || "business_owner",
+        fieldChanged: "session",
+        oldValue: "",
+        newValue: "active",
+        method: "email_otp",
+        ip: req.ip,
+      }).catch(() => {});
 
       return res.json(safe);
     } catch (err) {
@@ -1279,6 +1290,14 @@ router.post(
       // Increment token version for new login to create separate session
       const oldTokenVersion = doc.tokenVersion || 0;
       doc.tokenVersion = oldTokenVersion + 1;
+      // Update accountStatus for business owners when they log in and don't need to change credentials
+      if (
+        !doc.isStaff &&
+        roleSlug === "business_owner" &&
+        !doc.mustChangeCredentials
+      ) {
+        doc.accountStatus = "active";
+      }
       console.log(
         `[Login] User: ${doc.email}, Token version: ${oldTokenVersion} -> ${doc.tokenVersion}`,
       );
@@ -1304,8 +1323,8 @@ router.post(
 
         // Determine session timeout based on role
         const getSessionTimeout = (roleSlug) => {
-          if (roleSlug === "admin") return 10 * 60 * 1000; // 10 minutes
-          return 60 * 60 * 1000; // 1 hour for BO/Staff
+          // Match JWT TTL (ACCESS_TOKEN_TTL_MINUTES=240 = 4 hours)
+          return 240 * 60 * 1000; // 4 hours for all roles
         };
 
         // Ensure role is populated before extracting slug
@@ -1409,15 +1428,14 @@ router.post(
         .catch((err) =>
           console.error("Failed to create auth notification:", err),
         );
-      createAuditLog(
-        doc._id,
-        "login",
-        "session",
-        "",
-        "active",
-        doc.role?.slug || roleSlug || "business_owner",
-        { method: "totp", ip: req.ip },
-      ).catch(() => {});
+      logAuditEvent("login", doc._id, "Session", doc._id, {
+        role: doc.role?.slug || roleSlug || "business_owner",
+        fieldChanged: "session",
+        oldValue: "",
+        newValue: "active",
+        method: "totp",
+        ip: req.ip,
+      }).catch(() => {});
       return res.json(safe);
     } catch (err) {
       console.error("POST /api/auth/login/verify-totp error:", err);
@@ -1503,6 +1521,14 @@ router.post("/google", validateBody(googleLoginSchema), async (req, res) => {
       }
       doc.isEmailVerified = true;
       doc.lastLoginAt = new Date();
+      // Update accountStatus for business owners on Google login
+      if (
+        !doc.isStaff &&
+        roleSlug === "business_owner" &&
+        !doc.mustChangeCredentials
+      ) {
+        doc.accountStatus = "active";
+      }
       await doc.save();
       // Ensure role is populated
       if (!doc.role || !doc.role.slug) {

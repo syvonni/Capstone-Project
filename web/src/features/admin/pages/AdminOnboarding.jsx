@@ -1,22 +1,18 @@
 import { useState, useEffect } from 'react'
 import { Form } from '@/shared/components/AppForm'
 import { Row, Col, theme } from 'antd'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { SecurityScanOutlined } from '@ant-design/icons'
 import { useAuthSession } from '@/features/authentication'
 import { mfaStatus } from '@/features/authentication/services/mfaService'
 import { firstLoginChangeCredentials, getProfile } from '@/features/authentication/services/authService'
 import { useNotifier } from '@/shared/notifications'
-import AdminLayout from '../components/AdminLayout'
+import StaffLayout from '@/shared/components/StaffLayout'
 import OnboardingStepContent from '@/shared/components/OnboardingStepContent'
-
-// MFA always required for admin when backend sets mustSetupMfa (no dev bypass)
-const bypassMfaDev = false
 
 export default function AdminOnboarding() {
   const { currentUser, login } = useAuthSession()
   const { success, error } = useNotifier()
-  const location = useLocation()
   const navigate = useNavigate()
   const { token } = theme.useToken()
   const [form] = Form.useForm()
@@ -31,49 +27,30 @@ export default function AdminOnboarding() {
   const [submitting, setSubmitting] = useState(false)
   const [completingOnboarding, setCompletingOnboarding] = useState(false)
 
+  // Check MFA status on mount. MFA counts as enabled if TOTP, passkey, or fingerprint is set up.
   useEffect(() => {
-    const checkMfaStatus = async () => {
-      if (!currentUser?.email) return
-      setCheckingMfa(true)
-      try {
-        const status = await mfaStatus(currentUser.email)
-        const isEnabled = !!status?.enabled
-        setMfaEnabled(isEnabled)
-        if (isEnabled) {
-          if (currentStep === 2) setCurrentStep(3)
-          else if (currentStep === 0 && !mustChange) setCurrentStep(3)
-        }
-      } catch (err) {
-        console.error('Failed to check MFA status:', err)
-      } finally {
-        setCheckingMfa(false)
-      }
-    }
-    checkMfaStatus()
-  }, [currentUser?.email, currentUser?.mustSetupMfa, currentStep, mustChange])
+    if (!currentUser?.email) return
+    let cancelled = false
+    setCheckingMfa(true)
+    mfaStatus(currentUser.email)
+      .then((status) => {
+        if (cancelled) return
+        const enabled = !!status?.enabled || status?.method === 'passkey' || !!status?.fprintEnabled
+        setMfaEnabled(enabled)
+      })
+      .catch((err) => console.error('Failed to check MFA status:', err))
+      .finally(() => { if (!cancelled) setCheckingMfa(false) })
+    return () => { cancelled = true }
+  }, [currentUser?.email])
 
+  // Single source of truth for step routing once MFA status is known
   useEffect(() => {
-    if (!mustMfa && currentStep === 2) setCurrentStep(3)
-  }, [mustMfa, currentStep])
-
-  useEffect(() => {
-    if (location.pathname === '/admin/onboarding') {
-      const checkMfa = async () => {
-        if (!currentUser?.email) return
-        try {
-          const status = await mfaStatus(currentUser.email)
-          if (status?.enabled) {
-            setMfaEnabled(true)
-            if (currentStep === 2) setCurrentStep(3)
-          }
-        } catch (err) {
-          console.error('Failed to check MFA status on navigation:', err)
-        }
-      }
-      const timer = setTimeout(checkMfa, 500)
-      return () => clearTimeout(timer)
+    if (checkingMfa) return
+    // Skip MFA step if already enabled
+    if (currentStep === 2 && mfaEnabled) {
+      setCurrentStep(3)
     }
-  }, [location.pathname, currentUser?.email, currentStep])
+  }, [currentStep, mfaEnabled, checkingMfa])
 
   const handleCredentialsFinish = async (values) => {
     setSubmitting(true)
@@ -123,7 +100,7 @@ export default function AdminOnboarding() {
   }, [completingOnboarding, currentUser, navigate])
 
   return (
-    <AdminLayout hideSidebar pageTitle="Onboarding" pageIcon={<SecurityScanOutlined />}>
+    <StaffLayout hideSidebar pageTitle="Onboarding" pageIcon={<SecurityScanOutlined />}>
       <div
         style={{
           paddingBottom: 128,
@@ -156,6 +133,6 @@ export default function AdminOnboarding() {
           </Col>
         </Row>
       </div>
-    </AdminLayout>
+    </StaffLayout>
   )
 }

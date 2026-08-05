@@ -29,7 +29,7 @@ const BusinessProfileSchema = new mongoose.Schema(
       isSubmitted: { type: Boolean, default: false },
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const { encryptionPlugin } = require("../../../../shared/lib/encryptionPlugin");

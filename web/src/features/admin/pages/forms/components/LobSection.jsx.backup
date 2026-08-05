@@ -1,0 +1,1123 @@
+/**
+ * LOB Section Component
+ * 
+ * This component renders the Line of Business selection interface
+ * for business permit forms. It provides a prebuilt, non-configurable
+ * interface for LOB selection with category and classification options.
+ */
+
+import { useState, useEffect } from 'react'
+import { Typography, Input, Button, theme, Divider, InputNumber, Card, Select, Modal, Drawer, Grid, Spin, Alert } from 'antd'
+import { currencyFormatter, currencyParser } from '@/shared/utils/currency.utils'
+import { getVariableFeeRules } from '@/features/admin/services/feeService'
+import { getLobs } from '@/shared/services/lobService'
+import { getLobsByCategory, getTaxCodeOptions, mapTaxCodeToCategory } from '@/shared/utils/lobApiUtils'
+import { LINE_OF_BUSINESS_BY_TAX_CODE } from '@/shared/constants/lineOfBusiness'
+
+import {
+  ShopOutlined,
+  InboxOutlined,
+  CoffeeOutlined,
+  BuildOutlined,
+  CustomerServiceOutlined,
+  BankOutlined,
+  HomeOutlined,
+  CarOutlined,
+  FieldTimeOutlined, 
+  ToolOutlined, 
+  ThunderboltOutlined,
+  DeleteOutlined
+} from '@ant-design/icons'
+
+const { Text } = Typography
+const { TextArea } = Input
+
+const INDUSTRY_ICONS = {
+  'RET': <ShopOutlined style={{ fontSize: 24 }} />,
+  'WHL': <InboxOutlined style={{ fontSize: 24 }} />,
+  'FDS': <CoffeeOutlined style={{ fontSize: 24 }} />,
+  'MFG': <BuildOutlined style={{ fontSize: 24 }} />,
+  'SVC': <CustomerServiceOutlined style={{ fontSize: 24 }} />,
+  'FIN': <BankOutlined style={{ fontSize: 24 }} />,
+  'RES': <HomeOutlined style={{ fontSize: 24 }} />,
+  'TRN': <CarOutlined style={{ fontSize: 24 }} />,
+  'AGR': <FieldTimeOutlined style={{ fontSize: 24 }} />,
+  'CON': <ToolOutlined style={{ fontSize: 24 }} />,
+  'MIN': <BuildOutlined style={{ fontSize: 24 }} />,
+  'UTL': <ThunderboltOutlined style={{ fontSize: 24 }} />,
+}
+
+export default function LobSection() {
+  const { token } = theme.useToken()
+  const screens = Grid.useBreakpoint()
+  const [businessDescription, setBusinessDescription] = useState('')
+  const [selectedIndustryTaxCodes, setSelectedIndustryTaxCodes] = useState([])
+  const [industryDetailedLines, setIndustryDetailedLines] = useState({})
+  const [lobAllocatedCapital, setLobAllocatedCapital] = useState({})
+  const [equity, setEquity] = useState(0)
+  const [lobs, setLobs] = useState([])
+  const [lobsLoading, setLobsLoading] = useState(true)
+  const [lobsError, setLobsError] = useState(null)
+  const [payables, setPayables] = useState(0)
+  const [workingCapital, setWorkingCapital] = useState(0)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [drawerIndustryTaxCode, setDrawerIndustryTaxCode] = useState(null)
+  const [selectedLineOfBusiness, setSelectedLineOfBusiness] = useState(null)
+  const [capitalInput, setCapitalInput] = useState(0)
+  const [industryModalOpen, setIndustryModalOpen] = useState(false)
+  const [modalSelectedIndustry, setModalSelectedIndustry] = useState(null)
+  const [modalSelectedLOB, setModalSelectedLOB] = useState(null)
+  const [modalCapitalInput, setModalCapitalInput] = useState(0)
+  const [variableInputs, setVariableInputs] = useState({})
+  const [savedVariableInputs, setSavedVariableInputs] = useState({})
+  const [allVariableFeeRules, setAllVariableFeeRules] = useState([])
+
+  // Fetch LOBs, conditional fees, and variable fee rules from API on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setLobsLoading(true)
+      setLobsError(null)
+      try {
+        const [lobsData, variableFeeRules] = await Promise.all([
+          getLobs({ status: 'active' }),
+          getVariableFeeRules({ isActive: true }),
+        ])
+        setLobs(lobsData || [])
+        setAllVariableFeeRules(variableFeeRules || [])
+      } catch (error) {
+        console.error('Failed to fetch data:', error)
+        setLobsError('Failed to load line of business data. Please refresh the page.')
+        setLobs([])
+      } finally {
+        setLobsLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const handleIndustryChange = (taxCodes) => {
+    setSelectedIndustryTaxCodes(taxCodes)
+    // Remove detailed lines and allocated capital for industries that are no longer selected
+    const updatedLines = { ...industryDetailedLines }
+    const updatedCapital = { ...lobAllocatedCapital }
+    taxCodes.forEach(taxCode => {
+      if (!updatedLines[taxCode]) {
+        updatedLines[taxCode] = []
+      }
+    })
+    Object.keys(updatedLines).forEach(taxCode => {
+      if (!taxCodes.includes(taxCode)) {
+        delete updatedLines[taxCode]
+      }
+    })
+    Object.keys(updatedCapital).forEach(key => {
+      const [taxCode] = key.split('-')
+      if (!taxCodes.includes(taxCode)) {
+        delete updatedCapital[key]
+      }
+    })
+    setIndustryDetailedLines(updatedLines)
+    setLobAllocatedCapital(updatedCapital)
+  }
+
+  const handleDetailedLinesChange = (taxCode, lineName) => {
+    setIndustryDetailedLines(prev => ({
+      ...prev,
+      [taxCode]: [...(prev[taxCode] || []), lineName]
+    }))
+  }
+
+  const handleRemoveLineOfBusiness = (taxCode, lineName) => {
+    setIndustryDetailedLines(prev => ({
+      ...prev,
+      [taxCode]: prev[taxCode].filter(name => name !== lineName)
+    }))
+    const capitalKey = `${taxCode}-${lineName}`
+    setLobAllocatedCapital(prev => {
+      const updated = { ...prev }
+      delete updated[capitalKey]
+      return updated
+    })
+    // Also remove saved variables for this LOB
+    setSavedVariableInputs(prev => {
+      const updated = { ...prev }
+      delete updated[capitalKey]
+      return updated
+    })
+  }
+
+  const handleRemoveIndustry = (taxCode) => {
+    setSelectedIndustryTaxCodes(prev => prev.filter(code => code !== taxCode))
+    setIndustryDetailedLines(prev => {
+      const updated = { ...prev }
+      delete updated[taxCode]
+      return updated
+    })
+    // Remove all capital allocations for this industry
+    setLobAllocatedCapital(prev => {
+      const updated = { ...prev }
+      Object.keys(prev).forEach(key => {
+        if (key.startsWith(`${taxCode}-`)) {
+          delete updated[key]
+        }
+      })
+      return updated
+    })
+    // Remove all saved variables for this industry
+    setSavedVariableInputs(prev => {
+      const updated = { ...prev }
+      Object.keys(prev).forEach(key => {
+        if (key.startsWith(`${taxCode}-`)) {
+          delete updated[key]
+        }
+      })
+      return updated
+    })
+  }
+
+  const handleOpenDrawer = (taxCode) => {
+    setDrawerIndustryTaxCode(taxCode)
+    setSelectedLineOfBusiness(null)
+    setCapitalInput(0)
+    setVariableInputs({})
+    setDrawerOpen(true)
+  }
+
+  const handleCloseDrawer = () => {
+    setDrawerOpen(false)
+    setSelectedLineOfBusiness(null)
+    setCapitalInput(0)
+  }
+
+  const handleAddLineOfBusiness = () => {
+    if (selectedLineOfBusiness && drawerIndustryTaxCode) {
+      handleDetailedLinesChange(drawerIndustryTaxCode, selectedLineOfBusiness)
+      handleAllocatedCapitalChange(drawerIndustryTaxCode, selectedLineOfBusiness, capitalInput)
+      
+      // Save variable inputs for this LOB
+      const lobKey = `${drawerIndustryTaxCode}-${selectedLineOfBusiness}`
+      setSavedVariableInputs(prev => ({
+        ...prev,
+        [lobKey]: { ...variableInputs }
+      }))
+      
+      handleCloseDrawer()
+    }
+  }
+
+  const handleOpenIndustryModal = () => {
+    setModalSelectedIndustry(null)
+    setModalSelectedLOB(null)
+    setModalCapitalInput(0)
+    setVariableInputs({})
+    setIndustryModalOpen(true)
+  }
+
+  const handleCloseIndustryModal = () => {
+    setIndustryModalOpen(false)
+    setModalSelectedIndustry(null)
+    setModalSelectedLOB(null)
+    setModalCapitalInput(0)
+    setVariableInputs({})
+  }
+
+  const getVariableFeeRulesForLOB = (lobName) => {
+    // Find LOB by name
+    const lob = lobs.find(l => l.name === lobName)
+    if (!lob || !lob.variableFeeRules) return []
+    // Return variable fee rules that match the variableFeeRules IDs
+    return allVariableFeeRules.filter(rule => lob.variableFeeRules.includes(rule._id))
+  }
+
+  const handleAddFromIndustryModal = () => {
+    if (modalSelectedIndustry && modalSelectedLOB) {
+      // Add industry if not already selected
+      if (!selectedIndustryTaxCodes.includes(modalSelectedIndustry)) {
+        setSelectedIndustryTaxCodes(prev => [...prev, modalSelectedIndustry])
+      }
+      
+      // Add LOB with capital
+      handleDetailedLinesChange(modalSelectedIndustry, modalSelectedLOB)
+      handleAllocatedCapitalChange(modalSelectedIndustry, modalSelectedLOB, modalCapitalInput)
+      
+      // Save variable inputs for this LOB
+      const lobKey = `${modalSelectedIndustry}-${modalSelectedLOB}`
+      setSavedVariableInputs(prev => ({
+        ...prev,
+        [lobKey]: { ...variableInputs }
+      }))
+      
+      handleCloseIndustryModal()
+    }
+  }
+
+  const handleAllocatedCapitalChange = (taxCode, lineName, value) => {
+    const key = `${taxCode}-${lineName}`
+    setLobAllocatedCapital(prev => ({
+      ...prev,
+      [key]: value
+    }))
+  }
+
+  const getClassificationForCapital = (taxCode, capital) => {
+    // Classifications removed from constants - return null
+    return null
+  }
+
+  const canAnalyze = businessDescription.trim().length >= 10
+  const totalCapitalization = equity + payables + workingCapital
+
+  // Auto-determine classification based on capitalization
+  const getAutoClassification = (taxCode) => {
+    // Classifications removed from constants - return null
+    return null
+  }
+
+  return (
+    <div>
+      {/* Hidden for now
+      <div style={{ marginBottom: 16 }}>
+        <Text style={{ display: 'block', marginBottom: 8 }}>
+          What does your business sell or do? <span style={{ color: token.colorError }}>*</span>
+        </Text>
+        <TextArea
+          placeholder="e.g. Sari-sari store selling groceries and snacks / Nagtitinda ako ng pagkain at groceries sa maliit kong tindahan"
+          rows={4}
+          value={businessDescription}
+          onChange={(e) => setBusinessDescription(e.target.value)}
+          style={{ marginBottom: 8 }}
+        />
+        <Button
+          type="primary"
+          disabled={!canAnalyze}
+          block
+        >
+          Analyze
+        </Button>
+      </div>
+
+      <Divider />
+      */}
+
+      <div style={{ marginBottom: 8 }}>
+        {lobsLoading ? (
+          <div style={{ textAlign: 'center', padding: 24 }}>
+            <Spin size="large" />
+          </div>
+        ) : lobsError ? (
+          <Alert
+            message="Error"
+            description={lobsError}
+            type="error"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        ) : (
+          <>
+            <Text style={{ display: 'block', marginBottom: 8 }}>
+              {Object.values(industryDetailedLines).flat().length <= 1 ? 'What is your line of business?' : 'What are your lines of business?'} <span style={{ color: token.colorError }}>*</span>
+            </Text>
+            {selectedIndustryTaxCodes.map((taxCode) => {
+              const category = mapTaxCodeToCategory(lobs, taxCode)
+              const detailedLines = getLobsByCategory(lobs, category)
+              const autoClassification = getAutoClassification(taxCode)
+              const categoryMapping = LINE_OF_BUSINESS_BY_TAX_CODE[taxCode]
+              const categoryLabel = categoryMapping?.name || taxCode
+              const categoryDescription = categoryMapping?.description || ''
+
+          return (
+            <div key={taxCode} style={{ marginBottom: 12 }}>
+              <Card
+                style={{
+                  border: `1px solid ${token.colorBorder}`,
+                  backgroundColor: token.colorBgContainer,
+                }}
+                bodyStyle={{ padding: 12 }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                  <div style={{
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: token.colorBgLayout,
+                    borderRadius: 8,
+                    color: token.colorTextSecondary,
+                    flexShrink: 0,
+                  }}>
+                    {INDUSTRY_ICONS[taxCode] || <BuildOutlined style={{ fontSize: 36 }} />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Text strong style={{ display: 'block' }}>
+                      {categoryLabel}
+                    </Text>
+                    <Text type="secondary" style={{ display: 'block' }}>
+                      {categoryDescription}
+                    </Text>
+                  </div>
+                  <Button
+                    icon={<DeleteOutlined />}
+                    onClick={() => handleRemoveIndustry(taxCode)}
+
+                  />
+                </div>
+
+                <Divider style={{ margin: '12px 0' }} />
+                {(industryDetailedLines[taxCode] || []).length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    {(industryDetailedLines[taxCode] || []).map((lineName) => {
+                      const lineData = detailedLines.find(line => line.name === lineName)
+                      const capitalKey = `${taxCode}-${lineName}`
+                      const allocatedCapital = lobAllocatedCapital[capitalKey] || 0
+                      const classification = getClassificationForCapital(taxCode, allocatedCapital)
+                      
+                      // Get variable fees for this LOB
+                      const lob = lobs.find(l => l.name === lineName)
+                      const variableFeeIds = lob?.variableFeeRules || []
+                      const variableFees = variableFeeIds.map(id => allVariableFeeRules.find(fee => fee._id === id)).filter(Boolean)
+
+                      // Get saved user responses for this specific LOB
+                      const lobVariables = savedVariableInputs[capitalKey] || {}
+                      
+                      // Get user responses for variables
+                      const variableResponses = variableFees
+                        .filter(fee => lobVariables[fee._id] !== undefined && lobVariables[fee._id] !== null && lobVariables[fee._id] !== '' && lobVariables[fee._id] !== 0)
+                        .map(fee => {
+                          const value = lobVariables[fee._id]
+                          // Handle classification-based fees
+                          if (fee.calculationMethod === 'classification' && fee.classifications) {
+                            const classification = fee.classifications.find(c => c.name === value)
+                            if (classification) {
+                              return `${classification.name} (₱${classification.fee?.toLocaleString() || 0})`
+                            }
+                            return value
+                          }
+                          // Handle numeric-based fees
+                          const formattedValue = typeof value === 'number' ? value.toLocaleString() : value
+                          if (fee.name.includes('Signage')) return `${formattedValue} sqm`
+                          if (fee.name.includes('Warehouse')) return `${formattedValue} sqm`
+                          if (fee.name.includes('Cold Storage')) return `${formattedValue} sqm`
+                          if (fee.name.includes('Food Establishment')) return `${formattedValue} establishments`
+                          if (fee.name.includes('Grease Trap')) return `${formattedValue} inspections`
+                          if (fee.name.includes('Environmental Compliance')) return `${formattedValue} applications`
+                          if (fee.name.includes('Tricycle')) return `${formattedValue} units`
+                          if (fee.name.includes('Delivery')) return `${formattedValue} vehicles`
+                          if (fee.name.includes('Heavy Equipment')) return `${formattedValue} equipment`
+                          if (fee.name.includes('Environmental Certificate')) return `${formattedValue} certificates`
+                          if (fee.name.includes('Quarry')) return `${formattedValue} hectares`
+                          if (fee.name.includes('Mining')) return `${formattedValue} hectares`
+                          if (fee.name.includes('Subdivision')) return `${formattedValue} sqm`
+                          if (fee.name.includes('Condominium')) return `${formattedValue} sqm`
+                          if (fee.name.includes('Agricultural')) return `${formattedValue} inspections`
+                          if (fee.name.includes('School')) return `${formattedValue} students`
+                          if (fee.name.includes('Tourism')) return `${formattedValue} nights`
+                          if (fee.name.includes('DOT')) return `${formattedValue} establishments`
+                          if (fee.name.includes('Security')) return `${formattedValue} guards`
+                          if (fee.name.includes('Health Facility')) return `${formattedValue} facilities`
+                          if (fee.name.includes('door')) return `${formattedValue} door units`
+                          if (fee.name.includes('unit')) return `${formattedValue} units`
+                          return `${formattedValue} units`
+                        })
+
+                      return (
+                        <Card
+                          key={lineName}
+                          size="small"
+                          style={{ marginBottom: 8, border: `1px solid ${token.colorBorder}` }}
+                          bodyStyle={{ padding: 12 }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ flex: 1 }}>
+                              <Text strong style={{ display: 'block' }}>
+                                {classification ? `${classification} ${lineName}` : lineName}
+                              </Text>
+                              <Text type="secondary" style={{ display: 'block' }}>
+                                {(() => {
+                                  const allResponses = variableResponses
+
+                                  // Check if this LOB has monthly tax brackets
+                                  const currentMonth = new Date().toLocaleString('en-US', { month: 'long' })
+                                  const isMonthlyBased = ['Meat & poultry vendor', 'Fish vendor', 'Fruits & vegetables vendor', 'Grocery vendor', 'Dry goods vendor', 'Apartment / condominium rental'].includes(lineName)
+
+                                  let displayText = ''
+                                  if (allResponses.length === 0) {
+                                    displayText = `₱${allocatedCapital.toLocaleString()} capital`
+                                  } else {
+                                    // Remove "Has " prefix from all responses except the first
+                                    const formattedResponses = allResponses.map((response, index) =>
+                                      index === 0 ? response : response.replace(/^Has /, '')
+                                    )
+                                    if (formattedResponses.length === 1) {
+                                      displayText = `₱${allocatedCapital.toLocaleString()} capital - ${formattedResponses[0]}`
+                                    } else {
+                                      displayText = `₱${allocatedCapital.toLocaleString()} capital - ${formattedResponses.slice(0, -1).join(', ')} & ${formattedResponses[formattedResponses.length - 1]}`
+                                    }
+                                  }
+
+                                  // Add payment period for monthly-based LOBs
+                                  if (isMonthlyBased) {
+                                    displayText += ` - ${currentMonth} to December`
+                                  }
+
+                                  return displayText
+                                })()}
+                              </Text>
+                            </div>
+                            {(industryDetailedLines[taxCode] || []).length > 1 && (
+                              <Button
+                                icon={<DeleteOutlined />}
+                                onClick={() => handleRemoveLineOfBusiness(taxCode, lineName)}
+                                style={{ marginLeft: 8 }}
+                              />
+                            )}
+                          </div>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <div>
+                  <Button
+                    type="dashed"
+                    onClick={() => handleOpenDrawer(taxCode)}
+                    block
+                  >
+                    + Add another line of business
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )
+        })}
+        </>
+        )}
+      </div>
+
+      <Button
+        type="dashed"
+        onClick={handleOpenIndustryModal}
+        block
+      >
+        {selectedIndustryTaxCodes.length === 0 ? '+ Select line of business' : '+ Add another industry'}
+      </Button>
+
+      {screens.xs ? (
+        <Drawer
+          title="Add Line of Business"
+          placement="bottom"
+          onClose={handleCloseDrawer}
+          open={drawerOpen}
+          height="100%"
+        >
+          {drawerIndustryTaxCode && (() => {
+            const category = mapTaxCodeToCategory(lobs, drawerIndustryTaxCode)
+            const detailedLines = getLobsByCategory(lobs, category)
+            const availableLines = detailedLines.filter(line => !(industryDetailedLines[drawerIndustryTaxCode] || []).includes(line.name))
+
+            return (
+              <div>
+                <div style={{ marginBottom: 16 }}>
+                  <Text style={{ display: 'block', marginBottom: 8 }}>
+                    What is your line of business? <span style={{ color: token.colorError }}>*</span>
+                  </Text>
+                  <Select
+                    placeholder="Select a line of business"
+                    style={{ width: '100%' }}
+                    value={selectedLineOfBusiness}
+                    onChange={setSelectedLineOfBusiness}
+                    options={availableLines.map(line => ({
+                      label: line.name,
+                      value: line.name,
+                      description: line.description,
+                    }))}
+                    optionRender={(option) => (
+                      <div style={{ padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={{ display: 'block' }}>
+                              {option.label}
+                            </Text>
+                            <Text type="secondary" style={{ display: 'block' }}>
+                              {option.data.description}
+                            </Text>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <Text style={{ display: 'block', marginBottom: 8 }}>
+                    How much capital did you allocate for this line of business? Include both equity and payables. <span style={{ color: token.colorError }}>*</span>
+                  </Text>
+                  <InputNumber
+                    placeholder="₱0.00"
+                    style={{ width: '100%' }}
+                    value={capitalInput}
+                    onChange={setCapitalInput}
+                    formatter={currencyFormatter}
+                    parser={currencyParser}
+                    min={1}
+                  />
+                </div>
+
+                {selectedLineOfBusiness && (
+                  <>
+                    {(() => {
+                      const variableRules = getVariableFeeRulesForLOB(selectedLineOfBusiness)
+                      
+                      if (variableRules.length === 0) {
+                        return null
+                      }
+                      
+                      return (
+                        <>
+                          <div style={{ marginBottom: 16 }}>
+                            <Text style={{ display: 'block', marginBottom: 8 }}>
+                              Additional Fees
+                            </Text>
+                          </div>
+
+                          {variableRules.map(rule => (
+                            <div key={rule._id} style={{ marginBottom: 12 }}>
+                              <Text style={{ display: 'block', marginBottom: 4 }}>
+                                {rule.question}
+                              </Text>
+                              <InputNumber
+                                placeholder={`Enter value (${rule.unit})`}
+                                style={{ width: '100%' }}
+                                value={variableInputs[rule._id] || null}
+                                onChange={(value) => setVariableInputs(prev => ({
+                                  ...prev,
+                                  [rule._id]: value
+                                }))}
+                                formatter={(value) => value ? value.toLocaleString() : ''}
+                                parser={(value) => value ? Number(value.replace(/,/g, '')) : ''}
+                              />
+                            </div>
+                          ))}
+
+                          <div style={{ marginTop: 24 }}>
+                            <Text style={{ display: 'block', marginBottom: 8 }}>
+                              Post Requirements
+                            </Text>
+                            <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                              These are external agency certificates/permits you need to obtain after permit approval
+                            </Text>
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </>
+                )}
+
+                <Button
+                  type="primary"
+                  onClick={handleAddLineOfBusiness}
+                  block
+                  disabled={!selectedLineOfBusiness}
+                >
+                  Add Line of Business
+                </Button>
+              </div>
+            )
+          })()}
+        </Drawer>
+      ) : (
+        <Modal
+          title="Add Line of Business"
+          open={drawerOpen}
+          onCancel={handleCloseDrawer}
+          footer={
+            <Button
+              type="primary"
+              onClick={handleAddLineOfBusiness}
+              
+              disabled={!selectedLineOfBusiness}
+            >
+              Add Line of Business
+            </Button>
+          }
+          width={500}
+        >
+          {drawerIndustryTaxCode && (() => {
+            const category = mapTaxCodeToCategory(lobs, drawerIndustryTaxCode)
+            const detailedLines = getLobsByCategory(lobs, category)
+            const availableLines = detailedLines.filter(line => !(industryDetailedLines[drawerIndustryTaxCode] || []).includes(line.name))
+
+            return (
+              <div style={{ padding: 16}}>
+                <div style={{ marginBottom: 16 }}>
+                  <Text style={{ display: 'block', marginBottom: 8 }}>
+                    What is your line of business? <span style={{ color: token.colorError }}>*</span>
+                  </Text>
+                  <Select
+                    placeholder="Select a line of business"
+                    style={{ width: '100%' }}
+                    value={selectedLineOfBusiness}
+                    onChange={setSelectedLineOfBusiness}
+                    options={availableLines.map(line => ({
+                      label: line.name,
+                      value: line.name,
+                      description: line.description,
+                    }))}
+                    optionRender={(option) => (
+                      <div style={{ padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={{ display: 'block' }}>
+                              {option.label}
+                            </Text>
+                            <Text type="secondary" style={{ display: 'block' }}>
+                              {option.data.description}
+                            </Text>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <Text style={{ display: 'block', marginBottom: 8 }}>
+                    How much capital did you allocate for this line of business? Include both equity and payables. <span style={{ color: token.colorError }}>*</span>
+                  </Text>
+                  <InputNumber
+                    placeholder="₱0.00"
+                    style={{ width: '100%' }}
+                    value={capitalInput}
+                    onChange={setCapitalInput}
+                    formatter={currencyFormatter}
+                    parser={currencyParser}
+                    min={1}
+                  />
+                </div>
+
+                {selectedLineOfBusiness && (
+                  <>
+                    {(() => {
+                      const variableRules = getVariableFeeRulesForLOB(selectedLineOfBusiness)
+                      
+                      if (variableRules.length === 0) {
+                        return null
+                      }
+                      
+                      return (
+                        <>
+                          <div style={{ marginBottom: 16 }}>
+                            <Text style={{ display: 'block', marginBottom: 8 }}>
+                              Additional Fees
+                            </Text>
+                          </div>
+
+                          {variableRules.map(rule => (
+                            <div key={rule._id} style={{ marginBottom: 12 }}>
+                              <Text style={{ display: 'block', marginBottom: 4 }}>
+                                {rule.question}
+                              </Text>
+                              <InputNumber
+                                placeholder={`Enter value (${rule.unit})`}
+                                style={{ width: '100%' }}
+                                value={variableInputs[rule._id] || null}
+                                onChange={(value) => setVariableInputs(prev => ({
+                                  ...prev,
+                                  [rule._id]: value
+                                }))}
+                                formatter={(value) => value ? value.toLocaleString() : ''}
+                                parser={(value) => value ? Number(value.replace(/,/g, '')) : ''}
+                              />
+                            </div>
+                          ))}
+
+                          <div style={{ marginTop: 24 }}>
+                            <Text style={{ display: 'block', marginBottom: 8 }}>
+                              Post Requirements
+                            </Text>
+                            <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                              These are external agency certificates/permits you need to obtain after permit approval
+                            </Text>
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </>
+                )}
+              </div>
+            )
+          })()}
+        </Modal>
+      )}
+
+      {screens.xs ? (
+        <Drawer
+          title={selectedIndustryTaxCodes.length === 0 ? "Select Business Industry" : "Add Business Industry"}
+          placement="bottom"
+          onClose={handleCloseIndustryModal}
+          open={industryModalOpen}
+          height="100%"
+        >
+          <div style={{ padding: 16 }}>
+            <div style={{ marginBottom: 16 }}>
+              <Text style={{ display: 'block', marginBottom: 8 }}>
+                What is your business industry?{selectedIndustryTaxCodes.length === 0 ? ' Have more than one? You can add more later if you have multiple.' : ''}  <span style={{ color: token.colorError }}>*</span>
+              </Text>
+              <Select
+                placeholder="Select business industry"
+                style={{ width: '100%' }}
+                value={modalSelectedIndustry}
+                onChange={(value) => {
+                  setModalSelectedIndustry(value)
+                  // Reset dependent fields when industry changes
+                  setModalSelectedLOB(null)
+                  setModalCapitalInput(0)
+                  setVariableInputs({})
+                }}
+                options={getTaxCodeOptions(lobs).filter(lob => !selectedIndustryTaxCodes.includes(lob.value)).map(lob => {
+                  const categoryMapping = LINE_OF_BUSINESS_BY_TAX_CODE[lob.value]
+                  const categoryLabel = categoryMapping?.name || lob.label
+                  const categoryDescription = categoryMapping?.description || ''
+                  return {
+                    label: categoryLabel,
+                    value: lob.value,
+                    description: categoryDescription,
+                  }
+                })}
+                optionRender={(option) => (
+                  <div style={{ padding: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        width: 48,
+                        height: 48,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: token.colorBgLayout,
+                        borderRadius: 8,
+                        color: token.colorTextSecondary,
+                        flexShrink: 0,
+                      }}>
+                        {INDUSTRY_ICONS[option.value] || <BuildOutlined style={{ fontSize: 24 }} />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Text strong style={{ display: 'block' }}>
+                          {option.label}
+                        </Text>
+                        <Text type="secondary" style={{ display: 'block' }}>
+                          {option.data.description}
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              />
+            </div>
+
+            {modalSelectedIndustry && (
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <Text style={{ display: 'block', marginBottom: 8 }}>
+                    What is your line of business? You can add more later if you have multiple. <span style={{ color: token.colorError }}>*</span>
+                  </Text>
+                  <Select
+                    placeholder="Select line of business"
+                    style={{ width: '100%' }}
+                    value={modalSelectedLOB}
+                    onChange={(value) => {
+                      setModalSelectedLOB(value)
+                      // Reset dependent fields when LOB changes
+                      setModalCapitalInput(0)
+                      setVariableInputs({})
+                    }}
+                    disabled={!modalSelectedIndustry}
+                    options={(() => {
+                      const category = mapTaxCodeToCategory(lobs, modalSelectedIndustry)
+                      const detailedLines = getLobsByCategory(lobs, category)
+                      return detailedLines.map(line => ({
+                        label: line.name,
+                        value: line.name,
+                        description: line.description,
+                      }))
+                    })()}
+                    optionRender={(option) => (
+                      <div style={{ padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={{ display: 'block' }}>
+                              {option.label}
+                            </Text>
+                            <Text type="secondary" style={{ display: 'block' }}>
+                              {option.data.description}
+                            </Text>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <Text style={{ display: 'block', marginBottom: 8 }}>
+                    How much capital did you allocate for this line of business? Include both equity and payables. <span style={{ color: token.colorError }}>*</span>
+                  </Text>
+                  <InputNumber
+                    placeholder="₱0.00"
+                    style={{ width: '100%' }}
+                    value={modalCapitalInput}
+                    onChange={setModalCapitalInput}
+                    formatter={currencyFormatter}
+                    parser={currencyParser}
+                    min={1}
+                  />
+                </div>
+
+                {modalSelectedLOB && (
+                  <>
+                    {getVariableFeeRulesForLOB(modalSelectedLOB).map(rule => (
+                      <div key={rule._id} style={{ marginBottom: 12 }}>
+                        <Text style={{ display: 'block', marginBottom: 4 }}>
+                          {rule.question}
+                        </Text>
+                        {rule.calculationMethod === 'classification' && rule.classifications ? (
+                          <Select
+                            placeholder="Select classification"
+                            style={{ width: '100%' }}
+                            value={variableInputs[rule._id] || undefined}
+                            onChange={(value) => setVariableInputs(prev => ({
+                              ...prev,
+                              [rule._id]: value
+                            }))}
+                            options={rule.classifications.map(c => ({
+                              label: `${c.name} - ₱${c.fee?.toLocaleString() || 0}`,
+                              value: c.name
+                            }))}
+                          />
+                        ) : (
+                          <InputNumber
+                            placeholder={`Enter value (${rule.unit})`}
+                            style={{ width: '100%' }}
+                            value={variableInputs[rule._id] || null}
+                            onChange={(value) => setVariableInputs(prev => ({
+                              ...prev,
+                              [rule._id]: value
+                            }))}
+                            formatter={(value) => value ? value.toLocaleString() : ''}
+                            parser={(value) => value ? Number(value.replace(/,/g, '')) : ''}
+                          />
+                        )}
+                      </div>
+                    ))}
+
+                    <div style={{ marginTop: 24 }}>
+                      <Text style={{ display: 'block', marginBottom: 8 }}>
+                        Post Requirements
+                      </Text>
+                      <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                        These are external agency certificates/permits you need to obtain after permit approval
+                      </Text>
+                    </div>
+                  </>
+                )}
+                <Button
+                  type="primary"
+                  onClick={handleAddFromIndustryModal}
+                  disabled={!modalSelectedIndustry || !modalSelectedLOB}
+                  block
+                  style={{ marginTop: 16 }}
+                >
+                  Add Industry
+                </Button>
+              </>
+            )}
+          </div>
+        </Drawer>
+      ) : (
+        <Modal
+          title={selectedIndustryTaxCodes.length === 0 ? "Select Business Industry" : "Add Business Industry"}
+          open={industryModalOpen}
+          onCancel={handleCloseIndustryModal}
+          footer={null}
+          width={600}
+        >
+          <div style={{ padding: 16 }}>
+            <div style={{ marginBottom: 16 }}>
+              <Text style={{ display: 'block', marginBottom: 8 }}>
+                What is your business industry?{selectedIndustryTaxCodes.length === 0 ? ' You can add more later if you have multiple.' : ''} <span style={{ color: token.colorError }}>*</span>
+              </Text>
+              <Select
+                placeholder="Select business industry"
+                style={{ width: '100%' }}
+                value={modalSelectedIndustry}
+                onChange={(value) => {
+                  setModalSelectedIndustry(value)
+                  // Reset dependent fields when industry changes
+                  setModalSelectedLOB(null)
+                  setModalCapitalInput(0)
+                  setVariableInputs({})
+                }}
+                options={getTaxCodeOptions(lobs).filter(lob => !selectedIndustryTaxCodes.includes(lob.value)).map(lob => {
+                  const categoryMapping = LINE_OF_BUSINESS_BY_TAX_CODE[lob.value]
+                  const categoryLabel = categoryMapping?.name || lob.label
+                  const categoryDescription = categoryMapping?.description || ''
+                  return {
+                    label: categoryLabel,
+                    value: lob.value,
+                    description: categoryDescription,
+                  }
+                })}
+                optionRender={(option) => (
+                  <div style={{ padding: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        width: 48,
+                        height: 48,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: token.colorBgLayout,
+                        borderRadius: 8,
+                        color: token.colorTextSecondary,
+                        flexShrink: 0,
+                      }}>
+                        {INDUSTRY_ICONS[option.value] || <BuildOutlined style={{ fontSize: 24 }} />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Text strong style={{ display: 'block' }}>
+                          {option.label}
+                        </Text>
+                        <Text type="secondary" style={{ display: 'block' }}>
+                          {option.data.description}
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              />
+            </div>
+
+            {modalSelectedIndustry && (
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <Text style={{ display: 'block', marginBottom: 8 }}>
+                    What is your line of business? You can add more later if you have multiple. <span style={{ color: token.colorError }}>*</span>
+                  </Text>
+                  <Select
+                    placeholder="Select line of business"
+                    style={{ width: '100%' }}
+                    value={modalSelectedLOB}
+                    onChange={(value) => {
+                      setModalSelectedLOB(value)
+                      // Reset dependent fields when LOB changes
+                      setModalCapitalInput(0)
+                      setVariableInputs({})
+                    }}
+                    disabled={!modalSelectedIndustry}
+                    options={(() => {
+                      const category = mapTaxCodeToCategory(lobs, modalSelectedIndustry)
+                      const detailedLines = getLobsByCategory(lobs, category)
+                      return detailedLines.map(line => ({
+                        label: line.name,
+                        value: line.name,
+                        description: line.description,
+                      }))
+                    })()}
+                    optionRender={(option) => (
+                      <div style={{ padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={{ display: 'block' }}>
+                              {option.label}
+                            </Text>
+                            <Text type="secondary" style={{ display: 'block' }}>
+                              {option.data.description}
+                            </Text>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <Text style={{ display: 'block', marginBottom: 8 }}>
+                    How much capital did you allocate for this line of business? Include both equity and payables. <span style={{ color: token.colorError }}>*</span>
+                  </Text>
+                  <InputNumber
+                    placeholder="₱0.00"
+                    style={{ width: '100%' }}
+                    value={modalCapitalInput}
+                    onChange={setModalCapitalInput}
+                    formatter={currencyFormatter}
+                    parser={currencyParser}
+                    min={1}
+                  />
+                </div>
+
+                {modalSelectedLOB && (
+                  <>
+
+                    {getVariableFeeRulesForLOB(modalSelectedLOB).map(rule => (
+                      <div key={rule._id} style={{ marginBottom: 12 }}>
+                        <Text style={{ display: 'block', marginBottom: 4 }}>
+                          {rule.question}
+                        </Text>
+                        {rule.calculationMethod === 'classification' && rule.classifications ? (
+                          <Select
+                            placeholder="Select classification"
+                            style={{ width: '100%' }}
+                            value={variableInputs[rule._id] || undefined}
+                            onChange={(value) => setVariableInputs(prev => ({
+                              ...prev,
+                              [rule._id]: value
+                            }))}
+                            options={rule.classifications.map(c => ({
+                              label: `${c.name} - ₱${c.fee?.toLocaleString() || 0}`,
+                              value: c.name
+                            }))}
+                          />
+                        ) : (
+                          <InputNumber
+                            placeholder={`Enter value (${rule.unit})`}
+                            style={{ width: '100%' }}
+                            value={variableInputs[rule._id] || null}
+                            onChange={(value) => setVariableInputs(prev => ({
+                              ...prev,
+                              [rule._id]: value
+                            }))}
+                            formatter={(value) => value ? value.toLocaleString() : ''}
+                            parser={(value) => value ? Number(value.replace(/,/g, '')) : ''}
+                          />
+                        )}
+                      </div>
+                    ))}
+
+                    <div style={{ marginTop: 24 }}>
+                      <Text style={{ display: 'block', marginBottom: 8 }}>
+                        Post Requirements
+                      </Text>
+                      <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                        These are external agency certificates/permits you need to obtain after permit approval
+                      </Text>
+                    </div>
+                  </>
+                )}
+
+                <Button
+                  type="primary"
+                  onClick={handleAddFromIndustryModal}
+                  disabled={!modalSelectedIndustry || !modalSelectedLOB}
+                  block
+                  style={{ marginTop: 16 }}
+                >
+                  Add Industry
+                </Button>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}

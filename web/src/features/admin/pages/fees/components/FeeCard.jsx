@@ -1,61 +1,51 @@
-import { Card, Typography, Tag, Col } from 'antd'
+/**
+ * THERE WILL BE NO DIRECT HTTP CALLS! USE SERVICES!
+ */
 
-const { Text } = Typography
+import PanelCard from '@/shared/components/PanelCard'
 
-export default function FeeCard({ item, selectedId, onSelect, token, selectedType }) {
-  const isSelected = selectedId === item._id
+export default function FeeCard({ item, selected, onClick }) {
+  const formatCurrency = (amount) => {
+    if (!amount) return null
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP'
+    }).format(amount)
+  }
 
   const formatRelativeTime = (dateStr) => {
-    if (!dateStr) return ''
+    if (!dateStr) return '-'
     const d = new Date(dateStr)
     return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   }
 
+  const tags = []
+  if (item.isActive !== undefined) {
+    tags.push({ label: item.isActive ? 'Active' : 'Disabled', color: item.isActive ? 'green' : 'red' })
+  }
+  if (item.amount) {
+    tags.push({ label: formatCurrency(item.amount), color: 'default' })
+  }
+
+  const metaInfo = []
+  if (item.version !== undefined) {
+    metaInfo.push({ label: 'Version', value: item.version })
+  }
+  if (item.createdAt) {
+    metaInfo.push({ label: 'Created on', value: formatRelativeTime(item.createdAt) })
+  }
+  if (item.updatedAt) {
+    metaInfo.push({ label: 'Last updated on', value: formatRelativeTime(item.updatedAt) })
+  }
+
   return (
-    <Col span={24} key={item._id}>
-      <Card
-        size="small"
-        hoverable
-        onClick={() => onSelect(item)}
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>{item.name}</span>
-            {selectedType === 'fee_groups' ? (
-              <span style={{ fontWeight: 'normal', fontSize: 14 }}>₱{item.fees?.reduce((sum, fee) => sum + (fee.amount || 0), 0).toFixed(2)}</span>
-            ) : (
-              <span style={{ fontWeight: 'normal', fontSize: 14 }}>₱{item.amount}</span>
-            )}
-          </div>
-        }
-        style={{
-          cursor: 'pointer',
-          border: isSelected ? `1px solid ${token.colorPrimary}` : undefined,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 13,
-            lineHeight: '1.3em',
-            maxHeight: '2.6em',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            color: token.colorTextSecondary,
-          }}
-        >
-          {item.description}
-        </div>
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${token.colorBorderSecondary}`, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Tag color={item.isActive ? 'green' : 'default'} style={{ margin: 0, fontSize: 11 }}>
-            {item.isActive ? 'Active' : 'Disabled'}
-          </Tag>
-          <Tag style={{ margin: 0, fontSize: 11 }}>
-            Updated on {formatRelativeTime(item.effectiveDate)}
-          </Tag>
-        </div>
-      </Card>
-    </Col>
+    <PanelCard
+      title={item.name}
+      description={item.notes}
+      metaInfo={metaInfo}
+      tags={tags}
+      selected={selected}
+      onClick={onClick}
+    />
   )
 }

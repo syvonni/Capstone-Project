@@ -24,7 +24,13 @@ const PageChapterSchema = new mongoose.Schema(
     pageSlotId: {
       type: String,
       required: true,
-      enum: ["privacy-policy", "terms-of-service", "bizclear-manual"],
+      enum: [
+        "privacy-policy",
+        "terms-of-service",
+        "bizclear-manual",
+        "business-owners-manual",
+        "lgu-officer-business-owners",
+      ],
       index: true,
     },
     order: { type: Number, required: true, default: 0 },

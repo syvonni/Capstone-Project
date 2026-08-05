@@ -45,7 +45,14 @@ const BusinessSchema = new mongoose.Schema(
     },
     applicationStatus: {
       type: String,
-      enum: ["draft", "pending", "submitted", "under_review", "approved", "rejected"],
+      enum: [
+        "draft",
+        "pending",
+        "submitted",
+        "under_review",
+        "approved",
+        "rejected",
+      ],
       default: "draft",
     },
     applicationReferenceNumber: {
@@ -215,18 +222,35 @@ const BusinessSchema = new mongoose.Schema(
       default: "",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const { encryptionPlugin } = require("../../../../shared/lib/encryptionPlugin");
 BusinessSchema.plugin(encryptionPlugin, {
   fields: [],
-  deterministicFields: ["businessId", "businessRegistrationNumber", "taxIdentificationNumber"],
+  deterministicFields: [
+    "businessId",
+    "businessRegistrationNumber",
+    "taxIdentificationNumber",
+  ],
   nestedPaths: ["location", "riskProfile"],
   arrayPaths: [],
   mixedPaths: [],
   arrayPathsExclude: {
-    "": ["applicationStatus", "applicationReferenceNumber", "businessName", "registeredBusinessName", "businessStatus", "registrationStatus", "isPrimary", "formType", "category", "submittedAt", "reviewedBy", "claimedBy"],
+    "": [
+      "applicationStatus",
+      "applicationReferenceNumber",
+      "businessName",
+      "registeredBusinessName",
+      "businessStatus",
+      "registrationStatus",
+      "isPrimary",
+      "formType",
+      "category",
+      "submittedAt",
+      "reviewedBy",
+      "claimedBy",
+    ],
   },
 });
 

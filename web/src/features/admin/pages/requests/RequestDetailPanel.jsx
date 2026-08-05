@@ -14,7 +14,7 @@ import {
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import { getRequestTypeLabel, approveRequest } from '@/features/admin/services/approvalService'
 import { useAuthSession } from '@/features/authentication'
-import { useAdminStepUp } from '@/features/admin/hooks/useAdminStepUp'
+import { useStepUp } from '@/shared/hooks/useStepUp'
 
 const { Text } = Typography
 const { TextArea } = Input
@@ -40,10 +40,10 @@ function userEmail(user) {
   return user.email || ''
 }
 
-export default function RequestDetailPanel({ approval, loading, onRefresh }) {
+export default function RequestDetailPanel({ approval, _loading, onRefresh }) {
   const { token } = theme.useToken()
   const { currentUser } = useAuthSession()
-  const { runWithStepUp, stepUpModal } = useAdminStepUp()
+  const { runWithStepUp, stepUpModal } = useStepUp()
   const [actionModalOpen, setActionModalOpen] = useState(false)
   const [actionApproved, setActionApproved] = useState(true)
   const [comment, setComment] = useState('')

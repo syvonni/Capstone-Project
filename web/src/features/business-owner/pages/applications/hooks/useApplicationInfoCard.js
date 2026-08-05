@@ -13,7 +13,7 @@ export function useApplicationInfoCard(business, sections = [], refreshKey = 0) 
   const statusLower = status.toLowerCase()
   const isDraft = statusLower === 'draft'
   const isRejected = statusLower === 'rejected'
-  const isReturned = statusLower === 'returned'
+  const isReturned = statusLower === 'returned' || statusLower === 'needs_revision'
 
   // Determine permit type: formType 'general_permit' = temporary, 'permit' = regular
   const isGeneralPermit = safeBusiness?.formType === 'general_permit'

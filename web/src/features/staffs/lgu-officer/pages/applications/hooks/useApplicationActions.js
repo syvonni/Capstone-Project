@@ -1,5 +1,5 @@
 import React from 'react'
-import { CloseOutlined, CheckOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons'
+import { CloseOutlined, CheckOutlined, EditOutlined, EyeOutlined, DeleteOutlined, BugOutlined } from '@ant-design/icons'
 
 export function useApplicationActions(
   application,
@@ -18,7 +18,13 @@ export function useApplicationActions(
   handleCompleteReviewClick,
   handleReturnClick,
   handleUndoPendingAction,
-  handleExecutePendingActionNow
+  handleExecutePendingActionNow,
+  isOfficerDraft = false,
+  handleFinishApplication = null,
+  handleDeleteDraft = null,
+  handleFillTestData = null,
+  hasUnsavedChanges = false,
+  saving = false
 ) {
   const isAppealPending = application?.status === 'appeal_pending' || application?.applicationStatus === 'appeal_pending'
   const isAppealRejected = application?.status === 'appeal_rejected' || application?.applicationStatus === 'appeal_rejected'
@@ -27,7 +33,63 @@ export function useApplicationActions(
   // All fields are approved if all are reviewed and there are no rejected fields or requested changes
   const allFieldsApproved = allFieldsReviewed && rejectedFields.length === 0 && requestChangeFields.length === 0
 
-  const actionButtons = isAppealRejected ? [] : isAppealPending ? [
+  // Officer draft action buttons
+  const officerDraftButtons = isOfficerDraft ? [
+    ...(import.meta.env.DEV && handleFillTestData ? [{
+      text: 'Fill with test data',
+      type: 'dashed',
+      icon: React.createElement(BugOutlined),
+      onClick: handleFillTestData,
+      disabled: !isClaimedByMe,
+      tooltip: !isClaimedByMe
+        ? 'You must claim this application first to fill with test data.'
+        : 'Fill form with test data (development only)',
+      onDisabledClick: !isClaimedByMe
+        ? () => setDisabledReasonModal({
+            open: true,
+            message: 'You must claim this application first to fill with test data.'
+          })
+        : null,
+    }] : []),
+    {
+      text: 'Delete',
+      type: 'default',
+      icon: React.createElement(DeleteOutlined),
+      onClick: handleDeleteDraft,
+      disabled: !isClaimedByMe,
+      tooltip: !isClaimedByMe
+        ? 'You must claim this application first to delete it.'
+        : 'Delete this draft application',
+      onDisabledClick: !isClaimedByMe
+        ? () => setDisabledReasonModal({
+            open: true,
+            message: 'You must claim this application first to delete it.'
+          })
+        : null,
+    },
+    {
+      text: 'Finish',
+      type: 'default',
+      icon: React.createElement(CheckOutlined),
+      onClick: handleFinishApplication,
+      disabled: !isClaimedByMe || saving || hasUnsavedChanges,
+      tooltip: !isClaimedByMe
+        ? 'You must claim this application first to finish it.'
+        : saving
+          ? 'Please wait for save to complete...'
+          : hasUnsavedChanges
+            ? 'Please save your changes first'
+            : 'Finish and approve this application',
+      onDisabledClick: !isClaimedByMe
+        ? () => setDisabledReasonModal({
+            open: true,
+            message: 'You must claim this application first to finish it.'
+          })
+        : null,
+    },
+  ] : []
+
+  const actionButtons = isOfficerDraft ? officerDraftButtons : isAppealRejected ? [] : isAppealPending ? [
     {
       text: 'Reject Appeal',
       type: 'default',

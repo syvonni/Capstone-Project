@@ -1,4 +1,4 @@
-import { CheckOutlined, CloseOutlined, HistoryOutlined, BookOutlined, InfoCircleOutlined, StarOutlined, StarFilled } from '@ant-design/icons'
+import { CheckOutlined, CloseOutlined, HistoryOutlined, StarOutlined, StarFilled } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
 
 const STATUS_CONFIG = {
@@ -23,8 +23,6 @@ export default function HelpRequestDetailHeader({
   onStatusChange,
   onPriorityChange,
   onHistoryClick,
-  onManualClick,
-  onInfoClick,
   isBookmarked = false,
   onBookmarkToggle,
 }) {
@@ -79,13 +77,10 @@ export default function HelpRequestDetailHeader({
 
   return (
     <DetailHeader
-      title="Request Details"
       primaryButton={getPrimaryButton()}
       iconButtons={[
         { icon: isBookmarked ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />, onClick: onBookmarkToggle, title: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark' },
         { icon: <HistoryOutlined />, onClick: onHistoryClick, title: 'History' },
-        { icon: <BookOutlined />, onClick: onManualClick, title: 'Manual' },
-        { icon: <InfoCircleOutlined />, onClick: onInfoClick, title: 'Info' },
       ]}
       selectFields={[
         {
@@ -111,7 +106,8 @@ export default function HelpRequestDetailHeader({
           ],
         },
       ]}
-      desktopOnly={true}
+      manualSlotId="bizclear-manual"
+      instructionSlotId="help-requests-instructions"
     />
   )
 }

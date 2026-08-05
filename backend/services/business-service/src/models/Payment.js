@@ -103,11 +103,13 @@ const PaymentSchema = new mongoose.Schema(
       discount: { type: Number, default: 0 },
       tax: { type: Number, default: 0 },
     },
-    feeBreakdown: [{
-      label: { type: String },
-      amount: { type: Number },
-      type: { type: String },
-    }],
+    feeBreakdown: [
+      {
+        label: { type: String },
+        amount: { type: Number },
+        type: { type: String },
+      },
+    ],
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
     notes: { type: String, default: "" },
     failureReason: { type: String, default: "" },

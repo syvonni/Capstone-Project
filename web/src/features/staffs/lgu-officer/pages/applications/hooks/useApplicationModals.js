@@ -9,10 +9,6 @@ export function useApplicationModals() {
   const [documentModal, setDocumentModal] = useState({ open: false, url: null, label: '', type: 'other' })
   const [documentPreview, setDocumentPreview] = useState({ open: false, url: null, label: '', type: 'other' })
 
-  // Info/help modals
-  const [manualVisible, setManualVisible] = useState(false)
-  const [infoModalOpen, setInfoModalOpen] = useState(false)
-
   // Audit modal
   const [auditModalOpen, setAuditModalOpen] = useState(false)
 
@@ -44,12 +40,6 @@ export function useApplicationModals() {
     setDocumentModal,
     documentPreview,
     setDocumentPreview,
-
-    // Info/help modals
-    manualVisible,
-    setManualVisible,
-    infoModalOpen,
-    setInfoModalOpen,
 
     // Audit modal
     auditModalOpen,

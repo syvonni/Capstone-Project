@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { postSessionActivity, invalidateAllSessions } from '../services/sessionService.js'
+import { useEffect, useState, useRef } from 'react'
+import { postSessionActivity } from '../services/sessionService.js'
 import { getCurrentUser } from '../lib/authEvents.js'
 
 /**
@@ -7,6 +7,14 @@ import { getCurrentUser } from '../lib/authEvents.js'
  */
 export function useSessionTimeout({ timeoutMs = 60 * 60 * 1000, warningMs = 2 * 60 * 1000, onTimeout, onWarning } = {}) {
   const [remaining, setRemaining] = useState(timeoutMs)
+  const onTimeoutRef = useRef(onTimeout)
+  const onWarningRef = useRef(onWarning)
+
+  // Keep refs in sync with latest callbacks
+  useEffect(() => {
+    onTimeoutRef.current = onTimeout
+    onWarningRef.current = onWarning
+  }, [onTimeout, onWarning])
 
   useEffect(() => {
     let interval = null
@@ -17,12 +25,11 @@ export function useSessionTimeout({ timeoutMs = 60 * 60 * 1000, warningMs = 2 * 
         const next = prev - 1000
         if (next <= warningMs && !warningFired) {
           warningFired = true
-          onWarning?.()
+          onWarningRef.current?.()
         }
         if (next <= 0) {
-          onTimeout?.()
+          onTimeoutRef.current?.()
           clearInterval(interval)
-          invalidateAllSessions().catch(() => null)
           return 0
         }
         return next
@@ -46,7 +53,7 @@ export function useSessionTimeout({ timeoutMs = 60 * 60 * 1000, warningMs = 2 * 
       stop()
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [warningMs, onTimeout, onWarning])
+  }, [timeoutMs, warningMs])
 
   useEffect(() => {
     // refresh server activity on mount, but only if user is logged in

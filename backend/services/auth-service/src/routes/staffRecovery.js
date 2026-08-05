@@ -11,7 +11,7 @@ const { requireJwt, requireRole } = require("../middleware/auth");
 const { perEmailRateLimit } = require("../middleware/rateLimit");
 const { isWithinOfficeHours } = require("../lib/officeHoursValidator");
 const { trackIP, isUnusualIP } = require("../lib/ipTracker");
-const { createAuditLog } = require("../lib/auditLogger");
+const { logAuditEvent } = require("../lib/auditClient");
 const { sendStaffCredentialsEmail } = require("../lib/mailer");
 const {
   sendAdminAlert,
@@ -132,14 +132,16 @@ router.post(
       });
 
       // Log to audit trail
-      await createAuditLog(
+      await logAuditEvent(
         user._id,
         "account_recovery_initiated",
-        "password",
-        "",
-        "staff_recovery_requested",
-        roleSlug,
+        "User",
+        user._id,
         {
+          role: roleSlug,
+          fieldChanged: "password",
+          oldValue: "",
+          newValue: "staff_recovery_requested",
           ip: ipAddress,
           userAgent,
           recoveryRequestId: String(recoveryRequest._id),
@@ -380,14 +382,16 @@ router.post(
 
       // Log to audit trail
       const roleSlug = staffUser.role?.slug || "staff";
-      await createAuditLog(
+      await logAuditEvent(
         staffUser._id,
         "temporary_credentials_issued",
-        "password",
-        "",
-        "credentials_issued",
-        roleSlug,
+        "User",
+        staffUser._id,
         {
+          role: roleSlug,
+          fieldChanged: "password",
+          oldValue: "",
+          newValue: "credentials_issued",
           ip: ipAddress,
           userAgent,
           issuedBy: String(adminId),
@@ -490,14 +494,16 @@ router.post(
 
       // Log to audit trail
       const roleSlug = staffUser.role?.slug || "staff";
-      await createAuditLog(
+      await logAuditEvent(
         staffUser._id,
         "account_recovery_initiated",
-        "password",
-        "recovery_requested",
-        "recovery_request_denied",
-        roleSlug,
+        "User",
+        staffUser._id,
         {
+          role: roleSlug,
+          fieldChanged: "password",
+          oldValue: "recovery_requested",
+          newValue: "recovery_request_denied",
           ip: ipAddress,
           userAgent,
           reviewedBy: String(adminId),
@@ -645,14 +651,16 @@ router.post(
       }
 
       // Log to audit trail
-      await createAuditLog(
+      await logAuditEvent(
         userDoc._id,
         "temporary_credentials_used",
-        "password",
-        "",
-        "temp_login_successful",
-        roleSlug,
+        "User",
+        userDoc._id,
         {
+          role: roleSlug,
+          fieldChanged: "password",
+          oldValue: "",
+          newValue: "temp_login_successful",
           ip: ipAddress,
           userAgent,
           temporaryCredentialId: String(tempCredential._id),

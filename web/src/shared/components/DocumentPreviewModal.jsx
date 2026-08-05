@@ -70,6 +70,7 @@ export default function DocumentPreviewModal({ open, onClose, url, label, type, 
             <iframe
               title={label}
               src={url}
+              sandbox="allow-same-origin allow-scripts"
               style={{ width: '100%', height: '70vh', border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadius }}
             />
           )}
@@ -88,6 +89,7 @@ export default function DocumentPreviewModal({ open, onClose, url, label, type, 
               <iframe
                 title={label}
                 src={url}
+                sandbox="allow-same-origin allow-scripts"
                 style={{ width: '100%', height: '70vh', minHeight: 320, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadius }}
               />
               <Text type="secondary" style={{ marginTop: 8, fontSize: 12 }}>
