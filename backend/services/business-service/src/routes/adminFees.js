@@ -51,7 +51,6 @@ router.post("/internal", requireInternalAuth, async (req, res) => {
       category: category || 'general_application',
       isActive: isActive !== undefined ? isActive : true,
       version: 1,
-      effectiveDate: new Date(),
     });
 
     // Internal service audit - use direct logAuditEvent since no user context
@@ -212,7 +211,6 @@ router.post(
         category: category || 'general_application',
         isActive: isActive !== undefined ? isActive : true,
         version: 1,
-        effectiveDate: new Date(),
       });
 
       const userInfo = await getUserInfo(req._userId);
@@ -287,7 +285,6 @@ router.put("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
     // Increment version if there are changes
     if (Object.keys(changes).length > 0) {
       fee.version += 1;
-      fee.effectiveDate = new Date();
     }
 
     await fee.save();
@@ -340,7 +337,6 @@ router.delete(
       // Soft-disable instead of hard delete
       fee.isActive = false;
       fee.version += 1;
-      fee.effectiveDate = new Date();
       await fee.save();
 
       const userInfo = await getUserInfo(req._userId);

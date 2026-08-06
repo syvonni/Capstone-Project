@@ -43,6 +43,7 @@ export default function TemporaryPermitsView() {
   return (
     <>
       <ResponsiveSplitLayout
+        drawerTitle="Temporary Permit Details"
         listContent={<TemporaryPermitListPanel onSelect={handleFormSelect} selectedId={selectedFormId} onAddTemporaryPermit={handleAddTemporaryPermit} />}
         detailContent={
           selectedFormId ? (

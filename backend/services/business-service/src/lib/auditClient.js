@@ -16,13 +16,6 @@ async function logAuditEvent(
   metadata = {},
 ) {
   try {
-    // Prepare metadata with entity info
-    const fullMetadata = {
-      ...metadata,
-      entityType,
-      entityId,
-    };
-
     // Send to audit-service ingestion endpoint
     const headers = { "Content-Type": "application/json" };
     if (process.env.AUDIT_SERVICE_API_KEY)
@@ -33,11 +26,8 @@ async function logAuditEvent(
       eventType,
       entityType,
       entityId,
-      fieldChanged: metadata.fieldChanged || null,
-      oldValue: metadata.oldValue || "",
-      newValue: metadata.newValue || "",
       role: metadata.role || "lgu_officer",
-      metadata: { ...fullMetadata, fieldChanged: undefined, oldValue: undefined, newValue: undefined, role: undefined },
+      metadata: { ...metadata, role: undefined },
     };
 
     console.log("[AuditClient] Sending to audit-service:", JSON.stringify(payload, null, 2));

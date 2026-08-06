@@ -1,7 +1,6 @@
 export { FormListPanel } from './FormListPanel'
 export { TemporaryPermitListPanel } from './TemporaryPermitListPanel'
 export { FormDetailPanel } from './FormDetailPanel'
-export { FormAuditHistoryModal } from './AuditHistoryModal'
 export { default as FormPreviewRenderer } from './FormPreviewRenderer'
 export { default as FormPreviewContent } from './FormPreviewContent'
 export { default as UnifiedBusinessPermitOverview } from './UnifiedBusinessPermitOverview'

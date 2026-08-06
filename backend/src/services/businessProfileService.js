@@ -1,7 +1,6 @@
 const BusinessProfile = require("../models/BusinessProfile");
 const User = require("../models/User");
 const AuditLog = require("../models/AuditLog");
-const blockchainService = require("../lib/blockchainService");
 const {
   validateBusinessRegistrationNumber,
   validateGeolocation,
@@ -150,7 +149,7 @@ class BusinessProfileService {
         : "";
       const newValue = JSON.stringify(data);
 
-      const auditLog = await AuditLog.create({
+      await AuditLog.create({
         userId,
         eventType: "profile_update",
         fieldChanged: stepName,
@@ -163,30 +162,6 @@ class BusinessProfileService {
           profileType: "business",
         },
       });
-
-      // Log hash to blockchain (non-blocking)
-      if (blockchainService.isAvailable()) {
-        // Use blockchain queue for non-blocking operations
-        const blockchainQueue = require("../lib/blockchainQueue");
-        blockchainQueue
-          .queueBlockchainOperation(
-            "logAuditHash",
-            [auditLog.hash, "profile_update"],
-            String(auditLog._id),
-          )
-          .then((result) => {
-            if (result.success) {
-              auditLog.txHash = result.txHash;
-              auditLog.blockNumber = result.blockNumber;
-              auditLog.save().catch((err) => {
-                console.error("Failed to update audit log with txHash:", err);
-              });
-            }
-          })
-          .catch((err) => {
-            console.error("Error logging to blockchain:", err);
-          });
-      }
     } catch (error) {
       // Don't throw - audit logging failure shouldn't break profile updates
       console.error("Error creating audit log for business profile:", error);

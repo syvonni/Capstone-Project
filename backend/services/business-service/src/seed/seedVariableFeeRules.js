@@ -60,7 +60,6 @@ async function seed() {
       await VariableFeeRule.create({
         ...ruleData,
         version: 1,
-        effectiveDate: new Date(),
       });
       totalUpserted++;
       console.log(`  + Seeded: ${ruleData.name} (${ruleData.calculationMethod}, ₱${ruleData.baseRate}/${ruleData.unit})`);
@@ -118,7 +117,6 @@ async function seedIfEmpty() {
         await VariableFeeRule.create({
           ...ruleData,
           version: 1,
-          effectiveDate: new Date(),
         });
         totalUpserted++;
       }
@@ -148,7 +146,6 @@ async function seedForce() {
       await VariableFeeRule.create({
         ...ruleData,
         version: 1,
-        effectiveDate: new Date(),
       });
       totalUpserted++;
     }

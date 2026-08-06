@@ -3,13 +3,13 @@ import { Grid } from 'antd'
 import { HistoryOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
 import FormNavigation from '@/shared/components/FormNavigation'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import { UnifiedBusinessPermitOverview, UnifiedBusinessPermitConfiguration, FormPreviewContent } from '../components'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { usePermitForm } from '../hooks/usePermitForm'
 import { getPermitFormByFormId, getClaimableDocumentsByPermitFormId } from '@/features/admin/services/permitFormService'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
-import PermitFormAuditDetailPanel from '../components/PermitFormAuditDetailPanel'
 
 const { useBreakpoint } = Grid
 
@@ -94,7 +94,7 @@ export default function UnifiedBusinessPermitView() {
   }, [permitForm?._id])
 
   // Use audit hook for permit form
-  const { auditLogs, auditLoading, refresh: refreshAudit } = useAudit('permit-form', permitForm?._id, !!permitForm?._id)
+  const { auditLogs, auditLoading, refresh } = useAudit('permit-form', permitForm?._id, !!permitForm?._id)
 
   // Use permit form hook
   const initialValues = useMemo(() => ({
@@ -125,7 +125,7 @@ export default function UnifiedBusinessPermitView() {
         setPermitForm(response.form)
       }
     }
-    refreshAudit()
+    refresh()
   } })
 
   // Initialize form with values (only when in edit mode to avoid "form not connected" warning)
@@ -290,9 +290,9 @@ export default function UnifiedBusinessPermitView() {
         onClose={handleCloseAuditHistory}
         auditLogs={auditLogs}
         loading={auditLoading}
-        onRefresh={refreshAudit}
+        onRefresh={refresh}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('permit_form'))}
-        DetailPanelComponent={PermitFormAuditDetailPanel}
+        DetailPanelComponent={AuditEventDetails}
       />
     </div>
   )

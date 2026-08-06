@@ -22,8 +22,10 @@ function signAccessToken(user) {
 async function requireJwt(req, res, next) {
   try {
     const auth = String(req.headers["authorization"] || "");
+    console.log("[requireJwt] Authorization header:", auth.substring(0, 50));
     const m = auth.match(/^Bearer\s+(.+)$/i);
     const token = m ? m[1] : "";
+    console.log("[requireJwt] Token extracted:", token ? "Present" : "Missing");
     if (!token) {
       console.error(
         "[requireJwt] Missing token, auth header:",
@@ -37,7 +39,9 @@ async function requireJwt(req, res, next) {
       });
     }
     const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    console.log("[requireJwt] JWT_SECRET present:", !!secret);
     const decoded = jwt.verify(token, secret);
+    console.log("[requireJwt] Token verified successfully, decoded:", { sub: decoded.sub, email: decoded.email, role: decoded.role });
 
     // Note: audit-service doesn't have a User model, so we skip token version verification
     // The auth-service already validates the token before proxying requests here

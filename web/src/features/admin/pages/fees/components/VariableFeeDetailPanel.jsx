@@ -6,12 +6,12 @@ import { useState, useEffect, useMemo } from 'react'
 import { App, theme, message, Form } from 'antd'
 import { HistoryOutlined, SaveOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import VariableFeeOverview from './VariableFeeOverview'
 import VariableFeeConfiguration from './VariableFeeConfiguration'
-import FeeAuditDetailPanel from './FeeAuditDetailPanel'
 import { useFormChangeTracking } from '@/shared/hooks/useFormChangeTracking'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 import { createVariableFeeRule, updateVariableFeeRule, disableVariableFeeRule } from '@/features/admin/services/feeService'
@@ -49,7 +49,7 @@ export default function VariableFeeDetailPanel({ ruleId, rule, onSave, _category
   const [associatedVariables, setAssociatedVariables] = useState([])
   const [loadingVariables, setLoadingVariables] = useState(false)
 
-  const { auditLogs, auditLoading } = useAudit('variable-fee-rule', ruleId)
+  const { auditLogs, auditLoading, refresh } = useAudit('variable-fee-rule', ruleId)
   const { runWithStepUp, stepUpModal } = useStepUp()
 
   const isNew = ruleId === 'new'
@@ -260,7 +260,8 @@ export default function VariableFeeDetailPanel({ ruleId, rule, onSave, _category
         onClose={() => setHistoryModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
-        DetailPanelComponent={FeeAuditDetailPanel}
+        onRefresh={refresh}
+        DetailPanelComponent={AuditEventDetails}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('variable_fee_rule_'))}
       />
       {stepUpModal}

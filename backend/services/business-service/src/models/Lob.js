@@ -62,10 +62,6 @@ const lobSchema = new mongoose.Schema({
     enum: ['draft', 'active', 'disabled'],
     default: 'draft',
   },
-  activationDate: {
-    type: Date,
-    default: null,
-  },
   disabledDate: {
     type: Date,
     default: null,

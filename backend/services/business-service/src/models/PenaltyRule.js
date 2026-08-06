@@ -37,10 +37,6 @@ const PenaltyRuleSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
-    effectiveDate: {
-      type: Date,
-      default: Date.now,
-    },
   },
   { timestamps: true },
 );

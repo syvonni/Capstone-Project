@@ -2,13 +2,13 @@ import { useState, useMemo } from 'react'
 import { theme } from 'antd'
 import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
-import PostRequirementAuditDetailPanel from './PostRequirementAuditDetailPanel'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import PostRequirementOverview from './PostRequirementOverview'
 import PostRequirementConfiguration from './PostRequirementConfiguration'
 import { usePostRequirementForm } from '../hooks/usePostRequirementForm'
 import { usePostRequirementDependencies } from '../hooks/usePostRequirementDependencies'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 
 export default function PostRequirementDetailPanel({ postRequirementId, postRequirement, onSave }) {
@@ -18,7 +18,7 @@ export default function PostRequirementDetailPanel({ postRequirementId, postRequ
 
   const isNew = postRequirementId === 'new' || !postRequirement
 
-  const { auditLogs, auditLoading } = useAudit('post-requirement', postRequirementId, !isNew)
+  const { auditLogs, auditLoading, refresh } = useAudit('post-requirement', postRequirementId, !isNew)
 
   const initialValues = useMemo(() => ({
     name: postRequirement?.name || '',
@@ -100,7 +100,8 @@ export default function PostRequirementDetailPanel({ postRequirementId, postRequ
         auditLogs={auditLogs}
         loading={auditLoading}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('post_requirement_'))}
-        DetailPanelComponent={PostRequirementAuditDetailPanel}
+        DetailPanelComponent={AuditEventDetails}
+        onRefresh={refresh}
       />
       {stepUpModal}
       <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>

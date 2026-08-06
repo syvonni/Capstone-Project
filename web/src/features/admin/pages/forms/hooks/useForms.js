@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useUndoRedo } from '@/shared/hooks/useUndoRedo'
 import { useFormChangeTracking } from '@/shared/hooks/useFormChangeTracking'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 
 // Mock data
 const MOCK_FORMS = [

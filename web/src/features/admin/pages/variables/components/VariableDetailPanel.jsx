@@ -2,14 +2,14 @@ import { useState, useMemo, useEffect } from 'react'
 import { theme } from 'antd'
 import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
-import { useAudit } from '@/shared/hooks/useAudit'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import VariableConfiguration from './VariableConfiguration'
 import VariableOverview from './VariableOverview'
-import GenericAuditDetailPanel from '@/shared/components/GenericAuditDetailPanel'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 import { useVariableDependencies } from '../hooks/useVariableDependencies'
 import { useVariableForm } from '../hooks/useVariableForm'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 
 export default function VariableDetailPanel({ variableId, variable, onSave }) {
   const { token } = theme.useToken()
@@ -114,22 +114,7 @@ export default function VariableDetailPanel({ variableId, variable, onSave }) {
         loading={auditLoading}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => ['variable_created', 'variable_updated', 'variable_disabled'].includes(e.event))}
         showEntityName={false}
-        DetailPanelComponent={(props) => (
-          <GenericAuditDetailPanel
-            {...props}
-            priorityFields={[
-              'eventType',
-              'name',
-              'createdAt',
-              'userName',
-              'changes',
-              'version',
-              'updatedByName',
-              'createdByName',
-              'deletedByName',
-            ]}
-          />
-        )}
+        DetailPanelComponent={AuditEventDetails}
         onRefresh={refresh}
       />
       {stepUpModal}

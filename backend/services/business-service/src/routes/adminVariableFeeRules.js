@@ -216,7 +216,6 @@ router.post(
         classifications: calculationMethod === 'classification' ? (classifications || []) : [],
         isActive: true,
         version: 1,
-        effectiveDate: new Date(),
       });
 
       const userInfo = await getUserInfo(req._userId);
@@ -316,7 +315,6 @@ router.put("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
     // Increment version if there are changes
     if (Object.keys(changes).length > 0) {
       rule.version += 1;
-      rule.effectiveDate = new Date();
     }
 
     await rule.save();
@@ -369,7 +367,6 @@ router.delete(
       // Soft-disable instead of hard delete
       rule.isActive = false;
       rule.version += 1;
-      rule.effectiveDate = new Date();
       await rule.save();
 
       const userInfo = await getUserInfo(req._userId);

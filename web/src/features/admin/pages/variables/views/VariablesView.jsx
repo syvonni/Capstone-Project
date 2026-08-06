@@ -165,6 +165,7 @@ export default function VariablesView() {
   return (
     <>
       <ResponsiveSplitLayout
+        drawerTitle = {showStats ? 'Variable Overview' : 'Variable Details'}
         listContent={listContent}
         detailContent={detailContent}
         onDrawerClose={handleDrawerClose}

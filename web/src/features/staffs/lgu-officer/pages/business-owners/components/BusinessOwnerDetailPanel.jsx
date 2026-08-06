@@ -5,9 +5,9 @@ import { useNavigate } from 'react-router-dom'
 import FormNavigation from '@/shared/components/FormNavigation'
 import InfoGrid from '@/shared/components/InfoGrid'
 import PanelCard from '@/shared/components/PanelCard'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import BusinessOwnerDetailHeader from './BusinessOwnerDetailHeader'
-import BusinessOwnerAuditDetailPanel from './BusinessOwnerAuditDetailPanel'
 import BusinessOwnerEditInfoModal from './modals/BusinessOwnerEditInfoModal'
 import BusinessOwnerUpdateEmailModal from './modals/BusinessOwnerUpdateEmailModal'
 import { useBusinessOwnerBookmarks } from '../hooks/useBusinessOwnerBookmarks'
@@ -16,7 +16,7 @@ import { useBusinessOwnerModals } from '../hooks/useBusinessOwnerModals'
 import { useBusinessOwnerHandlers } from '../hooks/useBusinessOwnerHandlers'
 import { useBusinessOwnerForm } from '../hooks/useBusinessOwnerForm'
 import { useStepUp } from '@/shared/hooks/useStepUp'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 import BusinessOwnerService from '@/features/staffs/lgu-officer/services/businessOwnerService'
 import { STATUS_CONFIG } from '../../applications/constants'
@@ -58,7 +58,7 @@ export default function BusinessOwnerDetailPanel({
     closeUpdateEmailModal,
   } = useBusinessOwnerModals()
 
-  const { auditLogs, auditLoading } = useAudit('business-owner', ownerId)
+  const { auditLogs, auditLoading, refresh: refreshAudit } = useAudit('business-owner', ownerId)
 
   // Use form hook for form management
   const { editForm, emailForm, initializeEditForm, initializeEmailForm, hasChanges, changedFields, resetChangeTracking, handleValuesChange } = useBusinessOwnerForm(businessOwner)
@@ -513,7 +513,21 @@ export default function BusinessOwnerDetailPanel({
         onClose={closeHistoryModal}
         auditLogs={auditLogs}
         loading={auditLoading}
-        DetailPanelComponent={BusinessOwnerAuditDetailPanel}
+        onRefresh={refreshAudit}
+        DetailPanelComponent={(props) => (
+          <AuditEventDetails
+            {...props}
+            priorityFields={[
+              'eventType',
+              'createdAt',
+              'userName',
+              'version',
+              'updatedByName',
+              'createdByName',
+              'deletedByName',
+            ]}
+          />
+        )}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('business_owner') || e.event.startsWith('account') || e.event.startsWith('personal') || e.event.startsWith('address') || e.event.startsWith('contact') || e.event.startsWith('email') || e.event.startsWith('password') || e.event.startsWith('mfa') || e.event.startsWith('name') || e.event.startsWith('pis'))}
       />
 

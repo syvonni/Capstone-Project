@@ -3,14 +3,14 @@ import { Form, Input, Typography, theme, message, Grid } from 'antd'
 import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
 import DocumentPreviewModal from '@/shared/components/DocumentPreviewModal'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import ChangesSummaryModal from '@/shared/components/ChangesSummaryModal'
-import ClaimableDocumentAuditDetailPanel from './ClaimableDocumentAuditDetailPanel'
 import ClaimableDocumentOverview from './ClaimableDocumentOverview'
 import ClaimableDocumentConfiguration from './ClaimableDocumentConfiguration'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { useFormChangeTracking } from '@/shared/hooks/useFormChangeTracking'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 import { createDocument, updateDocument } from '@/features/admin/services/documentService'
 import { getChecklists } from '@/features/admin/services/checklistService'
@@ -40,7 +40,7 @@ export default function DocumentDetailPanel({ documentId, document, onSave, onDe
   const [loadingChecklists, setLoadingChecklists] = useState(false)
   const [permitForms, setPermitForms] = useState([])
   const { runWithStepUp, stepUpModal } = useStepUp()
-  const { auditLogs, loading: auditLoading } = useAudit('document', documentId, historyModalOpen && documentId !== 'new')
+  const { auditLogs, loading: auditLoading, refresh } = useAudit('document', documentId, historyModalOpen && documentId !== 'new')
 
   const isNew = documentId === 'new'
   const isMobile = !screens.lg
@@ -306,7 +306,8 @@ export default function DocumentDetailPanel({ documentId, document, onSave, onDe
         onClose={() => setHistoryModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
-        DetailPanelComponent={ClaimableDocumentAuditDetailPanel}
+        onRefresh={refresh}
+        DetailPanelComponent={AuditEventDetails}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('document_') && !e.event.startsWith('document_group_'))}
       />
       <ChangesSummaryModal

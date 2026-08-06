@@ -2,7 +2,6 @@ const express = require("express");
 const { requireJwt, requireRole } = require("../middleware/auth");
 const respond = require("../middleware/respond");
 const User = require("../models/User");
-const AuditViewLog = require("../models/AuditViewLog");
 const auditVerifier = require("../lib/auditVerifier");
 const { isBusinessOwnerRole, isAdminRole } = require("../lib/roleHelpers");
 const { maskSensitiveData } = require("../lib/dataMasker");
@@ -36,25 +35,6 @@ function maskAuditLogData(log) {
   }
 
   return masked;
-}
-
-/**
- * Log audit view for compliance
- */
-async function logAuditView(viewerId, viewedUserId, auditLogId = null) {
-  try {
-    await AuditViewLog.create({
-      viewerId,
-      viewedUserId,
-      auditLogId,
-      viewedAt: new Date(),
-      ip: "unknown", // Will be set from request
-      userAgent: "unknown", // Will be set from request
-    });
-  } catch (error) {
-    console.error("Failed to log audit view:", error);
-    // Don't fail the request if logging fails
-  }
 }
 
 // GET /api/auth/audit/my-actions

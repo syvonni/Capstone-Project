@@ -15,9 +15,52 @@
 const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
 const { trackChanges } = require('../changeTracker');
 const { logAuditEvent } = require('../auditClient');
+const Variable = require('../../models/Variable');
+const ClaimableDocument = require('../../models/ClaimableDocument');
+const PostRequirement = require('../../models/PostRequirement');
+
+/**
+ * Helper function to convert ID array to ID+name format
+ */
+async function enrichWithNames(ids, Model) {
+  if (!ids || ids.length === 0) return [];
+  const entities = await Model.find({ _id: { $in: ids } }).select('_id name').lean();
+  const entityMap = new Map(entities.map(e => [e._id.toString(), e.name]));
+  return ids.map(id => ({
+    id: id.toString(),
+    name: entityMap.get(id.toString()) || 'Unknown'
+  }));
+}
+
+/**
+ * Helper function to enrich post requirements with names
+ */
+async function enrichPostRequirements(postRequirements) {
+  if (!postRequirements) return { required: [], conditional: [] };
+  
+  const allIds = [
+    ...(postRequirements.required || []),
+    ...(postRequirements.conditional || [])
+  ];
+  
+  if (allIds.length === 0) return { required: [], conditional: [] };
+  
+  const entities = await PostRequirement.find({ _id: { $in: allIds } }).select('_id name').lean();
+  const entityMap = new Map(entities.map(e => [e._id.toString(), e.name]));
+  
+  return {
+    required: (postRequirements.required || []).map(id => ({
+      id: id.toString(),
+      name: entityMap.get(id.toString()) || 'Unknown'
+    })),
+    conditional: (postRequirements.conditional || []).map(id => ({
+      id: id.toString(),
+      name: entityMap.get(id.toString()) || 'Unknown'
+    }))
+  };
+}
 
 const LOB_METADATA_MAPPING = {
-  lobId: '_id',
   code: 'code',
   name: 'name',
   description: 'description',
@@ -29,10 +72,6 @@ const LOB_METADATA_MAPPING = {
   postRequirements: 'postRequirements',
   essentialCommodity: 'essentialCommodity',
   status: 'status',
-  activationDate: 'activationDate',
-  disabledDate: 'disabledDate',
-  disabledReason: 'disabledReason',
-  isActive: 'isActive',
   version: 'version',
 };
 
@@ -48,7 +87,6 @@ const LOB_FIELD_MAPPING = {
   postRequirements: 'postRequirements',
   essentialCommodity: 'essentialCommodity',
   status: 'status',
-  activationDate: 'activationDate',
   disabledDate: 'disabledDate',
   disabledReason: 'disabledReason',
   isActive: 'isActive',
@@ -76,16 +114,26 @@ class LobAuditHelper {
    * @returns {Promise<object>} - Created audit log
    */
   static async logCreated(req, userId, userInfo, lob, role, customFields = {}) {
+    // Enrich relationship arrays with names
+    const [variablesWithNames, documentsWithNames, postRequirementsWithNames] = await Promise.all([
+      enrichWithNames(lob.variables, Variable),
+      enrichWithNames(lob.documents, ClaimableDocument),
+      enrichPostRequirements(lob.postRequirements)
+    ]);
+
+    const enrichedLob = {
+      ...lob.toObject ? lob.toObject() : lob,
+      variables: variablesWithNames,
+      documents: documentsWithNames,
+      postRequirements: postRequirementsWithNames
+    };
+
     const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
-      .withEntityFields(lob, LOB_METADATA_MAPPING)
-      .withEntityIdentification('Lob', lob._id)
+      .withEntityFields(enrichedLob, LOB_METADATA_MAPPING)
       .withEntitySnapshots(null, lob) // No old snapshot for creation
-      .withCustomFields({
-        action: 'created',
-        ...customFields,
-      })
+      .withCustomFields(customFields)
       .build();
 
     return await logAuditEvent(
@@ -96,9 +144,6 @@ class LobAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: null,
-        oldValue: null,
-        newValue: JSON.stringify(lob),
       }
     );
   }
@@ -115,7 +160,7 @@ class LobAuditHelper {
    * @param {object} oldLob - Lob object before changes
    * @param {object} newLob - Lob object after changes
    * @param {string} role - User role
-   * @returns {Promise<Array<object>>} - Array of created audit logs (one per changed field)
+   * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
   static async logUpdated(req, userId, userInfo, oldLob, newLob, role) {
     // Track changes between old and new LOB
@@ -125,45 +170,49 @@ class LobAuditHelper {
 
     // If no changes, don't log anything
     if (changes.length === 0) {
-      return [];
+      return null;
     }
 
+    // Enrich relationship arrays with names
+    const [variablesWithNames, documentsWithNames, postRequirementsWithNames] = await Promise.all([
+      enrichWithNames(newLob.variables, Variable),
+      enrichWithNames(newLob.documents, ClaimableDocument),
+      enrichPostRequirements(newLob.postRequirements)
+    ]);
+
+    const enrichedLob = {
+      ...newLob.toObject ? newLob.toObject() : newLob,
+      variables: variablesWithNames,
+      documents: documentsWithNames,
+      postRequirements: postRequirementsWithNames
+    };
+
     // Build base metadata
-    const baseMetadata = new AuditMetadataBuilder(req)
+    const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
-      .withEntityFields(newLob, LOB_METADATA_MAPPING)
-      .withEntityIdentification('Lob', newLob._id)
+      .withEntityFields(enrichedLob, LOB_METADATA_MAPPING)
       .withEntitySnapshots(oldLob, newLob)
       .withChangeTracking(changes)
       .withCustomFields({
-        action: 'updated',
         oldVersion: oldLob.version,
         newVersion: newLob.version,
       })
       .build();
 
-    // Log each changed field separately
-    const auditLogs = [];
-    for (const change of changes) {
-      const fieldMetadata = {
-        ...baseMetadata,
+    // Log a single audit event for all field changes
+    const auditLog = await logAuditEvent(
+      'lob_updated',
+      userId,
+      'Lob',
+      newLob._id,
+      {
+        ...metadata,
         role,
-        fieldChanged: change.field,
-        oldValue: change.oldValue,
-        newValue: change.newValue,
-      };
+      }
+    );
 
-      const auditLog = await logAuditEvent(
-        'lob_updated',
-        userId,
-        'Lob',
-        newLob._id,
-        fieldMetadata
-      );
-      auditLogs.push(auditLog);
-    }
-    return auditLogs;
+    return auditLog;
   }
 }
 

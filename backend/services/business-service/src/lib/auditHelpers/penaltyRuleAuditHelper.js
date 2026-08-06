@@ -17,7 +17,6 @@ const { trackChanges } = require('../changeTracker');
 const { logAuditEvent } = require('../auditClient');
 
 const PENALTY_RULE_METADATA_MAPPING = {
-  penaltyRuleId: '_id',
   name: 'name',
   description: 'description',
   amount: 'amount',
@@ -26,7 +25,6 @@ const PENALTY_RULE_METADATA_MAPPING = {
   isDraft: 'isDraft',
   draftOf: 'draftOf',
   version: 'version',
-  effectiveDate: 'effectiveDate',
 };
 
 const PENALTY_RULE_FIELD_MAPPING = {
@@ -38,7 +36,6 @@ const PENALTY_RULE_FIELD_MAPPING = {
   isDraft: 'isDraft',
   draftOf: 'draftOf',
   version: 'version',
-  effectiveDate: 'effectiveDate',
 };
 
 /**
@@ -65,11 +62,7 @@ class PenaltyRuleAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(penaltyRule, PENALTY_RULE_METADATA_MAPPING)
-      .withEntityIdentification('PenaltyRule', penaltyRule._id)
       .withEntitySnapshots(null, penaltyRule) // No old snapshot for creation
-      .withCustomFields({
-        action: 'created',
-      })
       .build();
 
     return await logAuditEvent(
@@ -80,9 +73,6 @@ class PenaltyRuleAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: null,
-        oldValue: null,
-        newValue: JSON.stringify(penaltyRule),
       }
     );
   }
@@ -99,7 +89,7 @@ class PenaltyRuleAuditHelper {
    * @param {object} oldPenaltyRule - PenaltyRule object before changes
    * @param {object} newPenaltyRule - PenaltyRule object after changes
    * @param {string} role - User role
-   * @returns {Promise<Array<object>>} - Array of created audit logs (one per changed field)
+   * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
   static async logUpdated(req, userId, userInfo, oldPenaltyRule, newPenaltyRule, role) {
     // Track changes between old and new penalty rule
@@ -109,45 +99,35 @@ class PenaltyRuleAuditHelper {
 
     // If no changes, don't log anything
     if (changes.length === 0) {
-      return [];
+      return null;
     }
 
     // Build base metadata
-    const baseMetadata = new AuditMetadataBuilder(req)
+    const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(newPenaltyRule, PENALTY_RULE_METADATA_MAPPING)
-      .withEntityIdentification('PenaltyRule', newPenaltyRule._id)
       .withEntitySnapshots(oldPenaltyRule, newPenaltyRule)
       .withChangeTracking(changes)
       .withCustomFields({
-        action: 'updated',
         oldVersion: oldPenaltyRule.version,
         newVersion: newPenaltyRule.version,
       })
       .build();
 
-    // Log each changed field separately
-    const auditLogs = [];
-    for (const change of changes) {
-      const fieldMetadata = {
-        ...baseMetadata,
+    // Log a single audit event for all field changes
+    const auditLog = await logAuditEvent(
+      'penalty_rule_updated',
+      userId,
+      'PenaltyRule',
+      newPenaltyRule._id,
+      {
+        ...metadata,
         role,
-        fieldChanged: change.field,
-        oldValue: change.oldValue,
-        newValue: change.newValue,
-      };
+      }
+    );
 
-      const auditLog = await logAuditEvent(
-        'penalty_rule_updated',
-        userId,
-        'PenaltyRule',
-        newPenaltyRule._id,
-        fieldMetadata
-      );
-      auditLogs.push(auditLog);
-    }
-    return auditLogs;
+    return auditLog;
   }
 
   /**
@@ -168,10 +148,8 @@ class PenaltyRuleAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(penaltyRule, PENALTY_RULE_METADATA_MAPPING)
-      .withEntityIdentification('PenaltyRule', penaltyRule._id)
       .withEntitySnapshots(penaltyRule, { ...penaltyRule, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        action: 'disabled',
         previousStatus: penaltyRule.isActive ? 'active' : 'inactive',
       })
       .build();
@@ -184,9 +162,6 @@ class PenaltyRuleAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'isActive',
-        oldValue: String(penaltyRule.isActive),
-        newValue: 'false',
       }
     );
   }

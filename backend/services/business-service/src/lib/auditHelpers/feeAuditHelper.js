@@ -17,14 +17,12 @@ const { trackChanges } = require('../changeTracker');
 const { logAuditEvent } = require('../auditClient');
 
 const FEE_METADATA_MAPPING = {
-  feeId: '_id',
   name: 'name',
   notes: 'notes',
   amount: 'amount',
   category: 'category',
   isActive: 'isActive',
   version: 'version',
-  effectiveDate: 'effectiveDate',
 };
 
 const FEE_FIELD_MAPPING = {
@@ -34,7 +32,6 @@ const FEE_FIELD_MAPPING = {
   category: 'category',
   isActive: 'isActive',
   version: 'version',
-  effectiveDate: 'effectiveDate',
 };
 
 /**
@@ -61,11 +58,7 @@ class FeeAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(fee, FEE_METADATA_MAPPING)
-      .withEntityIdentification('Fee', fee._id)
       .withEntitySnapshots(null, fee) // No old snapshot for creation
-      .withCustomFields({
-        action: 'created',
-      })
       .build();
 
     return await logAuditEvent(
@@ -76,9 +69,6 @@ class FeeAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: null,
-        oldValue: null,
-        newValue: JSON.stringify(fee),
       }
     );
   }
@@ -95,7 +85,7 @@ class FeeAuditHelper {
    * @param {object} oldFee - Fee object before changes
    * @param {object} newFee - Fee object after changes
    * @param {string} role - User role
-   * @returns {Promise<Array<object>>} - Array of created audit logs (one per changed field)
+   * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
   static async logUpdated(req, userId, userInfo, oldFee, newFee, role) {
     // Track changes between old and new fee
@@ -105,45 +95,35 @@ class FeeAuditHelper {
 
     // If no changes, don't log anything
     if (changes.length === 0) {
-      return [];
+      return null;
     }
 
     // Build base metadata
-    const baseMetadata = new AuditMetadataBuilder(req)
+    const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(newFee, FEE_METADATA_MAPPING)
-      .withEntityIdentification('Fee', newFee._id)
       .withEntitySnapshots(oldFee, newFee)
       .withChangeTracking(changes)
       .withCustomFields({
-        action: 'updated',
         oldVersion: oldFee.version,
         newVersion: newFee.version,
       })
       .build();
 
-    // Log each changed field separately
-    const auditLogs = [];
-    for (const change of changes) {
-      const fieldMetadata = {
-        ...baseMetadata,
+    // Log a single audit event for all field changes
+    const auditLog = await logAuditEvent(
+      'fee_updated',
+      userId,
+      'Fee',
+      newFee._id,
+      {
+        ...metadata,
         role,
-        fieldChanged: change.field,
-        oldValue: change.oldValue,
-        newValue: change.newValue,
-      };
+      }
+    );
 
-      const auditLog = await logAuditEvent(
-        'fee_updated',
-        userId,
-        'Fee',
-        newFee._id,
-        fieldMetadata
-      );
-      auditLogs.push(auditLog);
-    }
-    return auditLogs;
+    return auditLog;
   }
 
   /**
@@ -164,10 +144,8 @@ class FeeAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(fee, FEE_METADATA_MAPPING)
-      .withEntityIdentification('Fee', fee._id)
       .withEntitySnapshots(fee, { ...fee, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        action: 'disabled',
         previousStatus: fee.isActive ? 'active' : 'inactive',
       })
       .build();
@@ -180,9 +158,6 @@ class FeeAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'isActive',
-        oldValue: String(fee.isActive),
-        newValue: 'false',
       }
     );
   }
@@ -207,10 +182,8 @@ class FeeAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(fee, FEE_METADATA_MAPPING)
-      .withEntityIdentification('Fee', fee._id)
       .withEntitySnapshots(fee, fee) // Same fee, just calculation changed
       .withCustomFields({
-        action: 'calculation_updated',
         oldCalculation,
         newCalculation,
       })
@@ -224,9 +197,6 @@ class FeeAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'calculation',
-        oldValue: oldCalculation,
-        newValue: newCalculation,
       }
     );
   }

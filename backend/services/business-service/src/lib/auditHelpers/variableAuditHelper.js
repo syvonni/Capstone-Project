@@ -35,6 +35,17 @@
 const { trackChanges } = require('../changeTracker');
 const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
 const { logAuditEvent } = require('../auditClient');
+const Fee = require('../../models/Fee');
+const Checklist = require('../../models/Checklist');
+
+/**
+ * Helper function to enrich single relationship with name
+ */
+async function enrichSingleRelation(id, Model) {
+  if (!id) return null;
+  const entity = await Model.findById(id).select('_id name').lean();
+  return entity ? { id: entity._id.toString(), name: entity.name } : null;
+}
 
 /**
  * Field mapping for variable objects
@@ -55,7 +66,6 @@ const VARIABLE_FIELD_MAPPING = {
   percentage: true,
   minValueOverride: true,
   maxValueOverride: true,
-  effectiveDate: true,
   expiryDate: true,
 };
 
@@ -64,16 +74,10 @@ const VARIABLE_FIELD_MAPPING = {
  * Maps metadata field names to entity field names
  */
 const VARIABLE_METADATA_MAPPING = {
-  variableId: '_id',
   name: 'name',
-  minValue: 'minValue',
-  maxValue: 'maxValue',
-  rate: 'rate',
   description: 'description',
   isActive: 'isActive',
   version: 'version',
-  taxBracketId: 'taxBracketId',
-  calculationType: 'calculationType',
 };
 
 /**
@@ -96,15 +100,23 @@ class VariableAuditHelper {
    * @returns {Promise<object>} - Created audit log
    */
   static async logCreated(req, userId, userInfo, variable, role) {
+    // Enrich single relationships with names
+    const [feeWithNames, checklistWithNames] = await Promise.all([
+      enrichSingleRelation(variable.feeId, Fee),
+      enrichSingleRelation(variable.checklistId, Checklist)
+    ]);
+
+    const enrichedVariable = {
+      ...variable.toObject ? variable.toObject() : variable,
+      feeId: feeWithNames,
+      checklistId: checklistWithNames
+    };
+
     const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
-      .withEntityFields(variable, VARIABLE_METADATA_MAPPING)
-      .withEntityIdentification('Variable', variable._id)
+      .withEntityFields(enrichedVariable, VARIABLE_METADATA_MAPPING)
       .withEntitySnapshots(null, variable) // No old snapshot for creation
-      .withCustomFields({
-        action: 'created',
-      })
       .build();
 
     return await logAuditEvent(
@@ -115,9 +127,6 @@ class VariableAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: null,
-        oldValue: null,
-        newValue: JSON.stringify(variable),
       }
     );
   }
@@ -134,7 +143,7 @@ class VariableAuditHelper {
    * @param {object} oldVariable - Variable object before changes
    * @param {object} newVariable - Variable object after changes
    * @param {string} role - User role
-   * @returns {Promise<Array<object>>} - Array of created audit logs (one per changed field)
+   * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
   static async logUpdated(req, userId, userInfo, oldVariable, newVariable, role) {
     // Track changes between old and new variable
@@ -144,47 +153,47 @@ class VariableAuditHelper {
 
     // If no changes, don't log anything
     if (changes.length === 0) {
-      return [];
+      return null;
     }
 
+    // Enrich single relationships with names
+    const [feeWithNames, checklistWithNames] = await Promise.all([
+      enrichSingleRelation(newVariable.feeId, Fee),
+      enrichSingleRelation(newVariable.checklistId, Checklist)
+    ]);
+
+    const enrichedVariable = {
+      ...newVariable.toObject ? newVariable.toObject() : newVariable,
+      feeId: feeWithNames,
+      checklistId: checklistWithNames
+    };
+
     // Build base metadata
-    const baseMetadata = new AuditMetadataBuilder(req)
+    const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
-      .withEntityFields(newVariable, VARIABLE_METADATA_MAPPING)
-      .withEntityIdentification('Variable', newVariable._id)
+      .withEntityFields(enrichedVariable, VARIABLE_METADATA_MAPPING)
       .withEntitySnapshots(oldVariable, newVariable)
       .withChangeTracking(changes)
       .withCustomFields({
-        action: 'updated',
         oldVersion: oldVariable.version,
         newVersion: newVariable.version,
       })
       .build();
 
-    // Log each changed field separately
-    const auditLogs = [];
-    for (const change of changes) {
-      const fieldMetadata = {
-        ...baseMetadata,
+    // Log a single audit event for all field changes
+    const auditLog = await logAuditEvent(
+      'variable_updated',
+      userId,
+      'Variable',
+      newVariable._id,
+      {
+        ...metadata,
         role,
-        fieldChanged: change.field,
-        oldValue: change.oldValue,
-        newValue: change.newValue,
-      };
+      }
+    );
 
-      const auditLog = await logAuditEvent(
-        'variable_updated',
-        userId,
-        'Variable',
-        newVariable._id,
-        fieldMetadata
-      );
-
-      auditLogs.push(auditLog);
-    }
-
-    return auditLogs;
+    return auditLog;
   }
 
   /**
@@ -206,10 +215,8 @@ class VariableAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(variable, VARIABLE_METADATA_MAPPING)
-      .withEntityIdentification('Variable', variable._id)
       .withEntitySnapshots(variable, { ...variable, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        action: 'disabled',
         disableReason: reason,
         previousStatus: variable.isActive ? 'active' : 'inactive',
       })
@@ -223,9 +230,6 @@ class VariableAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'isActive',
-        oldValue: String(variable.isActive),
-        newValue: 'false',
       }
     );
   }
@@ -250,10 +254,8 @@ class VariableAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(variable, VARIABLE_METADATA_MAPPING)
-      .withEntityIdentification('Variable', variable._id)
       .withEntitySnapshots(variable, variable) // Same variable, just calculation changed
       .withCustomFields({
-        action: 'calculation_updated',
         updatedByName: userInfo.name,
         oldCalculation,
         newCalculation,
@@ -268,9 +270,6 @@ class VariableAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'calculation',
-        oldValue: oldCalculation,
-        newValue: newCalculation,
       }
     );
   }
@@ -294,10 +293,8 @@ class VariableAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(variable, VARIABLE_METADATA_MAPPING)
-      .withEntityIdentification('Variable', variable._id)
       .withEntitySnapshots({ ...variable, isActive: false }, variable) // Snapshot before and after
       .withCustomFields({
-        action: 'enabled',
         enableReason: reason,
         previousStatus: variable.isActive ? 'active' : 'inactive',
       })
@@ -311,9 +308,6 @@ class VariableAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'isActive',
-        oldValue: 'false',
-        newValue: 'true',
       }
     );
   }

@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
-import ChecklistAuditDetailPanel from './ChecklistAuditDetailPanel'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import ChecklistOverview from './ChecklistOverview'
 import ChecklistConfiguration from './ChecklistConfiguration'
 import { useChecklistForm } from '../hooks/useChecklistForm'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 import { getChecklist } from '@/features/admin/services/checklistService'
 
@@ -28,7 +28,7 @@ export default function ChecklistDetailPanel({ checklistId, checklist, onSave })
 
   const effectiveChecklist = checklist || fetchedChecklist
 
-  const { auditLogs, auditLoading, refresh: refreshAudit } = useAudit('checklist', checklistId, !isNew)
+  const { auditLogs, auditLoading, refresh } = useAudit('checklist', checklistId, !isNew)
 
   const initialValues = useMemo(() => {
     // Transform items to just IDs for multi-select
@@ -125,9 +125,9 @@ export default function ChecklistDetailPanel({ checklistId, checklist, onSave })
         onClose={() => setHistoryModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
-        onRefresh={refreshAudit}
+        onRefresh={refresh}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('checklist_'))}
-        DetailPanelComponent={ChecklistAuditDetailPanel}
+        DetailPanelComponent={AuditEventDetails}
       />
       {stepUpModal}
       <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>

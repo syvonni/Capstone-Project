@@ -126,7 +126,6 @@ async function seed() {
         amount: variableData.baseRate || 0,
         category: 'variable_fee',
         version: 1,
-        effectiveDate: new Date(),
       });
       feeId = fee._id;
       console.log(`  + Created fee: ${feeName}`);
@@ -149,7 +148,6 @@ async function seed() {
         variableFeeRuleId,
         checklistId,
         version: 1,
-        effectiveDate: new Date(),
       });
       totalUpserted++;
       console.log(`  + Seeded: ${variableData.name} (${variableData.calculationMethod})`);
@@ -213,7 +211,6 @@ async function seedIfEmpty() {
         await Variable.create({
           ...variableData,
           version: 1,
-          effectiveDate: new Date(),
         });
         totalUpserted++;
       }
@@ -248,7 +245,6 @@ async function seedForce() {
       await Variable.create({
         ...variableData,
         version: 1,
-        effectiveDate: new Date(),
       });
       totalUpserted++;
     }

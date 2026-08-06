@@ -137,3 +137,9 @@ export async function getAllVariableAudits(params = {}) {
   const payload = res?.logs ? res : res?.data
   return payload || { logs: [], total: 0, page: 1, limit: 20, totalPages: 0 }
 }
+
+// Data quality service - get data quality issues for all variables
+export async function getDataQualityIssues() {
+  const res = await get(`${API_BASE}/data-quality`)
+  return res || { issues: [], totalEntities: 0, totalIssues: 0 }
+}

@@ -41,7 +41,7 @@ const { parsePagination, buildPaginationResponse } = require('./paginationHelper
 const { buildEntityFilter, buildGlobalFilter } = require('./auditFilterBuilder');
 const { buildSuccessResponse } = require('./auditResponseBuilder');
 const { handleAuditError } = require('./auditErrorHandler');
-const logger = require('../lib/logger');
+const logger = require('./logger');
 const AuditLog = require('../models/AuditLog');
 
 /**

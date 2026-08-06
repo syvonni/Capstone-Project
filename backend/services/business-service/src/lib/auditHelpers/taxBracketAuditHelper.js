@@ -17,7 +17,6 @@ const { trackChanges } = require('../changeTracker');
 const { logAuditEvent } = require('../auditClient');
 
 const TAX_BRACKET_METADATA_MAPPING = {
-  taxBracketId: '_id',
   lobId: 'lobId',
   taxBasis: 'taxBasis',
   name: 'name',
@@ -71,11 +70,7 @@ class TaxBracketAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(bracket, TAX_BRACKET_METADATA_MAPPING)
-      .withEntityIdentification('TaxBracket', bracket._id)
       .withEntitySnapshots(null, bracket) // No old snapshot for creation
-      .withCustomFields({
-        action: 'created',
-      })
       .build();
 
     return await logAuditEvent(
@@ -86,9 +81,6 @@ class TaxBracketAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: null,
-        oldValue: null,
-        newValue: JSON.stringify(bracket),
       }
     );
   }
@@ -105,7 +97,7 @@ class TaxBracketAuditHelper {
    * @param {object} oldBracket - TaxBracket object before changes
    * @param {object} newBracket - TaxBracket object after changes
    * @param {string} role - User role
-   * @returns {Promise<Array<object>>} - Array of created audit logs (one per changed field)
+   * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
   static async logUpdated(req, userId, userInfo, oldBracket, newBracket, role) {
     // Track changes between old and new bracket
@@ -115,45 +107,35 @@ class TaxBracketAuditHelper {
 
     // If no changes, don't log anything
     if (changes.length === 0) {
-      return [];
+      return null;
     }
 
     // Build base metadata
-    const baseMetadata = new AuditMetadataBuilder(req)
+    const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(newBracket, TAX_BRACKET_METADATA_MAPPING)
-      .withEntityIdentification('TaxBracket', newBracket._id)
       .withEntitySnapshots(oldBracket, newBracket)
       .withChangeTracking(changes)
       .withCustomFields({
-        action: 'updated',
         oldVersion: oldBracket.version,
         newVersion: newBracket.version,
       })
       .build();
 
-    // Log each changed field separately
-    const auditLogs = [];
-    for (const change of changes) {
-      const fieldMetadata = {
-        ...baseMetadata,
+    // Log a single audit event for all field changes
+    const auditLog = await logAuditEvent(
+      'tax_bracket_updated',
+      userId,
+      'TaxBracket',
+      newBracket._id,
+      {
+        ...metadata,
         role,
-        fieldChanged: change.field,
-        oldValue: change.oldValue,
-        newValue: change.newValue,
-      };
+      }
+    );
 
-      const auditLog = await logAuditEvent(
-        'tax_bracket_updated',
-        userId,
-        'TaxBracket',
-        newBracket._id,
-        fieldMetadata
-      );
-      auditLogs.push(auditLog);
-    }
-    return auditLogs;
+    return auditLog;
   }
 
   /**
@@ -174,11 +156,7 @@ class TaxBracketAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(bracket, TAX_BRACKET_METADATA_MAPPING)
-      .withEntityIdentification('TaxBracket', bracket._id)
       .withEntitySnapshots(bracket, null) // Snapshot before, no after for deletion
-      .withCustomFields({
-        action: 'deleted',
-      })
       .build();
 
     return await logAuditEvent(
@@ -189,9 +167,6 @@ class TaxBracketAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'tax_bracket',
-        oldValue: JSON.stringify(bracket),
-        newValue: null,
       }
     );
   }

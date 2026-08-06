@@ -144,7 +144,6 @@ router.post(
         category: category || "other",
         isActive: true,
         version: 1,
-        effectiveDate: new Date(),
       });
 
       const userInfo = await getUserInfo(req._userId);
@@ -219,7 +218,6 @@ router.put("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
     // Increment version if there are changes
     if (Object.keys(changes).length > 0) {
       penaltyRule.version += 1;
-      penaltyRule.effectiveDate = new Date();
     }
 
     await penaltyRule.save();
@@ -272,7 +270,6 @@ router.delete(
       // Soft-disable instead of hard delete
       penaltyRule.isActive = false;
       penaltyRule.version += 1;
-      penaltyRule.effectiveDate = new Date();
       await penaltyRule.save();
 
       const userInfo = await getUserInfo(req._userId);

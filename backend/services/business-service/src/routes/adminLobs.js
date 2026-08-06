@@ -246,15 +246,10 @@ router.put("/:id", requireJwt, requireRole(['admin']), requireAdminStepUp, async
       changes.status = { from: oldValues.status, to: status };
       
       // Handle status transitions
-      if (status === 'active' && oldValues.status !== 'active') {
-        lob.activationDate = new Date();
-        lob.disabledDate = null;
-        lob.disabledReason = null;
-      } else if (status === 'disabled' && oldValues.status !== 'disabled') {
+      if (status === 'disabled' && oldValues.status !== 'disabled') {
         lob.disabledDate = new Date();
         lob.disabledReason = disabledReason || '';
       } else if (status === 'draft') {
-        lob.activationDate = null;
         lob.disabledDate = null;
         lob.disabledReason = null;
       }

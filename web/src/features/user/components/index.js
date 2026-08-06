@@ -1,4 +1,3 @@
-export { default as AuditHistory } from './AuditHistory.jsx'
 export { default as DeletionCountdown } from './DeletionCountdown.jsx'
 export { default as DeletionScheduledInfo } from './DeletionScheduledInfo.jsx'
 export { default as EditUserProfileForm } from './EditUserProfileForm.jsx'

@@ -18,8 +18,6 @@ const {
   changeEmailRequests,
   changePasswordRequests,
 } = require("../../lib/authRequestsStore");
-const blockchainService = require("../../lib/blockchainService");
-const blockchainQueue = require("../../lib/blockchainQueue");
 const { validatePasswordStrength } = require("../../lib/passwordValidator");
 const {
   checkPasswordHistory,
@@ -176,19 +174,6 @@ async function createAuditLog(
       metadata: fullMetadata,
       hash, // Set hash directly
     });
-
-    // Queue blockchain operation (non-blocking, with retry)
-    if (blockchainService.isAvailable()) {
-      blockchainQueue.queueBlockchainOperation(
-        "logAuditHash",
-        [auditLog.hash, eventType],
-        String(auditLog._id),
-      );
-    } else {
-      console.warn(
-        "Blockchain service not available, audit log created but not logged to blockchain",
-      );
-    }
 
     return auditLog;
   } catch (error) {

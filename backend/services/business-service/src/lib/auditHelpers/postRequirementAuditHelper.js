@@ -17,7 +17,6 @@ const { trackChanges } = require('../changeTracker');
 const { logAuditEvent } = require('../auditClient');
 
 const POST_REQUIREMENT_METADATA_MAPPING = {
-  postRequirementId: '_id',
   code: 'code',
   name: 'name',
   description: 'description',
@@ -65,11 +64,7 @@ class PostRequirementAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(postRequirement, POST_REQUIREMENT_METADATA_MAPPING)
-      .withEntityIdentification('PostRequirement', postRequirement._id)
       .withEntitySnapshots(null, postRequirement) // No old snapshot for creation
-      .withCustomFields({
-        action: 'created',
-      })
       .build();
 
     return await logAuditEvent(
@@ -80,9 +75,6 @@ class PostRequirementAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: null,
-        oldValue: null,
-        newValue: JSON.stringify(postRequirement),
       }
     );
   }
@@ -99,7 +91,7 @@ class PostRequirementAuditHelper {
    * @param {object} oldPostRequirement - PostRequirement object before changes
    * @param {object} newPostRequirement - PostRequirement object after changes
    * @param {string} role - User role
-   * @returns {Promise<Array<object>>} - Array of created audit logs (one per changed field)
+   * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
   static async logUpdated(req, userId, userInfo, oldPostRequirement, newPostRequirement, role) {
     // Track changes between old and new post requirement
@@ -109,45 +101,35 @@ class PostRequirementAuditHelper {
 
     // If no changes, don't log anything
     if (changes.length === 0) {
-      return [];
+      return null;
     }
 
     // Build base metadata
-    const baseMetadata = new AuditMetadataBuilder(req)
+    const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(newPostRequirement, POST_REQUIREMENT_METADATA_MAPPING)
-      .withEntityIdentification('PostRequirement', newPostRequirement._id)
       .withEntitySnapshots(oldPostRequirement, newPostRequirement)
       .withChangeTracking(changes)
       .withCustomFields({
-        action: 'updated',
         oldVersion: oldPostRequirement.version,
         newVersion: newPostRequirement.version,
       })
       .build();
 
-    // Log each changed field separately
-    const auditLogs = [];
-    for (const change of changes) {
-      const fieldMetadata = {
-        ...baseMetadata,
+    // Log a single audit event for all field changes
+    const auditLog = await logAuditEvent(
+      'post_requirement_updated',
+      userId,
+      'PostRequirement',
+      newPostRequirement._id,
+      {
+        ...metadata,
         role,
-        fieldChanged: change.field,
-        oldValue: change.oldValue,
-        newValue: change.newValue,
-      };
+      }
+    );
 
-      const auditLog = await logAuditEvent(
-        'post_requirement_updated',
-        userId,
-        'PostRequirement',
-        newPostRequirement._id,
-        fieldMetadata
-      );
-      auditLogs.push(auditLog);
-    }
-    return auditLogs;
+    return auditLog;
   }
 
   /**
@@ -168,10 +150,8 @@ class PostRequirementAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(postRequirement, POST_REQUIREMENT_METADATA_MAPPING)
-      .withEntityIdentification('PostRequirement', postRequirement._id)
       .withEntitySnapshots(postRequirement, { ...postRequirement, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        action: 'disabled',
         previousStatus: postRequirement.isActive ? 'active' : 'inactive',
       })
       .build();
@@ -184,9 +164,6 @@ class PostRequirementAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'isActive',
-        oldValue: String(postRequirement.isActive),
-        newValue: 'false',
       }
     );
   }

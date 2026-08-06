@@ -16,6 +16,7 @@ export default function AdminFormsView() {
 
   return (
     <ResponsiveSplitLayout
+      drawerTitle="Form Details"
       listContent={<FormListPanel onSelect={handleFormSelect} selectedId={selectedFormId} />}
       detailContent={
         selectedFormId ? (

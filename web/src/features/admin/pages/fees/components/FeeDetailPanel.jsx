@@ -2,17 +2,17 @@ import { useState, useEffect, useMemo } from 'react'
 import { App, theme } from 'antd'
 import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import FeeOverview from './FeeOverview'
 import FeeConfiguration from './FeeConfiguration'
-import FeeAuditDetailPanel from './FeeAuditDetailPanel'
 import { createFee, updateFee, disableFee } from '@/features/admin/services/feeService'
 import { getViolationsByFee } from '@/features/admin/services/violationService'
 import { getPermitFormByFeeId } from '@/features/admin/services/permitFormService'
 import { get } from '@/lib/http.js'
 import { useFeeForm } from '../hooks/useFeeForm'
 import { useStepUp } from '@/shared/hooks/useStepUp'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 
 const STATUS_OPTIONS = [
@@ -38,7 +38,7 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
 
   const { runWithStepUp, stepUpModal } = useStepUp()
 
-  const { auditLogs, auditLoading, refreshAudit: _refreshAudit } = useAudit('fee', feeId)
+  const { auditLogs, auditLoading, refresh } = useAudit('fee', feeId)
 
   // Fetch violations by fee ID when viewing a penalty fee
   useEffect(() => {
@@ -257,7 +257,8 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
         onClose={() => setHistoryModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
-        DetailPanelComponent={FeeAuditDetailPanel}
+        onRefresh={refresh}
+        DetailPanelComponent={AuditEventDetails}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('fee_'))}
       />
       {stepUpModal}

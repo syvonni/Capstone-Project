@@ -2,12 +2,12 @@ import { useState, useEffect, useMemo } from 'react'
 import { theme } from 'antd'
 import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
-import ViolationAuditDetailPanel from './ViolationAuditDetailPanel'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import ViolationOverview from './ViolationOverview'
 import ViolationConfiguration from './ViolationConfiguration'
 import { useViolationForm } from '../hooks/useViolationForm'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 import { getInspectionItemsByViolation } from '@/features/admin/services/inspectionItemService'
 
@@ -37,7 +37,7 @@ export default function ViolationDetailPanel({ violationId, violation, onSave })
     checkInspectionItems()
   }, [violationId])
 
-  const { auditLogs, auditLoading, refresh: refreshAudit } = useAudit('violation', violationId, !isNew)
+  const { auditLogs, auditLoading, refresh } = useAudit('violation', violationId, !isNew)
 
   const initialValues = useMemo(() => ({
     _id: violation?._id,
@@ -120,9 +120,9 @@ export default function ViolationDetailPanel({ violationId, violation, onSave })
         onClose={() => setHistoryModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
-        onRefresh={refreshAudit}
+        onRefresh={refresh}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('violation_'))}
-        DetailPanelComponent={ViolationAuditDetailPanel}
+        DetailPanelComponent={AuditEventDetails}
       />
       {stepUpModal}
       <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>

@@ -50,24 +50,15 @@ async function seed() {
   // Seed Fees
   console.log("\nSeeding Fees...");
   for (const feeData of FEES_SEED_DATA) {
-    const result = await Fee.updateOne(
-      { name: feeData.name },
-      {
-        $set: {
-          ...feeData,
-          isActive: true,
-          version: 1,
-          effectiveDate: new Date(),
-        },
-      },
-      { upsert: true },
-    );
-    if (result.upsertedCount > 0) {
+    const existing = await Fee.findOne({ name: feeData.name });
+    
+    if (!existing) {
+      await Fee.create({
+        ...feeData,
+        version: 1,
+      });
       totalUpserted++;
       console.log(`  + Seeded: ${feeData.name} (₱${feeData.amount})`);
-    } else if (result.modifiedCount > 0) {
-      totalSkipped++;
-      console.log(`  ~ Updated: ${feeData.name} (₱${feeData.amount})`);
     } else {
       totalSkipped++;
       console.log(`  = Skipped (exists): ${feeData.name}`);
@@ -108,7 +99,6 @@ async function seedIfEmpty() {
             ...feeData,
             isActive: true,
             version: 1,
-            effectiveDate: new Date(),
           },
         },
         { upsert: true },

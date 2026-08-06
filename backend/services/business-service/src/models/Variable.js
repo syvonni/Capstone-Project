@@ -143,10 +143,6 @@ const VariableSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
-    effectiveDate: {
-      type: Date,
-      default: Date.now,
-    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

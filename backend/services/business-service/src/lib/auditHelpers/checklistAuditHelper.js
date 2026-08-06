@@ -17,7 +17,6 @@ const { trackChanges } = require('../changeTracker');
 const { logAuditEvent } = require('../auditClient');
 
 const CHECKLIST_METADATA_MAPPING = {
-  checklistId: '_id',
   name: 'name',
   description: 'description',
   notes: 'notes',
@@ -67,10 +66,8 @@ class ChecklistAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(checklist, CHECKLIST_METADATA_MAPPING)
-      .withEntityIdentification('Checklist', checklist._id)
       .withEntitySnapshots(null, checklist) // No old snapshot for creation
       .withCustomFields({
-        action: 'created',
         itemCount: checklist.items.length,
       })
       .build();
@@ -83,9 +80,6 @@ class ChecklistAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: null,
-        oldValue: null,
-        newValue: JSON.stringify(checklist),
       }
     );
   }
@@ -102,7 +96,7 @@ class ChecklistAuditHelper {
    * @param {object} oldChecklist - Checklist object before changes
    * @param {object} newChecklist - Checklist object after changes
    * @param {string} role - User role
-   * @returns {Promise<Array<object>>} - Array of created audit logs (one per changed field)
+   * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
   static async logUpdated(req, userId, userInfo, oldChecklist, newChecklist, role) {
     // Track changes between old and new checklist
@@ -112,46 +106,36 @@ class ChecklistAuditHelper {
 
     // If no changes, don't log anything
     if (changes.length === 0) {
-      return [];
+      return null;
     }
 
     // Build base metadata
-    const baseMetadata = new AuditMetadataBuilder(req)
+    const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(newChecklist, CHECKLIST_METADATA_MAPPING)
-      .withEntityIdentification('Checklist', newChecklist._id)
       .withEntitySnapshots(oldChecklist, newChecklist)
       .withChangeTracking(changes)
       .withCustomFields({
-        action: 'updated',
         oldVersion: oldChecklist.version,
         newVersion: newChecklist.version,
         itemCount: newChecklist.items.length,
       })
       .build();
 
-    // Log each changed field separately
-    const auditLogs = [];
-    for (const change of changes) {
-      const fieldMetadata = {
-        ...baseMetadata,
+    // Log a single audit event for all field changes
+    const auditLog = await logAuditEvent(
+      'checklist_updated',
+      userId,
+      'Checklist',
+      newChecklist._id,
+      {
+        ...metadata,
         role,
-        fieldChanged: change.field,
-        oldValue: change.oldValue,
-        newValue: change.newValue,
-      };
+      }
+    );
 
-      const auditLog = await logAuditEvent(
-        'checklist_updated',
-        userId,
-        'Checklist',
-        newChecklist._id,
-        fieldMetadata
-      );
-      auditLogs.push(auditLog);
-    }
-    return auditLogs;
+    return auditLog;
   }
 
   /**
@@ -172,10 +156,8 @@ class ChecklistAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(checklist, CHECKLIST_METADATA_MAPPING)
-      .withEntityIdentification('Checklist', checklist._id)
       .withEntitySnapshots(checklist, { ...checklist, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        action: 'disabled',
         previousStatus: checklist.isActive ? 'active' : 'inactive',
         itemCount: checklist.items.length,
       })
@@ -189,9 +171,6 @@ class ChecklistAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'isActive',
-        oldValue: String(checklist.isActive),
-        newValue: 'false',
       }
     );
   }

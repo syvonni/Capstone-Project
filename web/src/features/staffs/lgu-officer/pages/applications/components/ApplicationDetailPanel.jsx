@@ -17,7 +17,11 @@ import ApplicationDetailPanelContent from './ApplicationDetailPanelContent'
 import { useApplicationStatus } from '../hooks/useApplicationStatus'
 import { useApplicationModals } from '../hooks/useApplicationModals'
 import { useApplicationBookmarks } from '../hooks/useApplicationBookmarks'
-import { useApplicationAudit, useApplicationAppeals } from '../hooks/useApplicationAudit'
+import { useApplicationAppeals } from '../hooks/useApplicationAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
+import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 import { usePendingActionCountdown } from '../hooks/usePendingActionCountdown'
 import { useFormDefinition } from '../hooks/useFormDefinition'
 import { useApplicationClaim } from '../hooks/useApplicationClaim'
@@ -25,7 +29,6 @@ import { useApplicationFieldActions } from '../hooks/useApplicationFieldActions'
 import { useApplicationPendingActions } from '../hooks/useApplicationPendingActions'
 import { useApplicationActions } from '../hooks/useApplicationActions'
 import { useApplicationHandlers } from '../hooks/useApplicationHandlers'
-import ApplicationAuditHistoryModal from './modals/ApplicationAuditHistoryModal'
 import RejectApplicationModal from './modals/ApplicationRejectApplicationModal'
 import RejectAppealModal from './modals/ApplicationRejectAppealModal'
 import CompleteReviewModal from './modals/ApplicationCompleteReviewModal'
@@ -243,8 +246,34 @@ export default function ApplicationDetailPanel({
   )
   console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationBookmarks')
   const { isBookmarked, _bookmarkId, handleBookmarkToggle } = useApplicationBookmarks(application, onBookmarkToggle)
-  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationAudit')
-  const { auditLogs: _auditLogs, _refreshAudit } = useApplicationAudit(application)
+  console.log('[AUTOSAVE][HOOK-CALL] Before useAudit')
+  const appId = application?.applicationId || application?.businessId || application?._id
+  const { auditLogs, auditLoading, refresh } = useAudit('application', appId, !!application)
+  
+  // Transform audit logs to match shared component format
+  const transformedLogs = useMemo(() => {
+    return auditLogs.map(audit => ({
+      ...audit,
+      timestamp: audit.createdAt,
+      userName: audit.metadata?.officerName || audit.metadata?.claimedByName || audit.metadata?.releasedByName ||
+                 audit.metadata?.reviewedByName || audit.metadata?.submittedByName || audit.metadata?.rejectedByName ||
+                 audit.metadata?.returnedByName || audit.metadata?.inspectorName || audit.metadata?.registeredByName ||
+                 audit.metadata?.updatedByName || audit.metadata?.deletedByName || 'Unknown',
+    }))
+  }, [auditLogs])
+
+  // Custom search filter for application audit logs
+  const searchFilter = useCallback((audit, searchValue) => {
+    const searchLower = searchValue.toLowerCase()
+    const metadata = audit.metadata || {}
+    const user = metadata.officerName || metadata.claimedByName || metadata.releasedByName ||
+           metadata.reviewedByName || metadata.submittedByName || metadata.rejectedByName ||
+           metadata.returnedByName || metadata.inspectorName || metadata.registeredByName ||
+           metadata.updatedByName || metadata.deletedByName || 'Unknown'
+    const eventType = audit.eventType || ''
+    return user.toLowerCase().includes(searchLower) || eventType.toLowerCase().includes(searchLower)
+  }, [])
+
   console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationAppeals')
   const { latestAppeal, _getActiveAppeal } = useApplicationAppeals(application)
 
@@ -674,10 +703,28 @@ export default function ApplicationDetailPanel({
         onClose={() => setDisabledReasonModal({ open: false, message: '' })}
         message={disabledReasonModal.message}
       />
-      <ApplicationAuditHistoryModal
+      <AuditHistoryModal
         open={auditModalOpen}
         onClose={() => setAuditModalOpen(false)}
-        application={application}
+        auditLogs={transformedLogs}
+        loading={auditLoading}
+        eventDescriptions={AUDIT_EVENT_INFO}
+        customFilter={searchFilter}
+        DetailPanelComponent={(props) => (
+          <AuditEventDetails
+            {...props}
+            priorityFields={[
+              'eventType',
+              'createdAt',
+              'userName',
+              'version',
+              'updatedByName',
+              'createdByName',
+              'deletedByName',
+            ]}
+          />
+        )}
+        onRefresh={refresh}
       />
       <ApplicationRejectionReasonModal
         open={showAppRejectionModal}

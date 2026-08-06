@@ -95,9 +95,6 @@ AuditLogSchema.index({ entityType: 1, eventType: 1, createdAt: -1 });
 // This avoids validation issues and ensures the hash is always set correctly
 // The pre-save hook was removed since we calculate the hash in the route handler
 
-// verifyHash method removed - blockchain feature deleted
-// Previously: Method to verify the hash matches the current data
-
 // Static method to create audit log with automatic hash calculation
 AuditLogSchema.statics.createAuditLog = async function (data) {
   const auditLog = new this(data);

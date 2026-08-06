@@ -17,7 +17,6 @@ const { trackChanges } = require('../changeTracker');
 const { logAuditEvent } = require('../auditClient');
 
 const VARIABLE_FEE_RULE_METADATA_MAPPING = {
-  variableFeeRuleId: '_id',
   customId: 'customId',
   name: 'name',
   notes: 'notes',
@@ -30,7 +29,6 @@ const VARIABLE_FEE_RULE_METADATA_MAPPING = {
   classifications: 'classifications',
   isActive: 'isActive',
   version: 'version',
-  effectiveDate: 'effectiveDate',
 };
 
 const VARIABLE_FEE_RULE_FIELD_MAPPING = {
@@ -46,7 +44,6 @@ const VARIABLE_FEE_RULE_FIELD_MAPPING = {
   classifications: 'classifications',
   isActive: 'isActive',
   version: 'version',
-  effectiveDate: 'effectiveDate',
 };
 
 /**
@@ -73,11 +70,7 @@ class VariableFeeRuleAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(rule, VARIABLE_FEE_RULE_METADATA_MAPPING)
-      .withEntityIdentification('VariableFeeRule', rule._id)
       .withEntitySnapshots(null, rule) // No old snapshot for creation
-      .withCustomFields({
-        action: 'created',
-      })
       .build();
 
     return await logAuditEvent(
@@ -88,9 +81,6 @@ class VariableFeeRuleAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: null,
-        oldValue: null,
-        newValue: JSON.stringify(rule),
       }
     );
   }
@@ -107,7 +97,7 @@ class VariableFeeRuleAuditHelper {
    * @param {object} oldRule - VariableFeeRule object before changes
    * @param {object} newRule - VariableFeeRule object after changes
    * @param {string} role - User role
-   * @returns {Promise<Array<object>>} - Array of created audit logs (one per changed field)
+   * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
   static async logUpdated(req, userId, userInfo, oldRule, newRule, role) {
     // Track changes between old and new rule
@@ -117,45 +107,35 @@ class VariableFeeRuleAuditHelper {
 
     // If no changes, don't log anything
     if (changes.length === 0) {
-      return [];
+      return null;
     }
 
     // Build base metadata
-    const baseMetadata = new AuditMetadataBuilder(req)
+    const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(newRule, VARIABLE_FEE_RULE_METADATA_MAPPING)
-      .withEntityIdentification('VariableFeeRule', newRule._id)
       .withEntitySnapshots(oldRule, newRule)
       .withChangeTracking(changes)
       .withCustomFields({
-        action: 'updated',
         oldVersion: oldRule.version,
         newVersion: newRule.version,
       })
       .build();
 
-    // Log each changed field separately
-    const auditLogs = [];
-    for (const change of changes) {
-      const fieldMetadata = {
-        ...baseMetadata,
+    // Log a single audit event for all field changes
+    const auditLog = await logAuditEvent(
+      'variable_fee_rule_updated',
+      userId,
+      'VariableFeeRule',
+      newRule._id,
+      {
+        ...metadata,
         role,
-        fieldChanged: change.field,
-        oldValue: change.oldValue,
-        newValue: change.newValue,
-      };
+      }
+    );
 
-      const auditLog = await logAuditEvent(
-        'variable_fee_rule_updated',
-        userId,
-        'VariableFeeRule',
-        newRule._id,
-        fieldMetadata
-      );
-      auditLogs.push(auditLog);
-    }
-    return auditLogs;
+    return auditLog;
   }
 
   /**
@@ -176,10 +156,8 @@ class VariableFeeRuleAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(rule, VARIABLE_FEE_RULE_METADATA_MAPPING)
-      .withEntityIdentification('VariableFeeRule', rule._id)
       .withEntitySnapshots(rule, { ...rule, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        action: 'disabled',
         previousStatus: rule.isActive ? 'active' : 'inactive',
       })
       .build();
@@ -192,9 +170,6 @@ class VariableFeeRuleAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'isActive',
-        oldValue: String(rule.isActive),
-        newValue: 'false',
       }
     );
   }

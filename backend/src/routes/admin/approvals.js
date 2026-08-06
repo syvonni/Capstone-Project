@@ -4,8 +4,6 @@ const { validateBody, Joi } = require("../../middleware/validation");
 const respond = require("../../middleware/respond");
 const AdminApproval = require("../../models/AdminApproval");
 const User = require("../../models/User");
-const blockchainService = require("../../lib/blockchainService");
-const blockchainQueue = require("../../lib/blockchainQueue");
 const { applyApprovedChange } = require("../auth/profile");
 const { sendApprovalNotification } = require("../../lib/notificationService");
 
@@ -275,50 +273,6 @@ router.post(
         ).catch((err) => {
           console.error("Failed to send rejection notification:", err);
         });
-      }
-
-      // Log to blockchain if approved or rejected (on-chain storage for critical events)
-      if (approval.status === "approved" || approval.status === "rejected") {
-        const details = {
-          approvalId: approval.approvalId,
-          requestType: approval.requestType,
-          userId: String(approval.userId),
-          requestedBy: String(approval.requestedBy),
-          approvals: approval.approvals.map((a) => ({
-            adminId: String(a.adminId),
-            approved: a.approved,
-            comment: a.comment,
-            timestamp: a.timestamp,
-          })),
-          finalStatus: approval.status,
-        };
-
-        // Queue blockchain operation (non-blocking, with retry)
-        if (blockchainService.isAvailable()) {
-          blockchainQueue.queueBlockchainOperation(
-            "logAdminApproval",
-            [
-              approval.approvalId,
-              approval.requestType,
-              String(approval.userId),
-              String(approverId),
-              approved,
-              JSON.stringify(details),
-            ],
-            null, // AdminApproval doesn't have a direct audit log ID
-          );
-
-          // Also log critical event for admin approvals
-          blockchainQueue.queueBlockchainOperation(
-            "logCriticalEvent",
-            [
-              `admin_approval_${approval.status}`,
-              String(approval.userId),
-              JSON.stringify(details),
-            ],
-            null,
-          );
-        }
       }
 
       return res.json({

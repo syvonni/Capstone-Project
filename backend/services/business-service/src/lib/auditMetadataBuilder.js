@@ -86,14 +86,13 @@ class AuditMetadataBuilder {
    * 
    * USAGE:
    * .withRequestInfo()
-   * // Adds: ip, userAgent, method, path
+   * // Adds: ip, method, path
    * 
    * @returns {AuditMetadataBuilder} - Builder instance for chaining
    */
   withRequestInfo() {
     if (this.req) {
       this.metadata.ip = this.req.ip || 'unknown';
-      this.metadata.userAgent = this.req.headers['user-agent'] || 'unknown';
       this.metadata.method = this.req.method;
       this.metadata.path = this.req.path;
     }

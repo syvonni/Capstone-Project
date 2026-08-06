@@ -7,6 +7,7 @@ const correlationIdMiddleware = require("./middleware/correlationId");
 const {
   performanceMonitorMiddleware,
 } = require("./middleware/performanceMonitor");
+const { entityPerformanceMiddleware } = require("./middleware/entityPerformanceMiddleware");
 const { securityMonitorMiddleware } = require("./middleware/securityMonitor");
 const errorHandlerMiddleware = require("./middleware/errorHandler");
 const http = require("http");
@@ -46,6 +47,7 @@ app.use(
 // Structured Logging & Monitoring Middleware (early in chain)
 app.use(correlationIdMiddleware);
 app.use(performanceMonitorMiddleware);
+app.use(entityPerformanceMiddleware);
 app.use(securityMonitorMiddleware);
 
 // Middleware

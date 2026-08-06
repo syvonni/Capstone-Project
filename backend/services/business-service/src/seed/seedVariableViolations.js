@@ -650,7 +650,6 @@ async function seedVariableViolations() {
         category: 'penalty',
         isActive: true,
         version: 1,
-        effectiveDate: new Date(),
       });
       console.log(`  + Created penalty fee: ${penaltyFeeName} (₱${violationData.penaltyAmount})`);
     }

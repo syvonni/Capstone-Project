@@ -4,10 +4,6 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const logger = require("./lib/logger");
 const correlationIdMiddleware = require("./middleware/correlationId");
-const {
-  performanceMonitorMiddleware,
-} = require("./middleware/performanceMonitor");
-const { securityMonitorMiddleware } = require("./middleware/securityMonitor");
 const errorHandlerMiddleware = require("./middleware/errorHandler");
 const http = require("http");
 const mongoose = require("mongoose");
@@ -34,10 +30,8 @@ app.use(
   }),
 );
 
-// Structured Logging & Monitoring Middleware (early in chain)
+// Structured Logging Middleware (early in chain)
 app.use(correlationIdMiddleware);
-app.use(performanceMonitorMiddleware);
-app.use(securityMonitorMiddleware);
 
 // Middleware
 app.use(
@@ -97,16 +91,6 @@ async function start() {
     logger.info("Attempting to connect to database...");
     await connectDB(uri);
     logger.info("Database connected successfully!");
-
-    // Initialize background jobs after DB connection
-    if (process.env.NODE_ENV !== "test") {
-      try {
-        const { startJobs } = require("./jobs");
-        startJobs();
-      } catch (error) {
-        logger.warn("Failed to start background jobs", { error });
-      }
-    }
 
     const server = http.createServer(app);
     server.listen(PORT, () => {

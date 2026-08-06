@@ -6,16 +6,16 @@ import { useState, useEffect, useMemo } from 'react'
 import { Form, InputNumber, Typography, theme, message, Empty, Button, Input, Select, Divider } from 'antd'
 import { HistoryOutlined, SaveOutlined, PlusOutlined, DeleteOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import InfoGrid from '@/shared/components/InfoGrid'
 import { getTaxBrackets, createTaxBracket, updateTaxBracket, deleteTaxBracket } from '@/features/admin/services/feeService'
 import { getLobs } from '@/shared/services/lobService'
 import { useStepUp } from '@/shared/hooks/useStepUp'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { useFormChangeTracking } from '@/shared/hooks/useFormChangeTracking'
 import { currencyFormatter, currencyParser } from '@/shared/utils/currency.utils'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
-import FeeAuditDetailPanel from './FeeAuditDetailPanel'
 
 const { Text, Title } = Typography
 const { TextArea } = Input
@@ -57,7 +57,7 @@ export default function TaxBracketDetailPanel({ bracketId, lobId, onSave }) {
   const [lob, setLob] = useState(null)
   const [essentialCommodity, setEssentialCommodity] = useState(false)
   const { runWithStepUp, stepUpModal } = useStepUp()
-  const { refresh: refreshAudit } = useAudit('tax-bracket', bracketId)
+  const { auditLogs, auditLoading, refresh } = useAudit('tax-bracket', bracketId)
 
   const { hasChanges, resetChangeTracking, handleValuesChange } = useFormChangeTracking(initialValues)
 
@@ -257,7 +257,7 @@ export default function TaxBracketDetailPanel({ bracketId, lobId, onSave }) {
         
         message.success('Tax brackets saved successfully')
         resetChangeTracking(initialValues)
-        refreshAudit()
+        refresh()
         onSave?.()
       })
     } catch (error) {
@@ -305,7 +305,7 @@ export default function TaxBracketDetailPanel({ bracketId, lobId, onSave }) {
           delete newInitialValues[`taxBasis-${bracketId}`]
           setInitialValues(newInitialValues)
           form.setFieldsValue(newInitialValues)
-          refreshAudit()
+          refresh()
         }
       })
     } catch (error) {
@@ -748,10 +748,11 @@ export default function TaxBracketDetailPanel({ bracketId, lobId, onSave }) {
       <AuditHistoryModal
         open={historyModalOpen}
         onClose={() => setHistoryModalOpen(false)}
-        entityType="tax-bracket"
-        entityId={bracketId}
+        auditLogs={auditLogs}
+        loading={auditLoading}
+        onRefresh={refresh}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('tax_bracket_'))}
-        DetailPanelComponent={FeeAuditDetailPanel}
+        DetailPanelComponent={AuditEventDetails}
       />
       {stepUpModal}
       <div style={{ flex: 1, overflow: 'auto' }}>

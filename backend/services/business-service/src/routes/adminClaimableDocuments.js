@@ -26,7 +26,7 @@ router.get("/", requireJwt, async (req, res) => {
     if (feeId) filter.feeId = new mongoose.Types.ObjectId(feeId);
 
     const documents = await ClaimableDocument.find(filter)
-      .select('name notes category version effectiveDate createdAt updatedAt templateHtml templateImages templateTexts formIds feeId')
+      .select('name notes category version createdAt updatedAt templateHtml templateImages templateTexts formIds feeId')
       .populate('checklistId')
       .sort({ createdAt: -1 });
     
@@ -60,7 +60,7 @@ router.get("/", requireJwt, async (req, res) => {
 router.get("/:id", requireJwt, async (req, res) => {
   try {
     const document = await ClaimableDocument.findById(req.params.id)
-      .select('name notes category version effectiveDate createdAt updatedAt templateHtml templateImages templateTexts formIds feeId checklistId')
+      .select('name notes category version createdAt updatedAt templateHtml templateImages templateTexts formIds feeId checklistId')
       .populate('checklistId');
     if (!document) {
       return res.status(404).json({
@@ -207,7 +207,6 @@ router.post(
           isDraft: true,
           draftOf: id,
           version: originalDocument.version,
-          effectiveDate: originalDocument.effectiveDate,
         });
         await draft.save();
       }
@@ -272,7 +271,6 @@ router.post(
       originalDocument.templateHtml = draft.templateHtml;
       originalDocument.templateImages = draft.templateImages;
       originalDocument.version += 1;
-      originalDocument.effectiveDate = new Date();
 
       await originalDocument.save();
 
@@ -341,7 +339,6 @@ router.post(
           category: "claimable_document",
           isActive: true,
           version: 1,
-          effectiveDate: new Date(),
         });
         feeId = fee._id;
       }
@@ -356,7 +353,6 @@ router.post(
         feeId: feeId,
         isActive: true,
         version: 1,
-        effectiveDate: new Date(),
       });
 
       const userInfo = await getUserInfo(req._userId);
@@ -451,7 +447,6 @@ router.put("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
     // Increment version if there are changes
     if (Object.keys(changes).length > 0) {
       document.version += 1;
-      document.effectiveDate = new Date();
     }
 
     await document.save();
@@ -505,7 +500,6 @@ router.delete(
       // Soft-disable instead of hard delete
       document.isActive = false;
       document.version += 1;
-      document.effectiveDate = new Date();
       await document.save();
 
       const userInfo = await getUserInfo(req._userId);

@@ -1410,7 +1410,6 @@ async function seedPostRequirementViolations() {
           category: 'penalty',
           isActive: true,
           version: 1,
-          effectiveDate: new Date(),
         });
         createdFees.push(penaltyFee);
         console.log(`  + Created penalty fee: ${penaltyFeeName} (₱${violationData.penaltyAmount})`);

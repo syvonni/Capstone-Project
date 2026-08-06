@@ -12,13 +12,13 @@ import {
   addHelpRequestInternalNote
 } from '@/features/staffs/lgu-officer/services/helpRequestService'
 import { useStepUp } from '@/shared/hooks/useStepUp'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
-import HelpRequestAuditDetailPanel from './HelpRequestAuditDetailPanel'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import HelpRequestDetailHeader from './HelpRequestDetailHeader'
 import HelpRequestInfoCard from './HelpRequestInfoCard'
 import HelpRequestConversation from './HelpRequestConversation'
 import HelpRequestInternalNotes from './HelpRequestInternalNotes'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 
 const { Text, Paragraph } = Typography
@@ -56,7 +56,7 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
 
-  const { auditLogs, auditLoading } = useAudit('help-request', request?.requestId)
+  const { auditLogs, auditLoading, refresh } = useAudit('help-request', request?.requestId)
 
   const bookmarkService = useMemo(() => new BookmarkService(), [])
 
@@ -449,7 +449,21 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
         onClose={() => setHistoryModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
-        DetailPanelComponent={HelpRequestAuditDetailPanel}
+        onRefresh={refresh}
+        DetailPanelComponent={(props) => (
+          <AuditEventDetails
+            {...props}
+            priorityFields={[
+              'eventType',
+              'createdAt',
+              'userName',
+              'version',
+              'updatedByName',
+              'createdByName',
+              'deletedByName',
+            ]}
+          />
+        )}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => ['claim', 'release', 'status_update', 'priority_update'].includes(e.event))}
       />
 

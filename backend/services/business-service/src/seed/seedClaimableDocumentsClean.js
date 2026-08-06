@@ -2483,7 +2483,6 @@ async function seedIfEmpty() {
             category: "claimable_document",
             isActive: true,
             version: 1,
-            effectiveDate: new Date(),
           });
           feeId = fee._id;
         }
@@ -2493,7 +2492,6 @@ async function seedIfEmpty() {
           feeId: feeId,
           isActive: true,
           version: 1,
-          effectiveDate: new Date(),
         });
         createdDocuments.push(created);
       }
@@ -2515,7 +2513,6 @@ async function seedIfEmpty() {
             category: "claimable_document",
             isActive: true,
             version: 1,
-            effectiveDate: new Date(),
           });
           console.log(`Fee created with _id: ${fee._id}`);
           await ClaimableDocument.updateOne(

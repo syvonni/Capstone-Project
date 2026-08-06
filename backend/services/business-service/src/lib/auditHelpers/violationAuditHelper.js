@@ -15,9 +15,18 @@
 const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
 const { trackChanges } = require('../changeTracker');
 const { logAuditEvent } = require('../auditClient');
+const Fee = require('../../models/Fee');
+
+/**
+ * Helper function to enrich single relationship with name
+ */
+async function enrichSingleRelation(id, Model) {
+  if (!id) return null;
+  const entity = await Model.findById(id).select('_id name').lean();
+  return entity ? { id: entity._id.toString(), name: entity.name } : null;
+}
 
 const VIOLATION_METADATA_MAPPING = {
-  violationId: '_id',
   code: 'code',
   name: 'name',
   description: 'description',
@@ -63,15 +72,19 @@ class ViolationAuditHelper {
    * @returns {Promise<object>} - Created audit log
    */
   static async logCreated(req, userId, userInfo, violation, role) {
+    // Enrich feeId with name
+    const feeWithNames = await enrichSingleRelation(violation.feeId, Fee);
+
+    const enrichedViolation = {
+      ...violation.toObject ? violation.toObject() : violation,
+      feeId: feeWithNames
+    };
+
     const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
-      .withEntityFields(violation, VIOLATION_METADATA_MAPPING)
-      .withEntityIdentification('Violation', violation._id)
+      .withEntityFields(enrichedViolation, VIOLATION_METADATA_MAPPING)
       .withEntitySnapshots(null, violation) // No old snapshot for creation
-      .withCustomFields({
-        action: 'created',
-      })
       .build();
 
     return await logAuditEvent(
@@ -82,9 +95,6 @@ class ViolationAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: null,
-        oldValue: null,
-        newValue: JSON.stringify(violation),
       }
     );
   }
@@ -101,7 +111,7 @@ class ViolationAuditHelper {
    * @param {object} oldViolation - Violation object before changes
    * @param {object} newViolation - Violation object after changes
    * @param {string} role - User role
-   * @returns {Promise<Array<object>>} - Array of created audit logs (one per changed field)
+   * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
   static async logUpdated(req, userId, userInfo, oldViolation, newViolation, role) {
     // Track changes between old and new violation
@@ -111,45 +121,43 @@ class ViolationAuditHelper {
 
     // If no changes, don't log anything
     if (changes.length === 0) {
-      return [];
+      return null;
     }
 
+    // Enrich feeId with name
+    const feeWithNames = await enrichSingleRelation(newViolation.feeId, Fee);
+
+    const enrichedViolation = {
+      ...newViolation.toObject ? newViolation.toObject() : newViolation,
+      feeId: feeWithNames
+    };
+
     // Build base metadata
-    const baseMetadata = new AuditMetadataBuilder(req)
+    const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
-      .withEntityFields(newViolation, VIOLATION_METADATA_MAPPING)
-      .withEntityIdentification('Violation', newViolation._id)
+      .withEntityFields(enrichedViolation, VIOLATION_METADATA_MAPPING)
       .withEntitySnapshots(oldViolation, newViolation)
       .withChangeTracking(changes)
       .withCustomFields({
-        action: 'updated',
         oldVersion: oldViolation.version,
         newVersion: newViolation.version,
       })
       .build();
 
-    // Log each changed field separately
-    const auditLogs = [];
-    for (const change of changes) {
-      const fieldMetadata = {
-        ...baseMetadata,
+    // Log a single audit event for all field changes
+    const auditLog = await logAuditEvent(
+      'violation_updated',
+      userId,
+      'Violation',
+      newViolation._id,
+      {
+        ...metadata,
         role,
-        fieldChanged: change.field,
-        oldValue: change.oldValue,
-        newValue: change.newValue,
-      };
+      }
+    );
 
-      const auditLog = await logAuditEvent(
-        'violation_updated',
-        userId,
-        'Violation',
-        newViolation._id,
-        fieldMetadata
-      );
-      auditLogs.push(auditLog);
-    }
-    return auditLogs;
+    return auditLog;
   }
 
   /**
@@ -166,14 +174,20 @@ class ViolationAuditHelper {
    * @returns {Promise<object>} - Created audit log
    */
   static async logDisabled(req, userId, userInfo, violation, role) {
+    // Enrich feeId with name
+    const feeWithNames = await enrichSingleRelation(violation.feeId, Fee);
+
+    const enrichedViolation = {
+      ...violation.toObject ? violation.toObject() : violation,
+      feeId: feeWithNames
+    };
+
     const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
-      .withEntityFields(violation, VIOLATION_METADATA_MAPPING)
-      .withEntityIdentification('Violation', violation._id)
+      .withEntityFields(enrichedViolation, VIOLATION_METADATA_MAPPING)
       .withEntitySnapshots(violation, { ...violation, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        action: 'disabled',
         previousStatus: violation.isActive ? 'active' : 'inactive',
       })
       .build();
@@ -186,9 +200,6 @@ class ViolationAuditHelper {
       {
         ...metadata,
         role,
-        fieldChanged: 'isActive',
-        oldValue: String(violation.isActive),
-        newValue: 'false',
       }
     );
   }

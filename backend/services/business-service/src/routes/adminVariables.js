@@ -7,6 +7,8 @@ const User = require("../models/User");
 const { requireJwt, requireRole, requireAdminStepUp } = require("../middleware/auth");
 const { getUserInfo } = require("../../../../shared/lib/getUserInfo");
 const VariableAuditHelper = require("../lib/auditHelpers/variableAuditHelper");
+const VariableDataQualityHelper = require("../lib/dataQualityHelpers/variableDataQualityHelper");
+const VariablePerformanceHelper = require("../lib/performanceHelpers/variablePerformanceHelper");
 const {
   validateBrackets,
   validateClassifications,
@@ -54,6 +56,40 @@ router.get("/", requireJwt, async (req, res) => {
   }
 });
 
+// GET /api/business/admin/variables/data-quality - get data quality issues for all variables
+router.get("/data-quality", requireJwt, requireRole(["admin"]), async (req, res) => {
+  try {
+    const result = await VariableDataQualityHelper.validateAllVariables();
+    console.log("Data quality result:", JSON.stringify(result, null, 2));
+    return res.json(result);
+  } catch (err) {
+    console.error("GET /admin/variables/data-quality error:", err);
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL",
+        message: "Failed to fetch data quality issues",
+      },
+    });
+  }
+});
+
+// GET /api/business/admin/variables/performance - get performance metrics
+router.get("/performance", requireJwt, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { timeRange } = req.query;
+    const metrics = await VariablePerformanceHelper.getPerformanceSummary(timeRange);
+    return res.json(metrics);
+  } catch (err) {
+    console.error("GET /admin/variables/performance error:", err);
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL",
+        message: "Failed to fetch performance metrics",
+      },
+    });
+  }
+});
+
 // GET /api/business/admin/variables/:id - get single
 router.get("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
   try {
@@ -79,9 +115,9 @@ router.get("/:id", requireJwt, requireRole(["admin"]), async (req, res) => {
   } catch (err) {
     console.error("GET /variables/:id error:", err);
     return res.status(500).json({
-      error: { 
-        code: "INTERNAL", 
-        message: "Failed to fetch variable. Please try again later." 
+      error: {
+        code: "INTERNAL",
+        message: "Failed to fetch variable. Please try again later."
       },
     });
   }
@@ -559,7 +595,6 @@ router.put(
       // Increment version if there are changes
       if (Object.keys(changes).length > 0) {
         updates.version = variable.version + 1;
-        updates.effectiveDate = new Date();
       }
 
       const updated = await Variable.findByIdAndUpdate(id, updates, {
@@ -644,7 +679,6 @@ router.delete(
       const updates = {
         isActive: false,
         version: variable.version + 1,
-        effectiveDate: new Date(),
         updatedBy: req._userId,
       };
 

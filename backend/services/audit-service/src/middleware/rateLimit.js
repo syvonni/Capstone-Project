@@ -104,7 +104,7 @@ function idUploadRateLimit() {
 }
 
 /**
- * Rate limiter for blockchain audit logging
+ * Rate limiter for audit logging
  * 20 logs per minute per IP (called by other services)
  */
 function auditLogRateLimit() {
@@ -181,9 +181,6 @@ function adminApprovalRateLimit() {
     },
   });
 }
-
-// auditVerifyRateLimit function removed - blockchain verify endpoints deleted
-// Previously: Rate limiter for audit verify endpoints (hash enumeration protection)
 
 module.exports = {
   perEmailRateLimit,

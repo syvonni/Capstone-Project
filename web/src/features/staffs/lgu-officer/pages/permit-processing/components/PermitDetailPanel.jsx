@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Empty } from 'antd'
 import PermitDetailHeader from './PermitDetailHeader'
 import PermitDetailPanelContent from './PermitDetailPanelContent'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
-import PermitAuditDetailPanel from './PermitAuditDetailPanel'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 
 /**
@@ -59,7 +59,20 @@ export default function PermitDetailPanel({
         onClose={() => setAuditModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
-        DetailPanelComponent={PermitAuditDetailPanel}
+        DetailPanelComponent={(props) => (
+          <AuditEventDetails
+            {...props}
+            priorityFields={[
+              'eventType',
+              'createdAt',
+              'userName',
+              'version',
+              'updatedByName',
+              'createdByName',
+              'deletedByName',
+            ]}
+          />
+        )}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('permit') || e.event.startsWith('owner'))}
       />
     </div>

@@ -1,6 +1,7 @@
 import { Typography, Card, Divider, Button, theme, Modal, Drawer, Grid } from 'antd'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
+import SplitCard from './SplitCard'
 
 const { Text } = Typography
 const { useBreakpoint } = Grid
@@ -10,6 +11,7 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
   const screens = useBreakpoint()
   const [modalOpen, setModalOpen] = useState(false)
   const [modalContent, setModalContent] = useState(null)
+  const [modalLinkColor, setModalLinkColor] = useState(null)
 
   // Group items by dividers
   const itemGroups = []
@@ -53,7 +55,7 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
     if (item.fullWidth) return true
     if (item.label === 'Description' || item.label === 'Notes') return true
     if (typeof item.value === 'object' && item.value !== null && !Array.isArray(item.value)) return true
-    if (item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist') return true
+    if (item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'linkList') return true
     return false
   }
 
@@ -61,6 +63,7 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
   const handleModalContentClick = (item) => {
     if (item.type === 'modalContent' && item.content) {
       setModalContent(item.content)
+      setModalLinkColor(item.linkColor || null)
       setModalOpen(true)
     }
   }
@@ -308,6 +311,64 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
       )
     }
 
+    if (item.type === 'linkList') {
+      const links = item.links || []
+      const linkColor = item.linkColor === 'error' ? token.colorError : (item.linkColor || token.colorLink)
+      if (links.length === 0) {
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {item.title && (
+              <Text type="secondary" style={{ fontSize: 12, marginBottom: 8 }}>{item.title}</Text>
+            )}
+            <Text type="secondary">No data quality issues found.</Text>
+          </div>
+        )
+      }
+      return (
+        <SplitCard
+          title={item.title}
+          icon={item.icon}
+          leftPanelWidth="20%"
+          rightPanelWidth="65%"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {links.map((link, index) => (
+              <div
+                key={index}
+                role={link.modalContent ? 'button' : undefined}
+                tabIndex={link.modalContent ? 0 : undefined}
+                style={{ 
+                  cursor: link.modalContent ? 'pointer' : 'default',
+                }}
+                onClick={() => {
+                  if (link.modalContent) {
+                    setModalContent(link.modalContent)
+                    setModalLinkColor(link.useErrorColor === false ? null : linkColor)
+                    setModalOpen(true)
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (link.modalContent && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault()
+                    setModalContent(link.modalContent)
+                    setModalLinkColor(link.useErrorColor === false ? null : linkColor)
+                    setModalOpen(true)
+                  }
+                }}
+              >
+                <Text style={{ 
+                  textDecoration: link.modalContent ? 'underline' : 'none',
+                  color: link.modalContent ? (link.useErrorColor === false ? token.colorLink : linkColor) : token.colorTextSecondary
+                }}>
+                  {link.count} {link.text}
+                </Text>
+              </div>
+            ))}
+          </div>
+        </SplitCard>
+      )
+    }
+
     return null
   }
 
@@ -367,7 +428,7 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
                           gridColumn: isFullWidth(item) ? '1 / -1' : 'auto',
                         }}
                       >
-                        {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' ? (
+                        {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' || item.type === 'linkList' ? (
                           renderCard(item)
                         ) : (
                           renderItem(item)
@@ -390,7 +451,7 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
                           gridColumn: isFullWidth(item) ? '1 / -1' : 'auto',
                         }}
                       >
-                        {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' ? (
+                        {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' || item.type === 'linkList' ? (
                           renderCard(item)
                         ) : (
                           renderItem(item)
@@ -419,7 +480,7 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
                         gridColumn: isFullWidth(item) ? '1 / -1' : 'auto',
                       }}
                     >
-                      {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' ? (
+                      {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' || item.type === 'linkList' ? (
                         renderCard(item)
                       ) : (
                         renderItem(item)
@@ -456,7 +517,7 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
               {modalContent?.items && modalContent.items.length > 0 ? (
                 [...modalContent.items].sort((a, b) => a.text.localeCompare(b.text)).map((listItem, index) => {
                   const content = listItem.to ? (
-                    <Link to={listItem.to} style={{ textDecoration: 'underline', color: token.colorLink }}>
+                    <Link to={listItem.to} style={{ textDecoration: 'underline', color: modalLinkColor || token.colorLink }}>
                       {listItem.text}
                     </Link>
                   ) : (
@@ -488,7 +549,7 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
               {modalContent?.items && modalContent.items.length > 0 ? (
                 [...modalContent.items].sort((a, b) => a.text.localeCompare(b.text)).map((listItem, index) => {
                   const content = listItem.to ? (
-                    <Link to={listItem.to} style={{ textDecoration: 'underline', color: token.colorLink }}>
+                    <Link to={listItem.to} style={{ textDecoration: 'underline', color: modalLinkColor || token.colorLink }}>
                       {listItem.text}
                     </Link>
                   ) : (

@@ -100,3 +100,8 @@ h1, h2, h3, h4, h5, h6 {
 .ant-modal-confirm-btns .ant-btn {
   font-family: Urbanist, sans-serif !important;
 }
+
+/* InfoGrid linkList header padding */
+.ant-list-header {
+  padding-left: 12px !important;
+}

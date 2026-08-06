@@ -6,8 +6,8 @@ import { useMemo, useState, useEffect } from 'react'
 import { theme } from 'antd'
 import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/components/AuditHistoryModal'
-import LobAuditDetailPanel from './LobAuditDetailPanel'
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
 import LobOverview from './LobOverview'
 import LobConfiguration from './LobConfiguration'
 import { useLobForm } from '../hooks/useLobForm'
@@ -15,7 +15,7 @@ import { getTaxBrackets } from '@/features/admin/services/feeService'
 import { getVariables } from '@/features/admin/services/variableService'
 import { getDocuments } from '@/features/admin/services/documentService'
 import { getPostRequirements } from '@/features/admin/services/lobService'
-import { useAudit } from '@/shared/hooks/useAudit'
+import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 
 export default function LobDetailPanel({ lobId, lob, onSave }) {
@@ -29,7 +29,7 @@ export default function LobDetailPanel({ lobId, lob, onSave }) {
 
   const isNew = lobId === 'new' || !lob
 
-  const { auditLogs, auditLoading } = useAudit('lob', lobId, !isNew)
+  const { auditLogs, auditLoading, refresh } = useAudit('lob', lobId, !isNew)
 
   const initialValues = useMemo(() => {
     if (isNew) {
@@ -178,7 +178,8 @@ export default function LobDetailPanel({ lobId, lob, onSave }) {
         onClose={() => setHistoryModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
-        DetailPanelComponent={LobAuditDetailPanel}
+        onRefresh={refresh}
+        DetailPanelComponent={AuditEventDetails}
         eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('lob_'))}
       />
       {stepUpModal}
