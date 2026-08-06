@@ -191,90 +191,21 @@ app.get("/api/health", async (req, res) => {
 const uploadsDir = path.join(__dirname, "..", "..", "..", "uploads");
 app.use("/uploads", express.static(uploadsDir));
 
-// Business routes
-const businessRouter = require("./routes/profile");
-const applicationsRouter = require("./routes/applications");
+// Business routes - Phase 1: Use feature aggregators
+const businessRouter = require("./routes/business");
 app.use("/api/business", businessRouter);
-app.use("/api/business", applicationsRouter);
 
-// Phase 2 routes
-const regulatoryFeeConfigRouter = require("./routes/regulatoryFeeConfig");
-const generalPermitsRouter = require("./routes/generalPermits");
-const occupationalPermitsRouter = require("./routes/occupationalPermits");
-const { router: appealsRouter } = require("./routes/appeals");
-const editRequestsRouter = require("./routes/editRequests");
-const postDocumentsRouter = require("./routes/postDocuments");
-const dashboardRouter = require("./routes/dashboard");
-const paymentsRouter = require("./routes/payments");
-const feesRouter = require("./routes/fees");
-const clearanceRouter = require("./routes/clearances");
-const treasuryRouter = require("./routes/treasury");
-const permitsRouter = require("./routes/permits");
-const adminFeesRouter = require("./routes/adminFees");
-const adminPenaltyRulesRouter = require("./routes/adminPenaltyRules");
-const adminClaimableDocumentsRouter = require("./routes/adminClaimableDocuments");
-const adminVariablesRouter = require("./routes/adminVariables");
-const adminVariableFeeRulesRouter = require("./routes/adminVariableFeeRules");
-const adminTaxBracketsRouter = require("./routes/adminTaxBrackets");
-const adminLobsRouter = require("./routes/adminLobs");
-const adminPostRequirementsRouter = require("./routes/adminPostRequirements");
-const adminViolationsRouter = require("./routes/adminViolations");
-const adminInspectionItemsRouter = require("./routes/adminInspectionItems");
-const adminChecklistsRouter = require("./routes/adminChecklists");
+// Admin routes - Phase 1: Use feature aggregators
+const adminRouter = require("./routes/admin");
+app.use("/api/business/admin", adminRouter);
 
-app.use("/api/business/general-permits", generalPermitsRouter);
-app.use("/api/business/occupational-permits", occupationalPermitsRouter);
-app.use("/api/business/appeals", appealsRouter);
-app.use("/api/business/edit-requests", editRequestsRouter);
-app.use("/api/business/post-documents", postDocumentsRouter);
-app.use("/api/business/dashboard", dashboardRouter);
-app.use("/api/business/payments", paymentsRouter);
-app.use("/api/business", feesRouter);
-app.use("/api/business/fees", feesRouter);
-app.use("/api/business/clearances", clearanceRouter);
-app.use("/api/business/permits", permitsRouter);
-app.use("/api/treasury", treasuryRouter);
-app.use("/api/business/admin/regulatory-fee-config", regulatoryFeeConfigRouter);
-app.use("/api/business/admin/fees", adminFeesRouter);
-app.use("/api/business/admin/documents", adminClaimableDocumentsRouter);
-app.use("/api/business/admin/penalty-rules", adminPenaltyRulesRouter);
-app.use("/api/business/admin/variables", adminVariablesRouter);
-app.use("/api/business/admin/variable-fee-rules", adminVariableFeeRulesRouter);
-app.use("/api/business/admin/tax-brackets", adminTaxBracketsRouter);
-app.use("/api/business/admin/lobs", adminLobsRouter);
-app.use("/api/business/admin/post-requirements", adminPostRequirementsRouter);
-app.use("/api/business/admin/violations", adminViolationsRouter);
-app.use("/api/business/admin/inspection-items", adminInspectionItemsRouter);
-app.use("/api/business/admin/checklists", adminChecklistsRouter);
+// LGU Officer routes - Phase 1: Use feature aggregators
+const lguOfficerRouter = require("./routes/lgu-officer");
+app.use("/api/lgu-officer", lguOfficerRouter);
 
-// Help Requests (public + officer)
-const helpRequestsRouter = require("./routes/helpRequests");
-app.use("/api/help-requests", helpRequestsRouter);
-
-// Bookmarks
-const bookmarksRouter = require("./routes/bookmarks");
-app.use("/api/bookmarks", bookmarksRouter);
-
-const adminStatsRouter = require("./routes/adminStats");
-app.use("/api/business/admin", adminStatsRouter);
-
-// Public transparency stats for landing page
-const publicStatsRouter = require("./routes/publicStats");
-app.use("/api/public/business", publicStatsRouter);
-
-// LGU Officer businesses routes
-const businessesRouter = require("./routes/lgu-officer/businesses");
-const permitApplicationsRouter = require("./routes/lgu-officer/permitApplications");
-app.use("/api/lgu-officer", businessesRouter);
-app.use("/api/lgu-officer", permitApplicationsRouter);
-
-// Business Owner routes
-const businessOwnerRouter = require("./routes/businessOwner");
-app.use("/api/business-owner", businessOwnerRouter);
-
-// IPFS proxy route (for accessing local IPFS content via backend)
-const ipfsProxyRouter = require("./routes/ipfsProxy");
-app.use("/api/ipfs", ipfsProxyRouter);
+// Public routes - Phase 1: Use feature aggregators
+const publicRouter = require("./routes/public");
+app.use("/api/public/business", publicRouter);
 
 // Global Error Handler (must be last middleware)
 app.use(errorHandlerMiddleware);

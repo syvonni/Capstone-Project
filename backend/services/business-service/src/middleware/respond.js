@@ -5,16 +5,13 @@ function error(res, status, code, message, details) {
 }
 
 function ok(res, status, data) {
-  return res.status(status).json(data);
+  return res.status(status).json({ ok: true, data });
 }
 
 function success(res, status, data, message) {
-  // If data is an object, we can merge message if needed, or wrap it.
-  // For now, let's just return data like ok(), ignoring message or adding it if data is object.
-  // But signup.js passes message as 4th arg.
-  // Let's assume the previous implementation (if it existed) might have wrapped it.
-  // But to be safe and simple:
-  return res.status(status).json(data);
+  // Standardize response shape to { ok: true, data }
+  // Message parameter is kept for backward compatibility but not used in response
+  return res.status(status).json({ ok: true, data });
 }
 
 module.exports = { error, ok, success };
