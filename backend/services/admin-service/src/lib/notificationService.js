@@ -1,29 +1,12 @@
-// Import models dynamically to avoid conflicts
-let User;
-let Role;
+// Import models from service-local directory
+const User = require("../models/User");
+const Role = require("../models/Role");
+
 function getUserModel() {
-  if (!User) {
-    try {
-      // Try main backend first (for testing)
-      User = require("../../../src/models/User");
-    } catch (e) {
-      // Fallback to service model
-      User = require("../models/User");
-    }
-  }
   return User;
 }
 
 function getRoleModel() {
-  if (!Role) {
-    try {
-      // Try main backend first (for testing)
-      Role = require("../../../src/models/Role");
-    } catch (e) {
-      // Fallback to service model
-      Role = require("../models/Role");
-    }
-  }
   return Role;
 }
 

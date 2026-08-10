@@ -105,7 +105,6 @@ app.use((req, res, next) => {
   }
   // Return 503 Service Unavailable - frontend should retry
   return res.status(503).json({
-    ok: false,
     error: {
       code: "service_starting",
       message: "Service is starting, please retry",

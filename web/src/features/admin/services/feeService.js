@@ -8,14 +8,14 @@ export const getFees = async (params = {}) => {
   const queryParams = new URLSearchParams()
   if (category) queryParams.append('category', category)
   if (isActive !== undefined) queryParams.append('isActive', isActive)
-  
+
   const res = await get(`/api/business/admin/fees?${queryParams.toString()}`)
-  return res?.data || []
+  return res || []
 }
 
 export const getFee = async (id) => {
   const res = await get(`/api/business/admin/fees/${id}`)
-  return res?.data
+  return res
 }
 
 export const getFeesByCategory = async (category, params = {}) => {
@@ -24,12 +24,12 @@ export const getFeesByCategory = async (category, params = {}) => {
   if (isActive !== undefined) queryParams.append('isActive', isActive)
 
   const res = await get(`/api/business/admin/fees/by-category/${category}?${queryParams.toString()}`)
-  return res?.data || []
+  return res || []
 }
 
 export const getFeesByPermitForm = async (permitFormId) => {
   const res = await get(`/api/business/admin/fees/by-permit-form/${permitFormId}`)
-  return res?.data
+  return res
 }
 
 export const createFee = async (data, options = {}) => {
@@ -43,7 +43,7 @@ export const createFee = async (data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const updateFee = async (id, data, options = {}) => {
@@ -57,7 +57,7 @@ export const updateFee = async (id, data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const disableFee = async (id, options = {}) => {
@@ -69,7 +69,7 @@ export const disableFee = async (id, options = {}) => {
     method: 'DELETE',
     headers,
   })
-  return res?.data
+  return res
 }
 
 // Penalty Rule API
@@ -79,14 +79,14 @@ export const getPenaltyRules = async (params = {}) => {
   if (category) queryParams.append('category', category)
   if (isActive !== undefined) queryParams.append('isActive', isActive)
   if (includeDrafts) queryParams.append('includeDrafts', 'true')
-  
+
   const res = await get(`/api/business/admin/penalty-rules?${queryParams.toString()}`)
-  return res?.data || []
+  return res || []
 }
 
 export const getPenaltyRule = async (id) => {
   const res = await get(`/api/business/admin/penalty-rules/${id}`)
-  return res?.data
+  return res
 }
 
 export const createPenaltyRule = async (data, options = {}) => {
@@ -100,7 +100,7 @@ export const createPenaltyRule = async (data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const updatePenaltyRule = async (id, data, options = {}) => {
@@ -114,7 +114,7 @@ export const updatePenaltyRule = async (id, data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const disablePenaltyRule = async (id, options = {}) => {
@@ -126,7 +126,7 @@ export const disablePenaltyRule = async (id, options = {}) => {
     method: 'DELETE',
     headers,
   })
-  return res?.data
+  return res
 }
 
 // Audit History API
@@ -148,14 +148,14 @@ export const getVariableFeeRules = async (params = {}) => {
   const queryParams = new URLSearchParams()
   if (isActive !== undefined) queryParams.append('isActive', isActive)
   if (category) queryParams.append('category', category)
-  
+
   const res = await get(`/api/business/admin/variable-fee-rules?${queryParams.toString()}`)
-  return res?.data || []
+  return res || []
 }
 
 export const getVariableFeeRule = async (id) => {
   const res = await get(`/api/business/admin/variable-fee-rules/${id}`)
-  return res?.data
+  return res
 }
 
 export const createVariableFeeRule = async (data, options = {}) => {
@@ -169,7 +169,7 @@ export const createVariableFeeRule = async (data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const updateVariableFeeRule = async (id, data, options = {}) => {
@@ -183,7 +183,7 @@ export const updateVariableFeeRule = async (id, data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const disableVariableFeeRule = async (id, options = {}) => {
@@ -195,7 +195,7 @@ export const disableVariableFeeRule = async (id, options = {}) => {
     method: 'DELETE',
     headers,
   })
-  return res?.data
+  return res
 }
 
 export const getVariableFeeRuleAuditHistory = async (id, params = {}) => {
@@ -206,7 +206,7 @@ export const getVariableFeeRuleAuditHistory = async (id, params = {}) => {
 
 export const getVariableFeeRuleLobs = async (id) => {
   const res = await get(`/api/business/admin/variable-fee-rules/${id}/lobs`)
-  return res?.data || []
+  return res || []
 }
 
 // Tax Bracket API
@@ -218,12 +218,12 @@ export const getTaxBrackets = async (params = {}) => {
   if (lobId) queryParams.append('lobId', lobId)
 
   const res = await get(`/api/business/admin/tax-brackets?${queryParams.toString()}`)
-  return res?.data || []
+  return res || []
 }
 
 export const getTaxBracket = async (id) => {
   const res = await get(`/api/business/admin/tax-brackets/${id}`)
-  return res?.data
+  return res
 }
 
 export const createTaxBracket = async (data, options = {}) => {
@@ -237,7 +237,7 @@ export const createTaxBracket = async (data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const updateTaxBracket = async (id, data, options = {}) => {
@@ -251,7 +251,7 @@ export const updateTaxBracket = async (id, data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const deleteTaxBracket = async (id, options = {}) => {
@@ -263,7 +263,7 @@ export const deleteTaxBracket = async (id, options = {}) => {
     method: 'DELETE',
     headers,
   })
-  return res?.data
+  return res
 }
 
 export const getTaxBracketAuditHistory = async (id, params = {}) => {

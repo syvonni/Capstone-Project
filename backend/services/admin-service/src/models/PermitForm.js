@@ -51,7 +51,7 @@ const FormItemSchema = new mongoose.Schema(
     type: { type: String, enum: FIELD_TYPES, default: "text" },
 
     // Storage key for form-driven UIs (required for claimable document text attribute binding)
-    key: { type: String, trim: true, required: true },
+    key: { type: String, trim: true, required: false, default: '' },
 
     // Display / UX
     placeholder: { type: String, default: "" },
@@ -78,14 +78,20 @@ const FormItemSchema = new mongoose.Schema(
     maxRows: { type: Number, default: 20 },
 
     // Metadata fields for category_upload
-    metadataFields: [{
-      label: { type: String, required: true },
-      type: { type: String, enum: ["text", "number", "date", "address", "address_alaminos"], default: "text" },
-      key: { type: String, trim: true, required: true },
-      required: { type: Boolean, default: false },
-      placeholder: { type: String, default: "" },
-      helpText: { type: String, default: "" },
-    }],
+    metadataFields: [
+      {
+        label: { type: String, required: true },
+        type: {
+          type: String,
+          enum: ["text", "number", "date", "address", "address_alaminos"],
+          default: "text",
+        },
+        key: { type: String, trim: true, required: false, default: '' },
+        required: { type: Boolean, default: false },
+        placeholder: { type: String, default: "" },
+        helpText: { type: String, default: "" },
+      },
+    ],
   },
   { _id: false },
 );
@@ -157,17 +163,32 @@ const PermitFormSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Form type: 'regular' or 'temporary'
+    formType: {
+      type: String,
+      enum: ['regular', 'temporary'],
+      default: 'regular',
+      index: true,
+    },
+
+    // For temporary permits, the category (e.g., 'cooperative', 'association_foundation')
+    category: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
     // Application fee reference
     feeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Fee',
+      ref: "Fee",
       default: null,
     },
 
     // Claimable documents reference
     claimableDocumentIds: {
       type: [mongoose.Schema.Types.ObjectId],
-      ref: 'ClaimableDocument',
+      ref: "ClaimableDocument",
       default: [],
     },
 
@@ -183,7 +204,7 @@ const PermitFormSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const PermitForm = mongoose.model("PermitForm", PermitFormSchema);

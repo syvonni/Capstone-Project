@@ -35,7 +35,7 @@ function ApplicationsList({
           const current = getCurrentUser()
           const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })
           
-          await fetchJsonWithFallback('/api/business-owner/debug/clear-applications', {
+          await fetchJsonWithFallback('/api/business/debug/clear-applications', {
             method: 'POST',
             headers,
           })
@@ -80,9 +80,10 @@ function ApplicationsList({
             Clear ALL applications (DEBUG)
           </Button>
           <div style={{ width: '100%' }}>
-            {businesses.map((business, _index) => {
+            {businesses.map((business, index) => {
               const businessId = getBusinessId(business)
               const isSelected = businessId === selectedBusinessId
+              const isLast = index === businesses.length - 1
 
               // Warn if both status fields exist with different values
               if (business.applicationStatus && business.permitStatus &&
@@ -91,7 +92,7 @@ function ApplicationsList({
               }
 
               return (
-                <div key={businessId} style={{ marginBottom: 8 }}>
+                <div key={businessId} style={{ marginBottom: isLast ? 0 : 8 }}>
                   <ApplicationPanelCard
                     business={{
                       id: businessId,
@@ -99,15 +100,14 @@ function ApplicationsList({
                       referenceNumber: getBusinessReferenceNumber(business),
                       updatedAt: business.updatedAt,
                       createdAt: business.createdAt,
-                      address: business.businessAddress?.full ||
-                        [business.businessAddress?.streetAddress || business.businessAddress?.street, business.businessAddress?.barangayName, business.businessAddress?.cityName].filter(Boolean).join(', ') ||
-                        'No address',
                       permitStatus: getStatusLabel(business.applicationStatus || business.permitStatus),
                       rawStatus: business.applicationStatus || business.permitStatus,
-                      businessType: business.primaryLineOfBusiness || business.lineOfBusiness || business.formType || 'N/A',
+                      permitType: business.formType || 'N/A',
                     }}
                     isSelected={isSelected}
-                    onClick={() => onBusinessSelect(businessId)}
+                    onClick={() => {
+                      onBusinessSelect(businessId)
+                    }}
                   />
                 </div>
               )
@@ -157,21 +157,17 @@ function ApplicationsList({
               Apply
             </Button>
           </Tooltip>
+
         ) : (
           // Has applications - show collapse with list and Apply button inside
-          <>
-            <Collapse
-              items={collapseItems}
-              defaultActiveKey={['applications']}
-              style={{
-                background: token.colorBgContainer,
-              }}
-              styles={{
-                body: { padding: 0, marginTop: -8 },
-                header: { padding: '8px 16px' }
-              }}
-            />
-          </>
+          <Collapse
+            items={collapseItems}
+            defaultActiveKey={['applications']}
+            style={{
+              background: token.colorBgContainer,
+            }}
+            
+          />
         )}
       </div>
     </BlurFade>

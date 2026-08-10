@@ -1032,8 +1032,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "unified-business-permit",
     name: "Unified Business Permit",
-    description: "Official business permit document issued by BPLO for year-round business operations. Valid for one calendar year and requires annual renewal.",
-    notes: "Admin: Official permit document for businesses with ongoing operations. Includes permit number, business details, line of business, and validity period.",
+    description:
+      "Official business permit document issued by BPLO for year-round business operations. Valid for one calendar year and requires annual renewal.",
+    notes:
+      "Admin: Official permit document for businesses with ongoing operations. Includes permit number, business details, line of business, and validity period.",
     templateHtml: UNIFIED_BUSINESS_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -1058,7 +1060,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "BPLO-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1079,7 +1088,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Owner Name",
         previewText: "Juan Dela Cruz",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Owner Information", fieldKey: "ownerName" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Owner Information",
+            fieldKey: "ownerName",
+          },
+        ],
       },
       {
         attributeName: "address",
@@ -1122,8 +1138,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "real-property-tax-clearance",
     name: "Real Property Tax Clearance",
-    description: "Local treasury office clearance certifying that all real property taxes have been paid. Required for property-based business permits.",
-    notes: "Admin: Required for businesses owning or leasing property. Verify tax clearance from local treasury office. Check tax declaration number and payment status.",
+    description:
+      "Local treasury office clearance certifying that all real property taxes have been paid. Required for property-based business permits.",
+    notes:
+      "Admin: Required for businesses owning or leasing property. Verify tax clearance from local treasury office. Check tax declaration number and payment status.",
     templateHtml: REAL_PROPERTY_TAX_CLEARANCE_TEMPLATE,
     templateImages: [
       {
@@ -1148,7 +1166,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Clearance Number",
         previewText: "RPT-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "clearanceNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "clearanceNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1176,7 +1201,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Tax Declaration Number",
         previewText: "TD-12345",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Property Information", fieldKey: "taxDeclarationNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Property Information",
+            fieldKey: "taxDeclarationNumber",
+          },
+        ],
       },
       {
         attributeName: "taxYear",
@@ -1190,14 +1222,28 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Assessed Value",
         previewText: "₱100,000.00",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Tax Information", fieldKey: "assessedValue" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Tax Information",
+            fieldKey: "assessedValue",
+          },
+        ],
       },
       {
         attributeName: "taxStatus",
         name: "Tax Status",
         previewText: "Paid",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Tax Information", fieldKey: "taxStatus" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Tax Information",
+            fieldKey: "taxStatus",
+          },
+        ],
       },
       {
         attributeName: "validUntil",
@@ -1212,8 +1258,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "account-clearance",
     name: "Account Clearance",
-    description: "Municipal accounting office clearance certifying that all accounts are in good standing. Required for business permit applications.",
-    notes: "Admin: Required for all business types. Verify account clearance from municipal accounting office. Check account status and outstanding balance.",
+    description:
+      "Municipal accounting office clearance certifying that all accounts are in good standing. Required for business permit applications.",
+    notes:
+      "Admin: Required for all business types. Verify account clearance from municipal accounting office. Check account status and outstanding balance.",
     templateHtml: ACCOUNT_CLEARANCE_TEMPLATE,
     templateImages: [
       {
@@ -1238,7 +1286,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Clearance Number",
         previewText: "ACCT-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "clearanceNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "clearanceNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1273,14 +1328,28 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Account Number",
         previewText: "ACC-12345",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Account Information", fieldKey: "accountNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Account Information",
+            fieldKey: "accountNumber",
+          },
+        ],
       },
       {
         attributeName: "accountType",
         name: "Account Type",
         previewText: "Business Tax Account",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Account Information", fieldKey: "accountType" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Account Information",
+            fieldKey: "accountType",
+          },
+        ],
       },
       {
         attributeName: "periodCovered",
@@ -1294,14 +1363,28 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Account Status",
         previewText: "Good Standing",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Account Information", fieldKey: "accountStatus" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Account Information",
+            fieldKey: "accountStatus",
+          },
+        ],
       },
       {
         attributeName: "outstandingBalance",
         name: "Outstanding Balance",
         previewText: "₱0.00",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Account Information", fieldKey: "outstandingBalance" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Account Information",
+            fieldKey: "outstandingBalance",
+          },
+        ],
       },
     ],
     feeAmount: 300,
@@ -1309,8 +1392,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "cooperative-permit",
     name: "Cooperative Permit",
-    description: "Temporary permit document for cooperatives registered with CDA applying for business permit renewal or new registration.",
-    notes: "Admin: For agricultural, consumer, marketing, service, and multi-purpose cooperatives operating within the city.",
+    description:
+      "Temporary permit document for cooperatives registered with CDA applying for business permit renewal or new registration.",
+    notes:
+      "Admin: For agricultural, consumer, marketing, service, and multi-purpose cooperatives operating within the city.",
     templateHtml: TEMPORARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -1335,7 +1420,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "COOP-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1363,7 +1455,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Contact Number",
         previewText: "09123456789",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Contact Information", fieldKey: "contactNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Contact Information",
+            fieldKey: "contactNumber",
+          },
+        ],
       },
       {
         attributeName: "permitType",
@@ -1399,8 +1498,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "association-foundation-permit",
     name: "Association/Foundation Permit",
-    description: "Temporary permit document for non-profit associations and foundations registered with SEC or DOLE applying for business permit.",
-    notes: "Admin: For civic organizations, foundations, trade associations, labor unions, and other non-profit entities operating within the city.",
+    description:
+      "Temporary permit document for non-profit associations and foundations registered with SEC or DOLE applying for business permit.",
+    notes:
+      "Admin: For civic organizations, foundations, trade associations, labor unions, and other non-profit entities operating within the city.",
     templateHtml: TEMPORARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -1425,7 +1526,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "ASSOC-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1453,7 +1561,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Contact Number",
         previewText: "09123456789",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Contact Information", fieldKey: "contactNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Contact Information",
+            fieldKey: "contactNumber",
+          },
+        ],
       },
       {
         attributeName: "permitType",
@@ -1489,8 +1604,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "chainsaw-permit",
     name: "Chainsaw Permit",
-    description: "Temporary permit document for chainsaw operators and owners applying for permit to use chainsaws for logging, land clearing, or tree cutting activities.",
-    notes: "Admin: Required for all chainsaw operations within city jurisdiction per DENR regulations.",
+    description:
+      "Temporary permit document for chainsaw operators and owners applying for permit to use chainsaws for logging, land clearing, or tree cutting activities.",
+    notes:
+      "Admin: Required for all chainsaw operations within city jurisdiction per DENR regulations.",
     templateHtml: TEMPORARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -1515,7 +1632,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "CS-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1529,7 +1653,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Operator Name",
         previewText: "Juan Dela Cruz",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Operator Information", fieldKey: "operatorName" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Operator Information",
+            fieldKey: "operatorName",
+          },
+        ],
       },
       {
         attributeName: "address",
@@ -1543,7 +1674,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Contact Number",
         previewText: "09123456789",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Contact Information", fieldKey: "contactNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Contact Information",
+            fieldKey: "contactNumber",
+          },
+        ],
       },
       {
         attributeName: "permitType",
@@ -1579,8 +1717,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "firecrackers-stallholders-permit",
     name: "Firecrackers Stallholders Permit",
-    description: "Temporary permit document for individuals or businesses applying to sell firecrackers and pyrotechnic products during the designated holiday period.",
-    notes: "Admin: Required for all temporary firecrackers retail stalls in authorized selling zones during December to January.",
+    description:
+      "Temporary permit document for individuals or businesses applying to sell firecrackers and pyrotechnic products during the designated holiday period.",
+    notes:
+      "Admin: Required for all temporary firecrackers retail stalls in authorized selling zones during December to January.",
     templateHtml: TEMPORARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -1605,7 +1745,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "FC-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1619,7 +1766,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Stallholder Name",
         previewText: "Juan Dela Cruz",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Stallholder Information", fieldKey: "stallholderName" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Stallholder Information",
+            fieldKey: "stallholderName",
+          },
+        ],
       },
       {
         attributeName: "address",
@@ -1633,7 +1787,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Contact Number",
         previewText: "09123456789",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Contact Information", fieldKey: "contactNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Contact Information",
+            fieldKey: "contactNumber",
+          },
+        ],
       },
       {
         attributeName: "permitType",
@@ -1669,8 +1830,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "bazaar-festival-vendors-permit",
     name: "Bazaar/Festival Vendors Permit",
-    description: "Temporary permit document for vendors applying to operate temporary selling stalls during city-sponsored bazaars, festivals, trade fairs, or special events.",
-    notes: "Admin: Covers food stalls, merchandise booths, and temporary retail spaces in designated event areas.",
+    description:
+      "Temporary permit document for vendors applying to operate temporary selling stalls during city-sponsored bazaars, festivals, trade fairs, or special events.",
+    notes:
+      "Admin: Covers food stalls, merchandise booths, and temporary retail spaces in designated event areas.",
     templateHtml: TEMPORARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -1695,7 +1858,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "BZ-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1709,7 +1879,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Vendor Name",
         previewText: "Juan Dela Cruz",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Vendor Information", fieldKey: "vendorName" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Vendor Information",
+            fieldKey: "vendorName",
+          },
+        ],
       },
       {
         attributeName: "address",
@@ -1723,7 +1900,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Contact Number",
         previewText: "09123456789",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Contact Information", fieldKey: "contactNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Contact Information",
+            fieldKey: "contactNumber",
+          },
+        ],
       },
       {
         attributeName: "permitType",
@@ -1759,8 +1943,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "peddlers-permit",
     name: "Peddlers Permit",
-    description: "Temporary permit document for mobile vendors (itinerant sellers) applying to sell goods while moving from place to place within the city.",
-    notes: "Admin: Covers street vendors, hawkers, and ambulant sellers of food, merchandise, or other products.",
+    description:
+      "Temporary permit document for mobile vendors (itinerant sellers) applying to sell goods while moving from place to place within the city.",
+    notes:
+      "Admin: Covers street vendors, hawkers, and ambulant sellers of food, merchandise, or other products.",
     templateHtml: TEMPORARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -1785,7 +1971,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "PD-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1799,7 +1992,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Peddler Name",
         previewText: "Juan Dela Cruz",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Peddler Information", fieldKey: "peddlerName" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Peddler Information",
+            fieldKey: "peddlerName",
+          },
+        ],
       },
       {
         attributeName: "address",
@@ -1813,7 +2013,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Contact Number",
         previewText: "09123456789",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Contact Information", fieldKey: "contactNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Contact Information",
+            fieldKey: "contactNumber",
+          },
+        ],
       },
       {
         attributeName: "permitType",
@@ -1849,8 +2056,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "promotions-exhibitors-permit",
     name: "Promotions/Exhibitors Permit",
-    description: "Temporary permit document for businesses or organizations applying to conduct promotional activities, product launches, sales promotions, or exhibitions in public or private spaces.",
-    notes: "Admin: Covers roadshows, mall activations, product demonstrations, and temporary promotional displays.",
+    description:
+      "Temporary permit document for businesses or organizations applying to conduct promotional activities, product launches, sales promotions, or exhibitions in public or private spaces.",
+    notes:
+      "Admin: Covers roadshows, mall activations, product demonstrations, and temporary promotional displays.",
     templateHtml: TEMPORARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -1875,7 +2084,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "PX-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1903,7 +2119,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Contact Number",
         previewText: "09123456789",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Contact Information", fieldKey: "contactNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Contact Information",
+            fieldKey: "contactNumber",
+          },
+        ],
       },
       {
         attributeName: "permitType",
@@ -1939,8 +2162,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "cemetery-stallholders-permit",
     name: "Cemetery Stallholders Permit",
-    description: "Temporary permit document for vendors applying to operate temporary selling stalls within public or private cemeteries during All Saints Day and All Souls Day observance period.",
-    notes: "Admin: Covers flower, candle, food, and merchandise stalls in designated cemetery areas during November 1-2.",
+    description:
+      "Temporary permit document for vendors applying to operate temporary selling stalls within public or private cemeteries during All Saints Day and All Souls Day observance period.",
+    notes:
+      "Admin: Covers flower, candle, food, and merchandise stalls in designated cemetery areas during November 1-2.",
     templateHtml: TEMPORARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -1965,7 +2190,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "CS-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -1979,7 +2211,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Stallholder Name",
         previewText: "Juan Dela Cruz",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Stallholder Information", fieldKey: "stallholderName" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Stallholder Information",
+            fieldKey: "stallholderName",
+          },
+        ],
       },
       {
         attributeName: "address",
@@ -1993,7 +2232,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Contact Number",
         previewText: "09123456789",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Contact Information", fieldKey: "contactNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Contact Information",
+            fieldKey: "contactNumber",
+          },
+        ],
       },
       {
         attributeName: "permitType",
@@ -2029,8 +2275,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "fish-trap-fish-pen-permit",
     name: "Fish Trap/Fish Pen Permit",
-    description: "Temporary permit document for fishery operators seeking to establish fish traps or fish pens in designated water areas.",
-    notes: "Admin: Regulates aquaculture activities to ensure sustainable fishing practices and environmental protection.",
+    description:
+      "Temporary permit document for fishery operators seeking to establish fish traps or fish pens in designated water areas.",
+    notes:
+      "Admin: Regulates aquaculture activities to ensure sustainable fishing practices and environmental protection.",
     templateHtml: TEMPORARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -2055,7 +2303,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "FP-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -2069,7 +2324,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Operator Name",
         previewText: "Juan Dela Cruz",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Operator Information", fieldKey: "operatorName" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Operator Information",
+            fieldKey: "operatorName",
+          },
+        ],
       },
       {
         attributeName: "address",
@@ -2083,7 +2345,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Contact Number",
         previewText: "09123456789",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Contact Information", fieldKey: "contactNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Contact Information",
+            fieldKey: "contactNumber",
+          },
+        ],
       },
       {
         attributeName: "permitType",
@@ -2119,8 +2388,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "fish-pond-permit",
     name: "Fish Pond Permit",
-    description: "Temporary permit document for fishery operators seeking to establish or operate fish ponds for aquaculture purposes.",
-    notes: "Admin: Regulates fish pond operations to ensure sustainable aquaculture practices and environmental compliance.",
+    description:
+      "Temporary permit document for fishery operators seeking to establish or operate fish ponds for aquaculture purposes.",
+    notes:
+      "Admin: Regulates fish pond operations to ensure sustainable aquaculture practices and environmental compliance.",
     templateHtml: TEMPORARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -2145,7 +2416,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "FPP-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -2159,7 +2437,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Operator Name",
         previewText: "Juan Dela Cruz",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Operator Information", fieldKey: "operatorName" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Operator Information",
+            fieldKey: "operatorName",
+          },
+        ],
       },
       {
         attributeName: "address",
@@ -2173,7 +2458,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Contact Number",
         previewText: "09123456789",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Contact Information", fieldKey: "contactNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Contact Information",
+            fieldKey: "contactNumber",
+          },
+        ],
       },
       {
         attributeName: "permitType",
@@ -2209,8 +2501,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "fire-safety-inspection-certificate",
     name: "Fire Safety Inspection Certificate",
-    description: "BFP fire safety inspection clearance document. Required for all business establishments to ensure compliance with the Fire Code of the Philippines (RA 9514).",
-    notes: "Admin: Verify that the establishment has a valid Fire Safety Inspection Certificate from the Bureau of Fire Protection. Check the certificate number and validity period. Required for all business types.",
+    description:
+      "BFP fire safety inspection clearance document. Required for all business establishments to ensure compliance with the Fire Code of the Philippines (RA 9514).",
+    notes:
+      "Admin: Verify that the establishment has a valid Fire Safety Inspection Certificate from the Bureau of Fire Protection. Check the certificate number and validity period. Required for all business types.",
     templateHtml: FIRE_SAFETY_TEMPLATE,
     templateImages: [
       {
@@ -2235,14 +2529,28 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Certificate Number",
         previewText: "FSIC-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "certificateNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "certificateNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
         name: "Date Issued",
         previewText: "January 15, 2024",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Certificate Information", fieldKey: "dateIssued" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Certificate Information",
+            fieldKey: "dateIssued",
+          },
+        ],
       },
       {
         attributeName: "establishmentName",
@@ -2263,28 +2571,56 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Owner",
         previewText: "Juan Dela Cruz",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Owner Information", fieldKey: "ownerName" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Owner Information",
+            fieldKey: "ownerName",
+          },
+        ],
       },
       {
         attributeName: "occupancyType",
         name: "Type of Occupancy",
         previewText: "Business",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Inspection Information", fieldKey: "occupancyType" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Inspection Information",
+            fieldKey: "occupancyType",
+          },
+        ],
       },
       {
         attributeName: "inspectionResult",
         name: "Inspection Result",
         previewText: "Compliant",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Inspection Information", fieldKey: "inspectionResult" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Inspection Information",
+            fieldKey: "inspectionResult",
+          },
+        ],
       },
       {
         attributeName: "validUntil",
         name: "Valid Until",
         previewText: "December 31, 2024",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Certificate Information", fieldKey: "validUntil" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Certificate Information",
+            fieldKey: "validUntil",
+          },
+        ],
       },
     ],
     feeAmount: 500,
@@ -2292,8 +2628,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "sanitary-permit",
     name: "Sanitary Permit",
-    description: "Health department sanitary permit document. Required for establishments handling food, healthcare, or public services to ensure compliance with the Sanitation Code of the Philippines (PD 856).",
-    notes: "Admin: Required for food establishments, healthcare facilities, and public service businesses. Verify permit from local health office. Check compliance with sanitation standards.",
+    description:
+      "Health department sanitary permit document. Required for establishments handling food, healthcare, or public services to ensure compliance with the Sanitation Code of the Philippines (PD 856).",
+    notes:
+      "Admin: Required for food establishments, healthcare facilities, and public service businesses. Verify permit from local health office. Check compliance with sanitation standards.",
     templateHtml: SANITARY_PERMIT_TEMPLATE,
     templateImages: [
       {
@@ -2318,7 +2656,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Permit Number",
         previewText: "SP-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "permitNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "permitNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -2346,21 +2691,42 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Owner",
         previewText: "Juan Dela Cruz",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Owner Information", fieldKey: "ownerName" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Owner Information",
+            fieldKey: "ownerName",
+          },
+        ],
       },
       {
         attributeName: "establishmentType",
         name: "Establishment Type",
         previewText: "Food Establishment",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Establishment Information", fieldKey: "establishmentType" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Establishment Information",
+            fieldKey: "establishmentType",
+          },
+        ],
       },
       {
         attributeName: "inspectionResult",
         name: "Sanitary Inspection Result",
         previewText: "Compliant",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Inspection Information", fieldKey: "inspectionResult" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Inspection Information",
+            fieldKey: "inspectionResult",
+          },
+        ],
       },
       {
         attributeName: "validUntil",
@@ -2375,8 +2741,10 @@ const REQUIREMENTS_SEED_DATA = [
   {
     customId: "zoning-clearance",
     name: "Zoning Clearance",
-    description: "HLURB zoning clearance document. Ensures the business location is properly zoned for the intended operations. Required for compliance with local zoning ordinances.",
-    notes: "Admin: Verify zoning clearance from local zoning office or HLURB. Check that business type is permitted in the location. Required for all new business applications.",
+    description:
+      "HLURB zoning clearance document. Ensures the business location is properly zoned for the intended operations. Required for compliance with local zoning ordinances.",
+    notes:
+      "Admin: Verify zoning clearance from local zoning office or HLURB. Check that business type is permitted in the location. Required for all new business applications.",
     templateHtml: ZONING_CLEARANCE_TEMPLATE,
     templateImages: [
       {
@@ -2401,7 +2769,14 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Clearance Number",
         previewText: "ZC-2024-0001",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "General", fieldKey: "clearanceNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "General",
+            fieldKey: "clearanceNumber",
+          },
+        ],
       },
       {
         attributeName: "dateIssued",
@@ -2429,21 +2804,42 @@ const REQUIREMENTS_SEED_DATA = [
         name: "Lot/Block Number",
         previewText: "Lot 1, Block 5",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Property Information", fieldKey: "lotBlockNumber" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Property Information",
+            fieldKey: "lotBlockNumber",
+          },
+        ],
       },
       {
         attributeName: "zoningClassification",
         name: "Zoning Classification",
         previewText: "Commercial",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Zoning Information", fieldKey: "zoningClassification" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Zoning Information",
+            fieldKey: "zoningClassification",
+          },
+        ],
       },
       {
         attributeName: "permittedUse",
         name: "Permitted Use",
         previewText: "Retail Trade",
         sourceType: "form_field",
-        bindings: [{ formId: "", sectionIndex: 0, sectionName: "Zoning Information", fieldKey: "permittedUse" }],
+        bindings: [
+          {
+            formId: "",
+            sectionIndex: 0,
+            sectionName: "Zoning Information",
+            fieldKey: "permittedUse",
+          },
+        ],
       },
       {
         attributeName: "validUntil",
@@ -2456,7 +2852,6 @@ const REQUIREMENTS_SEED_DATA = [
     feeAmount: 500,
   },
 ];
-
 
 /**
  * Seed requirements if the collections are empty.
@@ -2475,7 +2870,11 @@ async function seedIfEmpty() {
       for (const reqData of REQUIREMENTS_SEED_DATA) {
         // Create associated fee if feeAmount is provided
         let feeId = null;
-        if (reqData.feeAmount !== undefined && reqData.feeAmount !== null && reqData.feeAmount !== '') {
+        if (
+          reqData.feeAmount !== undefined &&
+          reqData.feeAmount !== null &&
+          reqData.feeAmount !== ""
+        ) {
           const fee = await Fee.create({
             name: String(reqData.name).trim(),
             description: `Fee for ${String(reqData.name).trim()}`,
@@ -2498,13 +2897,22 @@ async function seedIfEmpty() {
 
       console.log(`Created ${REQUIREMENTS_SEED_DATA.length} documents`);
     } else {
-      console.log(`Documents already exist (${existingDocuments} found), checking for missing fees...`);
+      console.log(
+        `Documents already exist (${existingDocuments} found), checking for missing fees...`,
+      );
       createdDocuments = await ClaimableDocument.find({});
 
       // Force recreate all fees to ensure they exist
       for (const reqData of REQUIREMENTS_SEED_DATA) {
-        const existingDoc = createdDocuments.find(doc => doc.customId === reqData.customId);
-        if (existingDoc && reqData.feeAmount !== undefined && reqData.feeAmount !== null && reqData.feeAmount !== '') {
+        const existingDoc = createdDocuments.find(
+          (doc) => doc.customId === reqData.customId,
+        );
+        if (
+          existingDoc &&
+          reqData.feeAmount !== undefined &&
+          reqData.feeAmount !== null &&
+          reqData.feeAmount !== ""
+        ) {
           console.log(`Creating fee for ${reqData.name}...`);
           const fee = await Fee.create({
             name: String(reqData.name).trim(),
@@ -2517,7 +2925,7 @@ async function seedIfEmpty() {
           console.log(`Fee created with _id: ${fee._id}`);
           await ClaimableDocument.updateOne(
             { _id: existingDoc._id },
-            { $set: { feeId: fee._id } }
+            { $set: { feeId: fee._id } },
           );
           console.log(`Updated document ${reqData.name} with feeId ${fee._id}`);
         } else if (!existingDoc) {
@@ -2529,7 +2937,9 @@ async function seedIfEmpty() {
     // Seed document violations, inspection items, and checklists
     console.log("\nSeeding document-related data...");
     const { seedDocumentViolations } = require("./seedDocumentViolations");
-    const { seedDocumentInspectionItems } = require("./seedDocumentInspectionItems");
+    const {
+      seedDocumentInspectionItems,
+    } = require("./seedDocumentInspectionItems");
     const { seedDocumentChecklists } = require("./seedDocumentChecklists");
 
     await seedDocumentViolations();
@@ -2562,14 +2972,17 @@ if (require.main === module) {
     process.env.MONGODB_URI ||
     "mongodb://localhost:27017/capstone_project";
 
-  mongoose.connect(mongoUri).then(() => {
-    console.log("Connected to MongoDB");
-    seedIfEmpty().then(() => {
-      mongoose.disconnect();
-      console.log("Disconnected from MongoDB");
+  mongoose
+    .connect(mongoUri)
+    .then(() => {
+      console.log("Connected to MongoDB");
+      seedIfEmpty().then(() => {
+        mongoose.disconnect();
+        console.log("Disconnected from MongoDB");
+      });
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      process.exit(1);
     });
-  }).catch((error) => {
-    console.error("Error:", error);
-    process.exit(1);
-  });
 }

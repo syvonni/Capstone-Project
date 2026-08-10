@@ -20,7 +20,7 @@ export const getInspectionItems = async (params = {}) => {
 
   // Create and cache the request promise
   const requestPromise = get(`/api/business/admin/inspection-items?${queryString}`)
-    .then(res => res?.data || [])
+    .then(res => res || [])
     .finally(() => {
       pendingRequests.delete(cacheKey)
     })
@@ -31,7 +31,7 @@ export const getInspectionItems = async (params = {}) => {
 
 export const getInspectionItemsByViolation = async (violationId) => {
   const res = await get(`/api/business/admin/inspection-items/by-violation/${violationId}`)
-  return res?.data || []
+  return res || []
 }
 
 export const getInspectionItem = async (id) => {
@@ -44,7 +44,7 @@ export const getInspectionItem = async (id) => {
 
   // Create and cache the request promise
   const requestPromise = get(`/api/business/admin/inspection-items/${id}`)
-    .then(res => res?.data)
+    .then(res => res)
     .finally(() => {
       pendingRequests.delete(cacheKey)
     })
@@ -64,7 +64,7 @@ export const createInspectionItem = async (data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const updateInspectionItem = async (id, data, options = {}) => {
@@ -78,7 +78,7 @@ export const updateInspectionItem = async (id, data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const disableInspectionItem = async (id, options = {}) => {
@@ -90,11 +90,22 @@ export const disableInspectionItem = async (id, options = {}) => {
     method: 'DELETE',
     headers,
   })
-  return res?.data
+  return res
 }
 
 export const getInspectionItemAuditHistory = async (id, params = {}) => {
   const { page = 1, limit = 20 } = params
   const res = await get(`/api/business/admin/inspection-items/${id}/audit?page=${page}&limit=${limit}`)
   return res?.logs || []
+}
+
+export const getInspectionItemDataQuality = async () => {
+  const res = await get('/api/business/admin/inspection-items/data-quality')
+  return res
+}
+
+export const getAllInspectionItemAudits = async (params = {}) => {
+  const { page = 1, limit = 20 } = params
+  const res = await get(`/api/audit/inspection-items?page=${page}&limit=${limit}`)
+  return res
 }

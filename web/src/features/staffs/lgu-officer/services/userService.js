@@ -18,5 +18,6 @@ export async function searchUsers({ q, role, options = {} } = {}) {
   if (q) qs.set('q', q)
   if (role) qs.set('role', role)
 
-  return get(`${BASE_PATH}/search?${qs.toString()}`, { skipAutoLogout: true, ...options })
+  const res = await get(`${BASE_PATH}/search?${qs.toString()}`, { skipAutoLogout: true, ...options })
+  return res || []
 }

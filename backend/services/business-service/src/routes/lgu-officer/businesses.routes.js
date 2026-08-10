@@ -1,8 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { requireJwt, requireRole } = require("../../middleware/auth");
-const Business = require("../../models/Business");
-const { ok: respondOk, error: respondError } = require("../../middleware/respond");
+const businessController = require("../../controllers/lgu-officer/business.controller");
 
 /**
  * GET /api/lgu-officer/businesses
@@ -12,43 +11,7 @@ router.get(
   "/businesses",
   requireJwt,
   requireRole(["lgu_officer", "staff"]),
-  async (req, res) => {
-    try {
-      const { page = 1, limit = 50, search = "" } = req.query;
-
-      // Build filter - only show active businesses
-      const filter = { businessStatus: "active" };
-
-      // Add search filter if provided
-      if (search) {
-        const searchRegex = new RegExp(search, "i");
-        filter.$or = [
-          { businessName: searchRegex },
-          { registeredBusinessName: searchRegex },
-        ];
-      }
-
-      const businesses = await Business.find(filter)
-        .sort({ updatedAt: -1 })
-        .limit(parseInt(limit))
-        .skip((parseInt(page) - 1) * parseInt(limit));
-
-      const total = await Business.countDocuments(filter);
-
-      return respondOk(res, 200, {
-        businesses,
-        meta: {
-          total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(total / parseInt(limit)),
-        },
-      });
-    } catch (err) {
-      console.error("GET /api/lgu-officer/businesses error:", err);
-      return respondError(res, 500, "fetch_error", "Failed to fetch businesses");
-    }
-  },
+  (req, res) => businessController.list(req, res)
 );
 
 /**
@@ -59,22 +22,51 @@ router.get(
   "/businesses/:id",
   requireJwt,
   requireRole(["lgu_officer", "staff"]),
-  async (req, res) => {
-    try {
-      const business = await Business.findOne({
-        $or: [{ businessId: req.params.id }, { _id: req.params.id }],
-      });
+  (req, res) => businessController.getById(req, res)
+);
 
-      if (!business) {
-        return respondError(res, 404, "not_found", "Business not found");
-      }
+/**
+ * GET /api/lgu-officer/businesses/data-quality
+ * Get data quality report for all businesses
+ */
+router.get(
+  "/businesses/data-quality",
+  requireJwt,
+  requireRole(["lgu_officer", "staff"]),
+  (req, res) => businessController.getDataQuality(req, res)
+);
 
-      return respondOk(res, 200, { business });
-    } catch (err) {
-      console.error("GET /api/lgu-officer/businesses/:id error:", err);
-      return respondError(res, 500, "fetch_error", "Failed to fetch business");
-    }
-  },
+/**
+ * GET /api/lgu-officer/businesses/:id/data-quality
+ * Get data quality for single business
+ */
+router.get(
+  "/businesses/:id/data-quality",
+  requireJwt,
+  requireRole(["lgu_officer", "staff"]),
+  (req, res) => businessController.getDataQualityById(req, res)
+);
+
+/**
+ * GET /api/lgu-officer/businesses/performance
+ * Get performance metrics for businesses
+ */
+router.get(
+  "/businesses/performance",
+  requireJwt,
+  requireRole(["lgu_officer", "staff"]),
+  (req, res) => businessController.getPerformance(req, res)
+);
+
+/**
+ * GET /api/lgu-officer/businesses/:id/performance
+ * Get performance metrics for single business
+ */
+router.get(
+  "/businesses/:id/performance",
+  requireJwt,
+  requireRole(["lgu_officer", "staff"]),
+  (req, res) => businessController.getPerformanceById(req, res)
 );
 
 module.exports = router;

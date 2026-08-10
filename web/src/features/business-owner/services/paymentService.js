@@ -8,7 +8,8 @@ const BASE_PATH = '/api/business/payments'
  * @returns {Promise<object>} Mock payment response
  */
 export async function mockPayment(paymentData) {
-  return post(`${BASE_PATH}/mock`, paymentData)
+  const res = await post(`${BASE_PATH}/mock`, paymentData)
+  return res
 }
 
 /**
@@ -26,5 +27,6 @@ export async function getPayments({ businessId, paymentType, status, limit } = {
   if (status) qs.set('status', status)
   if (limit) qs.set('limit', String(limit))
 
-  return get(`${BASE_PATH}?${qs.toString()}`)
+  const res = await get(`${BASE_PATH}?${qs.toString()}`)
+  return res || []
 }

@@ -3,7 +3,7 @@ import InfoGrid from '@/shared/components/InfoGrid'
 
 const { Text } = Typography
 
-export default function PostRequirementOverview({ postRequirement, initialValues, dependencies }) {
+export default function PostRequirementOverview({ postRequirement, initialValues, dependencies, loading = false }) {
   const formatRelativeTime = (dateStr) => {
     if (!dateStr) return '-'
     const d = new Date(dateStr)
@@ -14,6 +14,7 @@ export default function PostRequirementOverview({ postRequirement, initialValues
     <div>
       <InfoGrid
         noPadding
+        loading={loading}
         items={[
           { label: 'Name', value: initialValues.name || '-' },
           { label: 'Created on', value: formatRelativeTime(postRequirement?.createdAt) },

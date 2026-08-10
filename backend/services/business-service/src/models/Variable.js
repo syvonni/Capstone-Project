@@ -39,7 +39,6 @@ const VariableSchema = new mongoose.Schema(
     customId: {
       type: String,
       required: false,
-      unique: true,
     },
     name: {
       type: String,
@@ -64,7 +63,14 @@ const VariableSchema = new mongoose.Schema(
     calculationMethod: {
       type: String,
       required: true,
-      enum: ['per_unit', 'percentage', 'custom', 'bracketed', 'classification', 'yes_no'],
+      enum: [
+        "per_unit",
+        "percentage",
+        "custom",
+        "bracketed",
+        "classification",
+        "yes_no",
+      ],
     },
     customCalculationMethod: {
       type: String,
@@ -114,25 +120,27 @@ const VariableSchema = new mongoose.Schema(
       required: false,
       min: 0,
     },
-    legalBasis: [{
-      _id: false,
-      url: { type: String, trim: true },
-      title: { type: String, trim: true },
-      description: { type: String, trim: true }
-    }],
+    legalBasis: [
+      {
+        _id: false,
+        url: { type: String, trim: true },
+        title: { type: String, trim: true },
+        description: { type: String, trim: true },
+      },
+    ],
     feeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Fee',
+      ref: "Fee",
       default: null,
     },
     variableFeeRuleId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'VariableFeeRule',
+      ref: "VariableFeeRule",
       default: null,
     },
     checklistId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Checklist',
+      ref: "Checklist",
       default: null,
     },
     isActive: {
@@ -145,11 +153,11 @@ const VariableSchema = new mongoose.Schema(
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
   },
   { timestamps: true },
@@ -164,7 +172,7 @@ VariableSchema.plugin(encryptionPlugin, {
   mixedPaths: [],
 });
 
-VariableSchema.index({ customId: 1 });
+VariableSchema.index({ customId: 1 }, { sparse: true });
 VariableSchema.index({ calculationMethod: 1 });
 VariableSchema.index({ isActive: 1 });
 

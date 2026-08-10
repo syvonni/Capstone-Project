@@ -23,7 +23,7 @@ const {
   clearVerificationRequest,
 } = require("../lib/verificationService");
 const { checkFieldPermission } = require("../middleware/fieldPermissions");
-const axios = require("axios");
+const { auditClient } = require("../../../../shared/lib/httpClient");
 
 const router = express.Router();
 
@@ -869,13 +869,6 @@ router.get("/profile/audit-history", requireJwt, async (req, res) => {
     }
 
     // Query audit-service for logs
-    const auditServiceUrl =
-      process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-    const headers = {
-      Authorization: req.headers.authorization,
-      "Content-Type": "application/json",
-    };
-
     const params = {
       userId: req._userId,
       limit: Number(limit),
@@ -885,12 +878,11 @@ router.get("/profile/audit-history", requireJwt, async (req, res) => {
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
 
-    const response = await axios.get(`${auditServiceUrl}/api/audit/history`, {
-      headers,
+    const response = await auditClient.get(`/api/audit/history`, {
       params,
     });
 
-    const auditLogs = response.data.logs || [];
+    const auditLogs = response.logs || [];
 
     // Mask sensitive data
     const safeLogs = auditLogs.map((log) => ({

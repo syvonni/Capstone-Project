@@ -1,4 +1,4 @@
-import { Typography, Card, Divider, Button, theme, Modal, Drawer, Grid } from 'antd'
+import { Typography, Card, Divider, Button, theme, Modal, Drawer, Grid, Skeleton } from 'antd'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import SplitCard from './SplitCard'
@@ -6,7 +6,7 @@ import SplitCard from './SplitCard'
 const { Text } = Typography
 const { useBreakpoint } = Grid
 
-export default function InfoGrid({ items = [], style, cardStyle, size = '', noPadding = false, title, titleTo, titleIcon }) {
+export default function InfoGrid({ items = [], style, cardStyle, size = '', noPadding = false, title, titleTo, titleIcon, loading = false }) {
   const { token } = theme.useToken()
   const screens = useBreakpoint()
   const [modalOpen, setModalOpen] = useState(false)
@@ -375,128 +375,152 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
   const cardContent = (
     <Card size={size} style={{ margin: noPadding ? 0 : 16, ...cardStyle, width: '100%', boxSizing: 'border-box' }}>
       <div style={{ ...style, width: '100%', boxSizing: 'border-box' }}>
-        {title && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, marginTop: 0 }}>
-            {titleIcon && (
-              <span
-                style={{
-                  fontSize: 16,
-                  color: token.colorText,
-                  border: '1px solid',
-                  borderColor: token.colorBorder,
-                  padding: 6,
-                  height: 32,
-                  width: 32,
-                  borderRadius: 8,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {titleIcon}
-              </span>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {title && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, marginTop: 0 }}>
+                <Skeleton.Input size="small" style={{ width: 32, height: 32 }} active />
+                <Skeleton.Input size="small" style={{ width: 150 }} active />
+              </div>
             )}
-            <Text>{title}</Text>
+            <div style={gridStyle}>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Skeleton.Input size="small" style={{ width: 36, height: 36 }} active />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <Skeleton.Input size="small" style={{ width: 80 }} active />
+                    <Skeleton.Input size="small" style={{ width: 120 }} active />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        )}
-        {itemGroups.map((group, groupIndex) => {
-          if (group.type === 'divider') {
-            return <Divider key={groupIndex} style={{ margin: '16px 0' }} />
-          }
-
-          if (group.type === 'vertical') {
-            // Find the previous horizontal group (left side) and next horizontal group (right side)
-            const prevGroup = itemGroups[groupIndex - 1]
-            const nextGroup = itemGroups[groupIndex + 1]
-
-            if (!prevGroup || !nextGroup || prevGroup.type !== 'horizontal' || nextGroup.type !== 'horizontal') {
-              return null
-            }
-
-            // Get split ratio from the vertical divider item (default: 1 for equal split)
-            const splitRatio = itemGroups[groupIndex].splitRatio || 1
-
-            return (
-              <div key={groupIndex} style={{ display: 'flex', gap: '16px' }}>
-                {/* Left side - previous horizontal group */}
-                <div style={{ flex: splitRatio }}>
-                  <div style={gridStyle}>
-                    {prevGroup.items.map(({ item, index }) => (
-                      <div
-                        key={index}
-                        style={{
-                          gridColumn: isFullWidth(item) ? '1 / -1' : 'auto',
-                        }}
-                      >
-                        {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' || item.type === 'linkList' ? (
-                          renderCard(item)
-                        ) : (
-                          renderItem(item)
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Vertical divider line */}
-                <Divider type="vertical" style={{ height: 'auto' }} />
-
-                {/* Right side - next horizontal group */}
-                <div style={{ flex: 1 }}>
-                  <div style={gridStyle}>
-                    {nextGroup.items.map(({ item, index }) => (
-                      <div
-                        key={index}
-                        style={{
-                          gridColumn: isFullWidth(item) ? '1 / -1' : 'auto',
-                        }}
-                      >
-                        {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' || item.type === 'linkList' ? (
-                          renderCard(item)
-                        ) : (
-                          renderItem(item)
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )
-          }
-
-          if (group.type === 'horizontal') {
-            // Skip if this group was already rendered as part of a vertical split
-            if (group.consumedByVertical) {
-              return null
-            }
-
-            return (
-              <div key={groupIndex}>
-                <div style={gridStyle}>
-                  {group.items.map(({ item, index }) => (
-                    <div
-                      key={index}
-                      style={{
-                        gridColumn: isFullWidth(item) ? '1 / -1' : 'auto',
-                      }}
-                    >
-                      {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' || item.type === 'linkList' ? (
-                        renderCard(item)
-                      ) : (
-                        renderItem(item)
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {groupIndex < itemGroups.length - 1 && itemGroups[groupIndex + 1].type !== 'vertical' && itemGroups[groupIndex + 1].type !== 'divider' && (
-                  <Divider style={{ margin: '16px 0' }} />
+        ) : (
+          <>
+            {title && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, marginTop: 0 }}>
+                {titleIcon && (
+                  <span
+                    style={{
+                      fontSize: 16,
+                      color: token.colorText,
+                      border: '1px solid',
+                      borderColor: token.colorBorder,
+                      padding: 6,
+                      height: 32,
+                      width: 32,
+                      borderRadius: 8,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {titleIcon}
+                  </span>
                 )}
+                <Text>{title}</Text>
               </div>
-            )
-          }
+            )}
+            {itemGroups.map((group, groupIndex) => {
+              if (group.type === 'divider') {
+                return <Divider key={groupIndex} style={{ margin: '16px 0' }} />
+              }
 
-          return null
-        })}
+              if (group.type === 'vertical') {
+                // Find the previous horizontal group (left side) and next horizontal group (right side)
+                const prevGroup = itemGroups[groupIndex - 1]
+                const nextGroup = itemGroups[groupIndex + 1]
+
+                if (!prevGroup || !nextGroup || prevGroup.type !== 'horizontal' || nextGroup.type !== 'horizontal') {
+                  return null
+                }
+
+                // Get split ratio from the vertical divider item (default: 1 for equal split)
+                const splitRatio = itemGroups[groupIndex].splitRatio || 1
+
+                return (
+                  <div key={groupIndex} style={{ display: 'flex', gap: '16px' }}>
+                    {/* Left side - previous horizontal group */}
+                    <div style={{ flex: splitRatio }}>
+                      <div style={gridStyle}>
+                        {prevGroup.items.map(({ item, index }) => (
+                          <div
+                            key={index}
+                            style={{
+                              gridColumn: isFullWidth(item) ? '1 / -1' : 'auto',
+                            }}
+                          >
+                            {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' || item.type === 'linkList' ? (
+                              renderCard(item)
+                            ) : (
+                              renderItem(item)
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Vertical divider line */}
+                    <Divider type="vertical" style={{ height: 'auto' }} />
+
+                    {/* Right side - next horizontal group */}
+                    <div style={{ flex: 1 }}>
+                      <div style={gridStyle}>
+                        {nextGroup.items.map(({ item, index }) => (
+                          <div
+                            key={index}
+                            style={{
+                              gridColumn: isFullWidth(item) ? '1 / -1' : 'auto',
+                            }}
+                          >
+                            {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' || item.type === 'linkList' ? (
+                              renderCard(item)
+                            ) : (
+                              renderItem(item)
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
+              if (group.type === 'horizontal') {
+                // Skip if this group was already rendered as part of a vertical split
+                if (group.consumedByVertical) {
+                  return null
+                }
+
+                return (
+                  <div key={groupIndex}>
+                    <div style={gridStyle}>
+                      {group.items.map(({ item, index }) => (
+                        <div
+                          key={index}
+                          style={{
+                            gridColumn: isFullWidth(item) ? '1 / -1' : 'auto',
+                          }}
+                        >
+                          {item.type === 'card' || item.type === 'emptyCard' || item.type === 'sublist' || item.type === 'custom' || item.type === 'linkList' ? (
+                            renderCard(item)
+                          ) : (
+                            renderItem(item)
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {groupIndex < itemGroups.length - 1 && itemGroups[groupIndex + 1].type !== 'vertical' && itemGroups[groupIndex + 1].type !== 'divider' && (
+                      <Divider style={{ margin: '16px 0' }} />
+                    )}
+                  </div>
+                )
+              }
+
+              return null
+            })}
+          </>
+        )}
       </div>
     </Card>
   )
@@ -511,6 +535,10 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
           open={modalOpen}
           onClose={() => setModalOpen(false)}
           placement="bottom"
+          styles={{
+            body: { padding: 0, background: token.colorBgContainer },
+            header: { background: token.colorBgContainer },
+          }}
         >
           <div style={{ padding: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -543,6 +571,12 @@ export default function InfoGrid({ items = [], style, cardStyle, size = '', noPa
           open={modalOpen}
           onCancel={() => setModalOpen(false)}
           footer={null}
+          styles={{
+            header: { background: token.colorBgContainer },
+            content: { background: token.colorBgContainer },
+            body: { background: token.colorBgContainer },
+            container: { background: token.colorBgContainer },
+          }}
         >
           <div style={{ padding: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

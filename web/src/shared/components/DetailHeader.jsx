@@ -108,7 +108,12 @@ export default function DetailHeader({
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', width: screens.md ? 'auto' : '100%' }}>
             {selectFields.length > 0 && selectFields.map((field, idx) => (
-              <Form.Item key={idx} label={field.label} style={{ marginBottom: 0, flex: screens.md ? 'none' : 1 }}>
+              <Form.Item
+                key={idx}
+                label={field.label}
+                labelCol={{ style: { paddingBottom: 0 } }}
+                style={{ marginBottom: 0, flex: screens.md ? 'none' : 1 }}
+              >
                 {field.disabled && field.tooltip ? (
                   <Tooltip title={field.tooltip}>
                     <Select

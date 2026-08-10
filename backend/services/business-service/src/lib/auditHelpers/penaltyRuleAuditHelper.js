@@ -12,30 +12,30 @@
  *   .catch((err) => console.error("Failed to log audit event for penalty rule create", err));
  */
 
-const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
-const { trackChanges } = require('../changeTracker');
-const { logAuditEvent } = require('../auditClient');
+const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
+const { trackChanges } = require("../changeTracker");
+const { logAuditEvent } = require("../auditClient");
 
 const PENALTY_RULE_METADATA_MAPPING = {
-  name: 'name',
-  description: 'description',
-  amount: 'amount',
-  category: 'category',
-  isActive: 'isActive',
-  isDraft: 'isDraft',
-  draftOf: 'draftOf',
-  version: 'version',
+  name: "name",
+  description: "description",
+  amount: "amount",
+  category: "category",
+  isActive: "isActive",
+  isDraft: "isDraft",
+  draftOf: "draftOf",
+  version: "version",
 };
 
 const PENALTY_RULE_FIELD_MAPPING = {
-  name: 'name',
-  description: 'description',
-  amount: 'amount',
-  category: 'category',
-  isActive: 'isActive',
-  isDraft: 'isDraft',
-  draftOf: 'draftOf',
-  version: 'version',
+  name: "name",
+  description: "description",
+  amount: "amount",
+  category: "category",
+  isActive: "isActive",
+  isDraft: "isDraft",
+  draftOf: "draftOf",
+  version: "version",
 };
 
 /**
@@ -66,14 +66,14 @@ class PenaltyRuleAuditHelper {
       .build();
 
     return await logAuditEvent(
-      'penalty_rule_created',
+      "penalty_rule_created",
       userId,
-      'PenaltyRule',
+      "PenaltyRule",
       penaltyRule._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 
@@ -91,11 +91,23 @@ class PenaltyRuleAuditHelper {
    * @param {string} role - User role
    * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
-  static async logUpdated(req, userId, userInfo, oldPenaltyRule, newPenaltyRule, role) {
+  static async logUpdated(
+    req,
+    userId,
+    userInfo,
+    oldPenaltyRule,
+    newPenaltyRule,
+    role,
+  ) {
     // Track changes between old and new penalty rule
-    const changes = trackChanges(oldPenaltyRule, newPenaltyRule, PENALTY_RULE_FIELD_MAPPING, {
-      ignoreFields: ['updatedAt', 'version'], // Ignore these fields
-    });
+    const changes = trackChanges(
+      oldPenaltyRule,
+      newPenaltyRule,
+      PENALTY_RULE_FIELD_MAPPING,
+      {
+        ignoreFields: ["updatedAt", "version"], // Ignore these fields
+      },
+    );
 
     // If no changes, don't log anything
     if (changes.length === 0) {
@@ -117,14 +129,14 @@ class PenaltyRuleAuditHelper {
 
     // Log a single audit event for all field changes
     const auditLog = await logAuditEvent(
-      'penalty_rule_updated',
+      "penalty_rule_updated",
       userId,
-      'PenaltyRule',
+      "PenaltyRule",
       newPenaltyRule._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
 
     return auditLog;
@@ -150,19 +162,19 @@ class PenaltyRuleAuditHelper {
       .withEntityFields(penaltyRule, PENALTY_RULE_METADATA_MAPPING)
       .withEntitySnapshots(penaltyRule, { ...penaltyRule, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        previousStatus: penaltyRule.isActive ? 'active' : 'inactive',
+        previousStatus: penaltyRule.isActive ? "active" : "inactive",
       })
       .build();
 
     return await logAuditEvent(
-      'penalty_rule_disabled',
+      "penalty_rule_disabled",
       userId,
-      'PenaltyRule',
+      "PenaltyRule",
       penaltyRule._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 }

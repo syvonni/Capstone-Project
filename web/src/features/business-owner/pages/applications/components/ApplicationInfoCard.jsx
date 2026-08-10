@@ -40,8 +40,7 @@ export default function ApplicationInfoCard({
     statusLower,
     isDraft,
     isRejected,
-    
-    isGeneralPermit,
+    formType,
     businessTypeLabel,
     rejectionReason,
     approvalComment,
@@ -464,7 +463,7 @@ export default function ApplicationInfoCard({
     <PermitTypesModal
       open={permitModalOpen}
       onCancel={() => setPermitModalOpen(false)}
-      selectedPermitType={isGeneralPermit ? (business?.category || business?.formData?.category || 'other') : 'regular'}
+      selectedPermitType={formType || 'unified-business-permit'}
     />
 
     <ApplicationRequestedChangesModal

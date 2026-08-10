@@ -11,7 +11,9 @@
  * // Returns: { issues: [{ type: 'missing_name', count: 5, entityIds: [...] }] }
  */
 
-const { validateEntities } = require("../../../../../shared/lib/dataQualityValidator");
+const {
+  validateEntities,
+} = require("../../../../../shared/lib/dataQualityValidator");
 const Variable = require("../../models/Variable");
 const Fee = require("../../models/Fee");
 const Checklist = require("../../models/Checklist");
@@ -44,7 +46,7 @@ async function enrichIssuesWithNames(issues) {
       .lean();
 
     const variableMap = new Map(
-      variables.map((v) => [v._id.toString(), v.name])
+      variables.map((v) => [v._id.toString(), v.name]),
     );
 
     const enrichedEntityIds = issue.entityIds.map((id) => ({
@@ -85,11 +87,11 @@ class VariableDataQualityHelper {
     // Custom check for LOB associations (requires cross-collection query)
     const allLobs = await Lob.find({}).select("variables").lean();
     const variableToLobMap = new Map();
-    
+
     // Build a map of variable IDs to LOB count
-    allLobs.forEach(lob => {
+    allLobs.forEach((lob) => {
       if (lob.variables && lob.variables.length > 0) {
-        lob.variables.forEach(variableId => {
+        lob.variables.forEach((variableId) => {
           const idStr = variableId.toString();
           variableToLobMap.set(idStr, (variableToLobMap.get(idStr) || 0) + 1);
         });
@@ -98,8 +100,8 @@ class VariableDataQualityHelper {
 
     // Find variables without LOB associations
     const variablesWithoutLobs = variables
-      .filter(v => !variableToLobMap.has(v._id.toString()))
-      .map(v => v._id.toString());
+      .filter((v) => !variableToLobMap.has(v._id.toString()))
+      .map((v) => v._id.toString());
 
     // Add LOB association issue if any variables are without LOBs
     if (variablesWithoutLobs.length > 0) {
@@ -136,7 +138,9 @@ class VariableDataQualityHelper {
       throw new Error("Variable not found");
     }
 
-    const { validateEntity } = require("../../../../../shared/lib/dataQualityValidator");
+    const {
+      validateEntity,
+    } = require("../../../../../shared/lib/dataQualityValidator");
     const result = validateEntity("variable", variable);
 
     return result;
@@ -167,7 +171,7 @@ class VariableDataQualityHelper {
           feeId: feeWithNames,
           checklistId: checklistWithNames,
         };
-      })
+      }),
     );
 
     const result = validateEntities("variable", enrichedVariables);

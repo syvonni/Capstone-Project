@@ -38,7 +38,7 @@ export default class BusinessOwnerService {
     // Fetch applications from business-service by userId
     // The id is the User._id from auth-service
     const response = await get(`/api/business/applications?userId=${id}`)
-    return response
+    return response || []
   }
 
   async getBusinessOwnerBusinesses(_id) {

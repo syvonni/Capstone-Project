@@ -24,7 +24,7 @@ export async function getVariables(filters = {}) {
 
   // Create and cache the request promise
   const requestPromise = get(`${API_BASE}?${queryString}`)
-    .then(res => res?.data || [])
+    .then(res => res || [])
     .finally(() => {
       pendingRequests.delete(cacheKey)
     })
@@ -43,7 +43,7 @@ export async function getVariable(id) {
 
   // Create and cache the request promise
   const requestPromise = get(`${API_BASE}/${id}`)
-    .then(res => res?.data)
+    .then(res => res)
     .finally(() => {
       pendingRequests.delete(cacheKey)
     })
@@ -63,7 +63,7 @@ export async function createVariable(data, options = {}) {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export async function updateVariable(id, data, options = {}) {
@@ -77,7 +77,7 @@ export async function updateVariable(id, data, options = {}) {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export async function deleteVariable(id, options = {}) {
@@ -90,22 +90,22 @@ export async function deleteVariable(id, options = {}) {
     method: 'DELETE',
     headers,
   })
-  return res?.data
+  return res
 }
 
 export async function getVariableAudit(id) {
   const res = await get(`${API_BASE}/${id}/audit`)
-  return res?.data
+  return res
 }
 
 export async function getVariablesByFeeId(feeId) {
   const res = await get(`${API_BASE}/by-fee/${feeId}?_t=${Date.now()}`)
-  return res?.data || []
+  return res || []
 }
 
 export async function getVariablesByVariableFeeRuleId(variableFeeRuleId) {
   const res = await get(`${API_BASE}/by-variable-fee-rule/${variableFeeRuleId}?_t=${Date.now()}`)
-  return res?.data || []
+  return res || []
 }
 
 // Fees service - for updating variable calculation fields
@@ -120,7 +120,7 @@ export async function updateVariableCalculation(id, data, options = {}) {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 // Audit service - get all variable audit logs
@@ -134,8 +134,7 @@ export async function getAllVariableAudits(params = {}) {
   const queryString = queryParams.toString()
 
   const res = await get(`${AUDIT_API_BASE}${queryString ? `?${queryString}` : ''}`)
-  const payload = res?.logs ? res : res?.data
-  return payload || { logs: [], total: 0, page: 1, limit: 20, totalPages: 0 }
+  return res || { logs: [], total: 0, page: 1, limit: 20, totalPages: 0 }
 }
 
 // Data quality service - get data quality issues for all variables

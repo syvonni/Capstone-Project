@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { App } from 'antd'
 import { useAuthSession } from '@/features/authentication'
 import { useSocketConnection, useSocketEvent } from '@/shared/hooks/useSocket'
-import { getBusinesses, getBusinessesPaginated } from '../../../services/businessProfileService'
+import { getApplications } from '../../../services/applicationService'
 import { getStatusLabel } from '../utils/statusUtils'
 
 export function useBusinessDashboard({
@@ -35,7 +35,7 @@ export function useBusinessDashboard({
   const { connected: socketConnected } = useSocketConnection()
   const fetchBusinessesRef = useRef(null)
 
-  // Fetch businesses with pagination
+  // Fetch applications with pagination
   const fetchBusinesses = useCallback(async (resetPage = false) => {
     if (resetPage) {
       setCurrentPage(1)
@@ -43,33 +43,21 @@ export function useBusinessDashboard({
     
     setLoading(true)
     try {
-      const result = await getBusinessesPaginated({
-        page: resetPage ? 1 : currentPage,
-        limit: pageSize,
-        search: searchTerm,
+      const data = await getApplications({
         status: statusFilter,
-        sort: sortBy,
-        order: sortOrder
+        search: searchTerm
       })
       
-      setBusinesses(result.businesses || [])
-      setTotalItems(result.pagination?.totalItems || 0)
+      setBusinesses(data || [])
+      setTotalItems(data?.length || 0)
     } catch (err) {
-      console.error('Failed to fetch businesses:', err)
-      message.error('Failed to load businesses')
-      // Fallback to non-paginated API
-      try {
-        const data = await getBusinesses()
-        setBusinesses(data || [])
-        setTotalItems(data?.length || 0)
-      } catch (fallbackErr) {
-        console.error('Fallback API also failed:', fallbackErr)
-      }
+      console.error('Failed to fetch applications:', err)
+      message.error('Failed to load applications')
     } finally {
       setLoading(false)
       setPaginationLoading(false)
     }
-  }, [currentPage, pageSize, searchTerm, statusFilter, sortBy, sortOrder, setCurrentPage, setBusinesses, setLoading, setPaginationLoading, message, setTotalItems])
+  }, [statusFilter, searchTerm, setBusinesses, setLoading, setPaginationLoading, message, setTotalItems])
 
   const fetchBusinessesPaginated = useCallback(async () => {
     setPaginationLoading(true)
@@ -108,13 +96,13 @@ export function useBusinessDashboard({
     if (!updatedApp) return
     
     setBusinesses(prev => prev.map(b => {
-      if ((b.businessId || b._id) === updatedApp.businessId || (b.businessId || b._id) === updatedApp._id) {
+      if ((b.applicationId || b._id) === updatedApp.applicationId || (b.applicationId || b._id) === updatedApp._id) {
         return { ...b, ...updatedApp }
       }
       return b
     }))
     
-    if (editingApplication && ((editingApplication.businessId || editingApplication._id) === updatedApp.businessId || (editingApplication.businessId || editingApplication._id) === updatedApp._id)) {
+    if (editingApplication && ((editingApplication.applicationId || editingApplication._id) === updatedApp.applicationId || (editingApplication.applicationId || editingApplication._id) === updatedApp._id)) {
       setEditingApplication(prev => prev ? { ...prev, ...updatedApp } : prev)
     }
     

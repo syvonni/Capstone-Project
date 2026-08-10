@@ -68,7 +68,7 @@ export function useApplicationPaymentFlow({
           transactionName: receiptInfo.transactionName,
           paymentType: 'registration_fee',
         })
-        backendReceiptNumber = paymentResponse?.data?.receiptNumber
+        backendReceiptNumber = paymentResponse?.receiptNumber
       } catch (err) {
         console.error('Failed to create mock payment record:', err)
         // Continue anyway - payment record creation is non-blocking

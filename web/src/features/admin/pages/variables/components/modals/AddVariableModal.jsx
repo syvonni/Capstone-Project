@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { Modal, Form, Input, InputNumber, Button, App, Typography, theme, Select } from 'antd'
+import { Form, Input, InputNumber, Button, App, Typography, theme, Select } from 'antd'
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { createVariable } from '@/features/admin/services/variableService'
 import { getChecklists } from '@/features/admin/services/checklistService'
 import { UNIT_PRESETS, UNIT_SINGULAR_PRESETS, UNIT_PLURAL_PRESETS, UNIT_CONTEXT_SINGULAR_PRESETS, UNIT_CONTEXT_PLURAL_PRESETS } from '@/shared/constants/units.constants'
 import { currencyFormatter, currencyParser } from '@/shared/utils/currency.utils'
+import { useNameValidation } from '@/shared/hooks/useNameValidation'
 
 const { Text } = Typography
 const { useToken } = theme
@@ -104,6 +106,7 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
   const [loadingChecklists, setLoadingChecklists] = useState(false)
   const [selectedCalculationMethod, setSelectedCalculationMethod] = useState('per_unit')
   const [selectedUnit, setSelectedUnit] = useState('')
+  const { validateName, isValidating, error: nameError, clearError } = useNameValidation('Variable')
 
   // Fetch checklists on mount
   useEffect(() => {
@@ -111,7 +114,7 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
       setLoadingChecklists(true)
       try {
         const items = await getChecklists({ isActive: true })
-        setChecklists(items || [])
+        setChecklists(items)
       } catch (error) {
         console.error('Failed to fetch checklists:', error)
       } finally {
@@ -127,8 +130,9 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
       form.resetFields()
       setSelectedCalculationMethod('per_unit')
       setSelectedUnit('')
+      clearError()
     }
-  }, [open, form])
+  }, [open, form, clearError])
 
   const handleCalculationMethodChange = (value) => {
     setSelectedCalculationMethod(value)
@@ -256,7 +260,7 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
 
   return (
     <>
-      <Modal
+      <ResponsiveModal
         open={open}
         onCancel={handleCancel}
         title="Add Variable"
@@ -271,12 +275,13 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
         width={600}
         destroyOnHidden
       >
-        <div style={{ padding: 16 }}>
-          <Text>Enter the variable details below.</Text>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
+        <Text>Enter the variable details below.</Text>
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
             <Form.Item
               name="name"
               label={<span>Name<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
+              validateStatus={nameError ? 'error' : ''}
+              help={nameError}
               rules={[
                 {
                   validator: (_, value) => {
@@ -288,7 +293,11 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
                 }
               ]}
             >
-              <Input placeholder="e.g., Parking Space Fee" />
+              <Input
+                placeholder="e.g., Parking Space Fee"
+                onBlur={(e) => validateName(e.target.value)}
+                disabled={isValidating}
+              />
             </Form.Item>
 
             <Form.Item
@@ -666,8 +675,7 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
               )}
             </Form.List>
           </Form>
-        </div>
-      </Modal>
+      </ResponsiveModal>
       {stepUpModal}
     </>
   )

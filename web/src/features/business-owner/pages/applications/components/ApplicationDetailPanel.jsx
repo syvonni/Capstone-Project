@@ -18,7 +18,7 @@ import ApplicationRejectionReasonModal from './modals/ApplicationRejectionReason
 import ApplicationAppealRejectionReasonModal from './modals/ApplicationAppealRejectionReasonModal'
 import ApplicationApprovalCommentModal from './modals/ApplicationApprovalCommentModal'
 import ApplicationRequestedChangesModal from './modals/ApplicationRequestedChangesModal'
-import ApplicationProgressModal from './modals/ApplicationProgressModal'
+import ApplicationProgressModal from '@/shared/components/ApplicationProgressModal'
 import ApplicationAppealModal from './modals/ApplicationAppealModal'
 
 const { Text } = Typography
@@ -335,8 +335,8 @@ export default function ApplicationDetailPanel({
       />
       <ApplicationProgressModal
         open={showProgressModal}
-        onCancel={() => setShowProgressModal(false)}
-        business={business}
+        onClose={() => setShowProgressModal(false)}
+        application={business}
         status={business?.applicationStatus}
         statusLower={business?.applicationStatus?.toLowerCase()}
       />

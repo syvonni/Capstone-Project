@@ -229,7 +229,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
       ])
 
       const claimedApplications = applicationsRes.status === 'fulfilled'
-        ? (applicationsRes.value?.data?.applications || applicationsRes.value?.applications || [])
+        ? (applicationsRes.value?.applications || applicationsRes.value?.applications || [])
           .map((application) => ({
             ...application,
             _itemType: resolveApplicationItemType(application),
@@ -237,7 +237,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         : []
 
       const allEditRequestsRaw = editRequestsRes.status === 'fulfilled'
-        ? (Array.isArray(editRequestsRes.value?.data) ? editRequestsRes.value.data : [])
+        ? (Array.isArray(editRequestsRes.value) ? editRequestsRes.value : [])
           .map((request) => ({
             ...request,
             status: normalizeEditRequestStatus(request?.status),
@@ -253,7 +253,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
 
       const ACTIVE_APPEAL_STATUSES = ['submitted', 'pending', 'under_review']
       const allAppealsRaw = appealsRes.status === 'fulfilled'
-        ? (Array.isArray(appealsRes.value?.data) ? appealsRes.value.data : [])
+        ? (Array.isArray(appealsRes.value) ? appealsRes.value : [])
         : []
       // Include ALL appeals for claimed businesses (active + resolved) for history
       const claimedAppeals = allAppealsRaw
@@ -432,7 +432,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         pagination: { limit: 200 },
         options: { skipAutoLogout: true }
       })
-      const apps = res?.data?.applications || res?.applications || []
+      const apps = res?.applications || res || []
       const pendingCount = apps.filter(app =>
         PENDING_APPLICATION_STATUSES.has(app.status || app.applicationStatus)
       ).length
@@ -449,7 +449,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     setTabLoading('appeals', true)
     try {
       const res = await getAppealsForReview({ role: 'staff' })
-      const list = res?.data || res?.appeals || []
+      const list = res || []
       const pending = list.filter(a => PENDING_APPEAL_STATUSES.has(a.status))
       setAppeals(pending)
       setCounts(prev => ({ ...prev, appeals: pending.length }))
@@ -464,7 +464,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     setTabLoading('editRequests', true)
     try {
       const res = await getEditRequests({ role: 'staff', options: { skipAutoLogout: true } })
-      const list = Array.isArray(res?.data) ? res.data : []
+      const list = Array.isArray(res) ? res : []
       const normalized = list.map((request) => {
         return { ...request, status: normalizeEditRequestStatus(request?.status) }
       })
@@ -488,7 +488,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         pagination: { limit: 100 },
         options: { skipAutoLogout: true }
       })
-      const apps = res?.data?.applications || res?.applications || []
+      const apps = res?.applications || res || []
       const pendingCount = apps.filter(app =>
         PENDING_RENEWAL_STATUSES.has(app.status || app.applicationStatus)
       ).length
@@ -505,12 +505,12 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     setTabLoading('owners', true)
     try {
       const query = q.trim()
-      const res = await searchUsers({ 
-        q: query || undefined, 
-        role: 'business_owner', 
-        options: { skipAutoLogout: true } 
+      const res = await searchUsers({
+        q: query || undefined,
+        role: 'business_owner',
+        options: { skipAutoLogout: true }
       })
-      const list = Array.isArray(res) ? res : res?.data || []
+      const list = Array.isArray(res) ? res : []
       setOwners(list)
     } catch { setOwners([]) }
     finally { setTabLoading('owners', false) }
@@ -525,7 +525,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         pagination: { limit: 100 },
         options: { skipAutoLogout: true }
       })
-      const apps = res?.data?.applications || res?.applications || []
+      const apps = res?.applications || res || []
       const draftCount = apps.filter(app => (app.status || app.applicationStatus) === 'draft').length
       setDrafts(apps)
       setCounts(prev => ({ ...prev, drafts: draftCount }))
@@ -542,7 +542,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     try {
       // Fetch personal action history (own userId OR metadata.officerId matches current user)
       const res = await getMyActions({ limit: 200, options: { skipAutoLogout: true } })
-      const logs = res?.logs || res?.data || []
+      const logs = res?.logs || res || []
       setLogs(logs)
     } catch { setLogs([]) }
     finally { setTabLoading('logs', false) }
@@ -564,7 +564,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     setTabLoading('helpRequests', true)
     try {
       const res = await getHelpRequests({ limit: 200, options: { skipAutoLogout: true } })
-      const list = res?.data || res?.helpRequests || []
+      const list = res || []
       setHelpRequests(list)
     } catch {
       setHelpRequests([])

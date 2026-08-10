@@ -41,7 +41,11 @@ async function requireJwt(req, res, next) {
     const secret = process.env.JWT_SECRET || "dev_secret_change_me";
     console.log("[requireJwt] JWT_SECRET present:", !!secret);
     const decoded = jwt.verify(token, secret);
-    console.log("[requireJwt] Token verified successfully, decoded:", { sub: decoded.sub, email: decoded.email, role: decoded.role });
+    console.log("[requireJwt] Token verified successfully, decoded:", {
+      sub: decoded.sub,
+      email: decoded.email,
+      role: decoded.role,
+    });
 
     // Note: audit-service doesn't have a User model, so we skip token version verification
     // The auth-service already validates the token before proxying requests here

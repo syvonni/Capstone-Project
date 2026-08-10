@@ -32,6 +32,7 @@ const filterAuditLogsBySearch = (logs, searchTerm) => {
 export default function VariablesStatsPanel() {
   const [auditLogs, setAuditLogs] = useState([])
   const [auditLoading, setAuditLoading] = useState(false)
+  const [variablesLoading, setVariablesLoading] = useState(false)
   const [activeVariables, setActiveVariables] = useState(0)
   const [disabledVariables, setDisabledVariables] = useState(0)
   const [unusedVariables, setUnusedVariables] = useState(0)
@@ -67,6 +68,7 @@ export default function VariablesStatsPanel() {
     // Fetch audit logs immediately
     fetchAuditLogs()
 
+    setVariablesLoading(true)
     try {
       const variablesData = await getVariables()
       setVariables(variablesData)
@@ -82,6 +84,8 @@ export default function VariablesStatsPanel() {
       setUnusedVariables(unusedVars)
     } catch (error) {
       console.error('Error fetching monitoring data:', error)
+    } finally {
+      setVariablesLoading(false)
     }
   }, [fetchAuditLogs])
 
@@ -120,7 +124,8 @@ export default function VariablesStatsPanel() {
     const links = [
       {
         count: activeVariables,
-        text: 'Active Variables',
+        text: 'Active',
+        linkColor: activeVariables > 0 ? 'success' : 'gray',
         modalContent: activeVariables > 0 ? {
           title: 'Active Variables',
           items: variables.filter(v => v.isActive).map(v => ({
@@ -131,7 +136,8 @@ export default function VariablesStatsPanel() {
       },
       {
         count: disabledVariables,
-        text: 'Disabled Variables',
+        text: 'Disabled',
+        linkColor: disabledVariables > 0 ? 'warning' : 'gray',
         modalContent: disabledVariables > 0 ? {
           title: 'Disabled Variables',
           items: variables.filter(v => !v.isActive).map(v => ({
@@ -142,7 +148,8 @@ export default function VariablesStatsPanel() {
       },
       {
         count: unusedVariables,
-        text: 'Unused Variables',
+        text: 'Unused',
+        linkColor: unusedVariables > 0 ? 'warning' : 'gray',
         modalContent: unusedVariables > 0 ? {
           title: 'Unused Variables',
           items: variables.filter(v => !v.feeId).map(v => ({
@@ -153,26 +160,36 @@ export default function VariablesStatsPanel() {
       }
     ]
 
-    // Add new variables this week if any
-    if (newVariablesThisWeek > 0) {
-      links.push({
-        count: newVariablesThisWeek,
-        text: `New variable${newVariablesThisWeek > 1 ? 's' : ''} added this week`,
-        modalContent: {
-          title: 'New Variables This Week',
-          items: variables.filter(v => {
-            const createdAt = new Date(v.createdAt)
-            return createdAt >= oneWeekAgo
-          }).map(v => ({
-            text: v.name,
-            to: `/admin/variables?selectedId=${v._id}`
-          }))
-        }
-      })
-    }
+    // Add new variables this week
+    links.push({
+      count: newVariablesThisWeek,
+      text: 'Newly Added',
+      linkColor: newVariablesThisWeek > 0 ? 'warning' : 'gray',
+      modalContent: newVariablesThisWeek > 0 ? {
+        title: 'New Variables This Week',
+        items: variables.filter(v => {
+          const createdAt = new Date(v.createdAt)
+          return createdAt >= oneWeekAgo
+        }).map(v => ({
+          text: v.name,
+          to: `/admin/variables?selectedId=${v._id}`
+        }))
+      } : null
+    })
+
+    // Add last update as a link
+    const daysMatch = lastActivity.match(/(\d+)\s*days?/)
+    const days = daysMatch ? parseInt(daysMatch[1]) : 0
+    const isRecent = !lastActivity.includes('day') || days < 7
+    links.push({
+      count: `Last update: ${lastActivity}`,
+      text: "",
+      linkColor: isRecent ? 'warning' : 'gray',
+      modalContent: {}
+    })
 
     return links
-  }, [activeVariables, disabledVariables, unusedVariables, variables])
+  }, [activeVariables, disabledVariables, unusedVariables, variables, lastActivity])
 
   const issuesLinks = useMemo(() => {
     const allLinks = Object.entries(ISSUE_TYPE_LABELS)
@@ -184,6 +201,7 @@ export default function VariablesStatsPanel() {
         return {
           count,
           text: label,
+          linkColor: count > 0 ? 'error' : 'gray',
           modalContent: count > 0 ? {
             title: label,
             items: entityIds.map((entity) => ({
@@ -213,7 +231,7 @@ export default function VariablesStatsPanel() {
       issuesWithCount.push({
         count: issuesWithoutCount.length,
         text: 'checks passed',
-        useErrorColor: false,
+        linkColor: 'gray',
         modalContent: {
           title: 'Data Quality Checks Passed',
           items: issuesWithoutCount.map(link => ({
@@ -239,7 +257,8 @@ export default function VariablesStatsPanel() {
           leftPanelWidth="20%"
           rightPanelWidth="80%"
           links={statusLinks}
-          extraText={`Last update happened ${lastActivity}`}
+          loading={variablesLoading}
+          disableBorderBehavior={true}
         />
         <SplitCard
           title="Issues"
@@ -248,6 +267,8 @@ export default function VariablesStatsPanel() {
           rightPanelWidth="80%"
           linkColor="error"
           links={issuesLinks}
+          loading={variablesLoading}
+          disableBorderBehavior={true}
         />
         <PerformanceStatsPanel entityType="variable" />
         <SplitCard
@@ -256,6 +277,7 @@ export default function VariablesStatsPanel() {
           leftPanelWidth="20%"
           rightPanelWidth="80%"
           noRightPanelPadding={true}
+          disableBorderBehavior={true}
         >
           <AuditHistoryModal
             inline={true}

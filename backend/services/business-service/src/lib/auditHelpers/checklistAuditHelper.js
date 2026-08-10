@@ -12,34 +12,34 @@
  *   .catch((err) => console.error("Failed to log audit event for checklist create", err));
  */
 
-const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
-const { trackChanges } = require('../changeTracker');
-const { logAuditEvent } = require('../auditClient');
+const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
+const { trackChanges } = require("../changeTracker");
+const { logAuditEvent } = require("../auditClient");
 
 const CHECKLIST_METADATA_MAPPING = {
-  name: 'name',
-  description: 'description',
-  notes: 'notes',
-  legalBasis: 'legalBasis',
-  items: 'items',
-  isActive: 'isActive',
-  version: 'version',
-  postRequirementId: 'postRequirementId',
-  variableId: 'variableId',
-  documentId: 'documentId',
+  name: "name",
+  description: "description",
+  notes: "notes",
+  legalBasis: "legalBasis",
+  items: "items",
+  isActive: "isActive",
+  version: "version",
+  postRequirementId: "postRequirementId",
+  variableId: "variableId",
+  documentId: "documentId",
 };
 
 const CHECKLIST_FIELD_MAPPING = {
-  name: 'name',
-  description: 'description',
-  notes: 'notes',
-  legalBasis: 'legalBasis',
-  items: 'items',
-  isActive: 'isActive',
-  version: 'version',
-  postRequirementId: 'postRequirementId',
-  variableId: 'variableId',
-  documentId: 'documentId',
+  name: "name",
+  description: "description",
+  notes: "notes",
+  legalBasis: "legalBasis",
+  items: "items",
+  isActive: "isActive",
+  version: "version",
+  postRequirementId: "postRequirementId",
+  variableId: "variableId",
+  documentId: "documentId",
 };
 
 /**
@@ -73,14 +73,14 @@ class ChecklistAuditHelper {
       .build();
 
     return await logAuditEvent(
-      'checklist_created',
+      "checklist_created",
       userId,
-      'Checklist',
+      "Checklist",
       checklist._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 
@@ -98,11 +98,23 @@ class ChecklistAuditHelper {
    * @param {string} role - User role
    * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
-  static async logUpdated(req, userId, userInfo, oldChecklist, newChecklist, role) {
+  static async logUpdated(
+    req,
+    userId,
+    userInfo,
+    oldChecklist,
+    newChecklist,
+    role,
+  ) {
     // Track changes between old and new checklist
-    const changes = trackChanges(oldChecklist, newChecklist, CHECKLIST_FIELD_MAPPING, {
-      ignoreFields: ['updatedAt', 'version'], // Ignore these fields
-    });
+    const changes = trackChanges(
+      oldChecklist,
+      newChecklist,
+      CHECKLIST_FIELD_MAPPING,
+      {
+        ignoreFields: ["updatedAt", "version"], // Ignore these fields
+      },
+    );
 
     // If no changes, don't log anything
     if (changes.length === 0) {
@@ -125,14 +137,14 @@ class ChecklistAuditHelper {
 
     // Log a single audit event for all field changes
     const auditLog = await logAuditEvent(
-      'checklist_updated',
+      "checklist_updated",
       userId,
-      'Checklist',
+      "Checklist",
       newChecklist._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
 
     return auditLog;
@@ -158,20 +170,20 @@ class ChecklistAuditHelper {
       .withEntityFields(checklist, CHECKLIST_METADATA_MAPPING)
       .withEntitySnapshots(checklist, { ...checklist, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        previousStatus: checklist.isActive ? 'active' : 'inactive',
+        previousStatus: checklist.isActive ? "active" : "inactive",
         itemCount: checklist.items.length,
       })
       .build();
 
     return await logAuditEvent(
-      'checklist_disabled',
+      "checklist_disabled",
       userId,
-      'Checklist',
+      "Checklist",
       checklist._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 }

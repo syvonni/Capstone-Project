@@ -294,7 +294,12 @@ class WhatIfFeeService {
    * @param {Date} options.registrationDate - Registration date for pro-ration
    */
   static async calculateTaxBrackets(totalFees, grossSales, options = {}) {
-    const { lobId, taxBasis = 'capitalization', isRenewal = false, registrationDate } = options;
+    const {
+      lobId,
+      taxBasis = "capitalization",
+      isRenewal = false,
+      registrationDate,
+    } = options;
     const brackets = [];
 
     // If lobId and taxBasis are provided, fetch actual tax brackets from database
@@ -303,14 +308,16 @@ class WhatIfFeeService {
         const taxBrackets = await TaxBracket.find({
           lobId,
           taxBasis,
-          isActive: true
+          isActive: true,
         }).sort({ minValue: 1 });
 
         if (taxBrackets.length > 0) {
           // Find applicable bracket based on capital or gross sales
-          const value = taxBasis === 'gross_sales' ? grossSales : totalFees;
+          const value = taxBasis === "gross_sales" ? grossSales : totalFees;
           const applicableBracket = taxBrackets.find(
-            bracket => value >= bracket.minValue && (bracket.maxValue === null || value <= bracket.maxValue)
+            (bracket) =>
+              value >= bracket.minValue &&
+              (bracket.maxValue === null || value <= bracket.maxValue),
           );
 
           if (applicableBracket) {
@@ -322,41 +329,54 @@ class WhatIfFeeService {
             }
 
             // Calculate excess rate
-            if (applicableBracket.excessRate && applicableBracket.excessRateType) {
+            if (
+              applicableBracket.excessRate &&
+              applicableBracket.excessRateType
+            ) {
               const excess = value - applicableBracket.minValue;
-              if (applicableBracket.excessRateType === 'direct') {
+              if (applicableBracket.excessRateType === "direct") {
                 tax += excess * applicableBracket.excessRate;
-              } else if (applicableBracket.excessRateType === 'percentage_of_percentage') {
+              } else if (
+                applicableBracket.excessRateType === "percentage_of_percentage"
+              ) {
                 tax += excess * applicableBracket.excessRate * 0.01;
               }
             }
 
             // Apply pro-ration for monthly tax brackets on new registrations
-            if (applicableBracket.paymentFrequency === 'monthly' && !isRenewal && registrationDate) {
+            if (
+              applicableBracket.paymentFrequency === "monthly" &&
+              !isRenewal &&
+              registrationDate
+            ) {
               const currentMonth = registrationDate.getMonth(); // 0-11
               const monthsRemaining = 12 - currentMonth; // Months from current month to December
               tax = tax * monthsRemaining;
             }
 
             brackets.push({
-              range: `₱${applicableBracket.minValue?.toLocaleString() || '0'} - ₱${applicableBracket.maxValue?.toLocaleString() || 'Unlimited'}`,
+              range: `₱${applicableBracket.minValue?.toLocaleString() || "0"} - ₱${applicableBracket.maxValue?.toLocaleString() || "Unlimited"}`,
               rate: applicableBracket.excessRate || 0,
               tax: tax,
               bracketName: applicableBracket.name,
-              paymentFrequency: applicableBracket.paymentFrequency || 'annual'
+              paymentFrequency: applicableBracket.paymentFrequency || "annual",
             });
 
-            const totalTax = brackets.reduce((sum, bracket) => sum + bracket.tax, 0);
+            const totalTax = brackets.reduce(
+              (sum, bracket) => sum + bracket.tax,
+              0,
+            );
 
             return {
               brackets,
               totalTax: Math.round(totalTax),
-              effectiveRate: value > 0 ? ((totalTax / value) * 100).toFixed(2) : 0,
+              effectiveRate:
+                value > 0 ? ((totalTax / value) * 100).toFixed(2) : 0,
             };
           }
         }
       } catch (error) {
-        logger.error('Error fetching tax brackets:', error);
+        logger.error("Error fetching tax brackets:", error);
         // Fall back to default calculation if database query fails
       }
     }

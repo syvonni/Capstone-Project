@@ -1,4 +1,4 @@
-const axios = require("axios");
+const { auditClient } = require("../../../../shared/lib/httpClient");
 
 /**
  * Audit Verifier for Auth Service
@@ -14,17 +14,15 @@ class AuditVerifier {
    */
   async verifyAuditLog(auditLogId) {
     try {
-      const auditServiceUrl =
-        process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-      const response = await axios.get(
-        `${auditServiceUrl}/api/audit/verify/${auditLogId}`,
+      const response = await auditClient.get(
+        `/api/audit/verify/${auditLogId}`,
       );
 
-      if (response.data && response.data.success) {
+      if (response && response.success) {
         return {
-          verified: response.data.verified || false,
-          matches: response.data.verified || false,
-          details: response.data.auditLog || {},
+          verified: response.verified || false,
+          matches: response.verified || false,
+          details: response.auditLog || {},
         };
       } else {
         return {
@@ -56,12 +54,10 @@ class AuditVerifier {
    */
   async getVerificationStats() {
     try {
-      const auditServiceUrl =
-        process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-      const response = await axios.get(`${auditServiceUrl}/api/audit/stats`);
+      const response = await auditClient.get(`/api/audit/stats`);
 
-      if (response.data && response.data.success) {
-        return response.data.stats;
+      if (response && response.success) {
+        return response.stats;
       } else {
         return {
           total: 0,

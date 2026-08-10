@@ -4,7 +4,7 @@
 
 import InfoGrid from '@/shared/components/InfoGrid'
 
-export default function ChecklistOverview({ checklist, initialValues }) {
+export default function ChecklistOverview({ checklist, initialValues, loading = false }) {
   const formatRelativeTime = (dateStr) => {
     if (!dateStr) return 'N/A'
     const d = new Date(dateStr)
@@ -119,6 +119,7 @@ export default function ChecklistOverview({ checklist, initialValues }) {
   return (
     <InfoGrid
       noPadding={true}
+      loading={loading}
       items={overviewItems}
     />
   )

@@ -1,5 +1,10 @@
 const jwt = require("jsonwebtoken");
-const { error: respondError } = require("./respond");
+
+function respondError(res, status, code, message, details) {
+  const payload = { error: { code, message } };
+  if (details !== undefined) payload.error.details = details;
+  return res.status(status).json(payload);
+}
 
 function signAccessToken(user) {
   const secret = process.env.JWT_SECRET || "dev_secret_change_me";
@@ -33,7 +38,12 @@ async function requireJwt(req, res, next) {
     }
 
     if (!token)
-      return respondError(res, 401, "unauthorized", "Unauthorized: missing token");
+      return respondError(
+        res,
+        401,
+        "unauthorized",
+        "Unauthorized: missing token",
+      );
     const secret = process.env.JWT_SECRET || "dev_secret_change_me";
     const decoded = jwt.verify(token, secret);
 
@@ -46,14 +56,23 @@ async function requireJwt(req, res, next) {
         .populate("role")
         .lean();
       if (!user) {
-        return respondError(res, 401, "user_not_found", "Unauthorized: user not found");
+        return respondError(
+          res,
+          401,
+          "user_not_found",
+          "Unauthorized: user not found",
+        );
       }
 
       const tokenVersion = Number(decoded.tokenVersion || 0);
       const currentTokenVersion = Number(user.tokenVersion || 0);
       if (tokenVersion !== currentTokenVersion) {
-        return respondError(res, 401, "token_invalidated",
-          "Unauthorized: session has been invalidated. Please log in again.");
+        return respondError(
+          res,
+          401,
+          "token_invalidated",
+          "Unauthorized: session has been invalidated. Please log in again.",
+        );
       }
 
       // Use the actual role slug from the database (in case JWT has stale/incorrect role)
@@ -78,12 +97,20 @@ async function requireJwt(req, res, next) {
         err.name === "TokenExpiredError" ||
         err.name === "NotBeforeError");
     if (isJwtError) {
-      return respondError(res, 401, "invalid_token",
-        "Unauthorized: invalid or expired token");
+      return respondError(
+        res,
+        401,
+        "invalid_token",
+        "Unauthorized: invalid or expired token",
+      );
     }
     console.error("[requireJwt] non-auth error during verification:", err);
-    return respondError(res, 503, "auth_unavailable",
-      "Authentication temporarily unavailable. Please try again.");
+    return respondError(
+      res,
+      503,
+      "auth_unavailable",
+      "Authentication temporarily unavailable. Please try again.",
+    );
   }
 }
 
@@ -91,13 +118,21 @@ function requireRole(allowedRoles) {
   return (req, res, next) => {
     // Ensure requireJwt has run or user info is available
     if (!req._userRole) {
-      return respondError(res, 401, "unauthorized",
-        "Unauthorized: missing role information");
+      return respondError(
+        res,
+        401,
+        "unauthorized",
+        "Unauthorized: missing role information",
+      );
     }
 
     if (!allowedRoles.includes(req._userRole)) {
-      return respondError(res, 403, "forbidden",
-        "Forbidden: insufficient permissions");
+      return respondError(
+        res,
+        403,
+        "forbidden",
+        "Forbidden: insufficient permissions",
+      );
     }
     next();
   };
@@ -105,14 +140,38 @@ function requireRole(allowedRoles) {
 
 /** Require internal service-to-service authentication (shared secret). */
 function requireInternalAuth(req, res, next) {
-  const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'internal-service-secret';
-  const apiKey = req.headers['x-internal-api-key'];
+  const INTERNAL_API_KEY =
+    process.env.INTERNAL_API_KEY || "internal-service-secret";
+  const apiKey = req.headers["x-internal-api-key"];
   if (apiKey === INTERNAL_API_KEY) {
     next();
   } else {
-    return respondError(res, 401, "UNAUTHORIZED",
-      "Invalid or missing internal API key");
+    return respondError(
+      res,
+      401,
+      "UNAUTHORIZED",
+      "Invalid or missing internal API key",
+    );
   }
+}
+
+/** Short-lived JWT for admin step-up (re-auth). Verified by admin-service. */
+function signStepUpToken(userId) {
+  const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+  const ttlMin = Math.min(
+    5,
+    Number(process.env.STEP_UP_TOKEN_TTL_MINUTES) || 5,
+  );
+  const nowSec = Math.floor(Date.now() / 1000);
+  const expSec = nowSec + Math.max(1, ttlMin) * 60;
+  const payload = {
+    sub: String(userId),
+    stepUp: true,
+    iat: nowSec,
+    exp: expSec,
+  };
+  const token = jwt.sign(payload, secret);
+  return { token, expiresAtMs: expSec * 1000 };
 }
 
 /** Require valid admin step-up token (X-Step-Up-Token). Use after requireJwt + requireRole(['admin', 'lgu_officer']). */
@@ -125,29 +184,50 @@ function requireAdminStepUp(req, res, next) {
       ? bearer.replace(/^StepUp\s+/i, "").trim()
       : "");
   if (!stepUpToken) {
-    return respondError(res, 403, "step_up_required",
-      "This action requires re-authentication. Please complete step-up and retry.");
+    return respondError(
+      res,
+      403,
+      "step_up_required",
+      "This action requires re-authentication. Please complete step-up and retry.",
+    );
   }
   try {
     const secret = process.env.JWT_SECRET || "dev_secret_change_me";
     const decoded = jwt.verify(stepUpToken, secret);
     if (!decoded || decoded.stepUp !== true) {
-      return respondError(res, 403, "invalid_step_up",
-        "Invalid or expired step-up. Please complete step-up again.");
+      return respondError(
+        res,
+        403,
+        "invalid_step_up",
+        "Invalid or expired step-up. Please complete step-up again.",
+      );
     }
     if (String(decoded.sub) !== String(req._userId)) {
-      return respondError(res, 403, "step_up_user_mismatch",
-        "Step-up token does not match current user.");
+      return respondError(
+        res,
+        403,
+        "step_up_user_mismatch",
+        "Step-up token does not match current user.",
+      );
+    }
+    // Restore the body from the preserved copy
+    if (req._originalBody && (!req.body || Object.keys(req.body).length === 0)) {
+      req.body = req._originalBody;
     }
     next();
   } catch (err) {
-    return respondError(res, 403, "invalid_step_up",
-      "Step-up expired or invalid. Please complete step-up again.");
+    return respondError(
+      res,
+      403,
+      "invalid_step_up",
+      "Step-up expired or invalid. Please complete step-up again.",
+    );
   }
 }
 
 module.exports = {
   signAccessToken,
+  signStepUpToken,
   requireJwt,
   requireRole,
   requireAdminStepUp,

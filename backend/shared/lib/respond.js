@@ -1,5 +1,8 @@
 function success(res, status, data, message) {
-  return res.status(status).json({ success: true, data, message });
+  // Standardize response format: { ok: true, data: ... }
+  const payload = { ok: true, data }
+  if (message) payload.message = message
+  return res.status(status).json(payload)
 }
 
 function error(res, status, code, message, details = null) {

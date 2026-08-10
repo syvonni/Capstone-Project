@@ -12,7 +12,9 @@ async function resetWelcomeCompleted() {
   try {
     // Connect to MongoDB - use MONGO_URI from env, fallback to localhost
     const mongoUri =
-      process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://localhost:27017/capstone_project";
+      process.env.MONGO_URI ||
+      process.env.MONGODB_URI ||
+      "mongodb://localhost:27017/capstone_project";
     console.log(`Connecting to MongoDB: ${mongoUri}`);
     await mongoose.connect(mongoUri);
     console.log("Connected to MongoDB");

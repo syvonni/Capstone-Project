@@ -5,10 +5,12 @@
 import { useMemo, useState, useEffect } from 'react'
 import { PlusOutlined } from '@ant-design/icons'
 import { useSearchParams } from 'react-router-dom'
+import { Grid } from 'antd'
 
 import ViolationDetailPanel from '../components/ViolationDetailPanel'
 import ViolationCard from '../components/ViolationCard'
 import AddViolationModal from '../components/modals/AddViolationModal'
+import ViolationsStatsPanel from '../components/ViolationsStatsPanel'
 
 import ListPanel from '@/shared/components/ListPanel'
 import ResponsiveSplitLayout from '@/shared/components/ResponsiveSplitLayout'
@@ -18,28 +20,44 @@ import { filterItemsBySearch, filterItemsBySeverity, filterItemsByStatus } from 
 import { useViolations } from '../hooks/useViolations'
 import { useViolationsFilters } from '../hooks/useViolationsFilters'
 
+const { useBreakpoint } = Grid
+
 export default function ViolationsView() {
+  const screens = useBreakpoint()
+  const isMobile = !screens.lg
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [showStats, setShowStats] = useState(!isMobile)
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // Sync showStats with breakpoint and selectedId state
+  // Stats should be enabled on desktop only when no violation is selected
+  useEffect(() => {
+    const itemIdFromUrl = searchParams.get('selectedId')
+    setShowStats(!isMobile && !itemIdFromUrl)
+  }, [isMobile, searchParams])
+
   const {
     selectedItemId,
     setSelectedItemId,
     items,
     selectedItem,
     refresh,
+    loading,
   } = useViolations()
 
   // Handle URL query param for direct item selection
   useEffect(() => {
     const itemIdFromUrl = searchParams.get('selectedId')
-    if (itemIdFromUrl && items.some(item => item._id === itemIdFromUrl)) {
+    if (itemIdFromUrl) {
       setSelectedItemId(itemIdFromUrl)
     }
-  }, [searchParams, items, setSelectedItemId])
+  }, [searchParams, setSelectedItemId])
 
   // Update URL when selecting an item
   const handleSelectItem = (item) => {
     setSelectedItemId(item._id)
     setSearchParams({ selectedId: item._id })
+    setShowStats(false)
   }
 
   const {
@@ -52,7 +70,28 @@ export default function ViolationsView() {
     resetFilters,
   } = useViolationsFilters()
 
-  const [showAddModal, setShowAddModal] = useState(false)
+  const handleAddClick = () => {
+    setAddModalOpen(true)
+  }
+
+  const handleAddModalClose = () => {
+    setAddModalOpen(false)
+  }
+
+  const handleAddModalSuccess = () => {
+    refresh()
+  }
+
+  const handleStatsToggle = () => {
+    setShowStats(prev => {
+      const newValue = !prev
+      if (newValue && selectedItemId) {
+        setSelectedItemId(null)
+        setSearchParams({})
+      }
+      return newValue
+    })
+  }
 
   const filteredItems = useMemo(() => {
     let result = items
@@ -63,6 +102,10 @@ export default function ViolationsView() {
   }, [items, searchTerm, severityFilter, statusFilter])
 
   const handleDrawerClose = () => {
+    // If closing drawer and no item was selected (viewing stats), disable stats
+    if (!selectedItemId) {
+      setShowStats(false)
+    }
     setSelectedItemId(null)
     setSearchParams({})
   }
@@ -89,7 +132,7 @@ export default function ViolationsView() {
   const listContent = (
     <ListPanel
       items={filteredItems}
-      isLoading={false}
+      isLoading={loading}
       selectedId={selectedItemId}
       onSelectItem={handleSelectItem}
       renderCard={renderCard}
@@ -121,9 +164,12 @@ export default function ViolationsView() {
       onSearchChange={setSearchTerm}
       showStaleInfo={false}
       searchOnEnter={true}
+      enableStats={true}
+      statsActive={showStats}
+      onStatsToggle={handleStatsToggle}
       primaryButton={{
         icon: <PlusOutlined />,
-        onClick: () => setShowAddModal(true),
+        onClick: handleAddClick,
         label: 'Add Violation',
       }}
     />
@@ -135,25 +181,24 @@ export default function ViolationsView() {
       violation={selectedItemId === 'new' ? null : selectedItem}
       onSave={refresh}
     />
+  ) : showStats ? (
+    <ViolationsStatsPanel />
   ) : null
 
   return (
     <>
       <ResponsiveSplitLayout
+        drawerTitle={showStats ? 'Violation Overview' : 'Violation Detail'}
         listContent={listContent}
         detailContent={detailContent}
-        drawerTitle="Violation Detail"
         onDrawerClose={handleDrawerClose}
-        drawerOpen={!!selectedItemId}
-        mobileDrawerPlacement="right"
+        drawerOpen={!!selectedItemId || showStats}
+        mobileDrawerPlacement="bottom"
       />
       <AddViolationModal
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSuccess={() => {
-          refresh()
-          setShowAddModal(false)
-        }}
+        open={addModalOpen}
+        onClose={handleAddModalClose}
+        onSuccess={handleAddModalSuccess}
       />
     </>
   )

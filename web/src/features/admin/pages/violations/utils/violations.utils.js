@@ -8,6 +8,7 @@ import { SEVERITY_LEVELS } from '../constants/violations.constants'
  * Filter violation items by search query
  */
 export function filterItemsBySearch(items, query) {
+  if (!items || !Array.isArray(items)) return []
   if (!query || query.trim() === '') return items
   const q = query.trim().toLowerCase()
   return items.filter((item) => {
@@ -21,6 +22,7 @@ export function filterItemsBySearch(items, query) {
  * Filter violation items by severity
  */
 export function filterItemsBySeverity(items, severity) {
+  if (!items || !Array.isArray(items)) return []
   if (!severity) return items
   return items.filter((item) => item.severity === severity)
 }
@@ -29,6 +31,7 @@ export function filterItemsBySeverity(items, severity) {
  * Filter violation items by status
  */
 export function filterItemsByStatus(items, status) {
+  if (!items || !Array.isArray(items)) return []
   if (status === null) return items
   return items.filter((item) => item.isActive === status)
 }

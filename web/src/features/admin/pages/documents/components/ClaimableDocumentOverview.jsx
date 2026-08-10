@@ -4,7 +4,7 @@ import InfoGrid from '@/shared/components/InfoGrid'
 
 const { Text } = Typography
 
-export default function ClaimableDocumentOverview({ document, templateHtml, templateImages, templateTexts, permitFormMap, dependencies, token, isMobile = false }) {
+export default function ClaimableDocumentOverview({ document, templateHtml, templateImages, templateTexts, permitFormMap, dependencies, token, isMobile = false, loading = false }) {
   const formatRelativeTime = (dateStr) => {
     if (!dateStr) return 'N/A'
     const d = new Date(dateStr)
@@ -72,7 +72,7 @@ export default function ClaimableDocumentOverview({ document, templateHtml, temp
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
       <div style={{ padding: '24px' }}>
-        <InfoGrid items={infoGridItems} noPadding />
+        <InfoGrid items={infoGridItems} noPadding loading={loading} />
       </div>
 
       {!templateHtml ? (

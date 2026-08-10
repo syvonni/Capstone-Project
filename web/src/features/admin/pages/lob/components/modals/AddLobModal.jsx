@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Modal, Form, Input, Button, App, Typography, theme, Select, InputNumber } from 'antd'
+import { Form, Input, Button, App, Typography, theme, Select, InputNumber } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { createLob } from '@/features/admin/services/lobService'
 import { LINE_OF_BUSINESS } from '@/shared/constants/lineOfBusiness'
+import { useNameValidation } from '@/shared/hooks/useNameValidation'
 
 const { Text } = Typography
 const { useToken } = theme
@@ -21,13 +23,15 @@ export default function AddLobModal({ open, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false)
   const { runWithStepUp, stepUpModal } = useStepUp()
   const { token } = useToken()
+  const { validateName, isValidating, error: nameError, clearError } = useNameValidation('LOB')
 
   // Reset form when modal opens
   useEffect(() => {
     if (open) {
       form.resetFields()
+      clearError()
     }
-  }, [open, form])
+  }, [open, form, clearError])
 
   const handleSubmit = async () => {
     try {
@@ -118,7 +122,7 @@ export default function AddLobModal({ open, onClose, onSuccess }) {
 
   return (
     <>
-      <Modal
+      <ResponsiveModal
         open={open}
         onCancel={onClose}
         title="Add Line of Business"
@@ -133,9 +137,8 @@ export default function AddLobModal({ open, onClose, onSuccess }) {
         width={800}
         destroyOnHidden
       >
-        <div style={{ padding: 16, maxHeight: '70vh', overflowY: 'auto' }}>
-          <Text>Enter the LOB details below.</Text>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
+        <Text>Enter the LOB details below.</Text>
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
             <Form.Item
               name="code"
               label={<span>Code<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
@@ -147,9 +150,15 @@ export default function AddLobModal({ open, onClose, onSuccess }) {
             <Form.Item
               name="name"
               label={<span>Name<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
+              validateStatus={nameError ? 'error' : ''}
+              help={nameError}
               rules={[{ required: true, message: 'Name is required' }]}
             >
-              <Input placeholder="e.g., Sari-sari Store" />
+              <Input
+                placeholder="e.g., Sari-sari Store"
+                onBlur={(e) => validateName(e.target.value)}
+                disabled={isValidating}
+              />
             </Form.Item>
 
             <Form.Item
@@ -299,8 +308,7 @@ export default function AddLobModal({ open, onClose, onSuccess }) {
               <TextArea placeholder="Add administrative notes for this LOB" rows={2} />
             </Form.Item>
           </Form>
-        </div>
-      </Modal>
+      </ResponsiveModal>
       {stepUpModal}
     </>
   )

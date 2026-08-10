@@ -31,7 +31,7 @@ export default function OfficerBookmarks() {
     setLoading(true)
     try {
       const response = await bookmarkService.getBookmarks()
-      const bookmarksData = Array.isArray(response) ? response : (response.data || [])
+      const bookmarksData = Array.isArray(response) ? response : []
       
       // Fetch full data for each bookmark
       const enrichedBookmarks = await Promise.all(
@@ -42,7 +42,7 @@ export default function OfficerBookmarks() {
               return { ...bookmark, itemData: app }
             } else if (bookmark.itemType === 'help_request') {
               const res = await getHelpRequestById(bookmark.itemId)
-              return { ...bookmark, itemData: res?.data || res }
+              return { ...bookmark, itemData: res }
             } else if (bookmark.itemType === 'business-owner') {
               const owner = await businessOwnerService.getBusinessOwnerById(bookmark.itemId)
               return { ...bookmark, itemData: owner }
@@ -289,6 +289,7 @@ export default function OfficerBookmarks() {
         ) : (
           <ListPanel
             items={bookmarks}
+            isLoading={loading}
             selectedId={selectedItem?._id}
             onSelectItem={handleSelectBookmark}
             renderCard={renderCard}

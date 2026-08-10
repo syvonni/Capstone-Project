@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Modal, Form, Input, Button, App, Typography, theme, Select, Switch, InputNumber } from 'antd'
+import { Form, Input, Button, App, Typography, theme, Select, Switch, InputNumber } from 'antd'
 import { PlusOutlined, MinusCircleOutlined, UpOutlined, DownOutlined, SettingOutlined } from '@ant-design/icons'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { createPostRequirement } from '@/features/admin/services/postRequirementService'
+import { useNameValidation } from '@/shared/hooks/useNameValidation'
 
 const { Text } = Typography
 const { useToken } = theme
@@ -30,6 +32,7 @@ export default function AddPostRequirementModal({ open, onClose, onSuccess }) {
   const { runWithStepUp, stepUpModal } = useStepUp()
   const { token } = useToken()
   const [expandedFields, setExpandedFields] = useState({})
+  const { validateName, isValidating, error: nameError, clearError } = useNameValidation('PostRequirement')
 
   const toggleFieldExpanded = (fieldKey) => {
     setExpandedFields(prev => ({ ...prev, [fieldKey]: !prev[fieldKey] }))
@@ -39,8 +42,9 @@ export default function AddPostRequirementModal({ open, onClose, onSuccess }) {
   useEffect(() => {
     if (open) {
       form.resetFields()
+      clearError()
     }
-  }, [open, form])
+  }, [open, form, clearError])
 
   const handleSubmit = async () => {
     try {
@@ -111,7 +115,7 @@ export default function AddPostRequirementModal({ open, onClose, onSuccess }) {
 
   return (
     <>
-      <Modal
+      <ResponsiveModal
         open={open}
         onCancel={handleCancel}
         title="Add Post Requirement"
@@ -126,12 +130,13 @@ export default function AddPostRequirementModal({ open, onClose, onSuccess }) {
         width={600}
         destroyOnHidden
       >
-        <div style={{ padding: 16 }}>
-          <Text>Enter the post-requirement details below.</Text>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
+        <Text>Enter the post-requirement details below.</Text>
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
             <Form.Item
               name="name"
               label={<span>Name<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
+              validateStatus={nameError ? 'error' : ''}
+              help={nameError}
               rules={[
                 {
                   validator: (_, value) => {
@@ -143,7 +148,11 @@ export default function AddPostRequirementModal({ open, onClose, onSuccess }) {
                 }
               ]}
             >
-              <Input placeholder="e.g., Real Property Tax Clearance" />
+              <Input
+                placeholder="e.g., Real Property Tax Clearance"
+                onBlur={(e) => validateName(e.target.value)}
+                disabled={isValidating}
+              />
             </Form.Item>
 
             <Form.Item
@@ -443,8 +452,7 @@ export default function AddPostRequirementModal({ open, onClose, onSuccess }) {
               )}
             </Form.List>
           </Form>
-        </div>
-      </Modal>
+      </ResponsiveModal>
       {stepUpModal}
     </>
   )

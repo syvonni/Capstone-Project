@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Modal, InputNumber, Button, Typography } from 'antd'
+import { InputNumber, Button, Typography } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { currencyFormatter, currencyParser } from '@/shared/utils/currency.utils'
 import LOBSelector from './LOBSelector'
 import VariableFeeInputs from '@/features/admin/pages/forms/components/VariableFeeInputs'
@@ -72,7 +73,7 @@ export default function AddLineOfBusinessModal({
     .filter(Boolean)
 
   return (
-    <Modal
+    <ResponsiveModal
       title={isEditMode ? 'Edit Line of Business' : 'Add Line of Business'}
       open={open}
       onCancel={handleClose}
@@ -87,11 +88,10 @@ export default function AddLineOfBusinessModal({
       }
       width={600}
     >
-      <div style={{ padding: 16 }}>
-        <div style={{ marginBottom: 16 }}>
-          <Text style={{ display: 'block', marginBottom: 8 }}>
-            What is your line of business? <span style={{ color: token.colorError }}>*</span>
-          </Text>
+      <div style={{ marginBottom: 16 }}>
+        <Text style={{ display: 'block', marginBottom: 8 }}>
+          What is your line of business? <span style={{ color: token.colorError }}>*</span>
+        </Text>
           <LOBSelector
             lobs={lobs}
             modalSelectedIndustry={industryTaxCode}
@@ -131,7 +131,6 @@ export default function AddLineOfBusinessModal({
             )}
           </>
         )}
-      </div>
-    </Modal>
+    </ResponsiveModal>
   )
 }

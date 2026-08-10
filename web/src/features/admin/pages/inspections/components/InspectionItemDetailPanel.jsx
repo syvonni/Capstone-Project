@@ -14,6 +14,7 @@ export default function InspectionItemDetailPanel({ inspectionItemId, inspection
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [associatedChecklists, setAssociatedChecklists] = useState([])
+  const [loadingChecklists, setLoadingChecklists] = useState(false)
 
   const isNew = inspectionItemId === 'new' || !inspectionItem
 
@@ -23,10 +24,13 @@ export default function InspectionItemDetailPanel({ inspectionItemId, inspection
     const fetchChecklists = async () => {
       if (!isNew && inspectionItemId) {
         try {
+          setLoadingChecklists(true)
           const checklists = await getChecklistsByInspectionItem(inspectionItemId)
           setAssociatedChecklists(checklists)
         } catch (error) {
           console.error('Failed to fetch associated checklists:', error)
+        } finally {
+          setLoadingChecklists(false)
         }
       }
     }
@@ -57,6 +61,8 @@ export default function InspectionItemDetailPanel({ inspectionItemId, inspection
     stepUpModal,
   } = useInspectionItemForm({ inspectionItemId, inspectionItem, initialValues, onSave })
 
+  const loading = saving || loadingChecklists
+
   const handleEnterEditMode = () => {
     setIsEditMode(true)
   }
@@ -66,6 +72,14 @@ export default function InspectionItemDetailPanel({ inspectionItemId, inspection
     form.setFieldsValue(initialValues)
     resetChangeTracking(initialValues)
   }
+
+  // Reset form when inspection item changes
+  useEffect(() => {
+    if (inspectionItem && !isNew) {
+      form.setFieldsValue(initialValues)
+      resetChangeTracking(initialValues)
+    }
+  }, [inspectionItemId, inspectionItem, initialValues, form, resetChangeTracking, isNew])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -118,7 +132,7 @@ export default function InspectionItemDetailPanel({ inspectionItemId, inspection
         {isEditMode ? (
           <InspectionItemConfiguration form={form} handleFormValuesChange={handleFormValuesChange} initialValues={initialValues} />
         ) : (
-          <InspectionItemOverview inspectionItem={inspectionItem} initialValues={initialValues} violation={inspectionItem?.violationId} associatedChecklists={associatedChecklists} />
+          <InspectionItemOverview inspectionItem={inspectionItem} initialValues={initialValues} violation={inspectionItem?.violationId} associatedChecklists={associatedChecklists} loading={loading} />
         )}
       </div>
     </div>

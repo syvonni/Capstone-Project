@@ -1,0 +1,50 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - main [ref=e6]:
+    - generic [ref=e7]:
+      - button "Go to home" [ref=e8] [cursor=pointer]:
+        - img [ref=e11]
+      - generic [ref=e23]:
+        - heading "Login To BizClear" [level=3] [ref=e24]
+        - generic [ref=e26]:
+          - generic [ref=e29]: Email*
+          - textbox "Email*" [ref=e33]:
+            - /placeholder: Enter your email
+        - generic [ref=e35]:
+          - generic [ref=e38]: Password*
+          - generic [ref=e42]:
+            - textbox "Password*" [ref=e43]:
+              - /placeholder: Enter your password
+            - button "Show" [ref=e45] [cursor=pointer]:
+              - img "eye-invisible" [ref=e46]:
+                - img [ref=e47]
+        - generic [ref=e50]:
+          - generic [ref=e51] [cursor=pointer]:
+            - checkbox "Remember me" [ref=e53]
+            - generic [ref=e54]: Remember me
+          - button "Forgot password?" [ref=e55] [cursor=pointer]:
+            - generic [ref=e56]: Forgot password?
+        - generic "Verification" [ref=e62]
+        - button "Login" [ref=e69] [cursor=pointer]:
+          - generic [ref=e70]: Login
+        - button "Login with Passkey" [ref=e74] [cursor=pointer]:
+          - generic [ref=e75]: Login with Passkey
+        - generic [ref=e76]:
+          - text: Don't have an account?
+          - button "Sign up" [ref=e77] [cursor=pointer]:
+            - generic [ref=e78]: Sign up
+        - button "Dev Tools" [ref=e80] [cursor=pointer]:
+          - generic [ref=e81]: Dev Tools
+  - alert [ref=e82]:
+    - generic [ref=e83]:
+      - img "close-circle" [ref=e85]:
+        - img [ref=e86]
+      - generic [ref=e88]:
+        - generic [ref=e89]: Restricted Access
+        - generic [ref=e90]: You must be logged in to view this page.
+    - button "Close" [ref=e91]:
+      - img "Close" [ref=e92]:
+        - img [ref=e93]
+```

@@ -97,7 +97,8 @@ export default function DocumentDetailPanel({ documentId, document, onSave, onDe
       try {
         setLoadingForms(true)
         const response = await getPermitForms()
-        const forms = response?.forms || response?.data?.forms || []
+        // Handle both direct array response and wrapped response
+        const forms = Array.isArray(response) ? response : (response?.forms || [])
         // Convert _id to string for proper comparison with formIds
         const formsWithStringIds = forms.map(form => ({
           ...form,
@@ -134,7 +135,9 @@ export default function DocumentDetailPanel({ documentId, document, onSave, onDe
     const fetchPermitForms = async () => {
       try {
         const response = await getPermitForms()
-        setPermitForms(response?.forms || response?.data?.forms || [])
+        // Handle both direct array response and wrapped response
+        const forms = Array.isArray(response) ? response : (response?.forms || [])
+        setPermitForms(forms)
       } catch (error) {
         console.error('Failed to fetch permit forms:', error)
       }

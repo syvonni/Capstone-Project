@@ -2,9 +2,7 @@ const express = require("express");
 const crypto = require("crypto");
 const { requireJwt, requireRole } = require("../middleware/auth");
 const respond = require("../middleware/respond");
-const {
-  auditLogRateLimit,
-} = require("../middleware/rateLimit");
+const { auditLogRateLimit } = require("../middleware/rateLimit");
 const { requireServiceAuth } = require("../middleware/requireServiceAuth");
 const logger = require("../lib/logger");
 const AuditLog = require("../models/AuditLog");
@@ -44,7 +42,8 @@ router.post("/ingest", requireServiceAuth, async (req, res) => {
       return res.status(400).json({
         error: {
           code: "validation_error",
-          message: "Missing required fields: userId, eventType, entityType, entityId",
+          message:
+            "Missing required fields: userId, eventType, entityType, entityId",
         },
       });
     }
@@ -62,7 +61,7 @@ router.post("/ingest", requireServiceAuth, async (req, res) => {
       metadata,
       timestamp: new Date().toISOString(),
     });
-    const hash = crypto.createHash('sha256').update(hashData).digest('hex');
+    const hash = crypto.createHash("sha256").update(hashData).digest("hex");
 
     // Create audit log
     const auditLog = new AuditLog({

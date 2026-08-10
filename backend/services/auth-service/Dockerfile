@@ -7,18 +7,24 @@ RUN apk add --no-cache curl
 # Build from backend root so we can include shared/
 WORKDIR /backend/services/auth-service
 
-# Copy package files
+# Copy service-specific package files
 COPY services/auth-service/package*.json ./
 
-# Clear npm cache and install dependencies without cache
-RUN npm cache clean --force && \
-    npm install --no-cache --production=false
+# Install service-specific dependencies
+RUN --mount=type=cache,target=/root/.npm \
+    npm install
 
 # Copy service code
 COPY services/auth-service/ ./
 
-# Copy shared directory (required by models for encryptionPlugin, etc.)
+# Copy shared directory to backend root
 COPY shared/ /backend/shared/
+
+# Create symlink for shared directory in service directory
+RUN ln -s /backend/shared ./shared
+
+# Create symlink for node_modules to enable shared/ to resolve axios
+RUN ln -s /backend/services/auth-service/node_modules /backend/node_modules
 
 # Verify critical dependencies are installed
 RUN node -e "console.log('Verifying dependencies...'); try { require('speakeasy'); console.log('✅ speakeasy installed'); } catch(e) { console.error('❌ speakeasy missing:', e.message); process.exit(1); }"

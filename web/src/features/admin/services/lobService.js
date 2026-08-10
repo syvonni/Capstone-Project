@@ -15,7 +15,7 @@ export const getLob = async (id) => {
 
   // Create and cache the request promise
   const requestPromise = get(`/api/business/admin/lobs/${id}`)
-    .then(res => res?.data)
+    .then(res => res)
     .finally(() => {
       pendingRequests.delete(cacheKey)
     })
@@ -35,7 +35,7 @@ export const createLob = async (data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const updateLob = async (id, data, options = {}) => {
@@ -49,7 +49,7 @@ export const updateLob = async (id, data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const getLobAuditHistory = async (id, params = {}) => {
@@ -58,10 +58,41 @@ export const getLobAuditHistory = async (id, params = {}) => {
     if (value !== undefined) queryParams.append(key, value)
   })
   const res = await get(`/api/business/admin/lobs/${id}/audit?${queryParams.toString()}`)
-  return res?.data
+  return res
 }
 
 export const getPostRequirements = async () => {
   const res = await get('/api/business/admin/lobs/post-requirements')
-  return res?.data || []
+  return res || []
+}
+
+export const getDataQuality = async () => {
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin')
+  const res = await fetchJsonWithFallback('/api/business/admin/lobs/data-quality', {
+    method: 'GET',
+    headers,
+  })
+  return res
+}
+
+export const getAllLobAudits = async (query = {}) => {
+  const { page = 1, limit = 20 } = query
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin')
+  const res = await fetchJsonWithFallback(`/api/business/admin/lobs/audit?page=${page}&limit=${limit}`, {
+    method: 'GET',
+    headers,
+  })
+  return res
+}
+
+export const getLobPerformance = async () => {
+  const current = getCurrentUser()
+  const headers = authHeaders(current, 'admin')
+  const res = await fetchJsonWithFallback('/api/business/admin/lobs/performance', {
+    method: 'GET',
+    headers,
+  })
+  return res
 }

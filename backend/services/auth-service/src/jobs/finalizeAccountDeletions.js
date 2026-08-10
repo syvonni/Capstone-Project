@@ -97,20 +97,18 @@ async function performCrossServiceCleanup(userId, userEmail, roleSlug) {
     if (roleSlug === "business_owner") {
       try {
         // Call business service to clean up user's business profile
-        const axios = require("axios");
-        const businessServiceUrl =
-          process.env.BUSINESS_SERVICE_URL || "http://localhost:3002";
+        const { createHttpClient } = require("../../../../shared/lib/httpClient");
+        const businessClient = createHttpClient("business", {
+          headers: {
+            "Internal-Service-Auth": process.env.INTERNAL_SERVICE_SECRET,
+          },
+        });
 
-        await axios.post(
-          `${businessServiceUrl}/api/internal/cleanup-user-data`,
+        await businessClient.post(
+          "/api/internal/cleanup-user-data",
           {
             userId,
             reason: "account_deletion_finalized",
-          },
-          {
-            headers: {
-              "Internal-Service-Auth": process.env.INTERNAL_SERVICE_SECRET,
-            },
           },
         );
 
@@ -131,20 +129,18 @@ async function performCrossServiceCleanup(userId, userEmail, roleSlug) {
 
     // 2. Clean up Admin Service data
     try {
-      const axios = require("axios");
-      const adminServiceUrl =
-        process.env.ADMIN_SERVICE_URL || "http://localhost:3003";
+      const { createHttpClient } = require("../../../../shared/lib/httpClient");
+      const adminClient = createHttpClient("admin", {
+        headers: {
+          "Internal-Service-Auth": process.env.INTERNAL_SERVICE_SECRET,
+        },
+      });
 
-      await axios.post(
-        `${adminServiceUrl}/api/internal/cleanup-user-data`,
+      await adminClient.post(
+        "/api/internal/cleanup-user-data",
         {
           userId,
           reason: "account_deletion_finalized",
-        },
-        {
-          headers: {
-            "Internal-Service-Auth": process.env.INTERNAL_SERVICE_SECRET,
-          },
         },
       );
 

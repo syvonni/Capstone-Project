@@ -12,38 +12,38 @@
  *   .catch((err) => console.error("Failed to log audit event for variable fee rule create", err));
  */
 
-const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
-const { trackChanges } = require('../changeTracker');
-const { logAuditEvent } = require('../auditClient');
+const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
+const { trackChanges } = require("../changeTracker");
+const { logAuditEvent } = require("../auditClient");
 
 const VARIABLE_FEE_RULE_METADATA_MAPPING = {
-  customId: 'customId',
-  name: 'name',
-  notes: 'notes',
-  question: 'question',
-  calculationMethod: 'calculationMethod',
-  customCalculationMethod: 'customCalculationMethod',
-  baseRate: 'baseRate',
-  unit: 'unit',
-  brackets: 'brackets',
-  classifications: 'classifications',
-  isActive: 'isActive',
-  version: 'version',
+  customId: "customId",
+  name: "name",
+  notes: "notes",
+  question: "question",
+  calculationMethod: "calculationMethod",
+  customCalculationMethod: "customCalculationMethod",
+  baseRate: "baseRate",
+  unit: "unit",
+  brackets: "brackets",
+  classifications: "classifications",
+  isActive: "isActive",
+  version: "version",
 };
 
 const VARIABLE_FEE_RULE_FIELD_MAPPING = {
-  customId: 'customId',
-  name: 'name',
-  notes: 'notes',
-  question: 'question',
-  calculationMethod: 'calculationMethod',
-  customCalculationMethod: 'customCalculationMethod',
-  baseRate: 'baseRate',
-  unit: 'unit',
-  brackets: 'brackets',
-  classifications: 'classifications',
-  isActive: 'isActive',
-  version: 'version',
+  customId: "customId",
+  name: "name",
+  notes: "notes",
+  question: "question",
+  calculationMethod: "calculationMethod",
+  customCalculationMethod: "customCalculationMethod",
+  baseRate: "baseRate",
+  unit: "unit",
+  brackets: "brackets",
+  classifications: "classifications",
+  isActive: "isActive",
+  version: "version",
 };
 
 /**
@@ -74,14 +74,14 @@ class VariableFeeRuleAuditHelper {
       .build();
 
     return await logAuditEvent(
-      'variable_fee_rule_created',
+      "variable_fee_rule_created",
       userId,
-      'VariableFeeRule',
+      "VariableFeeRule",
       rule._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 
@@ -101,9 +101,14 @@ class VariableFeeRuleAuditHelper {
    */
   static async logUpdated(req, userId, userInfo, oldRule, newRule, role) {
     // Track changes between old and new rule
-    const changes = trackChanges(oldRule, newRule, VARIABLE_FEE_RULE_FIELD_MAPPING, {
-      ignoreFields: ['updatedAt', 'version'], // Ignore these fields
-    });
+    const changes = trackChanges(
+      oldRule,
+      newRule,
+      VARIABLE_FEE_RULE_FIELD_MAPPING,
+      {
+        ignoreFields: ["updatedAt", "version"], // Ignore these fields
+      },
+    );
 
     // If no changes, don't log anything
     if (changes.length === 0) {
@@ -125,14 +130,14 @@ class VariableFeeRuleAuditHelper {
 
     // Log a single audit event for all field changes
     const auditLog = await logAuditEvent(
-      'variable_fee_rule_updated',
+      "variable_fee_rule_updated",
       userId,
-      'VariableFeeRule',
+      "VariableFeeRule",
       newRule._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
 
     return auditLog;
@@ -158,19 +163,19 @@ class VariableFeeRuleAuditHelper {
       .withEntityFields(rule, VARIABLE_FEE_RULE_METADATA_MAPPING)
       .withEntitySnapshots(rule, { ...rule, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        previousStatus: rule.isActive ? 'active' : 'inactive',
+        previousStatus: rule.isActive ? "active" : "inactive",
       })
       .build();
 
     return await logAuditEvent(
-      'variable_fee_rule_disabled',
+      "variable_fee_rule_disabled",
       userId,
-      'VariableFeeRule',
+      "VariableFeeRule",
       rule._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 }

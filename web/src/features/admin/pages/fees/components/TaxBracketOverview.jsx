@@ -3,7 +3,7 @@ import InfoGrid from '@/shared/components/InfoGrid'
 
 const { Text } = Typography
 
-export default function TaxBracketOverview({ overviewData, lobId, _token, selectedBracket }) {
+export default function TaxBracketOverview({ overviewData, lobId, _token, selectedBracket, loading = false }) {
   if (!overviewData || !lobId) {
     return <Empty description="No Line of Business selected" />
   }
@@ -69,6 +69,7 @@ export default function TaxBracketOverview({ overviewData, lobId, _token, select
     <div style={{ padding: '24px 24px 16px 24px' }}>
       <InfoGrid
         noPadding
+        loading={loading}
         items={items}
       />
     </div>

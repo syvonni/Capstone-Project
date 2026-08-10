@@ -44,13 +44,14 @@ async function createSecurityIncidentForForgotPasswordAttempt({
   ipAddress,
   userAgent,
 }) {
-  const baseUrl = process.env.ADMIN_SERVICE_URL || "";
-  if (!baseUrl) return;
-  const axios = require("axios");
+  const { createHttpClient } = require("../../../../shared/lib/httpClient");
   const internalKey = process.env.ADMIN_SERVICE_INTERNAL_API_KEY || "";
   try {
-    await axios.post(
-      `${baseUrl.replace(/\/$/, "")}/api/admin/tamper/incidents`,
+    const adminClient = createHttpClient("admin", {
+      headers: { "X-Internal-API-Key": internalKey },
+    });
+    await adminClient.post(
+      "/api/admin/tamper/incidents",
       {
         eventType: "staff_or_admin_forgot_password_attempted",
         userId: String(userId),
@@ -58,13 +59,6 @@ async function createSecurityIncidentForForgotPasswordAttempt({
         roleSlug: roleSlug || "",
         ipAddress: ipAddress || "",
         userAgent: userAgent || "",
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          ...(internalKey && { "X-Internal-API-Key": internalKey }),
-        },
-        timeout: 5000,
       },
     );
   } catch (err) {

@@ -3,7 +3,7 @@ import InfoGrid from '@/shared/components/InfoGrid'
 
 const { Text } = Typography
 
-export default function VariableOverview({ variable, initialValues, dependencies, _token }) {
+export default function VariableOverview({ variable, initialValues, dependencies, _token, loading = false }) {
   const formatRelativeTime = (dateStr) => {
     if (!dateStr) return '-'
     const d = new Date(dateStr)
@@ -14,6 +14,7 @@ export default function VariableOverview({ variable, initialValues, dependencies
     <div>
       <InfoGrid
         noPadding
+        loading={loading}
         items={[
           { label: 'Name', value: initialValues.name || '-' },
           { label: 'Created on', value: formatRelativeTime(variable?.createdAt) },

@@ -90,7 +90,7 @@ async function fetchProcessData() {
     const res = await fetch('/api/public/application-processes/permit')
     if (!res.ok) return null
     const json = await res.json()
-    const data = json?.data || json
+    const data = json
     if (data && data.steps && data.steps.length > 0) {
       cache.data = data
       cache.timestamp = Date.now()

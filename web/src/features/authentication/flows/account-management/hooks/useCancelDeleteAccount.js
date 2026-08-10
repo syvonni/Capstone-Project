@@ -53,8 +53,8 @@ export function useCancelDeleteAccount({ onSubmit } = {}) {
       // This is more reliable than waiting for ProtectedRoute to react
       const roleKey = String(user?.role?.slug || user?.role || '').toLowerCase()
       const staffRoles = ['staff', 'lgu_officer', 'inspector']
-      
-      let target = '/dashboard'
+
+      let target = '/owner'
       if (roleKey === 'admin') target = '/admin/dashboard'
       else if (roleKey === 'business_owner') target = '/owner'
       else if (staffRoles.includes(roleKey)) target = '/staff'

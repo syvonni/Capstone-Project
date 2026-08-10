@@ -82,6 +82,106 @@ const ENTITY_CONFIG = {
       errorRate: 0.05,
     },
   },
+  // Inspection Items configuration
+  inspectionItem: {
+    enabled: true,
+    operations: ["GET", "POST", "PUT", "DELETE"],
+    thresholds: {
+      warning: 400, // Stricter due to higher expected query frequency during inspections
+      critical: 800,
+      errorRate: 0.03,
+    },
+  },
+  // Post Requirements configuration
+  postRequirement: {
+    enabled: true,
+    operations: ["GET", "POST", "PUT", "DELETE"],
+    thresholds: {
+      warning: 500,
+      critical: 1000,
+      errorRate: 0.05,
+    },
+  },
+  // Permit Forms configuration
+  permitForm: {
+    enabled: true,
+    operations: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    thresholds: {
+      warning: 500,
+      critical: 1000,
+      errorRate: 0.05,
+    },
+  },
+  // Announcements configuration
+  announcement: {
+    enabled: true,
+    operations: ["GET", "POST", "PUT", "DELETE"],
+    thresholds: {
+      warning: 500,
+      critical: 1000,
+      errorRate: 0.05,
+    },
+  },
+  // Users configuration
+  user: {
+    enabled: true,
+    operations: ["GET", "POST", "PUT", "DELETE"],
+    thresholds: {
+      warning: 400,
+      critical: 800,
+      errorRate: 0.03,
+    },
+  },
+  // Roles configuration
+  role: {
+    enabled: true,
+    operations: ["GET", "POST", "PUT", "DELETE"],
+    thresholds: {
+      warning: 300,
+      critical: 600,
+      errorRate: 0.02,
+    },
+  },
+  // Claimable Documents configuration
+  claimableDocument: {
+    enabled: true,
+    operations: ["GET", "POST", "PUT", "DELETE"],
+    thresholds: {
+      warning: 500,
+      critical: 1000,
+      errorRate: 0.05,
+    },
+  },
+  // Tax Brackets configuration
+  taxBracket: {
+    enabled: true,
+    operations: ["GET", "POST", "PUT", "DELETE"],
+    thresholds: {
+      warning: 400,
+      critical: 800,
+      errorRate: 0.04,
+    },
+  },
+  // Variable Fee Rules configuration
+  variableFeeRule: {
+    enabled: true,
+    operations: ["GET", "POST", "PUT", "DELETE"],
+    thresholds: {
+      warning: 500,
+      critical: 1000,
+      errorRate: 0.05,
+    },
+  },
+  // Penalty Rules configuration
+  penaltyRule: {
+    enabled: true,
+    operations: ["GET", "POST", "PUT", "DELETE"],
+    thresholds: {
+      warning: 500,
+      critical: 1000,
+      errorRate: 0.05,
+    },
+  },
 };
 
 /**

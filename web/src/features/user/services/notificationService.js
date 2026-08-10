@@ -88,3 +88,15 @@ export async function deleteAllNotifications() {
     method: 'DELETE'
   })
 }
+
+const notificationService = {
+  getNotificationStreamToken,
+  getNotifications,
+  getUnreadCount,
+  markAsRead,
+  markAllAsRead,
+  deleteNotification,
+  deleteAllNotifications,
+}
+
+export default notificationService

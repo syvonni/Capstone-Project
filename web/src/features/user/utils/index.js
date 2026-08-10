@@ -1,2 +1,2 @@
-// Utils barrel - utilities
-// Feature-specific utilities go here
+export * from './profileValidation.js'
+export * from './roleHelpers.js'

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { theme } from 'antd'
 import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
 import DetailHeader from '@/shared/components/DetailHeader'
@@ -29,7 +29,7 @@ export default function PostRequirementDetailPanel({ postRequirementId, postRequ
     version: postRequirement?.version || 1,
   }), [postRequirement])
 
-  const { dependencies } = usePostRequirementDependencies(postRequirementId, isNew)
+  const { dependencies, loading: loadingDependencies } = usePostRequirementDependencies(postRequirementId, isNew)
   const {
     form,
     saving,
@@ -45,6 +45,8 @@ export default function PostRequirementDetailPanel({ postRequirementId, postRequ
     stepUpModal,
   } = usePostRequirementForm({ postRequirementId, postRequirement, initialValues, onSave })
 
+  const loading = saving || loadingDependencies
+
   const handleEnterEditMode = () => {
     setIsEditMode(true)
   }
@@ -54,6 +56,14 @@ export default function PostRequirementDetailPanel({ postRequirementId, postRequ
     form.setFieldsValue(initialValues)
     resetChangeTracking(initialValues)
   }
+
+  // Reset form when post requirement changes
+  useEffect(() => {
+    if (postRequirement && !isNew) {
+      form.setFieldsValue(initialValues)
+      resetChangeTracking(initialValues)
+    }
+  }, [postRequirementId, postRequirement, initialValues, form, resetChangeTracking, isNew])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -108,7 +118,7 @@ export default function PostRequirementDetailPanel({ postRequirementId, postRequ
         {isEditMode ? (
           <PostRequirementConfiguration form={form} handleFormValuesChange={handleFormValuesChange} token={token} />
         ) : (
-          <PostRequirementOverview postRequirement={postRequirement} initialValues={initialValues} dependencies={dependencies} token={token} />
+          <PostRequirementOverview postRequirement={postRequirement} initialValues={initialValues} dependencies={dependencies} token={token} loading={loading} />
         )}
       </div>
     </div>

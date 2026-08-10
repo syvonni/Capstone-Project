@@ -14,15 +14,18 @@ export default function ChecklistDetailPanel({ checklistId, checklist, onSave })
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [fetchedChecklist, setFetchedChecklist] = useState(null)
+  const [loadingChecklist, setLoadingChecklist] = useState(false)
 
   const isNew = checklistId === 'new' || (!checklist && !fetchedChecklist)
 
   // Fetch checklist by ID if not provided via prop
   useEffect(() => {
     if (checklistId && checklistId !== 'new' && !checklist) {
+      setLoadingChecklist(true)
       getChecklist(checklistId)
         .then(data => setFetchedChecklist(data))
         .catch(err => console.error('Failed to fetch checklist:', err))
+        .finally(() => setLoadingChecklist(false))
     }
   }, [checklistId, checklist])
 
@@ -73,6 +76,8 @@ export default function ChecklistDetailPanel({ checklistId, checklist, onSave })
     stepUpModal,
   } = useChecklistForm({ checklistId, checklist: effectiveChecklist, initialValues, onSave })
 
+  const loading = saving || loadingChecklist
+
   const handleEnterEditMode = () => {
     setIsEditMode(true)
   }
@@ -82,6 +87,14 @@ export default function ChecklistDetailPanel({ checklistId, checklist, onSave })
     form.setFieldsValue(initialValues)
     resetChangeTracking(initialValues)
   }
+
+  // Reset form when checklist changes
+  useEffect(() => {
+    if (effectiveChecklist && !isNew) {
+      form.setFieldsValue(initialValues)
+      resetChangeTracking(initialValues)
+    }
+  }, [checklistId, effectiveChecklist, initialValues, form, resetChangeTracking, isNew])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -134,7 +147,7 @@ export default function ChecklistDetailPanel({ checklistId, checklist, onSave })
         {isEditMode ? (
           <ChecklistConfiguration form={form} handleFormValuesChange={handleFormValuesChange} />
         ) : (
-          <ChecklistOverview checklist={effectiveChecklist} initialValues={initialValues} />
+          <ChecklistOverview checklist={effectiveChecklist} initialValues={initialValues} loading={loading} />
         )}
       </div>
     </div>

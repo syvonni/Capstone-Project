@@ -61,7 +61,7 @@ export function useApplicationPaymentHandlers({
           transactionName: receiptInfo.transactionName,
           paymentType: 'registration_fee',
         })
-        backendReceiptNumber = paymentResponse?.data?.receiptNumber
+        backendReceiptNumber = paymentResponse?.receiptNumber
       } catch (err) {
         console.error('Failed to create mock payment record:', err)
         // Continue anyway since submission succeeded
@@ -100,7 +100,7 @@ export function useApplicationPaymentHandlers({
     const businessId = business.businessId || business._id
     try {
       const res = await getPayments({ businessId, paymentType: 'registration_fee', status: 'paid', limit: 1 })
-      const payments = res?.data || res?.payments || []
+      const payments = res || []
       if (payments.length > 0) {
         const payment = payments[0]
         const fees = payment.feeBreakdown || []

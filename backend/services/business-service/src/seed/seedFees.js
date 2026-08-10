@@ -18,30 +18,30 @@ dotenv.config({
 });
 
 const Fee = require("../models/Fee");
-const { generalApplicationFees, appealFees } = require("./comprehensiveFeeSeederReference");
+const {
+  generalApplicationFees,
+  appealFees,
+} = require("./comprehensiveFeeSeederReference");
 
 // Penalty fees are now created by seedViolations.js based on violation names
 // to ensure each violation has its own specific penalty fee
 
 // Combine global application fees and appeal fees
 const FEES_SEED_DATA = [
-  ...generalApplicationFees.map(fee => ({
+  ...generalApplicationFees.map((fee) => ({
     ...fee,
     category: "global",
   })),
-  ...appealFees.map(fee => ({
+  ...appealFees.map((fee) => ({
     ...fee,
     category: "appeal",
   })),
 ];
 
-
 async function seed() {
   const mongoUri =
     "mongodb://capstone_app:g95fxnwa1wPDdyfA@mongodb:27017/capstone_project?authSource=admin";
-  console.log(
-    `Connecting to MongoDB: ${mongoUri}`,
-  );
+  console.log(`Connecting to MongoDB: ${mongoUri}`);
   await mongoose.connect(mongoUri);
 
   let totalUpserted = 0;
@@ -51,7 +51,7 @@ async function seed() {
   console.log("\nSeeding Fees...");
   for (const feeData of FEES_SEED_DATA) {
     const existing = await Fee.findOne({ name: feeData.name });
-    
+
     if (!existing) {
       await Fee.create({
         ...feeData,

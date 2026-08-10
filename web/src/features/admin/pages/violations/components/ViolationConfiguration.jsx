@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import { Form, Input, Select, Button, Typography } from 'antd'
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons'
 import { SEVERITY_LEVELS } from '../constants/violations.constants'

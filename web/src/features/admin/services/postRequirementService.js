@@ -23,7 +23,7 @@ export async function getPostRequirements(filters = {}) {
 
   // Create and cache the request promise
   const requestPromise = get(`${API_BASE}?${queryString}`)
-    .then(res => res?.data || [])
+    .then(res => res || [])
     .finally(() => {
       // Remove from cache when complete (success or failure)
       pendingRequests.delete(cacheKey)
@@ -43,7 +43,7 @@ export async function getPostRequirement(id) {
 
   // Create and cache the request promise
   const requestPromise = get(`${API_BASE}/${id}`)
-    .then(res => res?.data)
+    .then(res => res)
     .finally(() => {
       // Remove from cache when complete (success or failure)
       pendingRequests.delete(cacheKey)
@@ -64,7 +64,7 @@ export async function createPostRequirement(data, options = {}) {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export async function updatePostRequirement(id, data, options = {}) {
@@ -78,12 +78,12 @@ export async function updatePostRequirement(id, data, options = {}) {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export async function getPostRequirementAudit(id) {
   const res = await get(`${API_BASE}/${id}/audit`)
-  return res?.data
+  return res
 }
 
 export async function disablePostRequirement(id, options = {}) {
@@ -95,5 +95,21 @@ export async function disablePostRequirement(id, options = {}) {
     method: 'DELETE',
     headers,
   })
-  return res?.data
+  return res
+}
+
+export async function getDataQuality() {
+  const res = await get(`${API_BASE}/data-quality`)
+  return res
+}
+
+export const getAllPostRequirementAudits = async (params = {}) => {
+  const { page = 1, limit = 20 } = params
+  const res = await get(`/api/audit/post-requirements?page=${page}&limit=${limit}`)
+  return res
+}
+
+export async function getPostRequirementPerformance() {
+  const res = await get(`${API_BASE}/performance`)
+  return res
 }

@@ -1,12 +1,9 @@
-export { default as EditUserProfileForm } from './components/EditUserProfileForm.jsx'
-export { default as UserWorkspaceGate } from './components/UserWorkspaceGate.jsx'
 export * from './components/index.js'
 
-// Pages
-export { default as Dashboard } from './pages/Dashboard'
-export { default as ProfileSettings } from './pages/ProfileSettings'
+// Views
+export { default as ProfileSettings } from './views/ProfileSettings'
+export { default as NotificationHistoryPage } from './views/NotificationHistoryPage'
 
 export { useEditUserProfileForm } from './hooks/useEditUserProfileForm.jsx'
 
 export * from './services/userService.js'
-export * from './models/userTypes.js'

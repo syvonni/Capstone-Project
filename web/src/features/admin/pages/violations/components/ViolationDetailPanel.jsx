@@ -76,6 +76,14 @@ export default function ViolationDetailPanel({ violationId, violation, onSave })
     resetChangeTracking(initialValues)
   }
 
+  // Reset form when violation changes
+  useEffect(() => {
+    if (violation && !isNew) {
+      form.setFieldsValue(initialValues)
+      resetChangeTracking(initialValues)
+    }
+  }, [violationId, violation, initialValues, form, resetChangeTracking, isNew])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <DetailHeader

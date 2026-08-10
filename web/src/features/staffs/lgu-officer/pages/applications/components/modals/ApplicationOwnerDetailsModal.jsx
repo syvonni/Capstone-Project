@@ -132,7 +132,7 @@ export default function OwnerDetailsModal({ open, onClose, application, ownerIde
     get(`/api/lgu-officer/permit-applications?ownerId=${ownerId}&limit=50`)
       .then((res) => {
         if (cancelled) return
-        const apps = res.applications || res.data || []
+        const apps = res.applications || res || []
         // Filter out the current application
         const others = apps.filter((app) => {
           const appId = app.businessId || app.applicationId || app._id || app._businessId

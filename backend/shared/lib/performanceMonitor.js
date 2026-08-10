@@ -19,6 +19,7 @@ const { getEntityConfig } = require("./entityPerformanceConfig");
  *
  * USAGE:
  * recordMetric('variable', 'GET', 150, true, '/api/variables', userId)
+ * recordMetric('variable', 'GET', 150, false, '/api/variables', userId, errorContext)
  *
  * @param {string} entityType - The entity type (singular, lowercase)
  * @param {string} operation - The HTTP operation (GET, POST, PUT, DELETE, PATCH)
@@ -26,6 +27,7 @@ const { getEntityConfig } = require("./entityPerformanceConfig");
  * @param {boolean} success - Whether the request was successful
  * @param {string} endpoint - The API endpoint path
  * @param {string} userId - Optional user ID who made the request
+ * @param {object} errorContext - Optional error details (errorName, errorMessage, errorCode, errorStack, severity, correlationId)
  * @returns {Promise<object>} - The saved metric document
  */
 async function recordMetric(
@@ -35,6 +37,7 @@ async function recordMetric(
   success,
   endpoint,
   userId = null,
+  errorContext = null,
 ) {
   const config = getEntityConfig(entityType);
   if (!config) {
@@ -52,6 +55,14 @@ async function recordMetric(
     responseTime,
     success,
     error: success ? null : "Request failed",
+    errorName: success ? null : errorContext?.errorName || null,
+    errorMessage: success ? null : errorContext?.errorMessage || null,
+    errorCode: success ? null : errorContext?.errorCode || null,
+    errorStack: success
+      ? null
+      : errorContext?.errorStack?.substring(0, 1000) || null, // Truncate stack traces
+    severity: success ? null : errorContext?.severity || "medium",
+    correlationId: success ? null : errorContext?.correlationId || null,
     endpoint,
     userId,
   });
@@ -249,9 +260,73 @@ async function getSlowestOperations(entityType, limit = 10, timeRange = "24h") {
   }));
 }
 
+/**
+ * Gets errors grouped by type for an entity
+ *
+ * USAGE:
+ * getErrorsByType('variable', '24h')
+ *
+ * @param {string} entityType - The entity type (singular, lowercase)
+ * @param {string} timeRange - Time range: '1h', '24h', '7d', '30d'
+ * @returns {Promise<Array>} - Array of error groups with counts and timestamps
+ */
+async function getErrorsByType(entityType, timeRange = "24h") {
+  const PerformanceMetric = require("../../services/business-service/src/models/PerformanceMetric");
+
+  const timeRangeMap = {
+    "1h": 60 * 60 * 1000,
+    "24h": 24 * 60 * 60 * 1000,
+    "7d": 7 * 24 * 60 * 60 * 1000,
+    "30d": 30 * 24 * 60 * 60 * 1000,
+  };
+
+  const startTime = new Date(
+    Date.now() - (timeRangeMap[timeRange] || timeRangeMap["24h"]),
+  );
+
+  const errorGroups = await PerformanceMetric.aggregate([
+    {
+      $match: {
+        entityType,
+        success: false,
+        createdAt: { $gte: startTime },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          errorName: "$errorName",
+          errorMessage: "$errorMessage",
+        },
+        count: { $sum: 1 },
+        firstOccurrence: { $min: "$createdAt" },
+        lastOccurrence: { $max: "$createdAt" },
+        errorCodes: { $addToSet: "$errorCode" },
+        severities: { $addToSet: "$severity" },
+        sampleEndpoints: { $addToSet: "$endpoint" },
+      },
+    },
+    {
+      $sort: { count: -1 },
+    },
+  ]);
+
+  return errorGroups.map((group) => ({
+    errorName: group._id.errorName || "Unknown Error",
+    errorMessage: group._id.errorMessage || "No message",
+    count: group.count,
+    firstOccurrence: group.firstOccurrence,
+    lastOccurrence: group.lastOccurrence,
+    errorCodes: group.errorCodes.filter(Boolean),
+    severities: group.severities.filter(Boolean),
+    sampleEndpoints: group.sampleEndpoints.slice(0, 3), // Limit to 3 sample endpoints
+  }));
+}
+
 module.exports = {
   recordMetric,
   getAggregatedMetrics,
   getMetricsByOperation,
   getSlowestOperations,
+  getErrorsByType,
 };

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Modal, Form, Input, Button, App, Typography, theme, Select, InputNumber } from 'antd'
+import { Form, Input, Button, App, Typography, theme, Select, InputNumber } from 'antd'
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { createViolation } from '@/features/admin/services/violationService'
 import { SEVERITY_LEVELS } from '../../constants/violations.constants'
 import { currencyFormatter, currencyParser } from '@/shared/utils/currency.utils'
+import { useNameValidation } from '@/shared/hooks/useNameValidation'
 
 const { Text } = Typography
 const { useToken } = theme
@@ -17,13 +19,15 @@ export default function AddViolationModal({ open, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false)
   const { runWithStepUp, stepUpModal } = useStepUp()
   const { token } = useToken()
+  const { validateName, isValidating, error: nameError, clearError } = useNameValidation('Violation')
 
   // Reset form when modal opens
   useEffect(() => {
     if (open) {
       form.resetFields()
+      clearError()
     }
-  }, [open, form])
+  }, [open, form, clearError])
 
   const handleSubmit = async () => {
     try {
@@ -80,7 +84,7 @@ export default function AddViolationModal({ open, onClose, onSuccess }) {
 
   return (
     <>
-      <Modal
+      <ResponsiveModal
         open={open}
         onCancel={onClose}
         title="Add Violation"
@@ -95,12 +99,13 @@ export default function AddViolationModal({ open, onClose, onSuccess }) {
         width={700}
         destroyOnHidden
       >
-        <div style={{ padding: 16 }}>
-          <Text>Enter the violation details below.</Text>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
+        <Text>Enter the violation details below.</Text>
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
             <Form.Item
               name="name"
               label={<span>Name<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
+              validateStatus={nameError ? 'error' : ''}
+              help={nameError}
               rules={[
                 {
                   validator: (_, value) => {
@@ -112,7 +117,11 @@ export default function AddViolationModal({ open, onClose, onSuccess }) {
                 }
               ]}
             >
-              <Input placeholder="e.g., Missing Fire Extinguisher" />
+              <Input
+                placeholder="e.g., Missing Fire Extinguisher"
+                onBlur={(e) => validateName(e.target.value)}
+                disabled={isValidating}
+              />
             </Form.Item>
 
             <Form.Item
@@ -217,8 +226,7 @@ export default function AddViolationModal({ open, onClose, onSuccess }) {
               <TextArea placeholder="Additional notes or comments" rows={2} />
             </Form.Item>
           </Form>
-        </div>
-      </Modal>
+      </ResponsiveModal>
       {stepUpModal}
     </>
   )

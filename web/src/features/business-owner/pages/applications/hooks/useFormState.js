@@ -17,8 +17,10 @@ export function useFormState() {
   }, [])
 
   const openApplicationForm = useCallback((options = {}) => {
-    const { registrationType = 'general', fromWelcome = false } = options
-    setPermitType(registrationType)
+    const { formId = null, registrationType = 'general', fromWelcome = false } = options
+    // Use formId if provided, otherwise fall back to registrationType for backward compatibility
+    console.log('openApplicationForm called with formId:', formId, 'registrationType:', registrationType)
+    setPermitType(formId || registrationType)
     setFromWelcomeModal(fromWelcome)
     setShowAddForm(true)
     setEditingApplication(null)

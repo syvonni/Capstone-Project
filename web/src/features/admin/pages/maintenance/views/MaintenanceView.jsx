@@ -193,7 +193,7 @@ export default function MaintenanceView() {
           open={!!selectedApproval}
           onClose={() => setSelectedApproval(null)}
           placement="bottom"
-          height="100%"
+          size="large"
           styles={{ body: { padding: 0 } }}
         >
           {detailContent}
@@ -203,7 +203,6 @@ export default function MaintenanceView() {
           open={historyExportOpen}
           onClose={() => setHistoryExportOpen(false)}
           placement="bottom"
-          height="50%"
           styles={{ body: { padding: 16 } }}
           extra={
             <Button type="primary" onClick={handleExportHistory} disabled={exportRangeRows === 0}>

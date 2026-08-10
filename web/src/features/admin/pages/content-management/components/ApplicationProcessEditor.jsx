@@ -60,7 +60,7 @@ export default function ApplicationProcessEditor() {
     try {
       setLoading(true)
       const res = await get('/api/admin/application-processes')
-      setProcesses(Array.isArray(res) ? res : res?.data || [])
+      setProcesses(Array.isArray(res) ? res : [])
     } catch {
       message.error('Failed to load application processes')
     } finally {
@@ -470,7 +470,7 @@ export default function ApplicationProcessEditor() {
           onClose={handleClose}
           title={`Edit: ${editingProcess?.title || ''}`}
           placement="bottom"
-          height="100%"
+          size="100%"
           extra={
             <Space>
               <Button onClick={handleClose}>Cancel</Button>

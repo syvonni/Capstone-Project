@@ -19,9 +19,8 @@ const HelpPage = lazy(() => import("@/features/public/pages/HelpPage.jsx"))
 const BusinessSearch = lazy(() => import("@/features/public/pages/BusinessSearch.jsx"))
 const PasskeyMobileAuth = lazy(() => import("@/features/authentication/pages/PasskeyMobileAuth.jsx"))
 const MfaSetup = lazy(() => import("@/features/authentication/mfa/components/MfaSetup.jsx"))
-const Dashboard = lazy(() => import("@/features/user").then(m => ({ default: m.Dashboard })))
-const ProfileSettings = lazy(() => import("@/features/user").then(m => ({ default: m.ProfileSettings })))
-const NotificationHistoryPage = lazy(() => import("@/features/user/pages/NotificationHistoryPage.jsx"))
+const ProfileSettings = lazy(() => import("@/features/user/views/ProfileSettings"))
+const NotificationHistoryPage = lazy(() => import("@/features/user/views/NotificationHistoryPage.jsx"))
 const AdminOnboarding = lazy(() => import("@/features/admin/pages/AdminOnboarding.jsx"))
 const AdminDashboard = lazy(() => import("@/features/admin/pages/dashboard/index.jsx"))
 const AdminContentManagement = lazy(() => import("@/features/admin/pages/content-management").then(m => ({ default: m.ContentManagementView })))
@@ -38,9 +37,8 @@ const AdminPostRequirements = lazy(() => import("@/features/admin/pages/post-req
 const AdminVariables = lazy(() => import("@/features/admin/pages/variables").then(m => ({ default: m.VariablesView })))
 const AdminViolations = lazy(() => import("@/features/admin/pages/violations").then(m => ({ default: m.ViolationsView })))
 const AdminInspections = lazy(() => import("@/features/admin/pages/inspections").then(m => ({ default: m.InspectionsView })))
-const BusinessOwnerDashboard = lazy(() => import("@/features/business-owner").then(m => ({ default: m.BusinessOwnerDashboard })))
+const BusinessOwnerDashboard = lazy(() => import("@/features/business-owner/pages/BusinessOwnerMasterView.jsx"))
 const BusinessOwnerOnboarding = lazy(() => import("@/features/business-owner/pages/BusinessOwnerOnboarding.jsx"))
-const BusinessOwnerApplications = lazy(() => import("@/features/business-owner/pages/applications/index.jsx"))
 const BusinessOwnerBusinesses = lazy(() => import("@/features/business-owner/pages/businesses/index.jsx"))
 
 // const ClearanceTracker = lazy(() => import("@/features/business-owner/components/clearance/ClearanceTracker.jsx"))
@@ -127,9 +125,9 @@ function App() {
       <Route path="/admin/onboarding" element={<ProtectedRoute allowedRoles={['admin']}><AdminOnboarding /></ProtectedRoute>} />
 
       {/* Business Owner Routes */}
-      <Route path="/owner" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerDashboard /></ProtectedRoute>} />
-      <Route path="/business-owner" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerDashboard /></ProtectedRoute>} />
-      <Route path="/business-owner/applications" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerApplications /></ProtectedRoute>} />
+      <Route path="/owner" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerDashboard showBrandLogo={true} hideProfileSettings={true} /></ProtectedRoute>} />
+      <Route path="/business-owner" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerDashboard showBrandLogo={true} hideProfileSettings={true} /></ProtectedRoute>} />
+      <Route path="/business-owner/applications" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerDashboard showBrandLogo={true} hideProfileSettings={true} /></ProtectedRoute>} />
       <Route path="/business-owner/businesses" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerBusinesses /></ProtectedRoute>} />
       <Route path="/owner/notifications" element={<Navigate to="/notifications" replace />} />
       
@@ -152,7 +150,6 @@ function App() {
       </Route>
 
       {/* Generic/Public Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/settings-profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationHistoryPage /></ProtectedRoute>} />
       

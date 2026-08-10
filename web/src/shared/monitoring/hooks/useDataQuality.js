@@ -5,6 +5,8 @@ import { useState, useEffect, useCallback } from "react";
  * @param {string} entityType - The type of entity (e.g., 'variable', 'fee', 'violation')
  * @param {boolean} shouldFetch - Whether to fetch data quality issues (default: true)
  */
+
+// Force HMR reload
 export function useDataQuality(entityType, shouldFetch = true) {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -16,14 +18,12 @@ export function useDataQuality(entityType, shouldFetch = true) {
    * Fetch data quality issues for this entity type
    */
   useEffect(() => {
-    console.log("useDataQuality hook called with:", { entityType, shouldFetch });
     if (!shouldFetch || !entityType) {
       setIssues([]);
       return;
     }
 
     const fetchDataQuality = async () => {
-      console.log("Fetching data quality issues for:", entityType);
       setLoading(true);
       setError(null);
       try {
@@ -32,9 +32,13 @@ export function useDataQuality(entityType, shouldFetch = true) {
         // Map entity types to API endpoints
         const endpointMap = {
           variable: "/api/business/admin/variables/data-quality",
+          violation: "/api/business/admin/violations/data-quality",
+          inspectionItem: "/api/business/admin/inspection-items/data-quality",
+          checklist: "/api/business/admin/checklists/data-quality",
+          postRequirement: "/api/business/admin/post-requirements/data-quality",
+          lob: "/api/business/admin/lobs/data-quality",
           // Add more entity types as needed
           // fee: '/api/business/admin/fees/data-quality',
-          // violation: '/api/business/admin/violations/data-quality',
         };
 
         const endpoint = endpointMap[entityType];
@@ -42,9 +46,7 @@ export function useDataQuality(entityType, shouldFetch = true) {
           throw new Error(`Unknown entity type: ${entityType}`);
         }
 
-        console.log("Calling endpoint:", endpoint);
         const res = await get(endpoint);
-        console.log("Data quality response:", res);
         const data = res || {};
         setIssues(data.issues || []);
         setTotalEntities(data.totalEntities || 0);
@@ -75,6 +77,11 @@ export function useDataQuality(entityType, shouldFetch = true) {
 
         const endpointMap = {
           variable: "/api/business/admin/variables/data-quality",
+          violation: "/api/business/admin/violations/data-quality",
+          inspectionItem: "/api/business/admin/inspection-items/data-quality",
+          checklist: "/api/business/admin/checklists/data-quality",
+          postRequirement: "/api/business/admin/post-requirements/data-quality",
+          lob: "/api/business/admin/lobs/data-quality",
           // Add more entity types as needed
         };
 

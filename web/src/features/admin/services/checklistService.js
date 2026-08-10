@@ -19,7 +19,7 @@ export const getChecklists = async (params = {}) => {
 
   // Create and cache the request promise
   const requestPromise = get(`/api/business/admin/checklists?${queryString}`)
-    .then(res => res?.data || [])
+    .then(res => res || [])
     .finally(() => {
       pendingRequests.delete(cacheKey)
     })
@@ -38,7 +38,7 @@ export const getChecklist = async (id) => {
 
   // Create and cache the request promise
   const requestPromise = get(`/api/business/admin/checklists/${id}`)
-    .then(res => res?.data)
+    .then(res => res)
     .finally(() => {
       pendingRequests.delete(cacheKey)
     })
@@ -49,7 +49,7 @@ export const getChecklist = async (id) => {
 
 export const getChecklistsByInspectionItem = async (inspectionItemId) => {
   const res = await get(`/api/business/admin/inspection-items/${inspectionItemId}/checklists`)
-  return res?.data || []
+  return res || []
 }
 
 export const createChecklist = async (data, options = {}) => {
@@ -63,7 +63,7 @@ export const createChecklist = async (data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const updateChecklist = async (id, data, options = {}) => {
@@ -77,7 +77,7 @@ export const updateChecklist = async (id, data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const disableChecklist = async (id, options = {}) => {
@@ -89,11 +89,22 @@ export const disableChecklist = async (id, options = {}) => {
     method: 'DELETE',
     headers,
   })
-  return res?.data
+  return res
 }
 
 export const getChecklistAuditHistory = async (id, params = {}) => {
   const { page = 1, limit = 20 } = params
   const res = await get(`/api/business/admin/checklists/${id}/audit?page=${page}&limit=${limit}`)
   return res?.logs || []
+}
+
+export const getChecklistDataQuality = async () => {
+  const res = await get('/api/business/admin/checklists/data-quality')
+  return res
+}
+
+export const getAllChecklistAudits = async (params = {}) => {
+  const { page = 1, limit = 20 } = params
+  const res = await get(`/api/audit/checklists?page=${page}&limit=${limit}`)
+  return res
 }

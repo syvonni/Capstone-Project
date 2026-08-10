@@ -25,7 +25,7 @@ export function usePostRequirements(filters = {}) {
     } finally {
       setLoading(false)
     }
-  }, [filters])
+  }, [])
 
   useEffect(() => {
     fetchPostRequirements()

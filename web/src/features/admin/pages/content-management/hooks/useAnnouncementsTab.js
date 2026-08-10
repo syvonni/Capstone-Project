@@ -23,7 +23,7 @@ export default function useAnnouncementsTab(audience, externalSelected, external
     try {
       setLoading(true)
       const res = await getAnnouncements(audience)
-      setAnnouncements(Array.isArray(res) ? res : (res?.data || []))
+      setAnnouncements(Array.isArray(res) ? res : [])
     } catch {
       message.error('Failed to load announcements')
     } finally {
@@ -38,7 +38,7 @@ export default function useAnnouncementsTab(audience, externalSelected, external
       setSaving(true)
       const payload = { status: 'draft', audience }
       const res = await createAnnouncement(payload)
-      const newAnnouncement = res?._id ? res : res?.data
+      const newAnnouncement = res
       await fetchAnnouncements()
       if (newAnnouncement) {
         setSelected(newAnnouncement)
@@ -76,13 +76,13 @@ export default function useAnnouncementsTab(audience, externalSelected, external
 
       if (!publish) {
         // For draft saves, use the returned data or re-fetch
-        const updated = result?._id ? result : result?.data
+        const updated = result
         if (updated) {
           setSelected(updated)
         } else {
           // Fallback: re-fetch from server
           const refreshed = await getAnnouncements(audience)
-          const list = Array.isArray(refreshed) ? refreshed : (refreshed?.data || [])
+          const list = Array.isArray(refreshed) ? refreshed : []
           const found = list.find(a => a._id === id)
           if (found) {
             setSelected(found)
@@ -118,7 +118,7 @@ export default function useAnnouncementsTab(audience, externalSelected, external
       await fetchAnnouncements()
       // Force re-select with updated data
       const refreshed = await getAnnouncements(audience)
-      const list = Array.isArray(refreshed) ? refreshed : (refreshed?.data || [])
+      const list = Array.isArray(refreshed) ? refreshed : []
       const updated = list.find(a => a._id === id)
       if (updated) {
         setSelected(updated)

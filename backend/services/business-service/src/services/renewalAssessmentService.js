@@ -73,7 +73,6 @@ function calculateMayorsPermitFee(businessType, businessSize = 0) {
   return Math.round(baseFee / 100) * 100;
 }
 
-
 /**
  * Calculate Community Tax (Cedula)
  * Based on gross receipts brackets

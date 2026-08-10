@@ -1,12 +1,13 @@
 import { get, post, put, patch, del, fetchWithFallback } from '@/lib/http.js'
 
-const BASE_PATH = '/api/business-owner'
+const BASE_PATH = '/api/business'
 
 /**
  * Get the current user's business profile
  */
 export async function getProfile() {
-  return get(`${BASE_PATH}/profile`)
+  const res = await get(`${BASE_PATH}/profile`)
+  return res
 }
 
 /**
@@ -15,7 +16,8 @@ export async function getProfile() {
  * @param {object} data - Step data
  */
 export async function updateProfileStep(step, data) {
-  return post(`${BASE_PATH}/profile`, { step, data })
+  const res = await post(`${BASE_PATH}/profile`, { step, data })
+  return res
 }
 
 /**
@@ -39,15 +41,16 @@ export async function uploadOwnerId(file, side = 'front') {
     throw new Error(err?.error?.message || 'Failed to upload ID')
   }
 
-  return response.json()
+  const json = await response.json()
+  return json
 }
 
 /**
  * Get all businesses for the current user
  */
 export async function getBusinesses() {
-  const data = await get(`${BASE_PATH}/businesses`)
-  return data?.businesses || []
+  const res = await get(`${BASE_PATH}/businesses`)
+  return res?.businesses || []
 }
 
 /**
@@ -79,15 +82,15 @@ export async function getBusinessesPaginated(options = {}) {
     order
   })
 
-  const data = await get(`${BASE_PATH}/businesses?${params}`)
+  const res = await get(`${BASE_PATH}/businesses?${params}`)
   return {
-    businesses: data?.businesses || [],
+    businesses: res?.businesses || [],
     pagination: {
-      currentPage: data?.pagination?.currentPage || page,
-      totalPages: data?.pagination?.totalPages || 1,
-      totalItems: data?.pagination?.totalItems || 0,
-      hasNext: data?.pagination?.hasNext || false,
-      hasPrev: data?.pagination?.hasPrev || false
+      currentPage: res?.pagination?.currentPage || page,
+      totalPages: res?.pagination?.totalPages || 1,
+      totalItems: res?.pagination?.totalItems || 0,
+      hasNext: res?.pagination?.hasNext || false,
+      hasPrev: res?.pagination?.hasPrev || false
     }
   }
 }
@@ -96,8 +99,8 @@ export async function getBusinessesPaginated(options = {}) {
  * Get primary business
  */
 export async function getPrimaryBusiness() {
-  const data = await get(`${BASE_PATH}/businesses/primary`)
-  return data?.business || null
+  const res = await get(`${BASE_PATH}/businesses/primary`)
+  return res?.business || null
 }
 
 /**
@@ -105,7 +108,8 @@ export async function getPrimaryBusiness() {
  * @param {object} businessData - Business data
  */
 export async function addBusiness(businessData) {
-  return post(`${BASE_PATH}/businesses`, businessData)
+  const res = await post(`${BASE_PATH}/businesses`, businessData)
+  return res
 }
 
 /**
@@ -114,7 +118,8 @@ export async function addBusiness(businessData) {
  * @param {object} businessData - Updated business data
  */
 export async function updateBusiness(businessId, businessData) {
-  return put(`${BASE_PATH}/businesses/${businessId}`, businessData)
+  const res = await put(`${BASE_PATH}/businesses/${businessId}`, businessData)
+  return res
 }
 
 /**
@@ -123,7 +128,8 @@ export async function updateBusiness(businessId, businessData) {
  * @param {'active' | 'inactive' | 'closed'} businessStatus - New status
  */
 export async function updateBusinessStatus(businessId, businessStatus) {
-  return patch(`${BASE_PATH}/businesses/${businessId}`, { businessStatus })
+  const res = await patch(`${BASE_PATH}/businesses/${businessId}`, { businessStatus })
+  return res
 }
 
 /**
@@ -131,7 +137,8 @@ export async function updateBusinessStatus(businessId, businessStatus) {
  * @param {string} businessId - Business ID
  */
 export async function deleteBusiness(businessId) {
-  return del(`${BASE_PATH}/businesses/${businessId}`)
+  const res = await del(`${BASE_PATH}/businesses/${businessId}`)
+  return res
 }
 
 /**
@@ -139,7 +146,8 @@ export async function deleteBusiness(businessId) {
  * @param {string} businessId - Business ID
  */
 export async function setPrimaryBusiness(businessId) {
-  return post(`${BASE_PATH}/businesses/${businessId}/primary`)
+  const res = await post(`${BASE_PATH}/businesses/${businessId}/primary`)
+  return res
 }
 
 /**
@@ -148,11 +156,13 @@ export async function setPrimaryBusiness(businessId) {
  * @param {object} riskProfileData - Risk profile data
  */
 export async function updateRiskProfile(businessId, riskProfileData) {
-  return put(`${BASE_PATH}/businesses/${businessId}/risk-profile`, riskProfileData)
+  const res = await put(`${BASE_PATH}/businesses/${businessId}/risk-profile`, riskProfileData)
+  return res
 }
 
 export async function createWalkInApplication(ownerId, businessData) {
-  return post(`${BASE_PATH}/staff/walk-in`, { ownerId, businessData })
+  const res = await post('/api/lgu-officer/walk-in-applications', { ownerId, businessData })
+  return res
 }
 
 /**
@@ -160,7 +170,8 @@ export async function createWalkInApplication(ownerId, businessData) {
  * @param {string} businessId - Business ID
  */
 export async function submitBusinessApplication(businessId) {
-  return post(`${BASE_PATH}/businesses/${businessId}/submit`)
+  const res = await post(`${BASE_PATH}/business-registration/${businessId}/submit`)
+  return res
 }
 
 /**
@@ -169,7 +180,8 @@ export async function submitBusinessApplication(businessId) {
  * @param {object} status - Payment generation status
  */
 export async function updatePaymentGenerationStatus(businessId, status) {
-  return put(`${BASE_PATH}/businesses/${businessId}/payment-generation-status`, status)
+  const res = await put(`${BASE_PATH}/businesses/${businessId}/payment-generation-status`, status)
+  return res
 }
 
 /**
@@ -177,5 +189,6 @@ export async function updatePaymentGenerationStatus(businessId, status) {
  * @param {string} businessId - Business ID
  */
 export async function getPaymentGenerationStatus(businessId) {
-  return get(`${BASE_PATH}/businesses/${businessId}/payment-generation-status`)
+  const res = await get(`${BASE_PATH}/businesses/${businessId}/payment-generation-status`)
+  return res
 }

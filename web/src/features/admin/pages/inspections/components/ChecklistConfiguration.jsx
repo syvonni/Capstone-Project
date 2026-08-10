@@ -3,28 +3,25 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Form, Input, Grid, Button, Typography, Select, Space, message } from 'antd'
+import { Form, Input, Button, Typography, Select, Space, message } from 'antd'
 import { PlusOutlined, MinusCircleOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons'
 import { theme } from 'antd'
 import { getInspectionItems } from '@/features/admin/services/inspectionItemService'
 import { getPostRequirements } from '@/features/admin/services/postRequirementService'
 
-const { useBreakpoint } = Grid
 const { Text } = Typography
 const { TextArea } = Input
 
 export default function ChecklistConfiguration({ form, handleFormValuesChange }) {
   const { token } = theme.useToken()
-  const screens = useBreakpoint()
+  
   const [inspectionItems, setInspectionItems] = useState([])
-  const [loadingItems, setLoadingItems] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
   const [postRequirements, setPostRequirements] = useState([])
   const [loadingPostRequirements, setLoadingPostRequirements] = useState(false)
 
   useEffect(() => {
     const fetchInspectionItems = async () => {
-      setLoadingItems(true)
       try {
         const items = await getInspectionItems({ isActive: true })
         setInspectionItems((items || []).sort((a, b) => a.name.localeCompare(b.name)))
@@ -32,7 +29,6 @@ export default function ChecklistConfiguration({ form, handleFormValuesChange })
         console.error('Failed to fetch inspection items:', error)
         message.error('Failed to load inspection items')
       } finally {
-        setLoadingItems(false)
       }
     }
     fetchInspectionItems()
@@ -81,7 +77,6 @@ export default function ChecklistConfiguration({ form, handleFormValuesChange })
     handleFormValuesChange({ items: newItems }, form.getFieldsValue())
   }
 
-  const isMobile = !screens.lg
 
   const availableOptions = inspectionItems
     .filter(item => !(form.getFieldValue('items') || []).includes(item._id))

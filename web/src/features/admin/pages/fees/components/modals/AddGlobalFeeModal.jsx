@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Modal, Form, Input, InputNumber, Button, App, Typography, theme } from 'antd'
+import { Form, Input, InputNumber, Button, App, Typography, theme } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { createFee } from '@/features/admin/services/feeService'
 import { currencyFormatter, currencyParser } from '@/shared/utils/currency.utils'
+import { useNameValidation } from '@/shared/hooks/useNameValidation'
 
 const { Text } = Typography
 const { useToken } = theme
@@ -15,13 +17,15 @@ export default function AddUniversalFeeModal({ open, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false)
   const { runWithStepUp, stepUpModal } = useStepUp()
   const { token } = useToken()
+  const { validateName, isValidating, error: nameError, clearError } = useNameValidation('Fee')
 
   // Reset form when modal opens
   useEffect(() => {
     if (open) {
       form.resetFields()
+      clearError()
     }
-  }, [open, form])
+  }, [open, form, clearError])
 
   const handleSubmit = async () => {
     try {
@@ -60,7 +64,7 @@ export default function AddUniversalFeeModal({ open, onClose, onSuccess }) {
 
   return (
     <>
-      <Modal
+      <ResponsiveModal
         open={open}
         onCancel={handleCancel}
         title="Add Global Application Fee"
@@ -72,59 +76,63 @@ export default function AddUniversalFeeModal({ open, onClose, onSuccess }) {
         width={500}
         destroyOnHidden
       >
-        <div style={{ padding: 16 }}>
-          <Text>Enter the fee details below.</Text>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
-            <Form.Item
-              name="name"
-              label={<span>Global Application Fee Name<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
-              rules={[
-                {
-                  validator: (_, value) => {
-                    if (!value || value.trim() === '') {
-                      return Promise.reject('Global application fee name is required')
-                    }
-                    return Promise.resolve()
+        <Text>Enter the fee details below.</Text>
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
+          <Form.Item
+            name="name"
+            label={<span>Global Application Fee Name<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
+            validateStatus={nameError ? 'error' : ''}
+            help={nameError}
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (!value || value.trim() === '') {
+                    return Promise.reject('Global application fee name is required')
                   }
+                  return Promise.resolve()
                 }
-              ]}
-            >
-              <Input placeholder="Enter fee name" />
-            </Form.Item>
+              }
+            ]}
+          >
+            <Input
+              placeholder="Enter fee name"
+              onBlur={(e) => validateName(e.target.value)}
+              disabled={isValidating}
+            />
+          </Form.Item>
 
-            <Form.Item
-              name="notes"
-              label={<span>Admin Notes</span>}
-            >
-              <TextArea placeholder="Enter notes (for admin reference, regulatory basis, etc.)" rows={3} />
-            </Form.Item>
+          <Form.Item
+            name="notes"
+            label={<span>Admin Notes</span>}
+          >
+            <TextArea placeholder="Enter notes (for admin reference, regulatory basis, etc.)" rows={3} />
+          </Form.Item>
 
-            <Form.Item
-              name="amount"
-              label={<span>Amount<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
-              rules={[
-                {
-                  validator: (_, value) => {
-                    if (value === undefined || value === null || value === '') {
-                      return Promise.reject('Amount is required')
-                    }
-                    return Promise.resolve()
+          <Form.Item
+            name="amount"
+            label={<span>Amount<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (value === undefined || value === null || value === '') {
+                    return Promise.reject('Amount is required')
                   }
+                  return Promise.resolve()
                 }
-              ]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                placeholder="Enter amount"
-                min={0}
-                precision={2}
-                formatter={currencyFormatter}
-                parser={currencyParser}
-              />
-            </Form.Item>
-          </Form>
-        </div>
-      </Modal>
+              }
+            ]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              placeholder="Enter amount"
+              min={0}
+              precision={2}
+              formatter={currencyFormatter}
+              parser={currencyParser}
+            />
+          </Form.Item>
+        </Form>
+      </ResponsiveModal>
       {stepUpModal}
     </>
   )

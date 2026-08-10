@@ -4,13 +4,18 @@ const TaxBracketSchema = new mongoose.Schema(
   {
     lobId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Lob',
+      ref: "Lob",
       required: true,
     },
     taxBasis: {
       type: String,
       required: true,
-      enum: ['capitalization', 'gross_sales', 'floor_area', 'number_of_employees'],
+      enum: [
+        "capitalization",
+        "gross_sales",
+        "floor_area",
+        "number_of_employees",
+      ],
     },
     name: {
       type: String,
@@ -40,7 +45,7 @@ const TaxBracketSchema = new mongoose.Schema(
     excessRateType: {
       type: String,
       required: false,
-      enum: ['direct', 'percentage_of_percentage'],
+      enum: ["direct", "percentage_of_percentage"],
     },
     notes: {
       type: String,
@@ -49,8 +54,8 @@ const TaxBracketSchema = new mongoose.Schema(
     paymentFrequency: {
       type: String,
       required: false,
-      enum: ['annual', 'monthly'],
-      default: 'annual',
+      enum: ["annual", "monthly"],
+      default: "annual",
     },
     isActive: {
       type: Boolean,

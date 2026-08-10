@@ -18,7 +18,7 @@ export default function LobReviewBlock({
   reviewLocked = false,
   isFinalState = false,
 }) {
-  const desc = formData?.businessDescriptionText ?? formData?.aiLobRecommendation ?? ''
+  const desc = formData?.businessDescriptionText ?? ''
   const activities = useMemo(() => Array.isArray(formData?.businessActivities) ? formData.businessActivities : [], [formData?.businessActivities])
   const [localActivities, setLocalActivities] = useState(activities.map((a) => ({
     taxCode: a.taxCode ?? '',

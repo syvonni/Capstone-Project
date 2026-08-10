@@ -62,20 +62,48 @@ export function useApplicationsState() {
 
   // Load read announcements from localStorage on mount
   useEffect(() => {
-    const savedRead = localStorage.getItem('bizclear_read_announcements')
-    if (savedRead) {
-      try {
-        setReadAnnouncements(JSON.parse(savedRead))
-      } catch (e) {
-        console.error('Failed to parse read announcements:', e)
+    try {
+      const savedRead = localStorage.getItem('bizclear_read_announcements')
+      if (savedRead) {
+        const parsed = JSON.parse(savedRead)
+        
+        // Migrate old boolean format to timestamp format
+        const migrated = Object.fromEntries(
+          Object.entries(parsed).map(([key, value]) => [
+            key,
+            typeof value === 'boolean' ? Date.now() : value
+          ])
+        )
+        
+        // Filter out any entries older than 30 days to prevent localStorage bloat
+        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000)
+        const filtered = Object.fromEntries(
+          Object.entries(migrated).filter(([_, timestamp]) => timestamp > thirtyDaysAgo)
+        )
+        
+        // Save migrated data if format changed
+        if (JSON.stringify(parsed) !== JSON.stringify(filtered)) {
+          localStorage.setItem('bizclear_read_announcements', JSON.stringify(filtered))
+        }
+        
+        setReadAnnouncements(filtered)
       }
+    } catch (e) {
+      console.error('Failed to load read announcements from localStorage:', e)
+      // If localStorage is corrupted, start fresh
+      setReadAnnouncements({})
     }
   }, [])
 
   const handleAnnouncementRead = useCallback((key) => {
     setReadAnnouncements(prev => {
-      const updated = { ...prev, [key]: true }
-      localStorage.setItem('bizclear_read_announcements', JSON.stringify(updated))
+      const updated = { ...prev, [key]: Date.now() } // Store timestamp instead of boolean
+      try {
+        localStorage.setItem('bizclear_read_announcements', JSON.stringify(updated))
+      } catch (e) {
+        console.error('Failed to save read announcements to localStorage:', e)
+        // Continue without saving if localStorage fails
+      }
       return updated
     })
   }, [])

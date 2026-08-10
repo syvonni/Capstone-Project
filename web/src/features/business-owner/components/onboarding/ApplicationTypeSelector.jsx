@@ -1,28 +1,81 @@
-import { Typography, theme, Divider } from 'antd'
+import { useState, useEffect } from 'react'
+import { Typography, Divider, Modal } from 'antd'
 import { ShopOutlined, CalendarOutlined, LinkOutlined } from '@ant-design/icons'
+import SplitCard from '@/shared/components/SplitCard'
+import { getPublicPermitFormsGrouped } from '@/shared/services/permitFormService'
 
 const { Title, Text } = Typography
 
-const APPLICATION_TYPES = [
-  {
-    type: 'permit',
-    title: 'Business Permit',
-    description: 'For established businesses with permanent locations operating year-round',
-    bestFor: ['Stores', 'Restaurants', 'Offices', 'Service businesses'],
-  },
-  {
-    type: 'general_permit',
-    title: 'Temporary Permit',
-    description: 'For short-term, seasonal, or special event operations',
-    bestFor: ['Bazaar vendors', 'Peddlers', 'Festival stalls', 'Seasonal operations'],
-  },
-]
+// Icon mapping for different form types
+const ICON_MAP = {
+  'unified-business-permit': ShopOutlined,
+  'temporary-permit': CalendarOutlined,
+  'cooperative': ShopOutlined,
+  'association_foundation': ShopOutlined,
+  'chainsaw': ShopOutlined,
+  'firecrackers_stallholders': ShopOutlined,
+  'bazaar_festival_vendors': ShopOutlined,
+  'peddlers': ShopOutlined,
+  'promotional_temporary_stalls': ShopOutlined,
+  'market_stallholders': ShopOutlined,
+  'fishpond': ShopOutlined,
+}
 
 export default function ApplicationTypeSelector({ onSelect, title = 'Choose Application Type', onLinkExisting }) {
-  const { token } = theme.useToken()
+  const [formsData, setFormsData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [showTemporaryModal, setShowTemporaryModal] = useState(false)
 
-  const handleSelectBusiness = (type) => {
-    onSelect(type)
+  useEffect(() => {
+    const fetchForms = async () => {
+      try {
+        setLoading(true)
+        const data = await getPublicPermitFormsGrouped()
+        console.log('Fetched permit forms data:', data)
+        setFormsData(data)
+      } catch (error) {
+        console.error('Failed to fetch permit forms:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchForms()
+  }, [])
+
+  const handleSelectBusiness = (formId) => {
+    console.log('handleSelectBusiness called with formId:', formId)
+    onSelect(formId)
+  }
+
+  const handleTemporaryPermitClick = () => {
+    console.log('handleTemporaryPermitClick called')
+    setShowTemporaryModal(true)
+  }
+
+  const handleTemporaryCategorySelect = (formId) => {
+    console.log('handleTemporaryCategorySelect called with formId:', formId)
+    setShowTemporaryModal(false)
+    onSelect(formId)
+  }
+
+  const getIconForForm = (formId) => {
+    return ICON_MAP[formId] || ShopOutlined
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: '24px', maxWidth: 600, margin: '0 auto', width: 'fit-content' }}>
+        <Title level={4} style={{ marginBottom: 24, textAlign: 'center' }}>
+          {title}
+        </Title>
+        <SplitCard
+          title="Loading..."
+          icon={ShopOutlined}
+          description="Loading permit forms..."
+          loading={true}
+        />
+      </div>
+    )
   }
 
   return (
@@ -36,107 +89,37 @@ export default function ApplicationTypeSelector({ onSelect, title = 'Choose Appl
         flexDirection: 'column',
         gap: 16,
       }}>
-        {APPLICATION_TYPES.map((business) => (
-          <div
-            key={business.type}
-            role="button"
-            tabIndex={0}
-            onClick={() => handleSelectBusiness(business.type)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                handleSelectBusiness(business.type)
-              }
-            }}
+        {/* Regular Business Permit */}
+        {formsData?.regularPermit && (
+          <SplitCard
+            title={formsData.regularPermit.name}
+            icon={getIconForForm(formsData.regularPermit.formId)}
+            description={formsData.regularPermit.description}
+            clickable={formsData.regularPermit.isActive}
+            onClick={() => handleSelectBusiness(formsData.regularPermit.formId)}
             style={{
-              cursor: 'pointer',
-              border: `1px solid ${token.colorBorder}`,
-              borderRadius: token.borderRadiusLG,
-              transition: 'all 0.2s',
-              background: token.colorBgContainer,
-              display: 'flex',
-              flexDirection: 'row',
+              opacity: formsData.regularPermit.isActive ? 1 : 0.5,
+              pointerEvents: formsData.regularPermit.isActive ? 'auto' : 'none',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = token.colorPrimary
-              e.currentTarget.style.boxShadow = token.boxShadowTertiary
-              e.currentTarget.style.transform = 'scale(1.02)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = token.colorBorder
-              e.currentTarget.style.boxShadow = 'none'
-              e.currentTarget.style.transform = 'scale(1)'
-            }}
-          >
-            {/* Left panel - Icon and title */}
-            <div
-              style={{
-                flex: '0 0 40%',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                justifyContent: 'flex-end',
-                padding: '16px 20px',
-                paddingTop: 60,
-              }}
-            >
-              {business.type === 'permit' ? (
-                <ShopOutlined
-                  style={{
-                    fontSize: 24,
-                    color: token.colorTextSecondary,
-                    marginBottom: 8,
-                  }}
-                />
-              ) : (
-                <CalendarOutlined
-                  style={{
-                    fontSize: 24,
-                    color: token.colorTextSecondary,
-                    marginBottom: 8,
-                  }}
-                />
-              )}
-              <Title level={5} style={{ margin: 0 }}>
-                {business.title}
-              </Title>
-            </div>
+            extraText={!formsData.regularPermit.isActive ? 'Currently unavailable' : null}
+          />
+        )}
 
-            {/* Right panel - Description */}
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'flex-end',
-                padding: '24px',
-                borderLeft: `1px solid ${token.colorBorderSecondary}`,
-              }}
-            >
-              <Text
-                style={{
-                  display: 'block',
-                  marginBottom: 16,
-                  fontSize: 14,
-                  lineHeight: 1.5,
-                  color: token.colorText,
-                }}
-              >
-                {business.description}
-              </Text>
-              <div>
-                <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                  Best for:
-                </Text>
-                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: token.colorTextSecondary }}>
-                  {business.bestFor.map((item, index) => (
-                    <li key={index}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        ))}
+        {/* Temporary Permit */}
+        {formsData?.temporaryPermit && (
+          <SplitCard
+            title={formsData.temporaryPermit.parent.name}
+            icon={CalendarOutlined}
+            description={formsData.temporaryPermit.parent.description}
+            clickable={formsData.temporaryPermit.parent.isActive}
+            onClick={() => handleTemporaryPermitClick()}
+            style={{
+              opacity: formsData.temporaryPermit.parent.isActive ? 1 : 0.5,
+              pointerEvents: formsData.temporaryPermit.parent.isActive ? 'auto' : 'none',
+            }}
+            extraText={!formsData.temporaryPermit.parent.isActive ? 'Currently unavailable' : null}
+          />
+        )}
 
         <Divider style={{ margin: '24px 0' }}>
           <Text type="secondary" style={{ fontSize: 13 }}>
@@ -144,85 +127,42 @@ export default function ApplicationTypeSelector({ onSelect, title = 'Choose Appl
           </Text>
         </Divider>
 
-        {/* Link Existing Business Option */}
-        <div
-          role="button"
-          tabIndex={0}
+        {/* Link Existing Business Option - Hardcoded as requested */}
+        <SplitCard
+          title="Link Existing Business"
+          icon={LinkOutlined}
+          description="Already have a business registered with BPLO? Link it to your account."
+          clickable={true}
           onClick={onLinkExisting}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onLinkExisting?.()
-            }
-          }}
-          style={{
-            cursor: 'pointer',
-            border: `1px solid ${token.colorBorder}`,
-            borderRadius: token.borderRadiusLG,
-            transition: 'all 0.2s',
-            background: token.colorBgContainer,
-            display: 'flex',
-            flexDirection: 'row',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = token.colorPrimary
-            e.currentTarget.style.boxShadow = token.boxShadowTertiary
-            e.currentTarget.style.transform = 'scale(1.02)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = token.colorBorder
-            e.currentTarget.style.boxShadow = 'none'
-            e.currentTarget.style.transform = 'scale(1)'
-          }}
-        >
-          {/* Left panel - Icon and title */}
-          <div
-            style={{
-              flex: '0 0 40%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-end',
-              padding: '16px 20px',
-              paddingTop: 60,
-            }}
-          >
-            <LinkOutlined
-              style={{
-                fontSize: 24,
-                color: token.colorTextSecondary,
-                marginBottom: 8,
-              }}
-            />
-            <Title level={5} style={{ margin: 0 }}>
-              Link Existing Business
-            </Title>
-          </div>
-
-          {/* Right panel - Description */}
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-end',
-              padding: '24px',
-              borderLeft: `1px solid ${token.colorBorderSecondary}`,
-            }}
-          >
-            <Text
-              style={{
-                display: 'block',
-                fontSize: 14,
-                lineHeight: 1.5,
-                color: token.colorText,
-              }}
-            >
-              Already have a business registered with BPLO? Link it to your account.
-            </Text>
-          </div>
-        </div>
+        />
       </div>
+
+      {/* Temporary Permit Categories Modal */}
+      <Modal
+        title="Select Temporary Permit Type"
+        open={showTemporaryModal}
+        onCancel={() => setShowTemporaryModal(false)}
+        footer={null}
+        width={600}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {formsData?.temporaryPermit?.categories.map((category) => (
+            <SplitCard
+              key={category.formId}
+              title={category.name}
+              icon={getIconForForm(category.category)}
+              description={category.description}
+              clickable={category.isActive}
+              onClick={() => handleTemporaryCategorySelect(category.formId)}
+              style={{
+                opacity: category.isActive ? 1 : 0.5,
+                pointerEvents: category.isActive ? 'auto' : 'none',
+              }}
+              extraText={!category.isActive ? 'Currently unavailable' : null}
+            />
+          ))}
+        </div>
+      </Modal>
     </div>
   )
 }

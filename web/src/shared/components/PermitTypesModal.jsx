@@ -1,217 +1,148 @@
-import React from 'react'
-import { Typography, Modal, theme, Divider } from 'antd'
-import { ShopOutlined } from '@ant-design/icons'
-import { GENERAL_PERMIT_CATEGORIES } from '@/features/business-owner/constants/businessFormConstants'
-import {
-  TeamOutlined, HeartOutlined, ToolOutlined, FireOutlined,
-  GiftOutlined, ShoppingCartOutlined, RiseOutlined,
-  ExperimentOutlined, BlockOutlined, InboxOutlined, MoreOutlined
-} from '@ant-design/icons'
+import React, { useState, useEffect } from 'react'
+import { Typography, Divider } from 'antd'
+import SplitCard from '@/shared/components/SplitCard'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
+import { getPublicPermitFormsGrouped } from '@/shared/services/permitFormService'
+import { getIconForForm } from '@/shared/utils/permitIconMap'
 
 const { Text } = Typography
 
-const ICON_MAP = {
-  TeamOutlined,
-  HeartOutlined,
-  ToolOutlined,
-  FireOutlined,
-  GiftOutlined,
-  ShoppingCartOutlined,
-  RiseOutlined,
-  ShopOutlined,
-  ExperimentOutlined,
-  BlockOutlined,
-  InboxOutlined,
-  MoreOutlined,
-}
+function PermitTypesModal({ open, onCancel, selectedPermitType = 'regular' }) {
+  const [formsData, setFormsData] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-export default function PermitTypesModal({ open, onCancel, selectedPermitType = 'regular' }) {
-  const { token } = theme.useToken()
-
-  const getSelectedPermitCard = () => {
-    if (selectedPermitType === 'regular') {
-      return {
-        label: 'Unified Business Permit',
-        description: 'Standard business permit for regular operations including retail, services, and other established businesses.',
-        bestFor: ['Retail stores', 'Service businesses', 'Restaurants and food establishments', 'Professional services'],
-        icon: ShopOutlined
+  useEffect(() => {
+    const fetchForms = async () => {
+      try {
+        setLoading(true)
+        const data = await getPublicPermitFormsGrouped()
+        setFormsData(data)
+      } catch (error) {
+        console.error('[PermitTypesModal] Failed to fetch permit forms:', error)
+      } finally {
+        setLoading(false)
       }
     }
-    const category = GENERAL_PERMIT_CATEGORIES.find(cat => cat.value === selectedPermitType)
-    if (category) {
-      return {
-        label: category.label,
-        description: category.description,
-        bestFor: category.bestFor,
-        icon: ICON_MAP[category.icon] || MoreOutlined
-      }
+    fetchForms()
+  }, [])
+
+  // Backend returns grouped structure: {regularPermit, temporaryPermit: {categories, parent}}
+  const allForms = React.useMemo(() => {
+    if (!formsData) return []
+    const forms = []
+
+    if (formsData.regularPermit) {
+      forms.push({
+        ...formsData.regularPermit,
+        type: 'regular'
+      })
     }
-    return null
+
+    if (formsData.temporaryPermit?.categories) {
+      formsData.temporaryPermit.categories.forEach(category => {
+        forms.push({
+          ...category,
+          type: 'temporary'
+        })
+      })
+    }
+
+    return forms
+  }, [formsData])
+
+  // Find the selected form
+  const selectedForm = React.useMemo(() => {
+    if (!allForms.length) return null
+    // Try to match by formId first
+    let found = allForms.find(form => form.formId === selectedPermitType)
+    // If not found, try matching by category (category might be 'cooperative' while formId is 'cooperative-permit')
+    if (!found && selectedPermitType) {
+      found = allForms.find(form => form.category === selectedPermitType)
+    }
+    return found
+  }, [allForms, selectedPermitType])
+
+  // Get all other forms (not selected)
+  const otherForms = React.useMemo(() => {
+    if (!selectedForm || !allForms.length) return []
+    return allForms.filter(form => form.formId !== selectedForm.formId && form.category !== selectedForm.category)
+  }, [allForms, selectedForm])
+
+  if (loading) {
+    return (
+      <ResponsiveModal
+        title="Business Permit Types"
+        open={open}
+        onCancel={onCancel}
+        width={800}
+      >
+        <div style={{ padding: 24 }}>
+          <Text type="secondary">Loading permit types...</Text>
+        </div>
+      </ResponsiveModal>
+    )
   }
 
-  const selectedCard = getSelectedPermitCard()
+  if (!formsData || allForms.length === 0) {
+    return (
+      <ResponsiveModal
+        title="Business Permit Types"
+        open={open}
+        onCancel={onCancel}
+        width={800}
+      >
+        <div style={{ padding: 24 }}>
+          <Text type="secondary">No permit types available</Text>
+        </div>
+      </ResponsiveModal>
+    )
+  }
 
   return (
-    <Modal
+    <ResponsiveModal
       title="Business Permit Types"
       open={open}
       onCancel={onCancel}
-      footer={null}
       width={800}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', }}>
+      <div style={{ display: 'flex', flexDirection: 'column'}}>
+        {/* Selected permit type */}
         <div>
           <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>
             Selected permit type:
           </Text>
-          {selectedCard && (
-            <div
-              style={{
-                border: `1px solid ${token.colorBorder}`,
-                borderRadius: token.borderRadiusLG,
-                background: token.colorBgContainer,
-                display: 'flex',
-                flexDirection: 'row',
-              }}
-            >
-              <div
-                style={{
-                  flex: '0 0 40%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  justifyContent: 'flex-end',
-                  padding: '16px 20px',
-                  paddingTop: 60,
-                }}
-              >
-                {React.createElement(selectedCard.icon, {
-                  style: {
-                    fontSize: 24,
-                    color: token.colorTextSecondary,
-                    marginBottom: 8,
-                  }
-                })}
-                <Typography.Title level={5} style={{ margin: 0 }}>
-                  {selectedCard.label}
-                </Typography.Title>
-              </div>
-              <div
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'flex-end',
-                  padding: '24px',
-                  borderLeft: `1px solid ${token.colorBorderSecondary}`,
-                }}
-              >
-                <Text
-                  style={{
-                    display: 'block',
-                    marginBottom: 16,
-                    fontSize: 14,
-                    lineHeight: 1.5,
-                    color: token.colorText,
-                  }}
-                >
-                  {selectedCard.description}
-                </Text>
-                <div>
-                  <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                    Best for:
-                  </Text>
-                  <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: token.colorTextSecondary }}>
-                    {selectedCard.bestFor.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
+          {selectedForm && (
+            <SplitCard
+              title={selectedForm.name}
+              icon={getIconForForm(selectedForm.formId)}
+              description={selectedForm.description}
+              disableBorderBehavior={true}
+            />
           )}
         </div>
 
         <Divider />
 
+        {/* Other permit types */}
         <div>
           <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>
             Other permit types:
           </Text>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {GENERAL_PERMIT_CATEGORIES.map((category) => {
-              const IconComponent = ICON_MAP[category.icon] || MoreOutlined
-              return (
-                <div
-                  key={category.value}
-                  style={{
-                    border: `1px solid ${token.colorBorder}`,
-                    borderRadius: token.borderRadiusLG,
-                    background: token.colorBgContainer,
-                    display: 'flex',
-                    flexDirection: 'row',
-                  }}
-                >
-                  <div
-                    style={{
-                      flex: '0 0 40%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      justifyContent: 'flex-end',
-                      padding: '16px 20px',
-                      paddingTop: 60,
-                    }}
-                  >
-                    <IconComponent
-                      style={{
-                        fontSize: 24,
-                        color: token.colorTextSecondary,
-                        marginBottom: 8,
-                      }}
-                    />
-                    <Typography.Title level={5} style={{ margin: 0 }}>
-                      {category.label}
-                    </Typography.Title>
-                  </div>
-                  <div
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'flex-end',
-                      padding: '24px',
-                      borderLeft: `1px solid ${token.colorBorderSecondary}`,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        display: 'block',
-                        marginBottom: 16,
-                        fontSize: 14,
-                        lineHeight: 1.5,
-                        color: token.colorText,
-                      }}
-                    >
-                      {category.description}
-                    </Text>
-                    <div>
-                      <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                        Best for:
-                      </Text>
-                      <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: token.colorTextSecondary }}>
-                        {category.bestFor.map((item, index) => (
-                          <li key={index}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            {otherForms.map((form) => (
+              <SplitCard
+                key={form.formId}
+                title={form.name}
+                icon={getIconForForm(form.formId)}
+                description={form.description}
+                disableBorderBehavior={true}
+              />
+            ))}
           </div>
         </div>
       </div>
-    </Modal>
+    </ResponsiveModal>
   )
 }
+
+export default PermitTypesModal

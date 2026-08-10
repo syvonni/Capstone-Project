@@ -21,32 +21,36 @@ export async function getMaintenanceConflicts(start, end) {
     start,
     end,
   })
-  return fetchJsonWithFallback(`/api/admin/maintenance/conflicts?${params.toString()}`, {
+  const data = await fetchJsonWithFallback(`/api/admin/maintenance/conflicts?${params.toString()}`, {
     method: 'GET',
     headers,
   })
+  return data
 }
 
 export async function getMaintenanceCurrent() {
   const current = getCurrentUser()
   const headers = authHeaders(current, 'admin')
-  return fetchJsonWithFallback('/api/maintenance/current', {
+  const data = await fetchJsonWithFallback('/api/maintenance/current', {
     method: 'GET',
     headers,
   })
+  return data
 }
 
 export async function getMaintenancePublicStatus() {
-  return fetchJsonWithFallback('/api/maintenance/status', { method: 'GET' })
+  const data = await fetchJsonWithFallback('/api/maintenance/status', { method: 'GET' })
+  return data
 }
 
 export async function getMaintenanceApprovals() {
   const current = getCurrentUser()
   const headers = authHeaders(current, 'admin')
-  return fetchJsonWithFallback('/api/admin/approvals?requestType=maintenance_mode', {
+  const data = await fetchJsonWithFallback('/api/admin/approvals?requestType=maintenance_mode', {
     method: 'GET',
     headers,
   })
+  return data
 }
 
 export async function undoVote(approvalId) {

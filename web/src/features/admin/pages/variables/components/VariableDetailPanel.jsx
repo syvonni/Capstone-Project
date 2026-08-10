@@ -34,7 +34,7 @@ export default function VariableDetailPanel({ variableId, variable, onSave }) {
     checklistId: variable?.checklistId?._id || null,
   }), [variable])
 
-  const { dependencies } = useVariableDependencies(variableId, isNew)
+  const { dependencies, loading: loadingDependencies } = useVariableDependencies(variableId, isNew)
   const {
     form,
     saving,
@@ -49,6 +49,8 @@ export default function VariableDetailPanel({ variableId, variable, onSave }) {
     resetChangeTracking,
     stepUpModal,
   } = useVariableForm({ variableId, variable, initialValues, onSave })
+
+  const loading = saving || loadingDependencies
 
   // Reset form when variable changes
   useEffect(() => {
@@ -122,7 +124,7 @@ export default function VariableDetailPanel({ variableId, variable, onSave }) {
         {isEditMode ? (
           <VariableConfiguration form={form} handleFormValuesChange={handleFormValuesChange} token={token} />
         ) : (
-          <VariableOverview variable={variable} initialValues={initialValues} dependencies={dependencies} token={token} />
+          <VariableOverview variable={variable} initialValues={initialValues} dependencies={dependencies} token={token} loading={loading} />
         )}
       </div>
     </div>

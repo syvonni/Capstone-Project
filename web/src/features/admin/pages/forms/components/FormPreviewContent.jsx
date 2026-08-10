@@ -4,7 +4,7 @@ import { PreviewField, PreviewSection, LobSection } from '@/shared/components/fo
 
 const { Text } = Typography
 
-export default function FormPreviewContent({ sections, title, description, lastUpdated, fees = [], globalFees = [], notes = '', activeTab, disabled = false, version, createdAt, feeId, feeAmount, claimableDocuments = [] }) {
+export default function FormPreviewContent({ sections, title, description, lastUpdated, fees = [], globalFees = [], notes = '', activeTab, disabled = false, version, createdAt, feeId, feeAmount, claimableDocuments = [], loading = false }) {
   const { token } = theme.useToken()
 
   if (!sections || sections.length === 0) {
@@ -63,7 +63,6 @@ export default function FormPreviewContent({ sections, title, description, lastU
           to: `/admin/documents?selectedId=${doc._id}&tab=claimable_documents`,
         })),
       })
-      infoGridItems.push({ type: 'divider' })
     }
 
     // Add required documents list if available
@@ -75,7 +74,6 @@ export default function FormPreviewContent({ sections, title, description, lastU
           text: item.label || '(Untitled document)',
         })),
       })
-      infoGridItems.push({ type: 'divider' })
     }
 
     if (formFees.length > 0) {
@@ -95,6 +93,7 @@ export default function FormPreviewContent({ sections, title, description, lastU
       <div>
         <InfoGrid
           noPadding
+          loading={loading}
           items={infoGridItems}
         />
       </div>

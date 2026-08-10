@@ -21,7 +21,8 @@ try {
 
 async function reseedFeeInstructions() {
   try {
-    const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017/capstone_project";
+    const mongoUri =
+      process.env.MONGO_URI || "mongodb://localhost:27017/capstone_project";
     if (!mongoUri) {
       throw new Error("MONGO_URI environment variable not set");
     }
@@ -41,7 +42,7 @@ async function reseedFeeInstructions() {
     ];
 
     const deleteResult = await InstructionContent.deleteMany({
-      slotId: { $in: feeSlotIds }
+      slotId: { $in: feeSlotIds },
     });
     logger.info(`Deleted ${deleteResult.deletedCount} fee instruction slots`);
 

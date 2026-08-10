@@ -58,7 +58,7 @@ export default function WalkInApplicationModal({ open, onClose, onApplicationSel
         searchParams.search = search
       }
       const response = await businessOwnerService.getBusinessOwners({}, searchParams)
-      const owners = response?.data || response?.businessOwners || []
+      const owners = response?.businessOwners || []
       const total = response?.total || 0
       setBusinessOwners(owners)
       setPagination(prev => ({ ...prev, total }))
@@ -345,7 +345,6 @@ export default function WalkInApplicationModal({ open, onClose, onApplicationSel
           onClose={handleModalClose}
           title="Walk-In Application"
           placement="bottom"
-          height="auto"
           styles={{ body: { padding: 0 } }}
           destroyOnHidden
         >

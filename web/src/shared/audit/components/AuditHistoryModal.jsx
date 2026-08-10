@@ -264,21 +264,29 @@ export default function AuditHistoryModal({
   const WrapperComponent = isMobile ? Drawer : Modal
   const wrapperProps = isMobile
     ? {
-        title: 'Audit History',
+        title: 'History',
         open,
         onClose,
         placement: 'bottom',
-        width: '100%',
-        height: '100%',
-        styles: { body: { padding: 0 } },
+        size: '100%',
+        styles: { 
+          body: { padding: 0, background: themeToken.colorBgContainer },
+          header: { background: themeToken.colorBgContainer }
+        },
       }
     : {
-        title: 'Audit History',
+        title: 'History',
         open,
         onCancel: onClose,
         footer: null,
         width: 900,
         style: { top: 20 },
+        styles: {
+          header: { background: themeToken.colorBgContainer },
+          content: { background: themeToken.colorBgContainer },
+          body: { background: themeToken.colorBgContainer },
+          container: { background: themeToken.colorBgContainer },
+        },
       }
 
   return (

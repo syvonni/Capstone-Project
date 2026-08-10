@@ -23,7 +23,8 @@ const FALLBACK_OFFICES = [
 
 async function fetchOffices(path) {
   const data = await fetchJsonWithFallback(path, { method: 'GET' })
-  return Array.isArray(data) ? data : (data?.offices || [])
+  const payload = data
+  return Array.isArray(payload) ? payload : (payload?.offices || [])
 }
 
 export async function getOffices() {

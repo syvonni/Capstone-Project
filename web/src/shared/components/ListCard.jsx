@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { Card, Button, Space, Spin, Empty, theme, Grid, Typography } from 'antd'
 
-const { Title } = Typography
+const { Text } = Typography
 const { useBreakpoint } = Grid
 
 export default function ListCard({
@@ -61,11 +61,40 @@ export default function ListCard({
     >
       {/* Card Header */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-        {icon && React.cloneElement(icon, { style: { fontSize: screens.lg ? 24 : 20, color: token.colorTextSecondary } })}
+        {icon && (
+          <div
+            style={{
+              fontSize: 16,
+              color: token.colorText,
+              border: '1px solid',
+              borderColor: token.colorBorder,
+              padding: 6,
+              height: 32,
+              width: 32,
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {React.cloneElement(icon, { style: { fontSize: 16 } })}
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Title level={5} style={{ margin: 0, fontSize: 16 }}>
+          <Text
+            style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              lineHeight: '1.5',
+              wordBreak: 'keep-all',
+              whiteSpace: 'normal',
+            }}
+          >
             {title}
-          </Title>
+          </Text>
           {headerExtra}
         </div>
       </div>

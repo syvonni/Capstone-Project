@@ -18,16 +18,17 @@ export class PermitApplicationService {
     }
 
     console.log(`[PermitApplicationService] Starting review for applicationId=${applicationId}, businessId=${businessId || 'N/A'}`)
-    
+
     try {
       const response = await fetchJsonWithFallback(`/api/lgu-officer/permit-applications/${applicationId}/start-review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ businessId })
       })
-      
-      console.log(`[PermitApplicationService] Review started successfully for applicationId=${applicationId}, status=${response?.application?.status || 'N/A'}`)
-      return response
+
+      const data = response
+      console.log(`[PermitApplicationService] Review started successfully for applicationId=${applicationId}, status=${data?.application?.status || 'N/A'}`)
+      return data
     } catch (error) {
       console.error(`[PermitApplicationService] Failed to start review for applicationId=${applicationId}:`, error)
       throw error
@@ -58,11 +59,11 @@ export class PermitApplicationService {
     const response = await fetchJsonWithFallback(`/api/lgu-officer/permit-applications/${applicationId}/review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        decision, 
-        comments, 
+      body: JSON.stringify({
+        decision,
+        comments,
         rejectionReason,
-        businessId 
+        businessId
       })
     })
     return response
@@ -111,7 +112,8 @@ export class PermitApplicationService {
     if (businessId) params.append('businessId', businessId)
 
     const url = `/api/lgu-officer/permit-applications/${id}${params.toString() ? `?${params}` : ''}`
-    return fetchJsonWithFallback(url)
+    const response = await fetchJsonWithFallback(url)
+    return response
   }
 
   /**

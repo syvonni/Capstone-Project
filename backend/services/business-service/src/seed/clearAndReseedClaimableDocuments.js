@@ -23,7 +23,10 @@ const PostDocument = require("../models/PostDocument");
 async function clearAndReseed() {
   try {
     console.log("Connecting to MongoDB...");
-    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://localhost:27017/capstone_project";
+    const mongoUri =
+      process.env.MONGO_URI ||
+      process.env.MONGODB_URI ||
+      "mongodb://localhost:27017/capstone_project";
     await mongoose.connect(mongoUri);
     console.log("Connected to MongoDB");
 

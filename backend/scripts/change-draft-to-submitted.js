@@ -21,10 +21,12 @@ async function changeDraftToSubmitted() {
       .collection("applications")
       .updateMany(
         { applicationStatus: "draft" },
-        { $set: { applicationStatus: "submitted" } }
+        { $set: { applicationStatus: "submitted" } },
       );
 
-    console.log(`Updated ${result.modifiedCount} draft applications to submitted`);
+    console.log(
+      `Updated ${result.modifiedCount} draft applications to submitted`,
+    );
 
     await mongoose.disconnect();
     console.log("Done");

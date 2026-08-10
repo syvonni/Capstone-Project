@@ -3,7 +3,7 @@ import { PreviewField } from './PreviewField'
 
 const { Text } = Typography
 
-export function PreviewSection({ section, _index, disabled = false }) {
+export function PreviewSection({ section, _index, disabled = false, editable = false, form = null, businessId = null, onDocumentCid = null, onSaveDraft = null }) {
   const { token } = theme.useToken()
 
   return (
@@ -47,7 +47,15 @@ export function PreviewSection({ section, _index, disabled = false }) {
           // Responsive breakpoints: full width on mobile/tablet, configured span on desktop
           return (
             <Col key={idx} xs={24} sm={24} md={span} lg={span} xl={span}>
-              <PreviewField field={item} disabled={disabled} />
+              <PreviewField 
+                field={item} 
+                disabled={disabled} 
+                editable={editable}
+                form={form}
+                businessId={businessId}
+                onDocumentCid={onDocumentCid}
+                onSaveDraft={onSaveDraft}
+              />
             </Col>
           )
         })}

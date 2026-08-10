@@ -60,6 +60,8 @@ export default function UnifiedBusinessPermitView() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [permitForm, setPermitForm] = useState(null)
   const [claimableDocuments, setClaimableDocuments] = useState([])
+  const [loadingPermitForm, setLoadingPermitForm] = useState(false)
+  const [loadingClaimableDocuments, setLoadingClaimableDocuments] = useState(false)
   const screens = useBreakpoint()
   const isMobile = !screens.lg
 
@@ -67,12 +69,15 @@ export default function UnifiedBusinessPermitView() {
   useEffect(() => {
     const fetchPermitForm = async () => {
       try {
-        const response = await getPermitFormByFormId('unified-business-permit')
-        if (response?.form) {
-          setPermitForm(response.form)
+        setLoadingPermitForm(true)
+        const form = await getPermitFormByFormId('unified-business-permit')
+        if (form) {
+          setPermitForm(form)
         }
       } catch (error) {
         console.error('Failed to fetch permit form:', error)
+      } finally {
+        setLoadingPermitForm(false)
       }
     }
     fetchPermitForm()
@@ -83,10 +88,13 @@ export default function UnifiedBusinessPermitView() {
     const fetchClaimableDocuments = async () => {
       if (permitForm?._id) {
         try {
+          setLoadingClaimableDocuments(true)
           const documents = await getClaimableDocumentsByPermitFormId(permitForm._id)
           setClaimableDocuments(documents)
         } catch (error) {
           console.error('Failed to fetch claimable documents:', error)
+        } finally {
+          setLoadingClaimableDocuments(false)
         }
       }
     }
@@ -120,13 +128,15 @@ export default function UnifiedBusinessPermitView() {
   } = usePermitForm({ permitFormId: permitForm?._id, permitForm, initialValues, onSave: async () => {
     // Refetch the form data to get latest changes
     if (permitForm?.formId) {
-      const response = await getPermitFormByFormId(permitForm.formId)
-      if (response?.form) {
-        setPermitForm(response.form)
+      const form = await getPermitFormByFormId(permitForm.formId)
+      if (form) {
+        setPermitForm(form)
       }
     }
     refresh()
   } })
+
+  const loading = saving || loadingPermitForm || loadingClaimableDocuments
 
   // Initialize form with values (only when in edit mode to avoid "form not connected" warning)
   useEffect(() => {
@@ -193,10 +203,11 @@ export default function UnifiedBusinessPermitView() {
             lastUpdated={permitForm?.lastUpdated}
             version={permitForm?.version}
             notes={initialValues.notes}
-            feeId={permitForm?.feeId?._id || permitForm?.feeId}
-            feeAmount={permitForm?.feeId?.amount}
+            feeId={typeof permitForm?.feeId === 'object' ? permitForm?.feeId?._id : permitForm?.feeId}
+            feeAmount={typeof permitForm?.feeId === 'object' ? permitForm?.feeId?.amount : undefined}
             createdAt={permitForm?.createdAt}
             claimableDocuments={claimableDocuments}
+            loading={loading}
           />
         )
       case 'configuration':

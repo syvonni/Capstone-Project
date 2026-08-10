@@ -315,7 +315,8 @@ async function applyApprovedChange(approval) {
         // FormDefinition has been removed - this case is obsolete
         return {
           success: false,
-          error: "FormDefinition has been removed. Use permit_form approval type instead.",
+          error:
+            "FormDefinition has been removed. Use permit_form approval type instead.",
         };
       }
 

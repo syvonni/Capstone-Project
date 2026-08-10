@@ -10,6 +10,8 @@ import { useState, useEffect, useCallback } from 'react'
  * const { metrics, loading, error, refetch } = usePerformance('variable')
  */
 
+// Force HMR reload
+
 const ENDPOINT_MAP = {
   variable: '/api/business/admin/variables/performance',
   fee: '/api/business/admin/fees/performance',
@@ -17,6 +19,8 @@ const ENDPOINT_MAP = {
   checklist: '/api/business/admin/checklists/performance',
   lob: '/api/business/admin/lobs/performance',
   violation: '/api/business/admin/violations/performance',
+  inspectionItem: '/api/business/admin/inspection-items/performance',
+  postRequirement: '/api/business/admin/post-requirements/performance',
 }
 
 export function usePerformance(entityType) {

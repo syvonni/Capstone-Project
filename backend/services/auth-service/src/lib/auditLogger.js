@@ -3,7 +3,7 @@
  * Creates audit logs via centralized audit-service (blockchain anchoring removed)
  */
 
-const axios = require("axios");
+const { auditClient } = require("../../../../shared/lib/httpClient");
 const logger = require("./logger");
 
 /**
@@ -63,14 +63,8 @@ async function createAuditLog(
     };
 
     // Send to audit-service ingestion endpoint
-    const auditServiceUrl =
-      process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-    const headers = { "Content-Type": "application/json" };
-    if (process.env.AUDIT_SERVICE_API_KEY)
-      headers["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;
-
-    const response = await axios.post(
-      `${auditServiceUrl}/api/audit/ingest`,
+    const response = await auditClient.post(
+      "/api/audit/ingest",
       {
         userId,
         eventType,
@@ -82,7 +76,6 @@ async function createAuditLog(
         role,
         metadata: fullMetadata,
       },
-      { headers },
     );
 
     logger.info("Audit log sent to audit-service", {

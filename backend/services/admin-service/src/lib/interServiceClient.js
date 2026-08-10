@@ -3,8 +3,13 @@
  * Handles HTTP calls between microservices
  */
 
-const axios = require("axios");
+const { createHttpClient } = require("../../../../shared/lib/httpClient");
 const logger = require("./logger");
+
+// Create service clients
+const authClient = createHttpClient("auth");
+const auditClient = createHttpClient("audit");
+const businessClient = createHttpClient("business");
 
 /**
  * Call Auth Service
@@ -15,29 +20,34 @@ async function callAuthService(
   data = null,
   token = null,
 ) {
-  const authServiceUrl =
-    process.env.AUTH_SERVICE_URL || "http://localhost:3001";
-  const url = `${authServiceUrl}${endpoint}`;
-
   try {
-    const config = {
-      method,
-      url,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    };
-
+    const config = {};
     if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+      config.headers = { Authorization: `Bearer ${token}` };
     }
 
-    if (data && (method === "POST" || method === "PUT" || method === "PATCH")) {
-      config.data = data;
+    let response;
+    switch (method) {
+      case "GET":
+        response = await authClient.get(endpoint, config);
+        break;
+      case "POST":
+        response = await authClient.post(endpoint, data, config);
+        break;
+      case "PUT":
+        response = await authClient.put(endpoint, data, config);
+        break;
+      case "PATCH":
+        response = await authClient.patch(endpoint, data, config);
+        break;
+      case "DELETE":
+        response = await authClient.delete(endpoint, config);
+        break;
+      default:
+        throw new Error(`Unsupported method: ${method}`);
     }
 
-    const response = await axios(config);
-    return { success: true, data: response.data };
+    return { success: true, data: response };
   } catch (error) {
     logger.error("Auth Service call failed", {
       endpoint,
@@ -58,31 +68,34 @@ async function callAuditService(
   data = null,
   token = null,
 ) {
-  const auditServiceUrl =
-    process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-  const url = `${auditServiceUrl}${endpoint}`;
-
   try {
-    const config = {
-      method,
-      url,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    };
-    if (process.env.AUDIT_SERVICE_API_KEY) {
-      config.headers["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;
-    }
+    const config = {};
     if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+      config.headers = { Authorization: `Bearer ${token}` };
     }
 
-    if (data && (method === "POST" || method === "PUT" || method === "PATCH")) {
-      config.data = data;
+    let response;
+    switch (method) {
+      case "GET":
+        response = await auditClient.get(endpoint, config);
+        break;
+      case "POST":
+        response = await auditClient.post(endpoint, data, config);
+        break;
+      case "PUT":
+        response = await auditClient.put(endpoint, data, config);
+        break;
+      case "PATCH":
+        response = await auditClient.patch(endpoint, data, config);
+        break;
+      case "DELETE":
+        response = await auditClient.delete(endpoint, config);
+        break;
+      default:
+        throw new Error(`Unsupported method: ${method}`);
     }
 
-    const response = await axios(config);
-    return { success: true, data: response.data };
+    return { success: true, data: response };
   } catch (error) {
     logger.error("Audit Service call failed", {
       endpoint,
@@ -103,29 +116,34 @@ async function callBusinessService(
   data = null,
   token = null,
 ) {
-  const businessServiceUrl =
-    process.env.BUSINESS_SERVICE_URL || "http://localhost:5001";
-  const url = `${businessServiceUrl}${endpoint}`;
-
   try {
-    const config = {
-      method,
-      url,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    };
-
+    const config = {};
     if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+      config.headers = { Authorization: `Bearer ${token}` };
     }
 
-    if (data && (method === "POST" || method === "PUT" || method === "PATCH")) {
-      config.data = data;
+    let response;
+    switch (method) {
+      case "GET":
+        response = await businessClient.get(endpoint, config);
+        break;
+      case "POST":
+        response = await businessClient.post(endpoint, data, config);
+        break;
+      case "PUT":
+        response = await businessClient.put(endpoint, data, config);
+        break;
+      case "PATCH":
+        response = await businessClient.patch(endpoint, data, config);
+        break;
+      case "DELETE":
+        response = await businessClient.delete(endpoint, config);
+        break;
+      default:
+        throw new Error(`Unsupported method: ${method}`);
     }
 
-    const response = await axios(config);
-    return { success: true, data: response.data };
+    return { success: true, data: response };
   } catch (error) {
     logger.error("Business Service call failed", {
       endpoint,

@@ -23,8 +23,16 @@ const FeeSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['global', 'claimable_document', 'appeal', 'conditional', 'penalty', 'variable_fee', 'application_fee'],
-      default: 'global',
+      enum: [
+        "global",
+        "claimable_document",
+        "appeal",
+        "conditional",
+        "penalty",
+        "variable_fee",
+        "application_fee",
+      ],
+      default: "global",
     },
     isActive: {
       type: Boolean,
@@ -40,8 +48,8 @@ const FeeSchema = new mongoose.Schema(
 
 const { encryptionPlugin } = require("../../../../shared/lib/encryptionPlugin");
 FeeSchema.plugin(encryptionPlugin, {
-  fields: ["name", "notes"],
-  deterministicFields: [],
+  fields: ["notes"],
+  deterministicFields: ["name"],
   nestedPaths: [],
   arrayPaths: [],
   mixedPaths: [],

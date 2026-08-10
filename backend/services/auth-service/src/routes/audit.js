@@ -7,11 +7,9 @@ const { isBusinessOwnerRole, isAdminRole } = require("../lib/roleHelpers");
 const { maskSensitiveData } = require("../lib/dataMasker");
 const { validateBody, Joi } = require("../middleware/validation");
 const { containsSqlInjection } = require("../lib/sanitizer");
-const axios = require("axios");
+const { auditClient } = require("../../../../shared/lib/httpClient");
 
 const router = express.Router();
-const AUDIT_SERVICE_URL =
-  process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
 
 /**
  * Mask sensitive data in audit log
@@ -46,12 +44,11 @@ router.get("/my-actions", requireJwt, async (req, res) => {
       "Content-Type": "application/json",
     };
 
-    const response = await axios.get(
-      `${AUDIT_SERVICE_URL}/api/audit/my-actions?${new URLSearchParams(req.query)}`,
-      { headers },
+    const response = await auditClient.get(
+      `/api/audit/my-actions?${new URLSearchParams(req.query)}`,
     );
 
-    return res.json(response.data);
+    return res.json(response);
   } catch (err) {
     console.error("Proxy to audit-service failed:", err.message);
     return respond.error(
@@ -72,12 +69,11 @@ router.get("/history", requireJwt, async (req, res) => {
       "Content-Type": "application/json",
     };
 
-    const response = await axios.get(
-      `${AUDIT_SERVICE_URL}/api/audit/history?${new URLSearchParams(req.query)}`,
-      { headers },
+    const response = await auditClient.get(
+      `/api/audit/history?${new URLSearchParams(req.query)}`,
     );
 
-    return res.json(response.data);
+    return res.json(response);
   } catch (err) {
     console.error("Proxy to audit-service failed:", err.message);
     return respond.error(
@@ -98,12 +94,11 @@ router.get("/history/:auditLogId", requireJwt, async (req, res) => {
       "Content-Type": "application/json",
     };
 
-    const response = await axios.get(
-      `${AUDIT_SERVICE_URL}/api/audit/history/${req.params.auditLogId}`,
-      { headers },
+    const response = await auditClient.get(
+      `/api/audit/history/${req.params.auditLogId}`,
     );
 
-    return res.json(response.data);
+    return res.json(response);
   } catch (err) {
     console.error("Proxy to audit-service failed:", err.message);
     return respond.error(
@@ -124,12 +119,11 @@ router.get("/verify/:auditLogId", requireJwt, async (req, res) => {
       "Content-Type": "application/json",
     };
 
-    const response = await axios.get(
-      `${AUDIT_SERVICE_URL}/api/audit/verify/${req.params.auditLogId}`,
-      { headers },
+    const response = await auditClient.get(
+      `/api/audit/verify/${req.params.auditLogId}`,
     );
 
-    return res.json(response.data);
+    return res.json(response);
   } catch (err) {
     console.error("Proxy to audit-service failed:", err.message);
     return respond.error(
@@ -150,12 +144,11 @@ router.get("/export", requireJwt, async (req, res) => {
       "Content-Type": "application/json",
     };
 
-    const response = await axios.get(
-      `${AUDIT_SERVICE_URL}/api/audit/export?${new URLSearchParams(req.query)}`,
-      { headers },
+    const response = await auditClient.get(
+      `/api/audit/export?${new URLSearchParams(req.query)}`,
     );
 
-    return res.json(response.data);
+    return res.json(response);
   } catch (err) {
     console.error("Proxy to audit-service failed:", err.message);
     return respond.error(
@@ -180,12 +173,12 @@ router.get(
         "Content-Type": "application/json",
       };
 
-      const response = await axios.get(
-        `${AUDIT_SERVICE_URL}/api/audit/admin/all?${new URLSearchParams(req.query)}`,
+      const response = await auditClient.get(
+        `/api/audit/admin/all?${new URLSearchParams(req.query)}`,
         { headers },
       );
 
-      return res.json(response.data);
+      return res.json(response);
     } catch (err) {
       console.error("Proxy to audit-service failed:", err.message);
       return respond.error(
@@ -211,12 +204,12 @@ router.get(
         "Content-Type": "application/json",
       };
 
-      const response = await axios.get(
-        `${AUDIT_SERVICE_URL}/api/audit/admin/recent?${new URLSearchParams(req.query)}`,
+      const response = await auditClient.get(
+        `/api/audit/admin/recent?${new URLSearchParams(req.query)}`,
         { headers },
       );
 
-      return res.json(response.data);
+      return res.json(response);
     } catch (err) {
       console.error("Proxy to audit-service failed:", err.message);
       return respond.error(
@@ -239,12 +232,11 @@ router.get("/staff/all", requireJwt, async (req, res) => {
       "Content-Type": "application/json",
     };
 
-    const response = await axios.get(
-      `${AUDIT_SERVICE_URL}/api/audit/staff/all?${new URLSearchParams(req.query)}`,
-      { headers },
+    const response = await auditClient.get(
+      `/api/audit/staff/all?${new URLSearchParams(req.query)}`,
     );
 
-    return res.json(response.data);
+    return res.json(response);
   } catch (err) {
     console.error("Proxy to audit-service failed:", err.message);
     return respond.error(
@@ -296,15 +288,15 @@ router.get(
         "Content-Type": "application/json",
       };
 
-      const response = await axios.get(
-        `${AUDIT_SERVICE_URL}/api/audit/application/${applicationId}?page=${page}&limit=${limit}`,
+      const response = await auditClient.get(
+        `/api/audit/application/${applicationId}?page=${page}&limit=${limit}`,
         { headers },
       );
 
       console.log(
         `[audit-proxy] Successfully fetched ${response.data.logs?.length || 0} logs`,
       );
-      return res.json(response.data);
+      return res.json(response);
     } catch (err) {
       console.error(
         "[audit-proxy] Proxy to audit-service failed:",
@@ -335,12 +327,12 @@ router.get(
         "Content-Type": "application/json",
       };
 
-      const response = await axios.get(
-        `${AUDIT_SERVICE_URL}/api/audit/help-request/${requestId}?page=${page}&limit=${limit}`,
+      const response = await auditClient.get(
+        `/api/audit/help-request/${requestId}?page=${page}&limit=${limit}`,
         { headers },
       );
 
-      return res.json(response.data);
+      return res.json(response);
     } catch (err) {
       console.error("Proxy to audit-service failed:", err.message);
       return respond.error(
@@ -368,12 +360,12 @@ router.get(
         "Content-Type": "application/json",
       };
 
-      const response = await axios.get(
-        `${AUDIT_SERVICE_URL}/api/audit/business-owner/${ownerId}?page=${page}&limit=${limit}`,
+      const response = await auditClient.get(
+        `/api/audit/business-owner/${ownerId}?page=${page}&limit=${limit}`,
         { headers },
       );
 
-      return res.json(response.data);
+      return res.json(response);
     } catch (err) {
       console.error(
         "[audit-proxy] Proxy to audit-service failed:",

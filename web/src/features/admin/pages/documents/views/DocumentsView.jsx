@@ -26,6 +26,7 @@ export default function DocumentsView() {
     selectedItem,
     refresh,
     onAddNew,
+    loading,
   } = useDocuments()
 
   const {
@@ -82,7 +83,7 @@ export default function DocumentsView() {
   const listContent = (
     <ListPanel
       items={filteredItems}
-      isLoading={false}
+      isLoading={loading}
       selectedId={selectedItemId}
       onSelectItem={handleSelectItem}
       renderCard={renderCard}
@@ -116,7 +117,7 @@ export default function DocumentsView() {
         drawerTitle="Claimable Document Detail"
         onDrawerClose={handleDrawerClose}
         drawerOpen={!!selectedItemId}
-        mobileDrawerPlacement="right"
+        mobileDrawerPlacement="bottom"
       />
       <AddClaimableDocumentModal
         open={showAddModal}

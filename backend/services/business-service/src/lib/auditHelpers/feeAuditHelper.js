@@ -12,26 +12,26 @@
  *   .catch((err) => console.error("Failed to log audit event for fee create", err));
  */
 
-const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
-const { trackChanges } = require('../changeTracker');
-const { logAuditEvent } = require('../auditClient');
+const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
+const { trackChanges } = require("../changeTracker");
+const { logAuditEvent } = require("../auditClient");
 
 const FEE_METADATA_MAPPING = {
-  name: 'name',
-  notes: 'notes',
-  amount: 'amount',
-  category: 'category',
-  isActive: 'isActive',
-  version: 'version',
+  name: "name",
+  notes: "notes",
+  amount: "amount",
+  category: "category",
+  isActive: "isActive",
+  version: "version",
 };
 
 const FEE_FIELD_MAPPING = {
-  name: 'name',
-  notes: 'notes',
-  amount: 'amount',
-  category: 'category',
-  isActive: 'isActive',
-  version: 'version',
+  name: "name",
+  notes: "notes",
+  amount: "amount",
+  category: "category",
+  isActive: "isActive",
+  version: "version",
 };
 
 /**
@@ -61,16 +61,10 @@ class FeeAuditHelper {
       .withEntitySnapshots(null, fee) // No old snapshot for creation
       .build();
 
-    return await logAuditEvent(
-      'fee_created',
-      userId,
-      'Fee',
-      fee._id,
-      {
-        ...metadata,
-        role,
-      }
-    );
+    return await logAuditEvent("fee_created", userId, "Fee", fee._id, {
+      ...metadata,
+      role,
+    });
   }
 
   /**
@@ -90,7 +84,7 @@ class FeeAuditHelper {
   static async logUpdated(req, userId, userInfo, oldFee, newFee, role) {
     // Track changes between old and new fee
     const changes = trackChanges(oldFee, newFee, FEE_FIELD_MAPPING, {
-      ignoreFields: ['updatedAt', 'version'], // Ignore these fields
+      ignoreFields: ["updatedAt", "version"], // Ignore these fields
     });
 
     // If no changes, don't log anything
@@ -113,14 +107,14 @@ class FeeAuditHelper {
 
     // Log a single audit event for all field changes
     const auditLog = await logAuditEvent(
-      'fee_updated',
+      "fee_updated",
       userId,
-      'Fee',
+      "Fee",
       newFee._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
 
     return auditLog;
@@ -146,20 +140,14 @@ class FeeAuditHelper {
       .withEntityFields(fee, FEE_METADATA_MAPPING)
       .withEntitySnapshots(fee, { ...fee, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        previousStatus: fee.isActive ? 'active' : 'inactive',
+        previousStatus: fee.isActive ? "active" : "inactive",
       })
       .build();
 
-    return await logAuditEvent(
-      'fee_disabled',
-      userId,
-      'Fee',
-      fee._id,
-      {
-        ...metadata,
-        role,
-      }
-    );
+    return await logAuditEvent("fee_disabled", userId, "Fee", fee._id, {
+      ...metadata,
+      role,
+    });
   }
 
   /**
@@ -177,7 +165,15 @@ class FeeAuditHelper {
    * @param {string} role - User role
    * @returns {Promise<object>} - Created audit log
    */
-  static async logCalculationUpdated(req, userId, userInfo, fee, oldCalculation, newCalculation, role) {
+  static async logCalculationUpdated(
+    req,
+    userId,
+    userInfo,
+    fee,
+    oldCalculation,
+    newCalculation,
+    role,
+  ) {
     const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
@@ -190,14 +186,14 @@ class FeeAuditHelper {
       .build();
 
     return await logAuditEvent(
-      'variable_calculation_updated',
+      "variable_calculation_updated",
       userId,
-      'Variable',
+      "Variable",
       fee._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 }

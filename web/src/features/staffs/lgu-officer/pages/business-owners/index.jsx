@@ -69,7 +69,7 @@ export default function OfficerBusinessOwners() {
       }
       
       const response = await businessOwnerService.getBusinessOwners({}, searchParams)
-      const owners = response.data || []
+      const owners = response || []
       const total = response.total || 0
 
       // Fetch application counts for each owner from business-service

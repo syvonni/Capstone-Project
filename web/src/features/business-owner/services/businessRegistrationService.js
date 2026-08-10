@@ -7,7 +7,8 @@ const BASE_PATH = '/api/business/business-registration'
  * @param {string} businessId - Business ID (or 'new' for new registrations)
  */
 export async function confirmRequirements(businessId) {
-  return post(`${BASE_PATH}/${businessId}/requirements/confirm`)
+  const res = await post(`${BASE_PATH}/${businessId}/requirements/confirm`)
+  return res
 }
 
 /**
@@ -33,7 +34,8 @@ export async function downloadRequirementsPdf(businessId) {
  * @param {object} documents - Document URLs/data
  */
 export async function uploadDocuments(businessId, documents) {
-  return post(`${BASE_PATH}/${businessId}/documents/upload`, documents)
+  const res = await post(`${BASE_PATH}/${businessId}/documents/upload`, documents)
+  return res
 }
 
 /**
@@ -57,7 +59,8 @@ export async function uploadFile(businessId, file, fieldName = 'file') {
     throw new Error(err?.error?.message || 'Failed to upload file')
   }
 
-  return response.json()
+  const json = await response.json()
+  return json
 }
 
 /**
@@ -66,7 +69,8 @@ export async function uploadFile(businessId, file, fieldName = 'file') {
  * @param {object} birData - BIR registration data
  */
 export async function saveBirRegistration(businessId, birData) {
-  return post(`${BASE_PATH}/${businessId}/bir`, birData)
+  const res = await post(`${BASE_PATH}/${businessId}/bir`, birData)
+  return res
 }
 
 /**
@@ -75,7 +79,8 @@ export async function saveBirRegistration(businessId, birData) {
  * @param {object} agencyData - Agency registration data
  */
 export async function saveAgencyRegistrations(businessId, agencyData) {
-  return post(`${BASE_PATH}/${businessId}/agencies`, agencyData)
+  const res = await post(`${BASE_PATH}/${businessId}/agencies`, agencyData)
+  return res
 }
 
 /**
@@ -83,7 +88,8 @@ export async function saveAgencyRegistrations(businessId, agencyData) {
  * @param {string} businessId - Business ID
  */
 export async function submitApplication(businessId) {
-  return post(`${BASE_PATH}/${businessId}/submit`)
+  const res = await post(`${BASE_PATH}/${businessId}/submit`)
+  return res
 }
 
 /**
@@ -91,5 +97,6 @@ export async function submitApplication(businessId) {
  * @param {string} businessId - Business ID
  */
 export async function getApplicationStatus(businessId) {
-  return get(`${BASE_PATH}/${businessId}/status`)
+  const res = await get(`${BASE_PATH}/${businessId}/status`)
+  return res
 }

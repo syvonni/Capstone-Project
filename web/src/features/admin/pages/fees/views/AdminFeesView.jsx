@@ -36,6 +36,7 @@ export default function AdminFeesView() {
     selectedItem,
     addButtonLabel,
     refresh,
+    loading,
   } = useFees()
 
   // Handle URL query param for direct item selection
@@ -156,7 +157,7 @@ export default function AdminFeesView() {
   const listContent = (
     <ListPanel
       items={filteredItems}
-      isLoading={false}
+      isLoading={loading}
       selectedId={selectedItemId}
       onSelectItem={handleSelectItem}
       renderCard={renderCard}
@@ -342,7 +343,7 @@ export default function AdminFeesView() {
         }
         onDrawerClose={handleDrawerClose}
         drawerOpen={!!selectedItemId}
-        mobileDrawerPlacement="right"
+        mobileDrawerPlacement="bottom"
       />
       {selectedType === 'fees' && (
         <AddGlobalFeeModal

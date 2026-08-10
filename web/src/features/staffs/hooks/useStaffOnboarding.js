@@ -26,7 +26,7 @@ export function useStaffOnboarding(opts = {}) {
   useEffect(() => {
     if (!currentUser?.token) return
     if (!isStaffRole) {
-      navigate('/dashboard', { replace: true })
+      navigate('/owner', { replace: true })
       return
     }
   }, [currentUser, isStaffRole, navigate])

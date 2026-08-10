@@ -16,7 +16,8 @@ export async function getMyActions({ limit, options = {} } = {}) {
   const qs = new URLSearchParams()
   if (limit) qs.set('limit', String(limit))
 
-  return get(`${BASE_PATH}/my-actions?${qs.toString()}`, { skipAutoLogout: true, ...options })
+  const res = await get(`${BASE_PATH}/my-actions?${qs.toString()}`, { skipAutoLogout: true, ...options })
+  return res
 }
 
 /**
@@ -31,7 +32,8 @@ export async function getApplicationAudit(applicationId, { page, limit } = {}) {
   if (page) qs.set('page', String(page))
   if (limit) qs.set('limit', String(limit))
 
-  return get(`${BASE_PATH}/application/${applicationId}?${qs.toString()}`)
+  const res = await get(`${BASE_PATH}/application/${applicationId}?${qs.toString()}`)
+  return res
 }
 
 /**
@@ -46,5 +48,6 @@ export async function getHelpRequestAudit(requestId, { page, limit } = {}) {
   if (page) qs.set('page', String(page))
   if (limit) qs.set('limit', String(limit))
 
-  return get(`${BASE_PATH}/help-request/${requestId}?${qs.toString()}`)
+  const res = await get(`${BASE_PATH}/help-request/${requestId}?${qs.toString()}`)
+  return res
 }

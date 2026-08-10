@@ -13,7 +13,8 @@ export async function getAppealsForReview({ limit, role = 'staff' } = {}) {
   if (limit) qs.set('limit', String(limit))
   qs.set('role', role)
 
-  return get(`${BASE_PATH}?${qs.toString()}`, { skipAutoLogout: true })
+  const res = await get(`${BASE_PATH}?${qs.toString()}`, { skipAutoLogout: true })
+  return res || []
 }
 
 /**
@@ -21,5 +22,6 @@ export async function getAppealsForReview({ limit, role = 'staff' } = {}) {
  * @param {string} businessId - Business ID
  */
 export async function getAppealsByBusiness(businessId) {
-  return get(`${BASE_PATH}/by-business/${businessId}`)
+  const res = await get(`${BASE_PATH}/by-business/${businessId}`)
+  return res || []
 }

@@ -21,24 +21,26 @@ const Variable = require("../models/Variable");
 const Fee = require("../models/Fee");
 const VariableFeeRule = require("../models/VariableFeeRule");
 const Checklist = require("../models/Checklist");
-const { variableFeeRules: REFERENCE_VARIABLE_FEE_RULES } = require("./comprehensiveFeeSeederReference");
+const {
+  variableFeeRules: REFERENCE_VARIABLE_FEE_RULES,
+} = require("./comprehensiveFeeSeederReference");
 const { seedVariableChecklists } = require("./seedVariableChecklists");
 
 // Transform reference data to match the Variable model
 // Remove "Fee" suffix from names since these are business variables, not fees
-const VARIABLES_SEED_DATA = REFERENCE_VARIABLE_FEE_RULES.map(rule => {
-  const unit = rule.unit || 'unit';
+const VARIABLES_SEED_DATA = REFERENCE_VARIABLE_FEE_RULES.map((rule) => {
+  const unit = rule.unit || "unit";
   const unitSingular = rule.unitSingular || unit;
   const unitPlural = rule.unitPlural || unit;
   const unitContextSingular = rule.unitContextSingular || unitSingular;
   const unitContextPlural = rule.unitContextPlural || unitPlural;
-  
+
   return {
     customId: rule._id,
-    name: rule.name.replace(/ Fee$/, ''), // Remove "Fee" suffix
-    description: rule.description || '',
-    notes: rule.notes || '',
-    question: rule.question || '',
+    name: rule.name.replace(/ Fee$/, ""), // Remove "Fee" suffix
+    description: rule.description || "",
+    notes: rule.notes || "",
+    question: rule.question || "",
     calculationMethod: rule.calculationMethod,
     customCalculationMethod: rule.customCalculationMethod || null,
     baseRate: rule.baseRate,
@@ -57,22 +59,25 @@ const VARIABLES_SEED_DATA = REFERENCE_VARIABLE_FEE_RULES.map(rule => {
 // Add yes/no variables (migrated from ConditionalFee)
 const YES_NO_VARIABLES = [
   {
-    customId: 'VAR-YES-001',
-    name: 'Parking Available',
-    description: 'Variable for establishments based on parking space availability',
-    notes: 'Yes/no question for parking availability',
-    question: 'Does the establishment have parking space?',
-    calculationMethod: 'yes_no',
+    customId: "VAR-YES-001",
+    name: "Parking Available",
+    description:
+      "Variable for establishments based on parking space availability",
+    notes: "Yes/no question for parking availability",
+    question: "Does the establishment have parking space?",
+    calculationMethod: "yes_no",
     fixedAmount: 200,
-    unit: 'space',
-    unitSingular: 'space',
-    unitPlural: 'spaces',
-    unitContextSingular: 'parking space',
-    unitContextPlural: 'parking spaces',
-    legalBasis: [{
-      title: 'Local Government Code of 1991, Sec. 152',
-      description: 'Parking space requirements for commercial establishments'
-    }],
+    unit: "space",
+    unitSingular: "space",
+    unitPlural: "spaces",
+    unitContextSingular: "parking space",
+    unitContextPlural: "parking spaces",
+    legalBasis: [
+      {
+        title: "Local Government Code of 1991, Sec. 152",
+        description: "Parking space requirements for commercial establishments",
+      },
+    ],
     isActive: true,
   },
 ];
@@ -82,9 +87,7 @@ const ALL_VARIABLES = [...VARIABLES_SEED_DATA, ...YES_NO_VARIABLES];
 async function seed() {
   const mongoUri =
     "mongodb://capstone_app:g95fxnwa1wPDdyfA@mongodb:27017/capstone_project?authSource=admin";
-  console.log(
-    `Connecting to MongoDB: ${mongoUri}`,
-  );
+  console.log(`Connecting to MongoDB: ${mongoUri}`);
   await mongoose.connect(mongoUri);
 
   let totalUpserted = 0;
@@ -92,23 +95,27 @@ async function seed() {
   let totalDeleted = 0;
 
   console.log("\nSeeding Variables...");
-  
+
   // First, delete any variables that are not in our new list (cleanup old variables)
-  const newCustomIds = ALL_VARIABLES.map(v => v.customId);
+  const newCustomIds = ALL_VARIABLES.map((v) => v.customId);
   const toDelete = await Variable.find({ customId: { $nin: newCustomIds } });
   if (toDelete.length > 0) {
-    const deleteIds = toDelete.map(v => v._id);
+    const deleteIds = toDelete.map((v) => v._id);
     await Variable.deleteMany({ _id: { $in: deleteIds } }).maxTimeMS(30000);
     totalDeleted = toDelete.length;
     console.log(`  - Deleted ${totalDeleted} old variables`);
   }
 
   for (const variableData of ALL_VARIABLES) {
-    const existing = await Variable.findOne({ customId: variableData.customId });
+    const existing = await Variable.findOne({
+      customId: variableData.customId,
+    });
 
     // Find associated Variable Fee Rule by customId
     let variableFeeRuleId = null;
-    const variableFeeRule = await VariableFeeRule.findOne({ customId: variableData.customId });
+    const variableFeeRule = await VariableFeeRule.findOne({
+      customId: variableData.customId,
+    });
     if (variableFeeRule) {
       variableFeeRuleId = variableFeeRule._id;
     }
@@ -116,7 +123,10 @@ async function seed() {
     // Create or find associated Fee
     let feeId = null;
     const feeName = `${variableData.name} Fee`;
-    const existingFee = await Fee.findOne({ name: feeName, category: 'variable_fee' });
+    const existingFee = await Fee.findOne({
+      name: feeName,
+      category: "variable_fee",
+    });
 
     if (!existingFee) {
       // Create new fee
@@ -124,7 +134,7 @@ async function seed() {
         name: feeName,
         notes: `Variable fee for ${variableData.name}`,
         amount: variableData.baseRate || 0,
-        category: 'variable_fee',
+        category: "variable_fee",
         version: 1,
       });
       feeId = fee._id;
@@ -150,13 +160,15 @@ async function seed() {
         version: 1,
       });
       totalUpserted++;
-      console.log(`  + Seeded: ${variableData.name} (${variableData.calculationMethod})`);
-      
+      console.log(
+        `  + Seeded: ${variableData.name} (${variableData.calculationMethod})`,
+      );
+
       // Update checklist to link to this variable
       if (checklist) {
         await Checklist.updateOne(
           { _id: checklist._id },
-          { variableId: newVariable._id }
+          { variableId: newVariable._id },
         );
       }
     } else {
@@ -175,11 +187,13 @@ async function seed() {
             unitPlural: variableData.unitPlural,
             unitContextSingular: variableData.unitContextSingular,
             unitContextPlural: variableData.unitContextPlural,
-          }
-        }
+          },
+        },
       );
       totalUpdated++;
-      console.log(`  ~ Updated: ${variableData.name} (customId: ${variableData.customId})`);
+      console.log(
+        `  ~ Updated: ${variableData.name} (customId: ${variableData.customId})`,
+      );
     }
   }
 
@@ -227,7 +241,7 @@ async function seedIfEmpty() {
       variableCount,
     };
   } catch (error) {
-    console.error('Variables seedIfEmpty error:', error);
+    console.error("Variables seedIfEmpty error:", error);
     return { seeded: false, error: error.message };
   }
 }
@@ -235,9 +249,9 @@ async function seedIfEmpty() {
 async function seedForce() {
   try {
     // Clear all existing variables with timeout handling
-    console.log('Clearing existing variables...');
+    console.log("Clearing existing variables...");
     await Variable.deleteMany({}).maxTimeMS(60000);
-    console.log('Cleared existing data');
+    console.log("Cleared existing data");
 
     let totalUpserted = 0;
 
@@ -259,19 +273,21 @@ module.exports = { seed, seedIfEmpty, seedForce };
 
 // Run seed if called directly
 if (require.main === module) {
-  const force = process.argv.includes('--force');
+  const force = process.argv.includes("--force");
   if (force) {
-    seedForce().then((result) => {
-      if (result.seeded) {
-        console.log(`Force seeded ${result.count} variables`);
-      } else {
-        console.error('Force seed failed:', result.error);
-      }
-      process.exit(result.seeded ? 0 : 1);
-    }).catch((err) => {
-      console.error("Seed failed:", err);
-      process.exit(1);
-    });
+    seedForce()
+      .then((result) => {
+        if (result.seeded) {
+          console.log(`Force seeded ${result.count} variables`);
+        } else {
+          console.error("Force seed failed:", result.error);
+        }
+        process.exit(result.seeded ? 0 : 1);
+      })
+      .catch((err) => {
+        console.error("Seed failed:", err);
+        process.exit(1);
+      });
   } else {
     seed().catch((err) => {
       console.error("Seed failed:", err);

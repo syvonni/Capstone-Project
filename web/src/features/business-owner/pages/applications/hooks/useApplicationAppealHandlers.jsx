@@ -44,7 +44,7 @@ export function useApplicationAppealHandlers({
         try {
           const businessId = business.businessId || business._id
           const res = await getAppeals({ businessId, limit: 1 })
-          const appeals = res?.data || res?.appeals || []
+          const appeals = res || []
           if (appeals.length > 0) {
             setAppealDetails(appeals[0])
           }
@@ -109,7 +109,7 @@ export function useApplicationAppealHandlers({
       })
 
       // Refresh the businesses data
-      if (res?.data) {
+      if (res) {
         dashboardState.fetchBusinesses()
       }
 
@@ -127,7 +127,7 @@ export function useApplicationAppealHandlers({
     try {
       const businessId = business.businessId || business._id
       const res = await getAppeals({ businessId, limit: 1 })
-      const appeals = res?.data || res?.appeals || []
+      const appeals = res || []
       if (appeals.length > 0) {
         setAppealDetails(appeals[0])
       }
@@ -142,7 +142,7 @@ export function useApplicationAppealHandlers({
     const businessId = business.businessId || business._id
     try {
       const res = await getPayments({ businessId, paymentType: 'appeal_fee', status: 'paid', limit: 1 })
-      const payments = res?.data || res?.payments || []
+      const payments = res || []
       if (payments.length > 0) {
         const payment = payments[0]
         const fees = payment.feeBreakdown || []

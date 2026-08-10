@@ -13,6 +13,8 @@ import InspectionItemCard from '../components/InspectionItemCard'
 import ChecklistCard from '../components/ChecklistCard'
 import AddInspectionItemModal from '../components/modals/AddInspectionItemModal'
 import AddChecklistModal from '../components/modals/AddChecklistModal'
+import InspectionItemsStatsPanel from '../components/InspectionItemsStatsPanel'
+import ChecklistsStatsPanel from '../components/ChecklistsStatsPanel'
 
 import ListPanel from '@/shared/components/ListPanel'
 import ResponsiveSplitLayout from '@/shared/components/ResponsiveSplitLayout'
@@ -25,9 +27,17 @@ import { useInspectionsFilters } from '../hooks/useInspectionsFilters'
 export default function InspectionsView() {
   const [selectedType, setSelectedType] = useState('inspection_items')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showStats, setShowStats] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const screens = Grid.useBreakpoint()
   const isMobile = !screens.lg
+
+  // Sync showStats with breakpoint and selectedId state
+  // Stats should be enabled on desktop only when no item is selected
+  useEffect(() => {
+    const itemIdFromUrl = searchParams.get('selectedId')
+    setShowStats(!isMobile && !itemIdFromUrl)
+  }, [isMobile, searchParams])
 
   const {
     selectedItemId,
@@ -35,6 +45,7 @@ export default function InspectionsView() {
     items,
     selectedItem,
     refresh,
+    loading,
   } = useInspections(selectedType)
 
   // Handle URL query param for direct item selection
@@ -55,6 +66,18 @@ export default function InspectionsView() {
   const handleSelectItem = (item) => {
     setSelectedItemId(item._id)
     setSearchParams({ selectedId: item._id })
+    setShowStats(false)
+  }
+
+  const handleStatsToggle = () => {
+    setShowStats(prev => {
+      const newValue = !prev
+      if (newValue && selectedItemId) {
+        setSelectedItemId(null)
+        setSearchParams({})
+      }
+      return newValue
+    })
   }
 
   const addButtonLabel = selectedType === 'inspection_items' ? 'Add Inspection Item' : 'Add Checklist'
@@ -74,6 +97,10 @@ export default function InspectionsView() {
   }, [items, searchTerm, statusFilter])
 
   const handleDrawerClose = () => {
+    // If closing drawer and no item was selected (viewing stats), disable stats
+    if (!selectedItemId) {
+      setShowStats(false)
+    }
     setSelectedItemId(null)
     setSearchParams({})
   }
@@ -101,7 +128,7 @@ export default function InspectionsView() {
   const listContent = (
     <ListPanel
       items={filteredItems}
-      isLoading={false}
+      isLoading={loading}
       selectedId={selectedItemId}
       onSelectItem={handleSelectItem}
       renderCard={renderCard}
@@ -127,6 +154,9 @@ export default function InspectionsView() {
       onSearchChange={setSearchTerm}
       searchOnEnter={true}
       showStaleInfo={false}
+      enableStats={true}
+      statsActive={showStats}
+      onStatsToggle={handleStatsToggle}
       primaryButton={{
         icon: <PlusOutlined />,
         onClick: () => setShowAddModal(true),
@@ -164,6 +194,11 @@ export default function InspectionsView() {
         />
       )}
     </>
+  ) : showStats ? (
+    <>
+      {selectedType === 'inspection_items' && <InspectionItemsStatsPanel />}
+      {selectedType === 'checklists' && <ChecklistsStatsPanel />}
+    </>
   ) : isMobile ? null : (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <Empty description={`Select a ${selectedType === 'inspection_items' ? 'inspection item' : 'checklist'} to view details`} />
@@ -176,11 +211,17 @@ export default function InspectionsView() {
         listContent={listContent}
         detailContent={detailContent}
         drawerTitle={
-          selectedType === 'inspection_items' ? 'Inspection Item Detail' : 'Checklist Detail'
+          showStats
+            ? selectedType === 'inspection_items'
+              ? 'Inspection Items Overview'
+              : 'Checklists Overview'
+            : selectedType === 'inspection_items'
+              ? 'Inspection Item Detail'
+              : 'Checklist Detail'
         }
         onDrawerClose={handleDrawerClose}
-        drawerOpen={!!selectedItemId}
-        mobileDrawerPlacement="right"
+        drawerOpen={!!selectedItemId || showStats}
+        mobileDrawerPlacement="bottom"
       />
       {selectedType === 'inspection_items' && (
         <AddInspectionItemModal

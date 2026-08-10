@@ -1,7 +1,18 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { Grid, Drawer, Splitter } from 'antd'
+import { useState, useCallback } from 'react'
+import { Grid, Drawer, Splitter, theme } from 'antd'
 
 const { useBreakpoint } = Grid
+
+/**
+ * Normalize a size value into something antd's Splitter understands.
+ * Splitter only accepts percentage strings ('25%') or plain numbers (px).
+ * A '350px' string parses to NaN internally, which collapses the panel.
+ */
+function normalizeSize(value) {
+  if (typeof value === 'string' && value.trim().endsWith('%')) return value
+  const parsed = parseFloat(value)
+  return Number.isNaN(parsed) ? undefined : parsed
+}
 
 /**
  * ResponsiveSplitLayout - A reusable split layout component that adapts to screen size
@@ -18,7 +29,8 @@ const { useBreakpoint } = Grid
  * @param {string} props.mobileDrawerPlacement - Drawer placement for mobile: 'right' | 'bottom' (default: 'right')
  * @param {number} props.listMinWidth - Minimum width for list panel on desktop (default: 300)
  * @param {number} props.listMaxWidth - Maximum width for list panel on desktop (default: 400)
- * @param {string} props.listDefaultSize - Default size for list panel on desktop (default: '25%')
+ * @param {number|string} props.listDefaultSize - Default size for list panel on desktop.
+ *   Accepts a percentage string ('25%') or a pixel value (350 or '350px'). Default: '25%'
  * @param {number} props.mobileBreakpoint - Breakpoint for mobile view (default: 'lg')
  */
 export default function ResponsiveSplitLayout({
@@ -27,18 +39,16 @@ export default function ResponsiveSplitLayout({
   drawerTitle = 'Details',
   onDrawerClose,
   drawerOpen,
-  mobileDrawerPlacement = 'right',
+  mobileDrawerPlacement = 'bottom',
   listMinWidth = 300,
   listMaxWidth = 400,
   listDefaultSize = '25%',
   mobileBreakpoint = 'lg',
 }) {
   const screens = useBreakpoint()
+  const { token } = theme.useToken()
   const [internalDrawerOpen, setInternalDrawerOpen] = useState(false)
   const detailDrawerOpen = drawerOpen !== undefined ? drawerOpen : internalDrawerOpen
-  const [sizes, setSizes] = useState([listDefaultSize, '75%'])
-  const containerRef = useRef(null)
-  const isMobile = !screens[mobileBreakpoint]
 
   const handleCloseDrawer = useCallback(() => {
     if (drawerOpen === undefined) {
@@ -47,69 +57,16 @@ export default function ResponsiveSplitLayout({
     onDrawerClose?.()
   }, [onDrawerClose, drawerOpen])
 
-  const handleResize = useCallback((newSizes) => {
-    setSizes(newSizes)
-  }, [])
-
-  // Calculate sizes that respect minimum width constraint
-  const calculateSizes = useCallback((width) => {
-    if (!width || isMobile) return [listDefaultSize, '75%']
-
-    const minPx = typeof listMinWidth === 'number' ? listMinWidth : parseInt(listMinWidth)
-    const minPercent = (minPx / width) * 100
-
-    // If default size is less than minimum, use minimum
-    const defaultPercent = typeof listDefaultSize === 'string'
-      ? parseFloat(listDefaultSize)
-      : (listDefaultSize / width) * 100
-
-    if (defaultPercent < minPercent) {
-      return [minPercent, 100 - minPercent]
-    }
-
-    return [listDefaultSize, '75%']
-  }, [listDefaultSize, listMinWidth, isMobile])
-
-  // Use ResizeObserver to track actual container width
-  useEffect(() => {
-    if (!containerRef.current || isMobile) return
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const width = entry.contentRect.width
-        setSizes(calculateSizes(width))
-      }
-    })
-
-    resizeObserver.observe(containerRef.current)
-
-    return () => resizeObserver.disconnect()
-  }, [isMobile, calculateSizes])
-
-  // Also listen to window resize as backup
-  useEffect(() => {
-    if (isMobile) return
-
-    const handleWindowResize = () => {
-      if (containerRef.current) {
-        const width = containerRef.current.offsetWidth
-        setSizes(calculateSizes(width))
-      }
-    }
-
-    window.addEventListener('resize', handleWindowResize)
-    handleWindowResize() // Initial calculation
-
-    return () => window.removeEventListener('resize', handleWindowResize)
-  }, [isMobile, calculateSizes])
-
   // Mobile view: list as main panel, detail in drawer
   if (!screens[mobileBreakpoint]) {
     const drawerProps = {
       title: drawerTitle,
       open: detailDrawerOpen,
       onClose: handleCloseDrawer,
-      styles: { body: { padding: 0 } },
+      styles: {
+        body: { padding: 0, background: token.colorBgContainer },
+        header: { background: token.colorBgContainer },
+      },
     }
 
     if (mobileDrawerPlacement === 'right') {
@@ -117,7 +74,7 @@ export default function ResponsiveSplitLayout({
       drawerProps.width = '100%'
     } else {
       drawerProps.placement = 'bottom'
-      drawerProps.height = '100%'
+      drawerProps.size = '100%'
     }
 
     return (
@@ -132,20 +89,21 @@ export default function ResponsiveSplitLayout({
     )
   }
 
-  // Desktop view: split panel
+  // Desktop view: split panel.
+  // Panels are left uncontrolled so antd owns the sizing: it observes the
+  // container, clamps to min/max, and preserves the user's drag.
   return (
-    <div ref={containerRef} style={{ height: '100%', width: '100%' }}>
-      <Splitter style={{ height: '100%', width: '100%' }} onResize={handleResize}>
+    <div style={{ height: '100%', width: '100%' }}>
+      <Splitter style={{ height: '100%', width: '100%' }}>
         <Splitter.Panel
-          size={sizes[0]}
-          min={listMinWidth}
-          max={listMaxWidth}
+          defaultSize={normalizeSize(listDefaultSize)}
+          min={normalizeSize(listMinWidth)}
+          max={normalizeSize(listMaxWidth)}
           style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
         >
           {listContent}
         </Splitter.Panel>
         <Splitter.Panel
-          size={sizes[1]}
           min="50%"
           style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
         >

@@ -60,8 +60,7 @@ export default function PublicRoute({ children }) {
       return <Navigate to="/staff" replace state={state} />
     }
 
-    return <Navigate to="/dashboard" replace state={state} />
+    return <Navigate to="/owner" replace state={state}/> 
   }
-
   return children
 }

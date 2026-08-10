@@ -12,39 +12,39 @@
  *   .catch((err) => console.error("Failed to log audit event for document create", err));
  */
 
-const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
-const { trackChanges } = require('../changeTracker');
-const { logAuditEvent } = require('../auditClient');
+const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
+const { trackChanges } = require("../changeTracker");
+const { logAuditEvent } = require("../auditClient");
 
 const CLAIMABLE_DOCUMENT_METADATA_MAPPING = {
-  name: 'name',
-  notes: 'notes',
-  category: 'category',
-  isActive: 'isActive',
-  isDraft: 'isDraft',
-  draftOf: 'draftOf',
-  version: 'version',
-  feeId: 'feeId',
-  checklistId: 'checklistId',
-  customId: 'customId',
-  formIds: 'formIds',
+  name: "name",
+  notes: "notes",
+  category: "category",
+  isActive: "isActive",
+  isDraft: "isDraft",
+  draftOf: "draftOf",
+  version: "version",
+  feeId: "feeId",
+  checklistId: "checklistId",
+  customId: "customId",
+  formIds: "formIds",
 };
 
 const CLAIMABLE_DOCUMENT_FIELD_MAPPING = {
-  name: 'name',
-  notes: 'notes',
-  category: 'category',
-  isActive: 'isActive',
-  isDraft: 'isDraft',
-  draftOf: 'draftOf',
-  version: 'version',
-  templateHtml: 'templateHtml',
-  templateImages: 'templateImages',
-  templateTexts: 'templateTexts',
-  feeId: 'feeId',
-  checklistId: 'checklistId',
-  customId: 'customId',
-  formIds: 'formIds',
+  name: "name",
+  notes: "notes",
+  category: "category",
+  isActive: "isActive",
+  isDraft: "isDraft",
+  draftOf: "draftOf",
+  version: "version",
+  templateHtml: "templateHtml",
+  templateImages: "templateImages",
+  templateTexts: "templateTexts",
+  feeId: "feeId",
+  checklistId: "checklistId",
+  customId: "customId",
+  formIds: "formIds",
 };
 
 /**
@@ -75,14 +75,14 @@ class ClaimableDocumentAuditHelper {
       .build();
 
     return await logAuditEvent(
-      'document_created',
+      "document_created",
       userId,
-      'ClaimableDocument',
+      "ClaimableDocument",
       document._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 
@@ -100,11 +100,23 @@ class ClaimableDocumentAuditHelper {
    * @param {string} role - User role
    * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
-  static async logUpdated(req, userId, userInfo, oldDocument, newDocument, role) {
+  static async logUpdated(
+    req,
+    userId,
+    userInfo,
+    oldDocument,
+    newDocument,
+    role,
+  ) {
     // Track changes between old and new document
-    const changes = trackChanges(oldDocument, newDocument, CLAIMABLE_DOCUMENT_FIELD_MAPPING, {
-      ignoreFields: ['updatedAt', 'version'], // Ignore these fields
-    });
+    const changes = trackChanges(
+      oldDocument,
+      newDocument,
+      CLAIMABLE_DOCUMENT_FIELD_MAPPING,
+      {
+        ignoreFields: ["updatedAt", "version"], // Ignore these fields
+      },
+    );
 
     // If no changes, don't log anything
     if (changes.length === 0) {
@@ -126,14 +138,14 @@ class ClaimableDocumentAuditHelper {
 
     // Log a single audit event for all field changes
     const auditLog = await logAuditEvent(
-      'document_updated',
+      "document_updated",
       userId,
-      'ClaimableDocument',
+      "ClaimableDocument",
       newDocument._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
 
     return auditLog;
@@ -159,19 +171,19 @@ class ClaimableDocumentAuditHelper {
       .withEntityFields(document, CLAIMABLE_DOCUMENT_METADATA_MAPPING)
       .withEntitySnapshots(document, { ...document, isActive: false }) // Snapshot before and after
       .withCustomFields({
-        previousStatus: document.isActive ? 'active' : 'inactive',
+        previousStatus: document.isActive ? "active" : "inactive",
       })
       .build();
 
     return await logAuditEvent(
-      'document_disabled',
+      "document_disabled",
       userId,
-      'ClaimableDocument',
+      "ClaimableDocument",
       document._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 
@@ -189,7 +201,14 @@ class ClaimableDocumentAuditHelper {
    * @param {string} role - User role
    * @returns {Promise<object>} - Created audit log
    */
-  static async logPublished(req, userId, userInfo, oldDocument, newDocument, role) {
+  static async logPublished(
+    req,
+    userId,
+    userInfo,
+    oldDocument,
+    newDocument,
+    role,
+  ) {
     const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
@@ -202,14 +221,14 @@ class ClaimableDocumentAuditHelper {
       .build();
 
     return await logAuditEvent(
-      'document_published',
+      "document_published",
       userId,
-      'ClaimableDocument',
+      "ClaimableDocument",
       newDocument._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 }

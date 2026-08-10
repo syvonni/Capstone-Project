@@ -15,7 +15,8 @@ export async function getAppeals({ page = 1, limit = 20, status } = {}) {
   qs.set('limit', String(limit))
   if (status) qs.set('status', status)
 
-  return get(`${BASE_PATH}?${qs.toString()}`)
+  const res = await get(`${BASE_PATH}?${qs.toString()}`)
+  return res || []
 }
 
 /**
@@ -29,7 +30,8 @@ export async function getAppeals({ page = 1, limit = 20, status } = {}) {
  * @param {string} [appealData.inspectionId] - Related inspection ID
  */
 export async function submitAppeal(appealData) {
-  return post(BASE_PATH, appealData)
+  const res = await post(BASE_PATH, appealData)
+  return res
 }
 
 /**
@@ -40,7 +42,8 @@ export async function submitAppeal(appealData) {
  * @param {string} [updateData.resolution] - Resolution notes
  */
 export async function updateAppeal(appealId, updateData) {
-  return put(`${BASE_PATH}/${appealId}`, updateData)
+  const res = await put(`${BASE_PATH}/${appealId}`, updateData)
+  return res
 }
 
 /**
@@ -48,7 +51,8 @@ export async function updateAppeal(appealId, updateData) {
  * @param {string} appealId - Appeal ID
  */
 export async function getAppealById(appealId) {
-  return get(`${BASE_PATH}/${appealId}`)
+  const res = await get(`${BASE_PATH}/${appealId}`)
+  return res
 }
 
 export const APPEAL_TYPES = {

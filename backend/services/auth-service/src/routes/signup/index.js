@@ -16,9 +16,9 @@ const { logAuditEvent } = require("../../lib/auditClient");
 
 const router = express.Router();
 
-// Shared: create a verified business-owner/customer user from a signup payload.
+// Shared: create a verified business owner user from a signup payload.
 async function createUserFromPayload(payload, email) {
-  const roleSlug = payload.role || "business_owner";
+  const roleSlug = "business_owner";
   const role = await Role.findOne({ slug: roleSlug });
   if (!role) {
     const err = new Error(`Role '${roleSlug}' not found`);

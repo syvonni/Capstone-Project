@@ -1,4 +1,4 @@
-const axios = require("axios");
+const axios = require("axios"); // External email service calls use axios directly
 const {
   buildNotificationEmailBody,
 } = require("../../../../shared/lib/emailTemplateBuilder");

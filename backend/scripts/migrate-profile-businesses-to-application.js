@@ -67,7 +67,8 @@ async function migrate() {
             fieldReviewDecisions: business.fieldReviewDecisions || {},
             formType: business.formType || "",
             category: business.category || "",
-            permitFormId: business.permitFormId || business.formDefinitionId || null,
+            permitFormId:
+              business.permitFormId || business.formDefinitionId || null,
             formData: business.formData || {},
             lguDocuments: business.lguDocuments || {},
             organizationType: business.organizationType || "",

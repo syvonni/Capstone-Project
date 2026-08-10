@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { App } from 'antd'
-import { deleteBusiness } from '../../../services/businessProfileService'
+import { deleteApplication, createApplication } from '../../../services/applicationService'
 import { isDraftStatus } from '../utils/statusUtils'
 
 export function useBusinessActions({
@@ -12,19 +12,24 @@ export function useBusinessActions({
 }) {
   const { message } = App.useApp()
 
-  const handleBusinessSelect = useCallback((businessId) => {
-    const application = businesses.find(b => (b.businessId || b._id) === businessId)
+  const handleBusinessSelect = useCallback((applicationId) => {
+    const application = businesses.find(b => {
+      return b.applicationId === applicationId || b._id === applicationId
+    })
+
     if (application) {
       const appStatus = application.applicationStatus || application.permitStatus || ''
       if (isDraftStatus(appStatus)) {
         // Clear selected business ID when opening draft for editing
         dashboardState.setSelectedBusinessId(null)
+        dashboardState.setShowSettings(false)
         dashboardState.openEditApplicationForm(application)
       } else {
         // Clear form state when selecting non-draft application
         dashboardState.setShowAddForm(false)
         dashboardState.setEditingApplication(null)
-        dashboardState.selectBusiness(businessId)
+        dashboardState.setShowSettings(false)
+        dashboardState.selectBusiness(applicationId)
       }
     }
   }, [businesses, dashboardState])
@@ -51,18 +56,59 @@ export function useBusinessActions({
     b => b.applicationStatus === 'draft' || b.applicationStatus === 'pending' || b.applicationStatus === 'submitted'
   ).length >= 2
 
-  const handleBusinessTypeSelect = useCallback((registrationType) => {
-    dashboardState.openApplicationForm({ registrationType, fromWelcome: false })
-    dashboardState.setShowBusinessTypeSelector(false)
-  }, [dashboardState])
+  const handleBusinessTypeSelect = useCallback(async (formId) => {
+    // formId can be either a specific form ID (e.g., 'unified-business-permit') or 'temporary-permit' parent
+    // For temporary permit parent, we'll let the form loader handle the category selection
+    if (formId === 'temporary-permit') {
+      dashboardState.openApplicationForm({ formId, fromWelcome: false })
+      dashboardState.setShowBusinessTypeSelector(false)
+      return
+    }
 
-  const handleDeleteApplication = useCallback(async (business) => {
-    const businessId = business.businessId || business._id
+    // Create draft application for specific form IDs
     try {
-      await deleteBusiness(businessId)
+      const payload = {
+        businessName: 'New Business Application',
+        applicationStatus: 'draft',
+        formType: formId,
+        formId: formId,
+        formData: {},
+      }
+      const response = await createApplication(payload)
+
+      const application = response.application
+      const applicationId = application.applicationId || application._id
+
+      // Construct a minimal application object from the response
+      const newApplication = {
+        _id: applicationId,
+        applicationId: applicationId,
+        businessName: 'New Business Application',
+        applicationStatus: 'draft',
+        formType: formId,
+        formId: formId,
+        formData: {},
+      }
+
+      // Fetch applications to update the list
+      await fetchBusinesses()
+
+      dashboardState.setSelectedBusinessId(applicationId)
+      dashboardState.openEditApplicationForm(newApplication)
+      dashboardState.setShowBusinessTypeSelector(false)
+    } catch (err) {
+      console.error('Failed to create application:', err)
+      message.error(err.message || 'Failed to create application.')
+    }
+  }, [dashboardState, fetchBusinesses, message])
+
+  const handleDeleteApplication = useCallback(async (application) => {
+    const applicationId = application.applicationId || application._id
+    try {
+      await deleteApplication(applicationId)
       message.success('Application deleted.')
       localStorage.removeItem('addBusinessFormDraft')
-      if (selectedBusinessId === businessId) {
+      if (selectedBusinessId === applicationId) {
         dashboardState.setSelectedBusinessId(null)
         dashboardState.setShowAddForm(false)
         setEditingApplication(null)
@@ -75,15 +121,15 @@ export function useBusinessActions({
   }, [selectedBusinessId, dashboardState, setEditingApplication, fetchBusinesses, message])
 
   const handleDeleteDraftClick = useCallback(() => {
-    const selectedBusiness = businesses.find(b => (b.businessId || b._id) === selectedBusinessId)
-    if (!selectedBusiness) return
+    const selectedApplication = businesses.find(b => (b.applicationId || b._id) === selectedBusinessId)
+    if (!selectedApplication) return
     message.confirm({
       title: 'Delete draft application?',
       content: 'This will permanently remove this draft. You can add a new business later if needed.',
       okText: 'Delete',
       okType: 'danger',
       cancelText: 'Cancel',
-      onOk: () => handleDeleteApplication(selectedBusiness),
+      onOk: () => handleDeleteApplication(selectedApplication),
     })
   }, [businesses, selectedBusinessId, message, handleDeleteApplication])
 

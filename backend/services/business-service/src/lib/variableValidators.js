@@ -16,17 +16,29 @@ function validateBrackets(brackets) {
   for (let i = 0; i < brackets.length; i++) {
     const bracket = brackets[i];
     if (bracket.minValue === undefined || bracket.minValue === null) {
-      return { valid: false, error: `Bracket at index ${i} is missing minValue` };
+      return {
+        valid: false,
+        error: `Bracket at index ${i} is missing minValue`,
+      };
     }
     if (bracket.minValue < 0) {
-      return { valid: false, error: `Bracket at index ${i} has negative minValue` };
+      return {
+        valid: false,
+        error: `Bracket at index ${i} has negative minValue`,
+      };
     }
     if (bracket.maxValue !== undefined && bracket.maxValue !== null) {
       if (bracket.maxValue < 0) {
-        return { valid: false, error: `Bracket at index ${i} has negative maxValue` };
+        return {
+          valid: false,
+          error: `Bracket at index ${i} has negative maxValue`,
+        };
       }
       if (bracket.minValue >= bracket.maxValue) {
-        return { valid: false, error: `Bracket at index ${i}: minValue (${bracket.minValue}) must be less than maxValue (${bracket.maxValue})` };
+        return {
+          valid: false,
+          error: `Bracket at index ${i}: minValue (${bracket.minValue}) must be less than maxValue (${bracket.maxValue})`,
+        };
       }
     }
   }
@@ -36,12 +48,18 @@ function validateBrackets(brackets) {
   for (let i = 0; i < sortedBrackets.length - 1; i++) {
     const current = sortedBrackets[i];
     const next = sortedBrackets[i + 1];
-    
-    const currentMax = current.maxValue !== undefined && current.maxValue !== null ? current.maxValue : Infinity;
+
+    const currentMax =
+      current.maxValue !== undefined && current.maxValue !== null
+        ? current.maxValue
+        : Infinity;
     const nextMin = next.minValue;
-    
+
     if (currentMax > nextMin) {
-      return { valid: false, error: `Brackets overlap: [${current.minValue}-${current.maxValue}] and [${next.minValue}-${next.maxValue}]` };
+      return {
+        valid: false,
+        error: `Brackets overlap: [${current.minValue}-${current.maxValue}] and [${next.minValue}-${next.maxValue}]`,
+      };
     }
   }
 
@@ -59,25 +77,37 @@ function validateClassifications(classifications) {
   }
 
   const names = new Set();
-  
+
   for (let i = 0; i < classifications.length; i++) {
     const classification = classifications[i];
-    
+
     if (!classification.name) {
-      return { valid: false, error: `Classification at index ${i} is missing name` };
+      return {
+        valid: false,
+        error: `Classification at index ${i} is missing name`,
+      };
     }
-    
+
     if (names.has(classification.name)) {
-      return { valid: false, error: `Duplicate classification name: "${classification.name}"` };
+      return {
+        valid: false,
+        error: `Duplicate classification name: "${classification.name}"`,
+      };
     }
     names.add(classification.name);
-    
+
     if (classification.fee === undefined || classification.fee === null) {
-      return { valid: false, error: `Classification "${classification.name}" is missing fee` };
+      return {
+        valid: false,
+        error: `Classification "${classification.name}" is missing fee`,
+      };
     }
-    
+
     if (classification.fee < 0) {
-      return { valid: false, error: `Classification "${classification.name}" has negative fee` };
+      return {
+        valid: false,
+        error: `Classification "${classification.name}" has negative fee`,
+      };
     }
   }
 
@@ -93,39 +123,41 @@ function validateClassifications(classifications) {
 function validateCalculationMethod(calculationMethod, data) {
   const methods = {
     bracketed: {
-      required: ['brackets'],
+      required: ["brackets"],
       check: () => data.brackets && data.brackets.length > 0,
-      error: 'Bracketed calculation method requires at least one bracket'
+      error: "Bracketed calculation method requires at least one bracket",
     },
     classification: {
-      required: ['classifications'],
+      required: ["classifications"],
       check: () => data.classifications && data.classifications.length > 0,
-      error: 'Classification calculation method requires at least one classification'
+      error:
+        "Classification calculation method requires at least one classification",
     },
     yes_no: {
-      required: ['fixedAmount'],
+      required: ["fixedAmount"],
       check: () => data.fixedAmount !== undefined && data.fixedAmount !== null,
-      error: 'Yes/No calculation method requires fixedAmount'
+      error: "Yes/No calculation method requires fixedAmount",
     },
     per_unit: {
-      required: ['baseRate'],
+      required: ["baseRate"],
       check: () => data.baseRate !== undefined && data.baseRate !== null,
-      error: 'Per unit calculation method requires baseRate'
+      error: "Per unit calculation method requires baseRate",
     },
     percentage: {
-      required: ['baseRate'],
+      required: ["baseRate"],
       check: () => {
         if (data.baseRate === undefined || data.baseRate === null) return false;
         if (data.baseRate < 0 || data.baseRate > 100) return false;
         return true;
       },
-      error: 'Percentage calculation method requires baseRate between 0 and 100'
+      error:
+        "Percentage calculation method requires baseRate between 0 and 100",
     },
     custom: {
-      required: ['customCalculationMethod'],
+      required: ["customCalculationMethod"],
       check: () => data.customCalculationMethod,
-      error: 'Custom calculation method requires customCalculationMethod'
-    }
+      error: "Custom calculation method requires customCalculationMethod",
+    },
   };
 
   const validation = methods[calculationMethod];
@@ -152,12 +184,15 @@ function validateStringLengths(data) {
     unit: 50,
     unitSingular: 50,
     unitPlural: 50,
-    customCalculationMethod: 500
+    customCalculationMethod: 500,
   };
 
   for (const [field, limit] of Object.entries(limits)) {
     if (data[field] && data[field].length > limit) {
-      return { valid: false, error: `Field '${field}' exceeds maximum length of ${limit} characters` };
+      return {
+        valid: false,
+        error: `Field '${field}' exceeds maximum length of ${limit} characters`,
+      };
     }
   }
 
@@ -180,7 +215,10 @@ function validateLegalBasisUrls(legalBasis) {
       try {
         new URL(item.url);
       } catch (e) {
-        return { valid: false, error: `Legal basis at index ${i} has invalid URL: ${item.url}` };
+        return {
+          valid: false,
+          error: `Legal basis at index ${i} has invalid URL: ${item.url}`,
+        };
       }
     }
   }
@@ -194,8 +232,15 @@ function validateLegalBasisUrls(legalBasis) {
  * @returns {Object} { valid: boolean, error: string }
  */
 function validateUnitConsistency(data) {
-  if (data.unitSingular && data.unitPlural && data.unitSingular === data.unitPlural) {
-    return { valid: false, error: 'unitSingular and unitPlural must be different' };
+  if (
+    data.unitSingular &&
+    data.unitPlural &&
+    data.unitSingular === data.unitPlural
+  ) {
+    return {
+      valid: false,
+      error: "unitSingular and unitPlural must be different",
+    };
   }
   return { valid: true };
 }
@@ -209,13 +254,16 @@ function validateCustomIdFormat(customId) {
   if (!customId) {
     return { valid: true };
   }
-  
+
   // Expected format: VAR-XXX-XXX (e.g., VAR-001-001)
   const regex = /^VAR-[A-Z0-9]{3}-[A-Z0-9]{3}$/;
   if (!regex.test(customId)) {
-    return { valid: false, error: 'customId must match format VAR-XXX-XXX (e.g., VAR-001-001)' };
+    return {
+      valid: false,
+      error: "customId must match format VAR-XXX-XXX (e.g., VAR-001-001)",
+    };
   }
-  
+
   return { valid: true };
 }
 
@@ -226,5 +274,5 @@ module.exports = {
   validateStringLengths,
   validateLegalBasisUrls,
   validateUnitConsistency,
-  validateCustomIdFormat
+  validateCustomIdFormat,
 };

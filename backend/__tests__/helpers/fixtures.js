@@ -157,11 +157,12 @@ function getTestTokens(users) {
 function getStepUpHeaders(token, user) {
   const {
     signStepUpToken,
-  } = require("../../services/auth-service/src/middleware/auth");
+  } = require("../../services/business-service/src/middleware/auth");
   const stepUpToken = signStepUpToken(user._id).token;
   return {
     Authorization: `Bearer ${token}`,
     "X-Step-Up-Token": stepUpToken,
+    "x-csrf-token": "test-token", // Add CSRF token for tests
   };
 }
 

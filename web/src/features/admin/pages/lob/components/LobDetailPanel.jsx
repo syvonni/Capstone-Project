@@ -26,6 +26,8 @@ export default function LobDetailPanel({ lobId, lob, onSave }) {
   const [taxBrackets, setTaxBrackets] = useState([])
   const [documents, setDocuments] = useState([])
   const [postRequirements, setPostRequirements] = useState([])
+  const [loadingData, setLoadingData] = useState(false)
+  const [loadingTaxBrackets, setLoadingTaxBrackets] = useState(false)
 
   const isNew = lobId === 'new' || !lob
 
@@ -91,20 +93,27 @@ export default function LobDetailPanel({ lobId, lob, onSave }) {
     resetChangeTracking(initialValues)
   }, [form, initialValues, resetHistory, resetChangeTracking])
 
+  const loading = saving || loadingData || loadingTaxBrackets
+
   // Fetch variables, documents, and post requirements from API
   useEffect(() => {
     const fetchData = async () => {
-      const [varsRes, docsRes, postReqsRes] = await Promise.allSettled([
-        getVariables({ isActive: true }),
-        getDocuments({ isActive: true }),
-        getPostRequirements()
-      ])
-      if (varsRes.status === 'fulfilled') setVariables(varsRes.value)
-      else console.error('Failed to fetch variables:', varsRes.reason)
-      if (docsRes.status === 'fulfilled') setDocuments(docsRes.value)
-      else console.error('Failed to fetch documents:', docsRes.reason)
-      if (postReqsRes.status === 'fulfilled') setPostRequirements(postReqsRes.value)
-      else console.error('Failed to fetch post requirements:', postReqsRes.reason)
+      try {
+        setLoadingData(true)
+        const [varsRes, docsRes, postReqsRes] = await Promise.allSettled([
+          getVariables({ isActive: true }),
+          getDocuments({ isActive: true }),
+          getPostRequirements()
+        ])
+        if (varsRes.status === 'fulfilled') setVariables(varsRes.value)
+        else console.error('Failed to fetch variables:', varsRes.reason)
+        if (docsRes.status === 'fulfilled') setDocuments(docsRes.value)
+        else console.error('Failed to fetch documents:', docsRes.reason)
+        if (postReqsRes.status === 'fulfilled') setPostRequirements(postReqsRes.value)
+        else console.error('Failed to fetch post requirements:', postReqsRes.reason)
+      } finally {
+        setLoadingData(false)
+      }
     }
     fetchData()
   }, [])
@@ -117,11 +126,14 @@ export default function LobDetailPanel({ lobId, lob, onSave }) {
         return
       }
       try {
+        setLoadingTaxBrackets(true)
         const brackets = await getTaxBrackets({ lobId, isActive: true })
         setTaxBrackets(brackets)
       } catch (error) {
         console.error('Failed to fetch tax brackets:', error)
         setTaxBrackets([])
+      } finally {
+        setLoadingTaxBrackets(false)
       }
     }
     fetchTaxBrackets()
@@ -187,7 +199,7 @@ export default function LobDetailPanel({ lobId, lob, onSave }) {
         {isEditMode ? (
           <LobConfiguration form={form} handleFormValuesChange={handleFormValuesChange} variables={variables} documents={documents} postRequirements={postRequirements} />
         ) : (
-          <LobOverview lob={lob} initialValues={initialValues} variables={variables} documents={documents} postRequirements={postRequirements} taxBrackets={taxBrackets} token={token} />
+          <LobOverview lob={lob} initialValues={initialValues} variables={variables} documents={documents} postRequirements={postRequirements} taxBrackets={taxBrackets} token={token} loading={loading} />
         )}
       </div>
     </div>

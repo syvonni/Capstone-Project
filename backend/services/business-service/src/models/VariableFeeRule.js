@@ -56,7 +56,16 @@ const VariableFeeRuleSchema = new mongoose.Schema(
     calculationMethod: {
       type: String,
       required: true,
-      enum: ['floor_area', 'capitalization', 'gross_sales', 'per_unit', 'percentage', 'custom', 'bracketed', 'classification'],
+      enum: [
+        "floor_area",
+        "capitalization",
+        "gross_sales",
+        "per_unit",
+        "percentage",
+        "custom",
+        "bracketed",
+        "classification",
+      ],
     },
     customCalculationMethod: {
       type: String,

@@ -9,24 +9,24 @@ export const getDocuments = async (params = {}) => {
   if (category) queryParams.append('category', category)
   if (isActive !== undefined) queryParams.append('isActive', isActive)
   if (includeDrafts) queryParams.append('includeDrafts', 'true')
-  
+
   const res = await get(`/api/business/admin/documents?${queryParams.toString()}`)
-  return res?.data || []
+  return res || []
 }
 
 export const getDocument = async (id) => {
   const res = await get(`/api/business/admin/documents/${id}`)
-  return res?.data
+  return res
 }
 
 export const getDocumentDraft = async (id) => {
   const res = await get(`/api/business/admin/documents/${id}/draft`)
-  return res?.data
+  return res
 }
 
 export const saveDocumentDraft = async (id, data, options = {}) => {
   const res = await post(`/api/business/admin/documents/${id}/draft`, data, options)
-  return res?.data
+  return res
 }
 
 export const publishDocumentDraft = async (id, options = {}) => {
@@ -40,7 +40,7 @@ export const publishDocumentDraft = async (id, options = {}) => {
     headers,
     body: JSON.stringify({}),
   })
-  return res?.data
+  return res
 }
 
 export const createDocument = async (data, options = {}) => {
@@ -54,7 +54,7 @@ export const createDocument = async (data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const updateDocument = async (id, data, options = {}) => {
@@ -68,7 +68,7 @@ export const updateDocument = async (id, data, options = {}) => {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }
 
 export const disableDocument = async (id, options = {}) => {
@@ -80,7 +80,7 @@ export const disableDocument = async (id, options = {}) => {
     method: 'DELETE',
     headers,
   })
-  return res?.data
+  return res
 }
 
 // Audit History API

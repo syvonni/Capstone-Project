@@ -7,5 +7,6 @@ const BASE_PATH = '/api/admin/announcements'
  * @returns {Promise<object>} Announcements data
  */
 export async function getAnnouncements() {
-  return get(BASE_PATH, { skipAuth: true })
+  const res = await get(BASE_PATH, { skipAuth: true })
+  return res || []
 }

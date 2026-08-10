@@ -117,7 +117,7 @@ export default function BusinessOwnerRegisterModal({ open, onClose, onOwnerSelec
       if (values.suffix) searchParams.suffix = values.suffix
 
       const response = await businessOwnerService.searchBusinessOwners(searchParams, { page: 1, limit: 20 })
-      setSearchResults(response.data || [])
+      setSearchResults(response || [])
       setCanSubmit(true)
       setHasChecked(true)
     } catch (err) {

@@ -9,6 +9,7 @@ const correlationIdMiddleware = require("./middleware/correlationId");
 const {
   performanceMonitorMiddleware,
 } = require("./middleware/performanceMonitor");
+const { entityPerformanceMiddleware } = require("./middleware/entityPerformanceMiddleware");
 const { securityMonitorMiddleware } = require("./middleware/securityMonitor");
 const errorHandlerMiddleware = require("./middleware/errorHandler");
 const http = require("http");
@@ -46,6 +47,7 @@ app.use(
 // Structured Logging & Monitoring Middleware (early in chain)
 app.use(correlationIdMiddleware);
 app.use(performanceMonitorMiddleware);
+app.use(entityPerformanceMiddleware);
 app.use(securityMonitorMiddleware);
 
 // Middleware
@@ -101,9 +103,7 @@ app.use(
   "/api/admin",
   createCsrfMiddleware({
     cookieName: "csrf-token-admin",
-    skipPaths: [
-      "/api/admin/csrf-token",
-    ],
+    skipPaths: ["/api/admin/csrf-token"],
     disabled: csrfDisabled,
   }),
 );
@@ -141,7 +141,6 @@ app.use((req, res, next) => {
   }
   // Return 503 Service Unavailable - frontend should retry
   return res.status(503).json({
-    ok: false,
     error: {
       code: "service_starting",
       message: "Service is starting, please retry",
@@ -152,7 +151,6 @@ app.use((req, res, next) => {
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({
-    ok: true,
     service: "admin-service",
     timestamp: new Date().toISOString(),
     database:
@@ -205,7 +203,7 @@ app.use("/api/cms", cmsPublicRouter);
 app.use("/api/admin/cms", cmsAdminRouter);
 
 // Staff personal activity endpoint
-const axios = require("axios");
+const { auditClient } = require("../../../shared/lib/httpClient");
 const {
   requireJwt: requireJwtForActivity,
   requireRole: requireRoleForActivity,
@@ -227,12 +225,6 @@ app.get(
             : null;
 
       // Query audit-service for logs
-      const auditServiceUrl =
-        process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-      const headers = { "Content-Type": "application/json" };
-      if (process.env.AUDIT_SERVICE_API_KEY)
-        headers["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;
-
       const params = {
         userId,
         limit: 100,
@@ -243,12 +235,11 @@ app.get(
         params.startDate = dateFilter.toISOString();
       }
 
-      const response = await axios.get(`${auditServiceUrl}/api/audit/logs`, {
-        headers,
+      const response = await auditClient.get(`/api/audit/logs`, {
         params,
       });
 
-      const auditLogs = response.data.logs || [];
+      const auditLogs = response.logs || [];
       const approved = auditLogs.filter((l) =>
         (l.eventType || l.action || "").includes("approved"),
       ).length;
@@ -340,7 +331,10 @@ async function start() {
         const { seedPermitFormsIfEmpty } = require("./seed/seedPermitForms");
         const result = await seedPermitFormsIfEmpty();
         if (result.seeded) {
-          logger.info("Permit forms seeded", { created: result.created, updated: result.updated });
+          logger.info("Permit forms seeded", {
+            created: result.created,
+            updated: result.updated,
+          });
         }
       } catch (error) {
         logger.warn("Permit forms seed failed", { error: error.message });
@@ -397,7 +391,10 @@ async function start() {
           if (result.seeded) {
             logger.info("Announcements seeded", { created: result.created });
             break;
-          } else if (result.reason === "missing admin role" || result.reason === "missing admin user") {
+          } else if (
+            result.reason === "missing admin role" ||
+            result.reason === "missing admin user"
+          ) {
             // Retry if admin user/role not ready yet (race condition with auth-service)
             logger.warn(
               `Announcements seed attempt ${attempt}/${maxSeedRetries} failed: ${result.reason}`,
@@ -411,7 +408,9 @@ async function start() {
             }
           } else {
             // Don't retry for other reasons (e.g., already has documents)
-            logger.info("Announcements seed skipped", { reason: result.reason });
+            logger.info("Announcements seed skipped", {
+              reason: result.reason,
+            });
             break;
           }
         } catch (error) {

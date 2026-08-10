@@ -18,24 +18,28 @@ dotenv.config({
 });
 
 const VariableFeeRule = require("../models/VariableFeeRule");
-const { variableFeeRules: REFERENCE_VARIABLE_FEE_RULES } = require("./comprehensiveFeeSeederReference");
+const {
+  variableFeeRules: REFERENCE_VARIABLE_FEE_RULES,
+} = require("./comprehensiveFeeSeederReference");
 
 // Transform reference data to match the VariableFeeRule model
-const VARIABLE_FEE_RULES_SEED_DATA = REFERENCE_VARIABLE_FEE_RULES.map(rule => {
-  return {
-    customId: rule._id, // Use customId for reference mapping
-    name: rule.name,
-    notes: rule.notes || '',
-    question: rule.question || '',
-    calculationMethod: rule.calculationMethod,
-    customCalculationMethod: rule.customCalculationMethod || null,
-    baseRate: rule.baseRate,
-    unit: rule.unit,
-    brackets: rule.brackets || [],
-    classifications: rule.classifications || [],
-    isActive: rule.isActive !== false,
-  };
-});
+const VARIABLE_FEE_RULES_SEED_DATA = REFERENCE_VARIABLE_FEE_RULES.map(
+  (rule) => {
+    return {
+      customId: rule._id, // Use customId for reference mapping
+      name: rule.name,
+      notes: rule.notes || "",
+      question: rule.question || "",
+      calculationMethod: rule.calculationMethod,
+      customCalculationMethod: rule.customCalculationMethod || null,
+      baseRate: rule.baseRate,
+      unit: rule.unit,
+      brackets: rule.brackets || [],
+      classifications: rule.classifications || [],
+      isActive: rule.isActive !== false,
+    };
+  },
+);
 
 async function seed() {
   const mongoUri =
@@ -54,7 +58,7 @@ async function seed() {
   console.log("\nSeeding Variable Fee Rules...");
   for (const ruleData of VARIABLE_FEE_RULES_SEED_DATA) {
     const existing = await VariableFeeRule.findOne({ name: ruleData.name });
-    
+
     if (!existing) {
       // Insert new
       await VariableFeeRule.create({
@@ -62,16 +66,18 @@ async function seed() {
         version: 1,
       });
       totalUpserted++;
-      console.log(`  + Seeded: ${ruleData.name} (${ruleData.calculationMethod}, ₱${ruleData.baseRate}/${ruleData.unit})`);
+      console.log(
+        `  + Seeded: ${ruleData.name} (${ruleData.calculationMethod}, ₱${ruleData.baseRate}/${ruleData.unit})`,
+      );
     } else {
       // Check if any fields need updating
-      const needsUpdate = 
+      const needsUpdate =
         existing.calculationMethod !== ruleData.calculationMethod ||
         existing.baseRate !== ruleData.baseRate ||
         existing.unit !== ruleData.unit ||
         existing.question !== ruleData.question ||
         existing.notes !== ruleData.notes;
-      
+
       if (needsUpdate) {
         await VariableFeeRule.updateOne(
           { name: ruleData.name },
@@ -82,8 +88,8 @@ async function seed() {
               unit: ruleData.unit,
               question: ruleData.question,
               notes: ruleData.notes,
-            }
-          }
+            },
+          },
         );
         totalUpdated++;
         console.log(`  ~ Updated: ${ruleData.name}`);
@@ -136,10 +142,10 @@ async function seedIfEmpty() {
 async function seedForce() {
   try {
     // Clear all existing variable fee rules with timeout handling
-    console.log('Clearing existing variable fee rules...');
+    console.log("Clearing existing variable fee rules...");
     await VariableFeeRule.deleteMany({}).maxTimeMS(30000);
-    console.log('Cleared existing data');
-    
+    console.log("Cleared existing data");
+
     let totalUpserted = 0;
 
     for (const ruleData of VARIABLE_FEE_RULES_SEED_DATA) {
@@ -160,19 +166,21 @@ module.exports = { seed, seedIfEmpty, seedForce };
 
 // Run seed if called directly
 if (require.main === module) {
-  const force = process.argv.includes('--force');
+  const force = process.argv.includes("--force");
   if (force) {
-    seedForce().then((result) => {
-      if (result.seeded) {
-        console.log(`Force seeded ${result.count} variable fee rules`);
-      } else {
-        console.error('Force seed failed:', result.error);
-      }
-      process.exit(result.seeded ? 0 : 1);
-    }).catch((err) => {
-      console.error("Seed failed:", err);
-      process.exit(1);
-    });
+    seedForce()
+      .then((result) => {
+        if (result.seeded) {
+          console.log(`Force seeded ${result.count} variable fee rules`);
+        } else {
+          console.error("Force seed failed:", result.error);
+        }
+        process.exit(result.seeded ? 0 : 1);
+      })
+      .catch((err) => {
+        console.error("Seed failed:", err);
+        process.exit(1);
+      });
   } else {
     seed().catch((err) => {
       console.error("Seed failed:", err);

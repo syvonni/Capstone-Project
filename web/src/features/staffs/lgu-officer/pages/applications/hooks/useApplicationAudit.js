@@ -104,7 +104,7 @@ export function useApplicationAppeals(application) {
     const fetchAppeal = async () => {
       try {
         const res = await getAppealsByBusiness(businessId)
-        const appeals = res?.data || []
+        const appeals = res || []
         const activeAppeal = appeals[0] || null
         setLatestAppeal(activeAppeal)
       } catch (err) {
@@ -125,7 +125,7 @@ export function useApplicationAppeals(application) {
 
     try {
       const res = await getAppealsByBusiness(businessId)
-      const appeals = res?.data || []
+      const appeals = res || []
       const activeAppeal = appeals.find(a => a.status === 'submitted' || a.status === 'under_review')
       return activeAppeal || null
     } catch (err) {

@@ -11,7 +11,9 @@
  */
 
 const { recordMetric } = require("../../../../shared/lib/performanceMonitor");
-const { shouldTrackOperation } = require("../../../../shared/lib/entityPerformanceConfig");
+const {
+  shouldTrackOperation,
+} = require("../../../../shared/lib/entityPerformanceConfig");
 
 /**
  * Extracts entity type from request path
@@ -31,6 +33,8 @@ function extractEntityType(path) {
     "/checklists": "checklist",
     "/lobs": "lob",
     "/violations": "violation",
+    "/inspection-items": "inspectionItem",
+    "/post-requirements": "postRequirement",
   };
 
   for (const [pathSegment, entityType] of Object.entries(entityMap)) {
@@ -63,6 +67,19 @@ function entityPerformanceMiddleware(req, res, next) {
     const success = res.statusCode < 400;
 
     try {
+      // Prepare error context if request failed
+      let errorContext = null;
+      if (!success) {
+        // Basic error context from response status
+        errorContext = {
+          errorName: 'HttpError',
+          errorMessage: `HTTP ${res.statusCode} Error`,
+          errorCode: res.statusCode.toString(),
+          severity: res.statusCode >= 500 ? 'high' : 'medium',
+          correlationId: req.correlationId,
+        };
+      }
+
       // Record metric to database
       await recordMetric(
         entityType,
@@ -71,6 +88,7 @@ function entityPerformanceMiddleware(req, res, next) {
         success,
         req.path,
         req._userId || null,
+        errorContext,
       );
     } catch (err) {
       // Don't block the request if recording fails

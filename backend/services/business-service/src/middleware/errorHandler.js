@@ -47,7 +47,6 @@ function errorHandlerMiddleware(err, req, res, next) {
   // Create safe error response
   const isProduction = process.env.NODE_ENV === "production";
   const errorResponse = {
-    ok: false,
     error: {
       code: err.code || "server_error",
       message:

@@ -14,7 +14,7 @@ const CALCULATION_METHOD_OPTIONS = [
   { value: 'custom', label: 'Custom' },
 ]
 
-export default function VariableFeeOverview({ rule, _token, _dependentLobs = [], _loadingLobs = false, _derivedCategoryOptions = [], associatedVariables = [], _loadingVariables = false }) {
+export default function VariableFeeOverview({ rule, _token, _dependentLobs = [], _loadingLobs = false, _derivedCategoryOptions = [], associatedVariables = [], loading = false }) {
   const displayValues = {
     name: rule?.name || '-',
     calculationMethod: rule?.calculationMethod,
@@ -78,6 +78,7 @@ export default function VariableFeeOverview({ rule, _token, _dependentLobs = [],
     <div>
       <InfoGrid
         noPadding
+        loading={loading}
         items={infoGridItems}
       />
     </div>

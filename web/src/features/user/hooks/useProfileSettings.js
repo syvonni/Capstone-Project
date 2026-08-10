@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react'
-import { message, theme } from 'antd'
+import { message } from 'antd'
 import useProfile from '@/features/authentication/hooks/useProfile'
 import { useAuthSession } from '@/features/authentication'
-import { THEMES } from '@/shared/theme/ThemeProvider'
 import { getOffices, resolveOfficeLabel } from '@/shared/services/officeService'
-import { useThemeSettings } from '@/features/user/hooks/useThemeSettings'
 import { usePasskeyStatus } from '@/features/user/hooks/usePasskeyStatus'
 
 export function useProfileSettings() {
   const { user } = useProfile()
   const { currentUser, role } = useAuthSession()
-  const { token } = theme.useToken()
   const [messageApi, contextHolder] = message.useMessage()
   const [selectedTab, setSelectedTab] = useState('general')
   const [offices, setOffices] = useState([])
@@ -23,7 +20,6 @@ export function useProfileSettings() {
   const isBusinessOwner = roleSlug === 'business_owner'
 
   const { passkeyEnabled, passkeyLoading } = usePasskeyStatus(currentUser)
-  const themeSettings = useThemeSettings(messageApi)
 
   useEffect(() => {
     if (isAdmin) setSettingsLastUpdated(new Date())
@@ -49,7 +45,6 @@ export function useProfileSettings() {
     user,
     currentUser,
     role,
-    token,
     messageApi,
     contextHolder,
     selectedTab,
@@ -65,7 +60,5 @@ export function useProfileSettings() {
     setSettingsLastUpdated,
     settingsInfoOpen,
     setSettingsInfoOpen,
-    brandColor: themeSettings.pendingTheme === THEMES.DEFAULT ? '#003a70' : token?.colorPrimary,
-    themeSettings,
   }
 }

@@ -12,40 +12,40 @@
  *   .catch((err) => console.error("Failed to log audit event for inspection item create", err));
  */
 
-const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
-const { trackChanges } = require('../changeTracker');
-const { logAuditEvent } = require('../auditClient');
-const Violation = require('../../models/Violation');
+const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
+const { trackChanges } = require("../changeTracker");
+const { logAuditEvent } = require("../auditClient");
+const Violation = require("../../models/Violation");
 
 /**
  * Helper function to enrich single relationship with name
  */
 async function enrichSingleRelation(id, Model) {
   if (!id) return null;
-  const entity = await Model.findById(id).select('_id name').lean();
+  const entity = await Model.findById(id).select("_id name").lean();
   return entity ? { id: entity._id.toString(), name: entity.name } : null;
 }
 
 const INSPECTION_ITEM_METADATA_MAPPING = {
-  customId: 'customId',
-  name: 'name',
-  question: 'question',
-  notes: 'notes',
-  legalBasis: 'legalBasis',
-  violationId: 'violationId',
-  isActive: 'isActive',
-  version: 'version',
+  customId: "customId",
+  name: "name",
+  question: "question",
+  notes: "notes",
+  legalBasis: "legalBasis",
+  violationId: "violationId",
+  isActive: "isActive",
+  version: "version",
 };
 
 const INSPECTION_ITEM_FIELD_MAPPING = {
-  customId: 'customId',
-  name: 'name',
-  question: 'question',
-  notes: 'notes',
-  legalBasis: 'legalBasis',
-  violationId: 'violationId',
-  isActive: 'isActive',
-  version: 'version',
+  customId: "customId",
+  name: "name",
+  question: "question",
+  notes: "notes",
+  legalBasis: "legalBasis",
+  violationId: "violationId",
+  isActive: "isActive",
+  version: "version",
 };
 
 /**
@@ -69,29 +69,35 @@ class InspectionItemAuditHelper {
    */
   static async logCreated(req, userId, userInfo, inspectionItem, role) {
     // Enrich violationId with name
-    const violationWithNames = await enrichSingleRelation(inspectionItem.violationId, Violation);
+    const violationWithNames = await enrichSingleRelation(
+      inspectionItem.violationId,
+      Violation,
+    );
 
     const enrichedInspectionItem = {
-      ...inspectionItem.toObject ? inspectionItem.toObject() : inspectionItem,
-      violationId: violationWithNames
+      ...(inspectionItem.toObject ? inspectionItem.toObject() : inspectionItem),
+      violationId: violationWithNames,
     };
 
     const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
-      .withEntityFields(enrichedInspectionItem, INSPECTION_ITEM_METADATA_MAPPING)
+      .withEntityFields(
+        enrichedInspectionItem,
+        INSPECTION_ITEM_METADATA_MAPPING,
+      )
       .withEntitySnapshots(null, inspectionItem) // No old snapshot for creation
       .build();
 
     return await logAuditEvent(
-      'inspection_item_created',
+      "inspection_item_created",
       userId,
-      'InspectionItem',
+      "InspectionItem",
       inspectionItem._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 
@@ -109,11 +115,23 @@ class InspectionItemAuditHelper {
    * @param {string} role - User role
    * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
-  static async logUpdated(req, userId, userInfo, oldInspectionItem, newInspectionItem, role) {
+  static async logUpdated(
+    req,
+    userId,
+    userInfo,
+    oldInspectionItem,
+    newInspectionItem,
+    role,
+  ) {
     // Track changes between old and new inspection item
-    const changes = trackChanges(oldInspectionItem, newInspectionItem, INSPECTION_ITEM_FIELD_MAPPING, {
-      ignoreFields: ['updatedAt', 'version'], // Ignore these fields
-    });
+    const changes = trackChanges(
+      oldInspectionItem,
+      newInspectionItem,
+      INSPECTION_ITEM_FIELD_MAPPING,
+      {
+        ignoreFields: ["updatedAt", "version"], // Ignore these fields
+      },
+    );
 
     // If no changes, don't log anything
     if (changes.length === 0) {
@@ -121,18 +139,26 @@ class InspectionItemAuditHelper {
     }
 
     // Enrich violationId with name
-    const violationWithNames = await enrichSingleRelation(newInspectionItem.violationId, Violation);
+    const violationWithNames = await enrichSingleRelation(
+      newInspectionItem.violationId,
+      Violation,
+    );
 
     const enrichedInspectionItem = {
-      ...newInspectionItem.toObject ? newInspectionItem.toObject() : newInspectionItem,
-      violationId: violationWithNames
+      ...(newInspectionItem.toObject
+        ? newInspectionItem.toObject()
+        : newInspectionItem),
+      violationId: violationWithNames,
     };
 
     // Build base metadata
     const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
-      .withEntityFields(enrichedInspectionItem, INSPECTION_ITEM_METADATA_MAPPING)
+      .withEntityFields(
+        enrichedInspectionItem,
+        INSPECTION_ITEM_METADATA_MAPPING,
+      )
       .withEntitySnapshots(oldInspectionItem, newInspectionItem)
       .withChangeTracking(changes)
       .withCustomFields({
@@ -143,14 +169,14 @@ class InspectionItemAuditHelper {
 
     // Log a single audit event for all field changes
     const auditLog = await logAuditEvent(
-      'inspection_item_updated',
+      "inspection_item_updated",
       userId,
-      'InspectionItem',
+      "InspectionItem",
       newInspectionItem._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
 
     return auditLog;
@@ -171,32 +197,41 @@ class InspectionItemAuditHelper {
    */
   static async logDisabled(req, userId, userInfo, inspectionItem, role) {
     // Enrich violationId with name
-    const violationWithNames = await enrichSingleRelation(inspectionItem.violationId, Violation);
+    const violationWithNames = await enrichSingleRelation(
+      inspectionItem.violationId,
+      Violation,
+    );
 
     const enrichedInspectionItem = {
-      ...inspectionItem.toObject ? inspectionItem.toObject() : inspectionItem,
-      violationId: violationWithNames
+      ...(inspectionItem.toObject ? inspectionItem.toObject() : inspectionItem),
+      violationId: violationWithNames,
     };
 
     const metadata = new AuditMetadataBuilder(req)
       .withUserInfo(userInfo)
       .withRequestInfo()
-      .withEntityFields(enrichedInspectionItem, INSPECTION_ITEM_METADATA_MAPPING)
-      .withEntitySnapshots(inspectionItem, { ...inspectionItem, isActive: false }) // Snapshot before and after
+      .withEntityFields(
+        enrichedInspectionItem,
+        INSPECTION_ITEM_METADATA_MAPPING,
+      )
+      .withEntitySnapshots(inspectionItem, {
+        ...inspectionItem,
+        isActive: false,
+      }) // Snapshot before and after
       .withCustomFields({
-        previousStatus: inspectionItem.isActive ? 'active' : 'inactive',
+        previousStatus: inspectionItem.isActive ? "active" : "inactive",
       })
       .build();
 
     return await logAuditEvent(
-      'inspection_item_disabled',
+      "inspection_item_disabled",
       userId,
-      'InspectionItem',
+      "InspectionItem",
       inspectionItem._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 }

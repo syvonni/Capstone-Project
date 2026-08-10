@@ -82,7 +82,7 @@ export function useApplicationPendingActions(
     }
     try {
       const res = await getAppealsByBusiness(businessId)
-      const appeals = res?.data || []
+      const appeals = res || []
       const activeAppeal = appeals.find(a => a.status === 'submitted' || a.status === 'under_review')
       if (!activeAppeal) {
         message.error('No active appeal found for this application')
@@ -103,7 +103,7 @@ export function useApplicationPendingActions(
     const businessId = application?.businessId || application?.applicationId
     try {
       const res = await getAppealsByBusiness(businessId)
-      const appeals = res?.data || []
+      const appeals = res || []
       const activeAppeal = appeals.find(a => a.status === 'submitted' || a.status === 'under_review')
       if (!activeAppeal) {
         message.error('No active appeal found for this application')

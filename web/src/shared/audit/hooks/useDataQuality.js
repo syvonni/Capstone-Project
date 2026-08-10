@@ -16,14 +16,12 @@ export function useDataQuality(entityType, shouldFetch = true) {
    * Fetch data quality issues for this entity type
    */
   useEffect(() => {
-    console.log("useDataQuality hook called with:", { entityType, shouldFetch });
     if (!shouldFetch || !entityType) {
       setIssues([]);
       return;
     }
 
     const fetchDataQuality = async () => {
-      console.log("Fetching data quality issues for:", entityType);
       setLoading(true);
       setError(null);
       try {
@@ -42,9 +40,7 @@ export function useDataQuality(entityType, shouldFetch = true) {
           throw new Error(`Unknown entity type: ${entityType}`);
         }
 
-        console.log("Calling endpoint:", endpoint);
         const res = await get(endpoint);
-        console.log("Data quality response:", res);
         const data = res || {};
         setIssues(data.issues || []);
         setTotalEntities(data.totalEntities || 0);

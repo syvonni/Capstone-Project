@@ -2,14 +2,14 @@ import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle, 
 import { Form } from '@/shared/components/AppForm'
 import { Typography, Button, Space, Result, Grid, theme, App, Empty } from 'antd'
 import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
-import DynamicFormRenderer from './ApplicationDynamicFormRenderer'
+import DynamicFormRenderer from '@/shared/components/formPreview/DynamicFormRenderer'
 import { filterSectionsByFormValues } from '../../../utils/formUtils.js'
 import { resolveIpfsUrl } from '@/lib/ipfsUtils'
 import ApplicationTypeSelector from '../../../components/onboarding/ApplicationTypeSelector'
-import GeneralPermitCategorySelector from '../../../components/onboarding/GeneralPermitCategorySelector'
+import TemporaryPermitSelector from '../../../components/onboarding/TemporaryPermitSelector'
 import ApplicationOverview from './ApplicationOverview'
+import ApplicationHeader from './ApplicationHeader'
 import { formDataWithDayjs } from '../../../utils/businessFormUtils'
-import { GENERAL_PERMIT_CATEGORIES } from '../constants'
 import useBusinessFormSubmit from '../hooks/useBusinessFormSubmit'
 import useApplicationAutosave from '../hooks/useApplicationAutosave'
 import { calculateRevisionFieldKeys } from '../../../utils/formUtils.js'
@@ -272,10 +272,18 @@ export default forwardRef(function PermitApplicationForm({
   // Load form definition when editing
   useEffect(() => {
     if (isEditing) {
-      const type = editingApplication?.formType || 'permit'
-      fetchFormDefinition(type, editingApplication?.category, isEditing, setFormDefinition, setStep, setActiveSectionIndex, setFormValues, form)
+      // Use formId if available, otherwise fall back to formType for backward compatibility
+      const formId = editingApplication?.formId || editingApplication?.formType || 'unified-business-permit'
+      fetchFormDefinition(formId, editingApplication?.category, isEditing, setFormDefinition, setStep, setActiveSectionIndex, setFormValues, form)
     }
-  }, [isEditing, editingApplication?.formType, editingApplication?.category, editingApplication?.businessId, editingApplication?._id, fetchFormDefinition, setFormDefinition, setStep, setActiveSectionIndex, setFormValues, form])
+  }, [isEditing, editingApplication?.formId, editingApplication?.formType, editingApplication?.category, editingApplication?.businessId, editingApplication?._id, fetchFormDefinition, setFormDefinition, setStep, setActiveSectionIndex, setFormValues, form])
+
+  // Load form definition when creating new application with formId
+  useEffect(() => {
+    if (!isEditing && registrationType && registrationType !== 'general' && step === 'type_selection') {
+      fetchFormDefinition(registrationType, null, false, setFormDefinition, setStep, setActiveSectionIndex, setFormValues, form)
+    }
+  }, [isEditing, registrationType, step, fetchFormDefinition, setFormDefinition, setStep, setActiveSectionIndex, setFormValues, form])
 
   // Set form values when editing and form definition is loaded
   useEffect(() => {
@@ -362,19 +370,29 @@ export default forwardRef(function PermitApplicationForm({
               overflow: 'hidden',
             }}
           >
-            {!isEditing && (
-              <div>
-                <Title level={4} style={{ marginBottom: 4 }}>
-                  {registrationType === 'general_permit'
-                    ? `General Permit - ${GENERAL_PERMIT_CATEGORIES.find(c => c.value === generalPermitCategory)?.label || 'Application'}`
-                    : 'New Business Application'
-                  }
-                </Title>
-                <Paragraph style={{ margin: 0 }}>
-                  Complete each section below.
-                </Paragraph>
-              </div>
-            )}
+          {!isEditing && formDefinition && (
+            <ApplicationHeader
+              business={{
+                businessName: formDefinition.name || 'New Application',
+                applicationStatus: 'draft',
+              }}
+              isDraft={true}
+              isReturned={false}
+              formSubmitting={submitting}
+              isMobile={isMobile}
+              onDeleteDraft={() => {
+                // Handle draft deletion for new applications
+                _onBack()
+              }}
+              onPaymentSuccess={handlePaymentSuccess}
+              onFillTestData={doFillTestData}
+              allSectionsComplete={allSectionsComplete}
+              token={token}
+              isAutosaving={false}
+              hasUnsavedChanges={hasUnsavedChanges}
+              isFooter={false}
+            />
+          )}
 
           {embedded && isResubmissionMode && (
             <div style={{ flexShrink: 0, marginBottom: 16 }}>
@@ -394,6 +412,7 @@ export default forwardRef(function PermitApplicationForm({
           {/* Form with two-panel layout */}
           <Form
             form={form}
+            requiredMark={false}
             layout="vertical"
             onFinish={(values) => handleSubmit(values, true)}
             onValuesChange={handleFormValuesChange}
@@ -493,7 +512,6 @@ export default forwardRef(function PermitApplicationForm({
                         console.error('Auto-save draft failed:', err)
                       }
                     }}
-                    formDataKey={editingApplication?.businessId ?? editingApplication?._id ?? draftBusinessId ?? 'new'}
                     documents={(() => {
                       const lguDocs = editingApplication?.lguDocuments || editingApplication?.documentCids || {}
                       const resolved = { ...lguDocs }
@@ -532,7 +550,7 @@ export default forwardRef(function PermitApplicationForm({
             ) : step === 'type_selection' ? (
               <ApplicationTypeSelector onSelect={handleTypeSelect} />
             ) : step === 'category_selection' ? (
-              <GeneralPermitCategorySelector
+              <TemporaryPermitSelector
                 onSelect={handleCategorySelect}
                 onBack={() => {
                   if (_onBack) {

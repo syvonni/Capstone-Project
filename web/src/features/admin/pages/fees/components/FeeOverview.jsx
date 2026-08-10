@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import InfoGrid from '@/shared/components/InfoGrid'
 
-export default function FeeOverview({ fee, _token, violations = [], _loading = false, claimableDocument = null, permitForm = null }) {
+export default function FeeOverview({ fee, _token, violations = [], loading = false, claimableDocument = null, permitForm = null }) {
   const isPenaltyFee = fee?.category === 'penalty'
   const isClaimableDocumentFee = fee?.category === 'claimable_document'
   const isApplicationFee = fee?.category === 'application_fee'
@@ -29,6 +29,7 @@ export default function FeeOverview({ fee, _token, violations = [], _loading = f
     <div style={{ padding: '24px' }}>
       <InfoGrid
         noPadding
+        loading={loading}
         items={infoGridItems}
       />
     </div>

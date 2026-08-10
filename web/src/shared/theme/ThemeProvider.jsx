@@ -42,6 +42,9 @@ const themeConfig = {
         colorGold: '#faad14',
         colorLime: '#a0d911',
         colorGeekblue: '#2f54eb',
+        // Custom subtle background colors
+        colorErrorBgSubtle: '#fff5f5',
+        colorWarningBgSubtle: '#fefcf0',
       },
     },
   },
@@ -53,10 +56,12 @@ const themeConfig = {
         fontFamily: "'Urbanist', sans-serif",
         colorPrimary: '#177ddc', // Ant Design Dark Blue - Clearer on dark
         colorBgBase: '#141414', // Standard Dark Grey (Better for eyes than #000000)
-        colorBgContainer: '#1f1f1f', // Lighter container
+        colorBgContainer: '#090909', // Lighter container
+        colorBgElevated: '#1f1f1f', // Elevated background for popups (toasts, notifications, modals)
         colorBgLayout: '#000000', // Deep black for layout background
         colorTextBase: 'rgba(255, 255, 255, 0.85)', // High readability but not harsh
-        colorBorder: '#303030',
+        colorBorder: '#232323',
+        colorBorderSecondary: '#232323',
         // Ant Design preset colors (lighter versions for dark theme)
         colorPurple: '#9254de',
         colorVolcano: '#ff7a45',
@@ -65,6 +70,9 @@ const themeConfig = {
         colorGold: '#faad14',
         colorLime: '#a0d911',
         colorGeekblue: '#2f54eb',
+        // Custom subtle background colors for dark mode
+        colorErrorBgSubtle: '#1b0b0b',
+        colorWarningBgSubtle: '#151008',
       },
       components: {
         Layout: {
@@ -73,10 +81,10 @@ const themeConfig = {
           siderBg: '#141414',
         },
         Card: {
-          colorBgContainer: '#1f1f1f', // Distinct card background
+          colorBgContainer: '#090909', // Distinct card background
         },
         Table: {
-          colorBgContainer: '#1f1f1f',
+          colorBgContainer: '#090909',
         },
         Menu: {
           darkItemBg: '#141414',
@@ -362,6 +370,30 @@ export function ThemeProvider({ children }) {
   })();
   const displayTheme = isPublicPage ? THEMES.DEFAULT : resolvedTheme;
 
+  // Set CSS variables for message/notification background colors (workaround for Ant Design 5 bug)
+  useEffect(() => {
+    const root = document.documentElement;
+    const isDark = displayTheme === THEMES.DARK;
+    
+    if (isDark) {
+      root.style.setProperty('--message-bg', '#1f1f1f');
+      root.style.setProperty('--message-text', 'rgb(255 255 255 / 85%)');
+      root.style.setProperty('--notification-bg', '#1f1f1f');
+      root.style.setProperty('--notification-text', 'rgb(255 255 255 / 85%)');
+      root.style.setProperty('--scrollbar-thumb', 'rgb(255 255 255 / 10%)');
+      root.style.setProperty('--scrollbar-thumb-hover', 'rgb(255 255 255 / 30%)');
+      root.style.setProperty('--scrollbar-track', 'rgb(255 255 255 / 2%)');
+    } else {
+      root.style.setProperty('--message-bg', '#fff');
+      root.style.setProperty('--message-text', 'rgb(0 0 0 / 88%)');
+      root.style.setProperty('--notification-bg', '#fff');
+      root.style.setProperty('--notification-text', 'rgb(0 0 0 / 88%)');
+      root.style.setProperty('--scrollbar-thumb', 'rgb(0 0 0 / 10%)');
+      root.style.setProperty('--scrollbar-thumb-hover', 'rgb(0 0 0 / 30%)');
+      root.style.setProperty('--scrollbar-track', 'rgb(0 0 0 / 1%)');
+    }
+  }, [displayTheme]);
+
   // Store custom theme overrides (primary color, border radius, etc.)
   const [themeOverrides, setThemeOverrides] = useState(() => {
     // Get the actual user (from memory or storage) to load overrides
@@ -506,6 +538,8 @@ export function ThemeProvider({ children }) {
   const messageFontOverride = {
     Message: {
       fontFamily: activeThemeConfig.config.token.fontFamily,
+      contentBg: activeThemeConfig.config.token.colorBgElevated || activeThemeConfig.config.token.colorBgContainer,
+      colorText: activeThemeConfig.config.token.colorTextBase,
     },
   };
 
@@ -513,6 +547,15 @@ export function ThemeProvider({ children }) {
   const modalOverride = {
     Modal: {
       fontFamily: activeThemeConfig.config.token.fontFamily,
+    },
+  };
+
+  // Notification override to ensure notifications respect theme colors
+  const notificationOverride = {
+    Notification: {
+      colorBgElevated: activeThemeConfig.config.token.colorBgElevated || activeThemeConfig.config.token.colorBgContainer,
+      colorText: activeThemeConfig.config.token.colorTextBase,
+      colorTextHeading: activeThemeConfig.config.token.colorTextBase,
     },
   };
 
@@ -537,6 +580,7 @@ export function ThemeProvider({ children }) {
       ...navyColorOverrides,
       ...messageFontOverride,
       ...modalOverride,
+      ...notificationOverride,
     }
   };
 

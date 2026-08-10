@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const { ok: respondOk, error: respondError } = require("../../middleware/respond");
+const {
+  ok: respondOk,
+  error: respondError,
+} = require("../../middleware/respond");
 const BusinessProfile = require("../../models/BusinessProfile");
 const Lob = require("../../models/Lob");
 const PostRequirement = require("../../models/PostRequirement");
@@ -58,7 +61,12 @@ router.get("/stats", async (req, res) => {
     });
   } catch (err) {
     console.error("GET /api/public/business/stats error:", err);
-    return respondError(res, 500, "stats_error", "Failed to fetch public stats");
+    return respondError(
+      res,
+      500,
+      "stats_error",
+      "Failed to fetch public stats",
+    );
   }
 });
 
@@ -72,12 +80,12 @@ router.get("/lobs", async (req, res) => {
     if (_id) filter._id = _id;
 
     const lobs = await Lob.find(filter)
-      .populate('variables')
-      .populate('documents')
-      .populate('postRequirements.required')
-      .populate('postRequirements.conditional')
+      .populate("variables")
+      .populate("documents")
+      .populate("postRequirements.required")
+      .populate("postRequirements.conditional")
       .sort({ category: 1, name: 1 });
-    return respondOk(res, 200, { data: lobs });
+    return respondOk(res, 200, lobs);
   } catch (err) {
     console.error("GET /api/public/business/lobs error:", err);
     return respondError(res, 500, "lobs_error", "Failed to fetch LOBs");
@@ -91,11 +99,18 @@ router.get("/post-requirements", async (req, res) => {
     const filter = { isActive: true };
     if (isActive !== undefined) filter.isActive = isActive === "true";
 
-    const postRequirements = await PostRequirement.find(filter).sort({ code: 1 });
-    return respondOk(res, 200, { data: postRequirements });
+    const postRequirements = await PostRequirement.find(filter).sort({
+      code: 1,
+    });
+    return respondOk(res, 200, postRequirements);
   } catch (err) {
     console.error("GET /api/public/business/post-requirements error:", err);
-    return respondError(res, 500, "post_requirements_error", "Failed to fetch PostRequirements");
+    return respondError(
+      res,
+      500,
+      "post_requirements_error",
+      "Failed to fetch PostRequirements",
+    );
   }
 });
 

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { addBusiness } from '../../../services/businessProfileService'
-import { GENERAL_PERMIT_CATEGORIES } from '../constants'
+
 
 /**
  * Hook for managing draft creation for permit applications
@@ -61,7 +61,7 @@ export function useApplicationDraftCreation({
             }
             const response = await addBusiness(payload)
             const businessId = response.businessId
-            const newBusiness = (response.businesses || []).find(
+            const newBusiness = (response.profile?.businesses || []).find(
               (b) => (b.businessId || b._id) === businessId
             )
             if (newBusiness) {
@@ -80,32 +80,41 @@ export function useApplicationDraftCreation({
   }, [])
 
   const handleTypeSelect = useCallback(
-    async (type) => {
-      setRegistrationType(type)
+    async (formId) => {
+      console.log('handleTypeSelect called with formId:', formId)
+      setRegistrationType(formId)
 
-      if (type === 'general_permit') {
+      // Handle temporary permit parent - show category selection
+      if (formId === 'temporary-permit') {
         setStep('category_selection')
         return
       }
 
-      // type === 'permit': create draft when onDraftCreated provided (dashboard flow), else load form in-place
-      if (type === 'permit' && onDraftCreated && !isEditing) {
+      // For specific formIds, create draft when onDraftCreated provided (dashboard flow), else load form in-place
+      if (onDraftCreated && !isEditing) {
         setLoading(true)
         try {
           const payload = {
             businessName: 'New Business Application',
             applicationStatus: 'draft',
-            formType: 'permit',
+            formType: formId,
+            formId: formId,
             formData: {},
           }
+          console.log('Creating draft with payload:', payload)
           const response = await addBusiness(payload)
+          console.log('Draft creation response:', response)
           const businessId = response.businessId
-          const newBusiness = (response.businesses || []).find(
+          // The new business should be in response.profile.businesses array
+          const newBusiness = (response.profile?.businesses || []).find(
             (b) => (b.businessId || b._id) === businessId
           )
+          console.log('Found new business:', newBusiness)
           if (newBusiness && onDraftCreated) {
+            console.log('Calling onDraftCreated with:', newBusiness)
             onDraftCreated(newBusiness)
           } else {
+            console.error('Draft creation failed - newBusiness not found or onDraftCreated not provided')
             message.error('Draft created but could not load. Please select it from the list.')
           }
         } catch (err) {
@@ -117,7 +126,8 @@ export function useApplicationDraftCreation({
         return
       }
 
-      fetchFormDefinition(type, null, isEditing, setFormDefinition, setStep, setActiveSectionIndex, setFormValues, form)
+      console.log('About to call fetchFormDefinition with formId:', formId)
+      fetchFormDefinition(formId || 'unified-business-permit', null, isEditing, setFormDefinition, setStep, setActiveSectionIndex, setFormValues, form)
     },
     [
       onDraftCreated,
@@ -138,7 +148,8 @@ export function useApplicationDraftCreation({
     async (category) => {
       setGeneralPermitCategory(category)
 
-      const categoryLabel = GENERAL_PERMIT_CATEGORIES.find((c) => c.value === category)?.label || category
+      // Format kebab-case to Title Case for display
+      const categoryLabel = category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
 
       if (onDraftCreated && !isEditing) {
         setLoading(true)
@@ -152,7 +163,7 @@ export function useApplicationDraftCreation({
           }
           const response = await addBusiness(payload)
           const businessId = response.businessId
-          const newBusiness = (response.businesses || []).find(
+          const newBusiness = (response.profile?.businesses || []).find(
             (b) => (b.businessId || b._id) === businessId
           )
           if (newBusiness && onDraftCreated) {
@@ -169,7 +180,9 @@ export function useApplicationDraftCreation({
         return
       }
 
-      fetchFormDefinition('general_permit', category, isEditing, setFormDefinition, setStep, setActiveSectionIndex, setFormValues, form)
+      // For temporary permits, use the category-specific formId
+      const categoryFormId = category ? `temporary-${category}` : 'temporary-permit'
+      fetchFormDefinition(categoryFormId, category, isEditing, setFormDefinition, setStep, setActiveSectionIndex, setFormValues, form)
     },
     [
       onDraftCreated,

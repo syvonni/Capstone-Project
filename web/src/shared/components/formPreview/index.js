@@ -1,5 +1,7 @@
 export { PreviewField } from './PreviewField'
 export { PreviewSection } from './PreviewSection'
+export { default as DynamicFormRenderer } from './DynamicFormRenderer'
+export { default as RepeatableGroupField } from './RepeatableGroupField'
 export { default as LobSection } from './LobSection'
 export { default as IndustryCard } from './IndustryCard'
 export { default as LOBSelector } from './LOBSelector'

@@ -27,7 +27,8 @@ function urlB64ToUint8Array(base64String) {
  * @param {string} businessId - The ID of the business
  */
 export async function getNotifications(businessId) {
-  return get(`${BASE_PATH}/${businessId}`);
+  const res = await get(`${BASE_PATH}/${businessId}`);
+  return res || [];
 }
 
 /**
@@ -35,7 +36,8 @@ export async function getNotifications(businessId) {
  * @param {string} notificationId - The ID of the notification
  */
 export async function markNotificationAsRead(notificationId) {
-  return post(`${BASE_PATH}/${notificationId}/read`);
+  const res = await post(`${BASE_PATH}/${notificationId}/read`);
+  return res;
 }
 
 /**
@@ -43,7 +45,8 @@ export async function markNotificationAsRead(notificationId) {
  * @param {string} notificationId - The ID of the notification
  */
 export async function deleteNotification(notificationId) {
-  return post(`${BASE_PATH}/${notificationId}/delete`);
+  const res = await post(`${BASE_PATH}/${notificationId}/delete`);
+  return res;
 }
 
 /**
@@ -51,7 +54,8 @@ export async function deleteNotification(notificationId) {
  * @param {string} businessId - The ID of the business
  */
 export async function getNotificationPreferences(businessId) {
-  return get(`${BASE_PATH}/${businessId}/preferences`);
+  const res = await get(`${BASE_PATH}/${businessId}/preferences`);
+  return res;
 }
 
 /**
@@ -60,7 +64,8 @@ export async function getNotificationPreferences(businessId) {
  * @param {object} preferences - The preferences data
  */
 export async function updateNotificationPreferences(businessId, preferences) {
-  return post(`${BASE_PATH}/${businessId}/preferences`, preferences);
+  const res = await post(`${BASE_PATH}/${businessId}/preferences`, preferences);
+  return res;
 }
 
 /**
@@ -68,7 +73,8 @@ export async function updateNotificationPreferences(businessId, preferences) {
  * @param {string} businessId - The ID of the business
  */
 export async function markAllNotificationsAsRead(businessId) {
-  return post(`${BASE_PATH}/${businessId}/read-all`);
+  const res = await post(`${BASE_PATH}/${businessId}/read-all`);
+  return res;
 }
 
 /**
@@ -76,7 +82,8 @@ export async function markAllNotificationsAsRead(businessId) {
  * @param {string} businessId - The ID of the business
  */
 export async function getNotificationHistory(businessId) {
-  return get(`${BASE_PATH}/${businessId}/history`);
+  const res = await get(`${BASE_PATH}/${businessId}/history`);
+  return res || [];
 }
 
 /**
@@ -85,7 +92,8 @@ export async function getNotificationHistory(businessId) {
  * @param {string} socketId - The socket connection ID
  */
 export async function subscribeToNotifications(businessId, socketId) {
-  return post(`${BASE_PATH}/${businessId}/subscribe`, { socketId });
+  const res = await post(`${BASE_PATH}/${businessId}/subscribe`, { socketId });
+  return res;
 }
 
 /**
@@ -94,7 +102,8 @@ export async function subscribeToNotifications(businessId, socketId) {
  * @param {string} socketId - The socket connection ID
  */
 export async function unsubscribeFromNotifications(businessId, socketId) {
-  return post(`${BASE_PATH}/${businessId}/unsubscribe`, { socketId });
+  const res = await post(`${BASE_PATH}/${businessId}/unsubscribe`, { socketId });
+  return res;
 }
 
 // ===== PUSH NOTIFICATION FUNCTIONS =====
@@ -153,9 +162,10 @@ export const unregisterFromPushNotifications = async (businessId) => {
 
     if (subscription) {
       await subscription.unsubscribe();
-      await post(`${BASE_PATH}/${businessId}/push-unregister`, {
+      const res = await post(`${BASE_PATH}/${businessId}/push-unregister`, {
         subscription: subscription.toJSON()
       });
+      return res || { success: true };
     }
 
     return { success: true };
@@ -173,7 +183,7 @@ export const unregisterFromPushNotifications = async (businessId) => {
 export const getPushNotifications = async (businessId) => {
   try {
     const response = await get(`${BASE_PATH}/${businessId}/push-notifications`);
-    return response;
+    return response || { notifications: [] };
   } catch (error) {
     console.error('Failed to get push notifications:', error);
     return { notifications: [] };

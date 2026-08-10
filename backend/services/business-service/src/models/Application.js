@@ -139,6 +139,15 @@ const ApplicationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    formId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    formVersion: {
+      type: Number,
+      default: 1,
+    },
     permitFormId: {
       type: String,
       default: null,

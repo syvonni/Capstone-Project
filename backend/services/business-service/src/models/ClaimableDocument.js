@@ -64,32 +64,34 @@ const ClaimableDocumentSchema = new mongoose.Schema(
         },
         previewText: {
           type: String,
-          default: '',
+          default: "",
         },
         sourceType: {
           type: String,
-          enum: ['form_field', 'system', 'business_profile', 'static'],
+          enum: ["form_field", "system", "business_profile", "static"],
           required: true,
         },
         // For form_field sourceType
-        bindings: [{
-          formId: {
-            type: String,
-            required: true,
+        bindings: [
+          {
+            formId: {
+              type: String,
+              required: true,
+            },
+            sectionIndex: {
+              type: Number,
+              required: true,
+            },
+            sectionName: {
+              type: String,
+              required: true,
+            },
+            fieldKey: {
+              type: String,
+              required: true,
+            },
           },
-          sectionIndex: {
-            type: Number,
-            required: true,
-          },
-          sectionName: {
-            type: String,
-            required: true,
-          },
-          fieldKey: {
-            type: String,
-            required: true,
-          },
-        }],
+        ],
         // For system/business_profile sourceType
         sourceKey: {
           type: String,
@@ -112,12 +114,12 @@ const ClaimableDocumentSchema = new mongoose.Schema(
       validate: {
         validator: async function (value) {
           if (value === null || value === undefined) return true;
-          const Checklist = mongoose.model('Checklist');
+          const Checklist = mongoose.model("Checklist");
           const checklist = await Checklist.findById(value);
           return !!checklist;
         },
-        message: 'Referenced checklist does not exist'
-      }
+        message: "Referenced checklist does not exist",
+      },
     },
     customId: {
       type: String,
@@ -146,4 +148,6 @@ ClaimableDocumentSchema.plugin(encryptionPlugin, {
 ClaimableDocumentSchema.index({ isActive: 1, category: 1 });
 ClaimableDocumentSchema.index({ version: 1 });
 
-module.exports = mongoose.models.ClaimableDocument || mongoose.model("ClaimableDocument", ClaimableDocumentSchema);
+module.exports =
+  mongoose.models.ClaimableDocument ||
+  mongoose.model("ClaimableDocument", ClaimableDocumentSchema);

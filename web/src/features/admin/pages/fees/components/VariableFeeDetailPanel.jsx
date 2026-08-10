@@ -49,6 +49,8 @@ export default function VariableFeeDetailPanel({ ruleId, rule, onSave, _category
   const [associatedVariables, setAssociatedVariables] = useState([])
   const [loadingVariables, setLoadingVariables] = useState(false)
 
+  const loading = saving || loadingVariables
+
   const { auditLogs, auditLoading, refresh } = useAudit('variable-fee-rule', ruleId)
   const { runWithStepUp, stepUpModal } = useStepUp()
 
@@ -75,8 +77,9 @@ export default function VariableFeeDetailPanel({ ruleId, rule, onSave, _category
       setIsCustomMethod(rule?.calculationMethod === 'custom')
       setSelectedCalculationMethod(rule?.calculationMethod || 'floor_area')
       setSelectedUnit(rule?.unit || '')
+      resetChangeTracking(initialValues)
     }
-  }, [initialValues, isNew, form, rule])
+  }, [initialValues, isNew, form, rule, resetChangeTracking])
 
   useEffect(() => {
     const fetchAssociatedVariables = async () => {
@@ -281,7 +284,7 @@ export default function VariableFeeDetailPanel({ ruleId, rule, onSave, _category
             token={token}
           />
         ) : (
-          <VariableFeeOverview rule={rule} token={token} associatedVariables={associatedVariables} loadingVariables={loadingVariables} />
+          <VariableFeeOverview rule={rule} token={token} associatedVariables={associatedVariables} loading={loading} />
         )}
       </div>
     </div>

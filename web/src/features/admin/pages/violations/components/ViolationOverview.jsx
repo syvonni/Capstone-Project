@@ -3,18 +3,22 @@ import InfoGrid from '@/shared/components/InfoGrid'
 import { SEVERITY_LEVELS } from '../constants/violations.constants'
 import { getInspectionItemsByViolation } from '@/features/admin/services/inspectionItemService'
 
-export default function ViolationOverview({ violation, _initialValues, _token }) {
+export default function ViolationOverview({ violation, _initialValues, _token, loading = false }) {
   const [inspectionItems, setInspectionItems] = useState([])
+  const [loadingInspectionItems, setLoadingInspectionItems] = useState(false)
 
   useEffect(() => {
     const fetchInspectionItems = async () => {
       if (!violation?._id) return
       try {
+        setLoadingInspectionItems(true)
         const items = await getInspectionItemsByViolation(violation._id)
         setInspectionItems(items || [])
       } catch (error) {
         console.error('Failed to fetch inspection items:', error)
         setInspectionItems([])
+      } finally {
+        setLoadingInspectionItems(false)
       }
     }
 
@@ -44,6 +48,8 @@ export default function ViolationOverview({ violation, _initialValues, _token })
     const d = new Date(dateStr)
     return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   }
+
+  const effectiveLoading = loading || loadingInspectionItems
 
   const inspectionItemName = inspectionItems.length === 1
     ? inspectionItems[0]?.name || 'N/A'
@@ -149,6 +155,7 @@ export default function ViolationOverview({ violation, _initialValues, _token })
     <div>
       <InfoGrid
         noPadding={true}
+        loading={effectiveLoading}
         items={overviewItems}
       />
     </div>

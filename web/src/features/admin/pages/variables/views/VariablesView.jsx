@@ -42,6 +42,7 @@ export default function VariablesView() {
     items,
     selectedItem,
     refresh,
+    loading,
   } = useVariables()
 
   // Handle URL query param for direct item selection
@@ -117,7 +118,7 @@ export default function VariablesView() {
   const listContent = (
     <ListPanel
       items={filteredItems}
-      isLoading={false}
+      isLoading={loading}
       selectedId={selectedItemId}
       onSelectItem={handleSelectItem}
       renderCard={renderCard}

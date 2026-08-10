@@ -14,7 +14,7 @@ export default function RecentBookmarksCard() {
   const fetchBookmarks = useCallback(async () => {
     try {
       const response = await bookmarkService.getBookmarks()
-      const bookmarksData = Array.isArray(response) ? response : (response.data || [])
+      const bookmarksData = Array.isArray(response) ? response : []
       
       const enrichedBookmarks = await Promise.all(
         bookmarksData.map(async (bookmark) => {
@@ -24,7 +24,7 @@ export default function RecentBookmarksCard() {
               return { ...bookmark, itemData: app }
             } else if (bookmark.itemType === 'help_request') {
               const res = await getHelpRequestById(bookmark.itemId)
-              return { ...bookmark, itemData: res?.data || res }
+              return { ...bookmark, itemData: res }
             }
             return bookmark
           } catch (error) {

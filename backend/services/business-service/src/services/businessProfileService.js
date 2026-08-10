@@ -416,7 +416,8 @@ class BusinessProfileService {
         businessData.applicationStatus === "submitted" || hasExistingPermit,
       formType: businessData.formType || "",
       category: businessData.category || "",
-      permitFormId: businessData.permitFormId ?? businessData.formDefinitionId ?? null,
+      permitFormId:
+        businessData.permitFormId ?? businessData.formDefinitionId ?? null,
       formData:
         businessData.formData && typeof businessData.formData === "object"
           ? businessData.formData
@@ -3022,6 +3023,51 @@ class BusinessProfileService {
       deletedBusinesses: profile.businesses.length,
       ipfsFilesCleaned: ipfsCids.length,
     };
+  }
+
+  /**
+   * Update payment generation status for a business
+   * @param {string} userId - User ID
+   * @param {string} businessId - Business ID
+   * @param {object} status - Payment generation status
+   * @returns {Promise<object>} Updated profile
+   */
+  async updatePaymentGenerationStatus(userId, businessId, status) {
+    const profile = await BusinessProfile.findOne({ userId });
+    if (!profile) {
+      throw new Error("Business profile not found");
+    }
+    const business = profile.businesses?.find(
+      (b) => b.businessId === businessId || String(b._id) === businessId,
+    );
+    if (!business) {
+      throw new Error("Business not found");
+    }
+    business.paymentGenerationStatus = status;
+    business.updatedAt = new Date();
+    profile.markModified("businesses");
+    await profile.save();
+    return profile;
+  }
+
+  /**
+   * Get payment generation status for a business
+   * @param {string} userId - User ID
+   * @param {string} businessId - Business ID
+   * @returns {Promise<object>} Payment generation status
+   */
+  async getPaymentGenerationStatus(userId, businessId) {
+    const profile = await BusinessProfile.findOne({ userId });
+    if (!profile) {
+      throw new Error("Business profile not found");
+    }
+    const business = profile.businesses?.find(
+      (b) => b.businessId === businessId || String(b._id) === businessId,
+    );
+    if (!business) {
+      throw new Error("Business not found");
+    }
+    return business.paymentGenerationStatus || null;
   }
 }
 

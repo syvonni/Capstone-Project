@@ -3,7 +3,7 @@ import InfoGrid from '@/shared/components/InfoGrid'
 
 const { Text } = Typography
 
-export default function OverviewPanel({ title, description, requiredDocumentsSection, _fees, _globalFees, lastUpdated, version, notes, feeId, feeAmount, createdAt, claimableDocuments }) {
+export default function OverviewPanel({ title, description, requiredDocumentsSection, _fees, _globalFees, lastUpdated, version, notes, feeId, feeAmount, createdAt, claimableDocuments, loading = false }) {
   const formatRelativeTime = (dateStr) => {
     if (!dateStr) return 'N/A'
     const d = new Date(dateStr)
@@ -43,7 +43,6 @@ export default function OverviewPanel({ title, description, requiredDocumentsSec
         to: `/admin/documents?selectedId=${doc._id}&tab=claimable_documents`,
       })),
     })
-    infoGridItems.push({ type: 'divider' })
   }
 
   // Add required documents list if available
@@ -55,13 +54,13 @@ export default function OverviewPanel({ title, description, requiredDocumentsSec
         text: item.label || '(Untitled document)',
       })),
     })
-    infoGridItems.push({ type: 'divider' })
   }
 
   return (
     <div>
       <InfoGrid
         noPadding
+        loading={loading}
         items={infoGridItems}
       />
     </div>

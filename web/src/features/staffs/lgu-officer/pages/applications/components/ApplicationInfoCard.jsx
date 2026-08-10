@@ -4,9 +4,9 @@ import { formatDate } from '../utils/formatters'
 import { getStatusLabel } from '@/shared/utils/statusUtils'
 import PermitTypesModal from '@/shared/components/PermitTypesModal'
 import DocumentPreviewModal from '@/shared/components/DocumentPreviewModal'
-import ApplicationProgressModal from './modals/ApplicationProgressModal'
+import ApplicationProgressModal from '@/shared/components/ApplicationProgressModal'
 import OwnerDetailsModal from './modals/ApplicationOwnerDetailsModal'
-import { GENERAL_PERMIT_CATEGORIES } from '@/features/business-owner/constants/businessFormConstants'
+
 import { getAppealsByBusiness } from '../../../services/appealsService'
 import { get } from '@/lib/http'
 
@@ -63,7 +63,7 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
     const fetchAppeal = async () => {
       try {
         const res = await getAppealsByBusiness(businessId)
-        const appeals = res?.data || []
+        const appeals = res || []
         // Get the latest appeal (any status for appeal_pending, appeal_rejected, or hadAppealGranted applications)
         const activeAppeal = appeals[0] || null
         setLatestAppeal(activeAppeal)
@@ -168,14 +168,28 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
                    : statusLower === 'appeal_rejected' ? 'Appeal Rejected'
                    : getStatusLabel(application?.status || application?.applicationStatus)
 
-  // Determine permit type: formType 'general_permit' = temporary, 'permit' = regular
-  // For general_permit, use the category field to determine specific permit type
-  const isGeneralPermit = application?.formType === 'general_permit'
-  const categoryValue = application?.category || application?.formData?.category
-  const categoryLabel = GENERAL_PERMIT_CATEGORIES.find(cat => cat.value === categoryValue)?.label || categoryValue
-  const businessTypeLabel = isGeneralPermit 
-    ? (categoryLabel || 'Temporary') 
-    : 'Regular'
+  // Determine permit type: formType contains the specific form ID (e.g., 'association-foundation-permit', 'unified-business-permit')
+  const formType = application?.formType
+
+  // Format kebab-case to Title Case for display
+  const formatToTitleCase = (str) => {
+    if (!str) return str
+    return str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+  }
+
+  // Extract permit type name from formType
+  // If formType is 'unified-business-permit', show 'Unified Business Permit'
+  // If formType is 'association-foundation-permit', show 'Association Foundation Permit'
+  let businessTypeLabel
+  if (formType === 'unified-business-permit') {
+    businessTypeLabel = 'Unified Business Permit'
+  } else if (formType) {
+    // Remove '-permit' suffix and format as title case
+    const baseName = formType.replace(/-permit$/, '')
+    businessTypeLabel = formatToTitleCase(baseName) + ' Permit'
+  } else {
+    businessTypeLabel = 'Unknown Permit'
+  }
 
   const reviewingOfficerName = application?.reviewedByName ||
     (application?.reviewedBy?.firstName && application?.reviewedBy?.lastName
@@ -642,7 +656,7 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
     <PermitTypesModal 
       open={permitModalOpen} 
       onCancel={() => setPermitModalOpen(false)}
-      selectedPermitType={isGeneralPermit ? (application?.category || application?.formData?.category || 'other') : 'regular'}
+      selectedPermitType={formType || 'unified-business-permit'}
     />
   </>
   )

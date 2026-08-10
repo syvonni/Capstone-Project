@@ -19,25 +19,33 @@ export async function updatePermitFormStatus(id, data, options = {}) {
 }
 
 export async function getPermitForms() {
-  return get('/api/admin/permit-forms')
+  const res = await get('/api/admin/permit-forms')
+  // Backend now returns data directly
+  return res || []
 }
 
 export async function getPermitForm(id) {
-  return get(`/api/admin/permit-forms/${id}`)
+  const res = await get(`/api/admin/permit-forms/${id}`)
+  // Backend now returns data directly
+  return res
 }
 
 export async function getPermitFormByFormId(formId) {
-  return get(`/api/admin/permit-forms/by-formId/${formId}`)
+  const res = await get(`/api/admin/permit-forms/by-formId/${formId}`)
+  // Backend now returns data directly
+  return res
 }
 
 export async function getPermitFormByFeeId(feeId) {
   const res = await get(`/api/admin/permit-forms/by-feeId/${feeId}`)
-  return res?.form || res?.data?.form
+  // Backend now returns data directly
+  return res
 }
 
 export async function getClaimableDocumentsByPermitFormId(permitFormId) {
   const res = await get(`/api/admin/permit-forms/${permitFormId}/documents`)
-  return res?.documents || res?.data?.documents || []
+  // Backend now returns data directly
+  return res || []
 }
 
 export async function createTemporaryPermitForm(data, options = {}) {
@@ -56,5 +64,5 @@ export async function createTemporaryPermitForm(data, options = {}) {
     headers,
     body: JSON.stringify(data),
   })
-  return res?.data
+  return res
 }

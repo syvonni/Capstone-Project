@@ -3,12 +3,14 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Modal, Form, Input, Select, Button, Typography, App } from 'antd'
+import { Form, Input, Select, Button, Typography, App } from 'antd'
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons'
 import { theme } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { createInspectionItem } from '@/features/admin/services/inspectionItemService'
 import { getViolations } from '@/features/admin/services/violationService'
+import { useNameValidation } from '@/shared/hooks/useNameValidation'
 
 const { Text } = Typography
 
@@ -21,6 +23,7 @@ export default function AddInspectionItemModal({ open, onClose, onSuccess }) {
   const [loadingViolations, setLoadingViolations] = useState(false)
   const [violationMode, setViolationMode] = useState('select')
   const { runWithStepUp, stepUpModal } = useStepUp()
+  const { validateName, isValidating, error: nameError, clearError } = useNameValidation('InspectionItem')
 
   useEffect(() => {
     const fetchViolations = async () => {
@@ -42,8 +45,10 @@ export default function AddInspectionItemModal({ open, onClose, onSuccess }) {
 
     if (open) {
       fetchViolations()
+      form.resetFields()
+      clearError()
     }
-  }, [open])
+  }, [open, form, clearError])
 
   const handleSubmit = async () => {
     try {
@@ -100,7 +105,7 @@ export default function AddInspectionItemModal({ open, onClose, onSuccess }) {
 
   return (
     <>
-      <Modal
+      <ResponsiveModal
         title="Add Inspection Item"
         open={open}
         onCancel={onClose}
@@ -115,14 +120,19 @@ export default function AddInspectionItemModal({ open, onClose, onSuccess }) {
         width={800}
         destroyOnHidden
       >
-        <div style={{ padding: 16 }}>
-          <Form form={form} layout="vertical" requiredMark={false}>
+        <Form form={form} layout="vertical" requiredMark={false}>
             <Form.Item
               name="name"
               label={<span>Name<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
+              validateStatus={nameError ? 'error' : ''}
+              help={nameError}
               rules={[{ required: true, message: 'Please enter a name' }]}
             >
-              <Input placeholder="Enter inspection item name" />
+              <Input
+                placeholder="Enter inspection item name"
+                onBlur={(e) => validateName(e.target.value)}
+                disabled={isValidating}
+              />
             </Form.Item>
             
             <Form.Item
@@ -338,8 +348,7 @@ export default function AddInspectionItemModal({ open, onClose, onSuccess }) {
               </>
             )}
           </Form>
-        </div>
-      </Modal>
+      </ResponsiveModal>
       {stepUpModal}
     </>
   )

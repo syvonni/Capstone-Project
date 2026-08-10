@@ -142,7 +142,7 @@ describe('Authentication Performance Tests', () => {
     const startTime = performance.now()
 
     for (let i = 0; i < 5; i++) {
-      mockNavigate('/dashboard')
+      mockNavigate('/owner')
       mockNavigate('/login')
     }
 

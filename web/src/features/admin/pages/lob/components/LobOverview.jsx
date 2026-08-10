@@ -4,7 +4,7 @@ import { LINE_OF_BUSINESS_BY_TAX_CODE } from '@/shared/constants/lineOfBusiness'
 
 const { Text } = Typography
 
-export default function LobOverview({ lob, initialValues, variables, documents, postRequirements, taxBrackets, token }) {
+export default function LobOverview({ lob, initialValues, variables, documents, postRequirements, taxBrackets, token, loading = false }) {
   const formatRelativeTime = (dateStr) => {
     if (!dateStr) return '-'
     const d = new Date(dateStr)
@@ -36,6 +36,7 @@ export default function LobOverview({ lob, initialValues, variables, documents, 
     <div>
       <InfoGrid
         noPadding
+        loading={loading}
         items={[
           { label: 'Line of Business', value: initialValues.name || '-' },
           { label: 'Category', value: categoryLabel },

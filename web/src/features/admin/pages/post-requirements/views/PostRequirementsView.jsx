@@ -3,12 +3,14 @@
  */
 
 import { useMemo, useState, useEffect } from 'react'
+import { Empty, Grid } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { useSearchParams } from 'react-router-dom'
 
 import PostRequirementDetailPanel from '../components/PostRequirementDetailPanel'
 import PostRequirementCard from '../components/PostRequirementCard'
 import AddPostRequirementModal from '../components/modals/AddPostRequirementModal'
+import PostRequirementsStatsPanel from '../components/PostRequirementsStatsPanel'
 
 import ListPanel from '@/shared/components/ListPanel'
 import ResponsiveSplitLayout from '@/shared/components/ResponsiveSplitLayout'
@@ -19,8 +21,25 @@ import { usePostRequirementsFilters } from '../hooks/usePostRequirementsFilters'
 import { STATUS_OPTIONS } from '../constants/postRequirements.constants'
 
 export default function PostRequirementsView() {
+  const screens = Grid.useBreakpoint()
+  const isMobile = !screens.lg
   const [addModalOpen, setAddModalOpen] = useState(false)
+  const [showStats, setShowStats] = useState(!isMobile)
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // Sync showStats with breakpoint and selectedId state
+  // Stats should be enabled on desktop only when no item is selected
+  useEffect(() => {
+    const itemIdFromUrl = searchParams.get('selectedId')
+    const newShowStats = !isMobile && !itemIdFromUrl
+    // Only update if value actually changes to prevent infinite loop
+    setShowStats(prev => {
+      if (prev !== newShowStats) {
+        return newShowStats
+      }
+      return prev
+    })
+  }, [isMobile, searchParams])
 
   const {
     selectedItemId,
@@ -28,6 +47,7 @@ export default function PostRequirementsView() {
     items,
     selectedItem,
     refresh,
+    loading,
   } = usePostRequirements()
 
   // Handle URL query param for direct item selection
@@ -58,6 +78,17 @@ export default function PostRequirementsView() {
     refresh()
   }
 
+  const handleStatsToggle = () => {
+    setShowStats(prev => {
+      const newValue = !prev
+      if (newValue && selectedItemId) {
+        setSelectedItemId(null)
+        setSearchParams({})
+      }
+      return newValue
+    })
+  }
+
   const filteredItems = useMemo(() => {
     let result = items
     result = filterItemsBySearch(result, searchTerm)
@@ -66,6 +97,10 @@ export default function PostRequirementsView() {
   }, [items, searchTerm, statusFilter])
 
   const handleDrawerClose = () => {
+    // If closing drawer and no item was selected (viewing stats), disable stats
+    if (!selectedItemId) {
+      setShowStats(false)
+    }
     setSelectedItemId(null)
     setSearchParams({})
   }
@@ -73,6 +108,7 @@ export default function PostRequirementsView() {
   const handleSelectItem = (item) => {
     setSelectedItemId(item._id)
     setSearchParams({ selectedId: item._id })
+    setShowStats(false)
   }
 
   const renderCard = (item, currentSelectedId, onSelect) => {
@@ -88,7 +124,7 @@ export default function PostRequirementsView() {
   const listContent = (
     <ListPanel
       items={filteredItems}
-      isLoading={false}
+      isLoading={loading}
       selectedId={selectedItemId}
       onSelectItem={handleSelectItem}
       renderCard={renderCard}
@@ -112,6 +148,9 @@ export default function PostRequirementsView() {
       onSearchChange={setSearchTerm}
       showStaleInfo={false}
       searchOnEnter={true}
+      enableStats={true}
+      statsActive={showStats}
+      onStatsToggle={handleStatsToggle}
       primaryButton={{
         label: 'Add Post Requirement',
         icon: <PlusOutlined />,
@@ -126,17 +165,23 @@ export default function PostRequirementsView() {
       postRequirement={selectedItemId === 'new' ? null : selectedItem}
       onSave={refresh}
     />
-  ) : null
+  ) : showStats ? (
+    <PostRequirementsStatsPanel />
+  ) : isMobile ? null : (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+      <Empty description="Select a post requirement to view details" />
+    </div>
+  )
 
   return (
     <>
       <ResponsiveSplitLayout
         listContent={listContent}
         detailContent={detailContent}
-        drawerTitle="Post-Requirement Detail"
+        drawerTitle={showStats ? 'Post Requirements Overview' : 'Post-Requirement Detail'}
         onDrawerClose={handleDrawerClose}
-        drawerOpen={!!selectedItemId}
-        mobileDrawerPlacement="right"
+        drawerOpen={!!selectedItemId || showStats}
+        mobileDrawerPlacement="bottom"
       />
       <AddPostRequirementModal
         open={addModalOpen}

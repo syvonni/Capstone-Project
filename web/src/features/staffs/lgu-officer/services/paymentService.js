@@ -19,5 +19,6 @@ export async function getPayments({ page = 1, limit = 20, search, status, type }
   if (status) qs.set('status', status)
   if (type) qs.set('type', type)
 
-  return get(`${BASE_PATH}?${qs.toString()}`)
+  const res = await get(`${BASE_PATH}?${qs.toString()}`)
+  return res || []
 }

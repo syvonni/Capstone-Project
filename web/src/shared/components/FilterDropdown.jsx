@@ -51,7 +51,6 @@ export default function FilterDropdown({
         onClose={onClose}
         title="Filters"
         placement="bottom"
-        height="auto"
         styles={{ body: { padding: 16 } }}
         destroyOnHidden
       >

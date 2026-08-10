@@ -83,7 +83,7 @@ export function FormListPanel({ onSelect, selectedId }) {
       }}
       searchOnEnter={true}
       showStaleInfo={false}
-      loading={loading}
+      isLoading={loading}
       tabSwitcher={{
         value: selectedTab,
         onChange: setSelectedTab,

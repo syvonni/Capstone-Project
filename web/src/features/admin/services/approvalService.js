@@ -16,7 +16,8 @@ export async function getApprovals(params = {}) {
   const queryString = qs.toString()
   const url = queryString ? `/api/admin/approvals?${queryString}` : '/api/admin/approvals'
   const data = await fetchJsonWithFallback(url, { method: 'GET', headers })
-  return { approvals: data?.approvals ?? [] }
+  const payload = data
+  return { approvals: payload?.approvals ?? [] }
 }
 
 /**
@@ -31,7 +32,8 @@ export async function getApproval(approvalId) {
     method: 'GET',
     headers,
   })
-  return { approval: data?.approval ?? null }
+  const payload = data
+  return { approval: payload?.approval ?? null }
 }
 
 /**

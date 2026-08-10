@@ -65,7 +65,7 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
     setLoading(true)
     try {
       const res = await getHelpRequestById(request.requestId)
-      setDetail(res?.data || null)
+      setDetail(res || null)
 
       // Check if bookmarked
       try {

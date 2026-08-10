@@ -7,7 +7,8 @@ const BASE_PATH = '/api/help-requests'
  * @param {string} requestId - Help request ID
  */
 export async function getHelpRequestById(requestId) {
-  return get(`${BASE_PATH}/${requestId}`, { skipAutoLogout: true })
+  const res = await get(`${BASE_PATH}/${requestId}`, { skipAutoLogout: true })
+  return res
 }
 
 /**
@@ -16,7 +17,8 @@ export async function getHelpRequestById(requestId) {
  * @param {object} options - Additional options (e.g., headers for step-up)
  */
 export async function claimHelpRequest(requestId, options = {}) {
-  return put(`${BASE_PATH}/${requestId}/claim`, {}, options)
+  const res = await put(`${BASE_PATH}/${requestId}/claim`, {}, options)
+  return res
 }
 
 /**
@@ -25,7 +27,8 @@ export async function claimHelpRequest(requestId, options = {}) {
  * @param {object} options - Additional options (e.g., headers for step-up)
  */
 export async function releaseHelpRequest(requestId, options = {}) {
-  return put(`${BASE_PATH}/${requestId}/release`, {}, options)
+  const res = await put(`${BASE_PATH}/${requestId}/release`, {}, options)
+  return res
 }
 
 /**
@@ -34,7 +37,8 @@ export async function releaseHelpRequest(requestId, options = {}) {
  * @param {string} status - New status
  */
 export async function updateHelpRequestStatus(requestId, status) {
-  return put(`${BASE_PATH}/${requestId}/status`, { status })
+  const res = await put(`${BASE_PATH}/${requestId}/status`, { status })
+  return res
 }
 
 /**
@@ -43,7 +47,8 @@ export async function updateHelpRequestStatus(requestId, status) {
  * @param {string} priority - New priority
  */
 export async function updateHelpRequestPriority(requestId, priority) {
-  return put(`${BASE_PATH}/${requestId}/priority`, { priority })
+  const res = await put(`${BASE_PATH}/${requestId}/priority`, { priority })
+  return res
 }
 
 /**
@@ -53,7 +58,8 @@ export async function updateHelpRequestPriority(requestId, priority) {
  * @param {object} options - Additional options (e.g., headers for step-up)
  */
 export async function addHelpRequestMessage(requestId, messageData, options = {}) {
-  return post(`${BASE_PATH}/${requestId}/messages`, messageData, options)
+  const res = await post(`${BASE_PATH}/${requestId}/messages`, messageData, options)
+  return res
 }
 
 /**
@@ -63,7 +69,8 @@ export async function addHelpRequestMessage(requestId, messageData, options = {}
  * @param {object} options - Additional options (e.g., headers for step-up)
  */
 export async function addHelpRequestInternalNote(requestId, noteData, options = {}) {
-  return post(`${BASE_PATH}/${requestId}/internal-notes`, noteData, options)
+  const res = await post(`${BASE_PATH}/${requestId}/internal-notes`, noteData, options)
+  return res
 }
 
 /**
@@ -76,5 +83,6 @@ export async function getHelpRequests({ limit, options = {} } = {}) {
   const qs = new URLSearchParams()
   if (limit) qs.set('limit', String(limit))
 
-  return get(`${BASE_PATH}?${qs.toString()}`, { skipAutoLogout: true, ...options })
+  const res = await get(`${BASE_PATH}?${qs.toString()}`, { skipAutoLogout: true, ...options })
+  return res || []
 }

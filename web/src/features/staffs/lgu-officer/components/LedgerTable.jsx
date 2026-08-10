@@ -42,7 +42,7 @@ export default function LedgerTable({ loading = false, onRefresh }) {
       if (typeFilter) params.append('paymentType', typeFilter)
 
       const response = await getPayments({ page, pageSize, search, status: statusFilter, type: typeFilter })
-      setPayments(response.data || [])
+      setPayments(response || [])
       setPagination(prev => ({
         ...prev,
         current: page,

@@ -28,6 +28,8 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
   const [isEditMode, setIsEditMode] = useState(false)
   const [violations, setViolations] = useState([])
   const [loadingViolations, setLoadingViolations] = useState(false)
+  const [loadingClaimableDocument, setLoadingClaimableDocument] = useState(false)
+  const [loadingPermitForm, setLoadingPermitForm] = useState(false)
   const [claimableDocument, setClaimableDocument] = useState(null)
   const [permitForm, setPermitForm] = useState(null)
 
@@ -70,11 +72,14 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
         return
       }
       try {
+        setLoadingClaimableDocument(true)
         const res = await get(`/api/business/admin/documents?feeId=${feeId}`)
-        setClaimableDocument(res?.data?.[0] || null)
+        setClaimableDocument(res?.[0] || null)
       } catch (error) {
         console.error('Failed to fetch claimable document:', error)
         setClaimableDocument(null)
+      } finally {
+        setLoadingClaimableDocument(false)
       }
     }
 
@@ -89,11 +94,14 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
         return
       }
       try {
+        setLoadingPermitForm(true)
         const data = await getPermitFormByFeeId(feeId)
         setPermitForm(data)
       } catch (error) {
         console.error('Failed to fetch permit form:', error)
         setPermitForm(null)
+      } finally {
+        setLoadingPermitForm(false)
       }
     }
 
@@ -122,6 +130,8 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
     canUndo,
     canRedo,
   } = useFeeForm(initialValues)
+
+  const loading = saving || loadingViolations || loadingClaimableDocument || loadingPermitForm
 
 
   const handleSave = async () => {
@@ -162,6 +172,14 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
     form.setFieldsValue(initialValues)
     resetChangeTracking(initialValues)
   }
+
+  // Reset form when fee changes
+  useEffect(() => {
+    if (fee && !isNew) {
+      form.setFieldsValue(initialValues)
+      resetChangeTracking(initialValues)
+    }
+  }, [feeId, fee, initialValues, form, resetChangeTracking, isNew])
 
   const handleStatusChange = async (status) => {
     const newStatusLabel = status === 'active' ? 'Active' : 'Disabled'
@@ -248,7 +266,7 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
         {isEditMode ? (
           <FeeConfiguration form={form} handleFormValuesChange={handleFormValuesChange} token={token} initialValues={initialValues} />
         ) : (
-          <FeeOverview fee={fee} token={token} violations={violations} loading={loadingViolations} claimableDocument={claimableDocument} permitForm={permitForm} />
+          <FeeOverview fee={fee} token={token} violations={violations} loading={loading} claimableDocument={claimableDocument} permitForm={permitForm} />
         )}
       </div>
 

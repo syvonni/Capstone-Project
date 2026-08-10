@@ -7,8 +7,15 @@ const correlationIdMiddleware = require("./middleware/correlationId");
 const {
   performanceMonitorMiddleware,
 } = require("./middleware/performanceMonitor");
-const { entityPerformanceMiddleware } = require("./middleware/entityPerformanceMiddleware");
+const {
+  entityPerformanceMiddleware,
+} = require("./middleware/entityPerformanceMiddleware");
 const { securityMonitorMiddleware } = require("./middleware/securityMonitor");
+const {
+  globalRateLimit,
+  writeOperationRateLimit,
+  sensitiveOperationRateLimit,
+} = require("./middleware/rateLimit");
 const errorHandlerMiddleware = require("./middleware/errorHandler");
 const http = require("http");
 const path = require("path");
@@ -50,6 +57,9 @@ app.use(performanceMonitorMiddleware);
 app.use(entityPerformanceMiddleware);
 app.use(securityMonitorMiddleware);
 
+// Rate limiting (apply after security monitoring, before other middleware)
+app.use(globalRateLimit());
+
 // Middleware
 app.use(
   cors({
@@ -81,6 +91,24 @@ try {
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
+// Preserve request body for step-up middleware (must be after body parser)
+app.use((req, res, next) => {
+  if (req.body) {
+    req._originalBody = { ...req.body };
+  }
+  next();
+});
+
+// Preserve request body for all routes (to prevent middleware from stripping it)
+app.use((req, res, next) => {
+  const originalSend = res.send;
+  res.send = function(data) {
+    req._body = req.body;
+    return originalSend.call(this, data);
+  };
+  next();
+});
+
 // CSRF (IAS-2.7): token endpoint and middleware for /api/business and /api/inspector, /api/lgu-officer
 const csrfDisabled =
   process.env.DISABLE_CSRF === "true" || process.env.NODE_ENV === "test";
@@ -93,10 +121,6 @@ app.get(
   getCsrfTokenHandler({ cookieName: "csrf-token-business", sameSite: "lax" }),
 );
 app.get(
-  "/api/inspector/csrf-token",
-  getCsrfTokenHandler({ cookieName: "csrf-token-inspector", sameSite: "lax" }),
-);
-app.get(
   "/api/lgu-officer/csrf-token",
   getCsrfTokenHandler({
     cookieName: "csrf-token-lgu-officer",
@@ -107,15 +131,7 @@ app.use(
   "/api/business",
   createCsrfMiddleware({
     cookieName: "csrf-token-business",
-    skipPaths: ["/api/business/csrf-token", "/api/business/payments/mock"],
-    disabled: csrfDisabled,
-  }),
-);
-app.use(
-  "/api/inspector",
-  createCsrfMiddleware({
-    cookieName: "csrf-token-inspector",
-    skipPaths: ["/api/inspector/csrf-token"],
+    skipPaths: ["/api/business/csrf-token", "/api/business/payments/mock", "/api/business/applications"],
     disabled: csrfDisabled,
   }),
 );
@@ -153,7 +169,6 @@ app.use((req, res, next) => {
   }
   // Return 503 Service Unavailable - frontend should retry
   return res.status(503).json({
-    ok: false,
     error: {
       code: "service_starting",
       message: "Service is starting, please retry",
@@ -175,7 +190,6 @@ app.get("/api/health", async (req, res) => {
     ipfsStatus = "error";
   }
   res.json({
-    ok: true,
     service: "business-service",
     timestamp: new Date().toISOString(),
     database:
@@ -197,7 +211,7 @@ app.use("/api/business", businessRouter);
 
 // Admin routes - Phase 1: Use feature aggregators
 const adminRouter = require("./routes/admin");
-app.use("/api/business/admin", adminRouter);
+app.use("/api/business/admin", sensitiveOperationRateLimit(), adminRouter);
 
 // LGU Officer routes - Phase 1: Use feature aggregators
 const lguOfficerRouter = require("./routes/lgu-officer");
@@ -358,7 +372,9 @@ async function start() {
     // Seed requirements if empty (idempotent)
     if (shouldSeedFeeConfig) {
       try {
-        const { seedIfEmpty: seedClaimableDocuments } = require("./seed/seedClaimableDocumentsClean");
+        const {
+          seedIfEmpty: seedClaimableDocuments,
+        } = require("./seed/seedClaimableDocumentsClean");
         const reqResult = await seedClaimableDocuments();
         if (reqResult.seeded) {
           logger.info("Documents seeded");
@@ -380,7 +396,9 @@ async function start() {
         if (varResult.seeded) {
           logger.info("Variables seeded", { count: varResult.count });
         } else {
-          logger.info("Variables already exist", { variableCount: varResult.variableCount });
+          logger.info("Variables already exist", {
+            variableCount: varResult.variableCount,
+          });
         }
       } catch (error) {
         logger.warn("Variables seed failed", {
@@ -392,14 +410,18 @@ async function start() {
     // Seed tax brackets if empty (idempotent)
     if (shouldSeedFeeConfig) {
       try {
-        const { seedIfEmpty: seedTaxBrackets } = require("./seed/seedTaxBrackets");
+        const {
+          seedIfEmpty: seedTaxBrackets,
+        } = require("./seed/seedTaxBrackets");
         logger.info("Running tax brackets seed");
         const taxResult = await seedTaxBrackets();
         logger.info("Tax brackets seed result", taxResult);
         if (taxResult.seeded) {
           logger.info("Tax brackets seeded", { count: taxResult.count });
         } else {
-          logger.info("Tax brackets already exist", { bracketCount: taxResult.bracketCount });
+          logger.info("Tax brackets already exist", {
+            bracketCount: taxResult.bracketCount,
+          });
         }
       } catch (error) {
         logger.warn("Tax brackets seed failed", {
@@ -416,7 +438,10 @@ async function start() {
         const lobResult = await seedLobs();
         logger.info("LOBs seed result", lobResult);
         if (lobResult.seeded) {
-          logger.info("LOBs seeded", { count: lobResult.count, updated: lobResult.updated });
+          logger.info("LOBs seeded", {
+            count: lobResult.count,
+            updated: lobResult.updated,
+          });
         } else {
           logger.info("LOBs already exist", { lobCount: lobResult.feeCount });
         }
@@ -430,14 +455,16 @@ async function start() {
     // Seed PostRequirements if empty (idempotent)
     if (shouldSeedFeeConfig) {
       try {
-        const { seedIfEmpty: seedPostRequirements } = require("./seed/seedPostRequirements");
+        const {
+          seedIfEmpty: seedPostRequirements,
+        } = require("./seed/seedPostRequirements");
         logger.info("Running PostRequirements seed");
         const prResult = await seedPostRequirements();
         logger.info("PostRequirements seed result", prResult);
         if (prResult.postRequirementsCreated > 0) {
-          logger.info("PostRequirements seeded", { 
+          logger.info("PostRequirements seeded", {
             postRequirementsCreated: prResult.postRequirementsCreated,
-            lobsUpdated: prResult.lobsUpdated 
+            lobsUpdated: prResult.lobsUpdated,
           });
         } else {
           logger.info("PostRequirements already exist");
@@ -452,17 +479,21 @@ async function start() {
     // Seed Violations if empty (idempotent)
     if (shouldSeedFeeConfig) {
       try {
-        const { seedIfEmpty: seedViolations } = require("./seed/seedViolations");
+        const {
+          seedIfEmpty: seedViolations,
+        } = require("./seed/seedViolations");
         logger.info("Running Violations seed");
         const vioResult = await seedViolations();
         logger.info("Violations seed result", vioResult);
         if (vioResult.seeded) {
-          logger.info("Violations seeded", { 
+          logger.info("Violations seeded", {
             count: vioResult.count,
-            feesCreated: vioResult.feesCreated 
+            feesCreated: vioResult.feesCreated,
           });
         } else {
-          logger.info("Violations already exist", { violationCount: vioResult.violationCount });
+          logger.info("Violations already exist", {
+            violationCount: vioResult.violationCount,
+          });
         }
       } catch (error) {
         logger.warn("Violations seed failed", {
@@ -474,14 +505,16 @@ async function start() {
     // Seed PostRequirementViolations if empty (idempotent)
     if (shouldSeedFeeConfig) {
       try {
-        const { seedPostRequirementViolations } = require("./seed/seedPostRequirementViolations");
+        const {
+          seedPostRequirementViolations,
+        } = require("./seed/seedPostRequirementViolations");
         logger.info("Running PostRequirementViolations seed");
         const prvResult = await seedPostRequirementViolations();
         logger.info("PostRequirementViolations seed result", prvResult);
         if (prvResult.createdCount > 0) {
-          logger.info("PostRequirementViolations seeded", { 
+          logger.info("PostRequirementViolations seeded", {
             createdCount: prvResult.createdCount,
-            feesCreated: prvResult.feesCreated 
+            feesCreated: prvResult.feesCreated,
           });
         } else {
           logger.info("PostRequirementViolations already exist");
@@ -496,13 +529,15 @@ async function start() {
     // Seed PostRequirementInspectionItems if empty (idempotent)
     if (shouldSeedFeeConfig) {
       try {
-        const { seedPostRequirementInspectionItems } = require("./seed/seedPostRequirementInspectionItems");
+        const {
+          seedPostRequirementInspectionItems,
+        } = require("./seed/seedPostRequirementInspectionItems");
         logger.info("Running PostRequirementInspectionItems seed");
         const priResult = await seedPostRequirementInspectionItems();
         logger.info("PostRequirementInspectionItems seed result", priResult);
         if (priResult.createdCount > 0) {
-          logger.info("PostRequirementInspectionItems seeded", { 
-            createdCount: priResult.createdCount 
+          logger.info("PostRequirementInspectionItems seeded", {
+            createdCount: priResult.createdCount,
           });
         } else {
           logger.info("PostRequirementInspectionItems already exist");
@@ -517,13 +552,15 @@ async function start() {
     // Seed PostRequirementChecklists if empty (idempotent)
     if (shouldSeedFeeConfig) {
       try {
-        const { seedPostRequirementChecklists } = require("./seed/seedPostRequirementChecklists");
+        const {
+          seedPostRequirementChecklists,
+        } = require("./seed/seedPostRequirementChecklists");
         logger.info("Running PostRequirementChecklists seed");
         const prcResult = await seedPostRequirementChecklists();
         logger.info("PostRequirementChecklists seed result", prcResult);
         if (prcResult.createdCount > 0) {
-          logger.info("PostRequirementChecklists seeded", { 
-            createdCount: prcResult.createdCount 
+          logger.info("PostRequirementChecklists seeded", {
+            createdCount: prcResult.createdCount,
           });
         } else {
           logger.info("PostRequirementChecklists already exist");
@@ -538,135 +575,6 @@ async function start() {
     // IPFS service is lazy-loaded in routes when needed
     // Don't initialize here to avoid module loading issues
     logger.info("IPFS service will be loaded on-demand in routes");
-
-    // Cron jobs (only in non-test environments)
-    if (process.env.NODE_ENV !== "test") {
-      const cron = require("node-cron");
-      const {
-        flagBusinessesForRenewal,
-        calculateMonthlyInterest,
-      } = require("./cron/renewalAutoFlag");
-      const {
-        detectAbandonedBusinesses,
-      } = require("./cron/abandonedDetection");
-      const {
-        markOverduePostDocuments,
-      } = require("./cron/postDocumentOverdue");
-      const {
-        checkPostDocumentDue,
-        checkOverduePostDocuments,
-      } = require("./cron/notificationReminders");
-      const { executePendingActions } = require("./cron/executePendingActions");
-
-      const cronLocks = new Set();
-      async function withCronMutex(name, fn) {
-        if (cronLocks.has(name)) {
-          logger.warn(
-            `[CRON] Skipping ${name} — previous run still in progress`,
-          );
-          return;
-        }
-        cronLocks.add(name);
-        try {
-          await fn();
-        } finally {
-          cronLocks.delete(name);
-        }
-      }
-
-      cron.schedule("0 0 1 1 *", () =>
-        withCronMutex("renewalAutoFlag", async () => {
-          logger.info("[CRON] Running renewal auto-flag...");
-          try {
-            await flagBusinessesForRenewal();
-          } catch (err) {
-            logger.error("[CRON] renewalAutoFlag error:", {
-              error: err.message,
-            });
-          }
-        }),
-      );
-
-      cron.schedule("0 1 1 * *", () =>
-        withCronMutex("monthlyInterest", async () => {
-          logger.info("[CRON] Calculating monthly interest...");
-          try {
-            await calculateMonthlyInterest();
-          } catch (err) {
-            logger.error("[CRON] calculateMonthlyInterest error:", {
-              error: err.message,
-            });
-          }
-        }),
-      );
-
-      cron.schedule("0 6 1 * *", () =>
-        withCronMutex("abandonedDetection", async () => {
-          logger.info("[CRON] Running abandoned business detection...");
-          try {
-            const flagged = await detectAbandonedBusinesses();
-            logger.info(
-              `[CRON] Flagged ${flagged.length} businesses as potentially abandoned`,
-            );
-          } catch (err) {
-            logger.error("[CRON] abandonedDetection error:", {
-              error: err.message,
-            });
-          }
-        }),
-      );
-
-      cron.schedule("0 0 * * *", () =>
-        withCronMutex("postRequirementOverdue", async () => {
-          logger.info("[CRON] Checking for overdue post-requirements...");
-          try {
-            const result = await markOverduePostDocuments();
-            logger.info(
-              `[CRON] Marked ${result.marked} post-documents as overdue`,
-            );
-          } catch (err) {
-            logger.error("[CRON] postRequirementOverdue error:", {
-              error: err.message,
-            });
-          }
-        }),
-      );
-
-      cron.schedule("0 9 * * *", () =>
-        withCronMutex("notificationReminders", async () => {
-          logger.info("[CRON] Running notification reminders...");
-          try {
-            const dueCount = await checkPostDocumentDue();
-            const overdueCount = await checkOverduePostDocuments();
-            logger.info(
-              `[CRON] Notification reminders: ${dueCount} due, ${overdueCount} overdue`,
-            );
-          } catch (err) {
-            logger.error("[CRON] notificationReminders error:", {
-              error: err.message,
-            });
-          }
-        }),
-      );
-
-      logger.info(
-        "Cron jobs scheduled: renewalAutoFlag, monthlyInterest, abandonedDetection, postRequirementOverdue, notificationReminders",
-      );
-
-      // Execute expired pending actions (run every minute)
-      cron.schedule("* * * * *", () =>
-        withCronMutex("executePendingActions", async () => {
-          try {
-            await executePendingActions();
-          } catch (err) {
-            logger.error("[CRON] executePendingActions error:", {
-              error: err.message,
-            });
-          }
-        }),
-      );
-
-    }
   } catch (err) {
     logger.error("Business Service DB/init failed (server still running)", {
       error: err,

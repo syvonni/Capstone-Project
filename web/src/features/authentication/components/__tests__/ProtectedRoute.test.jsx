@@ -117,12 +117,12 @@ describe('ProtectedRoute', () => {
     renderWithProviders(
       <Routes>
         <Route
-          path="/dashboard"
+          path="/owner"
           element={<ProtectedRoute><Secure /></ProtectedRoute>}
         />
         <Route path="/login" element={<LocationEcho />} />
       </Routes>,
-      { initialEntries: ['/dashboard'] }
+      { initialEntries: ['/owner'] }
     )
 
     expect(screen.getByTestId('location').textContent).toBe('/login::')
@@ -143,12 +143,12 @@ describe('ProtectedRoute', () => {
     renderWithProviders(
       <Routes>
         <Route
-          path="/dashboard"
+          path="/owner"
           element={<ProtectedRoute><Secure /></ProtectedRoute>}
         />
         <Route path="/login" element={<LocationEcho />} />
       </Routes>,
-      { initialEntries: ['/dashboard'] }
+      { initialEntries: ['/owner'] }
     )
 
     expect(screen.getByTestId('location').textContent).toBe('/login::')
@@ -165,12 +165,12 @@ describe('ProtectedRoute', () => {
     renderWithProviders(
       <Routes>
         <Route
-          path="/dashboard"
+          path="/owner"
           element={<ProtectedRoute><Secure /></ProtectedRoute>}
         />
         <Route path="/maintenance" element={<LocationEcho />} />
       </Routes>,
-      { initialEntries: ['/dashboard'] }
+      { initialEntries: ['/owner'] }
     )
 
     expect(screen.getByTestId('location').textContent).toContain('/maintenance::')

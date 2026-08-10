@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Modal, Form, Input, InputNumber, Button, message, Typography, theme, Select } from 'antd'
+import { Form, Input, InputNumber, Button, message, Typography, theme, Select } from 'antd'
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { createVariableFeeRule } from '@/features/admin/services/feeService'
 import { currencyFormatter, currencyParser } from '@/shared/utils/currency.utils'
+import { useNameValidation } from '@/shared/hooks/useNameValidation'
 
 const { Text } = Typography
 const { useToken } = theme
@@ -110,6 +112,7 @@ export default function AddVariableFeeModal({ open, onClose, onSuccess }) {
   const [selectedUnit, setSelectedUnit] = useState('')
   const { runWithStepUp, stepUpModal } = useStepUp()
   const { token } = useToken()
+  const { validateName, isValidating, error: nameError, clearError } = useNameValidation('VariableFeeRule')
 
   // Reset form when modal opens
   useEffect(() => {
@@ -117,8 +120,9 @@ export default function AddVariableFeeModal({ open, onClose, onSuccess }) {
       form.resetFields()
       setSelectedCalculationMethod('floor_area')
       setSelectedUnit('')
+      clearError()
     }
-  }, [open, form])
+  }, [open, form, clearError])
 
   const handleCalculationMethodChange = (value) => {
     setSelectedCalculationMethod(value)
@@ -199,7 +203,7 @@ export default function AddVariableFeeModal({ open, onClose, onSuccess }) {
 
   return (
     <>
-      <Modal
+      <ResponsiveModal
         open={open}
         onCancel={handleCancel}
         title="Add Variable Fee"
@@ -211,12 +215,13 @@ export default function AddVariableFeeModal({ open, onClose, onSuccess }) {
         width={600}
         destroyOnHidden
       >
-        <div style={{ padding: 16 }}>
-          <Text>Enter the variable fee details below.</Text>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
+        <Text>Enter the variable fee details below.</Text>
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }} requiredMark={false}>
             <Form.Item
               name="name"
               label={<span>Variable Fee Name<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
+              validateStatus={nameError ? 'error' : ''}
+              help={nameError}
               rules={[
                 {
                   validator: (_, value) => {
@@ -228,7 +233,11 @@ export default function AddVariableFeeModal({ open, onClose, onSuccess }) {
                 }
               ]}
             >
-              <Input placeholder="Enter fee name" />
+              <Input
+                placeholder="Enter fee name"
+                onBlur={(e) => validateName(e.target.value)}
+                disabled={isValidating}
+              />
             </Form.Item>
 
             <Form.Item
@@ -418,8 +427,7 @@ export default function AddVariableFeeModal({ open, onClose, onSuccess }) {
             </Form.Item>
 
           </Form>
-        </div>
-      </Modal>
+      </ResponsiveModal>
       {stepUpModal}
     </>
   )

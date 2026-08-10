@@ -12,38 +12,38 @@
  *   .catch((err) => console.error("Failed to log audit event for tax bracket create", err));
  */
 
-const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
-const { trackChanges } = require('../changeTracker');
-const { logAuditEvent } = require('../auditClient');
+const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
+const { trackChanges } = require("../changeTracker");
+const { logAuditEvent } = require("../auditClient");
 
 const TAX_BRACKET_METADATA_MAPPING = {
-  lobId: 'lobId',
-  taxBasis: 'taxBasis',
-  name: 'name',
-  minValue: 'minValue',
-  maxValue: 'maxValue',
-  fixedAmount: 'fixedAmount',
-  excessRate: 'excessRate',
-  excessRateType: 'excessRateType',
-  paymentFrequency: 'paymentFrequency',
-  notes: 'notes',
-  isActive: 'isActive',
-  version: 'version',
+  lobId: "lobId",
+  taxBasis: "taxBasis",
+  name: "name",
+  minValue: "minValue",
+  maxValue: "maxValue",
+  fixedAmount: "fixedAmount",
+  excessRate: "excessRate",
+  excessRateType: "excessRateType",
+  paymentFrequency: "paymentFrequency",
+  notes: "notes",
+  isActive: "isActive",
+  version: "version",
 };
 
 const TAX_BRACKET_FIELD_MAPPING = {
-  lobId: 'lobId',
-  taxBasis: 'taxBasis',
-  name: 'name',
-  minValue: 'minValue',
-  maxValue: 'maxValue',
-  fixedAmount: 'fixedAmount',
-  excessRate: 'excessRate',
-  excessRateType: 'excessRateType',
-  paymentFrequency: 'paymentFrequency',
-  notes: 'notes',
-  isActive: 'isActive',
-  version: 'version',
+  lobId: "lobId",
+  taxBasis: "taxBasis",
+  name: "name",
+  minValue: "minValue",
+  maxValue: "maxValue",
+  fixedAmount: "fixedAmount",
+  excessRate: "excessRate",
+  excessRateType: "excessRateType",
+  paymentFrequency: "paymentFrequency",
+  notes: "notes",
+  isActive: "isActive",
+  version: "version",
 };
 
 /**
@@ -74,14 +74,14 @@ class TaxBracketAuditHelper {
       .build();
 
     return await logAuditEvent(
-      'tax_bracket_created',
+      "tax_bracket_created",
       userId,
-      'TaxBracket',
+      "TaxBracket",
       bracket._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 
@@ -101,9 +101,14 @@ class TaxBracketAuditHelper {
    */
   static async logUpdated(req, userId, userInfo, oldBracket, newBracket, role) {
     // Track changes between old and new bracket
-    const changes = trackChanges(oldBracket, newBracket, TAX_BRACKET_FIELD_MAPPING, {
-      ignoreFields: ['updatedAt', 'version'], // Ignore these fields
-    });
+    const changes = trackChanges(
+      oldBracket,
+      newBracket,
+      TAX_BRACKET_FIELD_MAPPING,
+      {
+        ignoreFields: ["updatedAt", "version"], // Ignore these fields
+      },
+    );
 
     // If no changes, don't log anything
     if (changes.length === 0) {
@@ -125,14 +130,14 @@ class TaxBracketAuditHelper {
 
     // Log a single audit event for all field changes
     const auditLog = await logAuditEvent(
-      'tax_bracket_updated',
+      "tax_bracket_updated",
       userId,
-      'TaxBracket',
+      "TaxBracket",
       newBracket._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
 
     return auditLog;
@@ -160,14 +165,14 @@ class TaxBracketAuditHelper {
       .build();
 
     return await logAuditEvent(
-      'tax_bracket_deleted',
+      "tax_bracket_deleted",
       userId,
-      'TaxBracket',
+      "TaxBracket",
       bracket._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 }

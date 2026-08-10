@@ -64,7 +64,7 @@ export function useBusinessOwnerData(businessOwnerId) {
 
     try {
       const response = await businessOwnerService().getBusinessOwnerBusinesses(businessOwnerId)
-      setBusinesses(response.data || [])
+      setBusinesses(response || [])
     } catch (err) {
       console.error('Failed to fetch businesses:', err)
       setBusinesses([])

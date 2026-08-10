@@ -16,5 +16,6 @@ export async function getBusinesses({ limit, options = {} } = {}) {
   const qs = new URLSearchParams()
   if (limit) qs.set('limit', String(limit))
 
-  return get(`${BASE_PATH}?${qs.toString()}`, { skipAutoLogout: true, ...options })
+  const res = await get(`${BASE_PATH}?${qs.toString()}`, { skipAutoLogout: true, ...options })
+  return res || []
 }

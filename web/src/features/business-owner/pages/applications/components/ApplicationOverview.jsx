@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Typography, Card, Grid, Modal, Drawer, Spin, Progress } from 'antd'
 import {
   BookOutlined,
@@ -8,11 +8,12 @@ import DynamicPageContent from '@/shared/components/DynamicPageContent'
 import ApplicationInfoCard from './ApplicationInfoCard'
 import ApplicationFeeBreakdownModal from './modals/ApplicationFeeBreakdownModal'
 import { isReturnedStatus } from '../utils/statusUtils'
+import { get } from '@/lib/http'
 
 const { Title, Text } = Typography
 const { useBreakpoint } = Grid
 
-export default function ApplicationOverview({ visibleSections, sectionCompleteMap, token, formType = 'permit', category = null, business = null, onViewReceipt, onViewAppealReceipt, onViewAppealDetails, onAppealClick, loadingAppealDetails, appealDetails, onShowAppRejectionModal, onShowAppealRejectionModal, onShowApprovalCommentModal, onProgressClick }) {
+export default function ApplicationOverview({ visibleSections, sectionCompleteMap, token, _formType, _category, business = null, onViewReceipt, onViewAppealReceipt, onViewAppealDetails, onAppealClick, loadingAppealDetails, appealDetails, onShowAppRejectionModal, onShowAppealRejectionModal, onShowApprovalCommentModal, onProgressClick }) {
   const screens = useBreakpoint()
   const [hoveredCard, setHoveredCard] = useState(null)
   const [manualVisible, setManualVisible] = useState(false)
@@ -26,6 +27,31 @@ export default function ApplicationOverview({ visibleSections, sectionCompleteMa
   const completedCount = visibleSections.filter((_, idx) => sectionCompleteMap[idx] === true).length
   const totalCount = visibleSections.length
   const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+
+  // Fetch fee data when business formType changes
+  useEffect(() => {
+    const fetchFees = async () => {
+      if (!business?.formType) return
+
+      try {
+        setLoadingFees(true)
+        const response = await get(`/api/business/application-fees/by-permit-form/${business.formType}`)
+        
+        if (response?.success) {
+          setFeeData(response)
+        } else {
+          setFeeData({ success: false, fees: [], total: 0 })
+        }
+      } catch (error) {
+        console.error('Failed to fetch fees:', error)
+        setFeeData({ success: false, fees: [], total: 0 })
+      } finally {
+        setLoadingFees(false)
+      }
+    }
+
+    fetchFees()
+  }, [business?.formType])
 
   // Different cards for returned state vs new application
   const overviewCards = isReturned ? [
@@ -256,7 +282,7 @@ export default function ApplicationOverview({ visibleSections, sectionCompleteMa
           open={manualVisible}
           onClose={() => setManualVisible(false)}
           placement="right"
-          height="100%"
+          size="100%"
           style={{ height: '100%' }}
         >
           <DynamicPageContent slotId="bizclear-manual" embedded compact />

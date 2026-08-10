@@ -3,21 +3,21 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Modal, Form, Input, Grid, Button, Typography, Select, Space, message } from 'antd'
+import { Form, Input, Button, Typography, Select, Space, message } from 'antd'
 import { PlusOutlined, MinusCircleOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { createChecklist } from '@/features/admin/services/checklistService'
 import { getInspectionItems } from '@/features/admin/services/inspectionItemService'
-
-const { useBreakpoint } = Grid
+import { useNameValidation } from '@/shared/hooks/useNameValidation'
 const { Text } = Typography
 const { TextArea } = Input
 
 export default function AddChecklistModal({ open, onClose, onSuccess }) {
-  const screens = useBreakpoint()
   const [loading, setLoading] = useState(false)
   const [inspectionItems, setInspectionItems] = useState([])
   const [selectedItem, setSelectedItem] = useState(null)
   const [form] = Form.useForm()
+  const { validateName, isValidating, error: nameError, clearError } = useNameValidation('Checklist')
 
   useEffect(() => {
     const fetchInspectionItems = async () => {
@@ -35,8 +35,10 @@ export default function AddChecklistModal({ open, onClose, onSuccess }) {
 
     if (open) {
       fetchInspectionItems()
+      form.resetFields()
+      clearError()
     }
-  }, [open])
+  }, [open, form, clearError])
 
   const moveItem = (fromIndex, toIndex) => {
     const currentItems = form.getFieldValue('items') || []
@@ -95,8 +97,6 @@ export default function AddChecklistModal({ open, onClose, onSuccess }) {
     onClose()
   }
 
-  const isMobile = !screens.lg
-
   const availableOptions = inspectionItems
     .filter(item => !(form.getFieldValue('items') || []).includes(item._id))
     .map(item => ({
@@ -106,21 +106,31 @@ export default function AddChecklistModal({ open, onClose, onSuccess }) {
     }))
 
   return (
-    <Modal
+    <ResponsiveModal
       title="Add Checklist"
       open={open}
-      onOk={handleSubmit}
       onCancel={handleClose}
-      confirmLoading={loading}
-      width={isMobile ? '100%' : 700}
+      footer={[
+        <Button key="submit" type="primary" onClick={handleSubmit} loading={loading}>
+          Create Checklist
+        </Button>,
+      ]}
+      width={700}
+      destroyOnHidden
     >
       <Form form={form} layout="vertical">
         <Form.Item
           name="name"
           label="Name"
+          validateStatus={nameError ? 'error' : ''}
+          help={nameError}
           rules={[{ required: true, message: 'Please enter a name' }]}
         >
-          <Input placeholder="Enter checklist name" />
+          <Input
+            placeholder="Enter checklist name"
+            onBlur={(e) => validateName(e.target.value)}
+            disabled={isValidating}
+          />
         </Form.Item>
         
         <Form.Item
@@ -258,6 +268,6 @@ export default function AddChecklistModal({ open, onClose, onSuccess }) {
           </div>
         </Form.Item>
       </Form>
-    </Modal>
+    </ResponsiveModal>
   )
 }

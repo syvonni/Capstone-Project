@@ -7,7 +7,7 @@ import { useAuthSession } from '@/features/authentication'
 import { mfaStatus } from '@/features/authentication/services/mfaService'
 import { firstLoginChangeCredentials, getProfile } from '@/features/authentication/services/authService'
 import { useNotifier } from '@/shared/notifications'
-import BusinessOwnerLayout from '../components/shared/BusinessOwnerLayout'
+import BusinessOwnerMasterView from './BusinessOwnerMasterView'
 import OnboardingStepContent from '@/shared/components/OnboardingStepContent'
 
 export default function BusinessOwnerOnboarding() {
@@ -133,7 +133,7 @@ export default function BusinessOwnerOnboarding() {
 
 
   return (
-    <BusinessOwnerLayout hideSidebar pageTitle="Onboarding" pageIcon={<ShopOutlined />}>
+    <BusinessOwnerMasterView hideSidebar pageTitle="Onboarding" pageIcon={<ShopOutlined />}>
       <div
         style={{
           paddingBottom: 128,
@@ -167,6 +167,6 @@ export default function BusinessOwnerOnboarding() {
           </Col>
         </Row>
       </div>
-    </BusinessOwnerLayout>
+    </BusinessOwnerMasterView>
   )
 }

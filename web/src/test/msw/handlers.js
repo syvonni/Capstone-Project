@@ -1,4 +1,7 @@
 import { http, HttpResponse, delay } from 'msw'
+import { variablesHandlers } from './handlers.variables'
+import { violationsHandlers } from './handlers.violations'
+import { inspectionItemsHandlers } from './handlers.inspectionItems'
 
 /**
  * Shared mock handlers used by Vitest (node) and Playwright (browser) for
@@ -46,7 +49,7 @@ export const handlers = [
     if (email === 'invalid@example.com') {
       return HttpResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
-    return HttpResponse.json({ role: 'user', token: 'user-token', name: 'Test User' })
+    return HttpResponse.json({ role: 'business_owner', token: 'user-token', name: 'Test User' })
   }),
 
   // Auth: signup start
@@ -71,7 +74,7 @@ export const handlers = [
 
   // Auth: get current user
   http.get('/api/auth/me', () => {
-    return HttpResponse.json({ role: 'user', token: 'user-token', name: 'Test User' })
+    return HttpResponse.json({ role: 'business_owner', token: 'user-token', name: 'Test User' })
   }),
 
   // Auth: logout
@@ -79,4 +82,7 @@ export const handlers = [
     await delay(50)
     return HttpResponse.json({ success: true })
   }),
+  ...variablesHandlers,
+  ...violationsHandlers,
+  ...inspectionItemsHandlers
 ]

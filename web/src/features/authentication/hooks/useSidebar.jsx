@@ -29,7 +29,7 @@ import {
   ToolOutlined,
 } from '@ant-design/icons'
 
-// Role keys used across the app: 'business_owner', 'admin', 'inspector', 'lgu_officer', 'user'
+// Role keys used across the app: 'business_owner', 'admin', 'inspector', 'lgu_officer'
 export default function useSidebar() {
   const { role, currentUser } = useAuthSession()
   const location = useLocation()
@@ -58,6 +58,7 @@ export default function useSidebar() {
         { key: 'inspections', label: 'Inspections', to: '/admin/inspections', icon: <CheckCircleOutlined /> },
         { key: 'lob', label: 'Lines of Business', to: '/admin/lob', icon: <ApartmentOutlined /> },
         { key: 'maintenance', label: 'Maintenance', to: '/admin/maintenance', icon: <ToolOutlined /> },
+        { key: 'settings', label: 'Settings', to: '/settings-profile', icon: <SettingOutlined /> },
       ],
       staff: [
         { key: 'dashboard', label: 'Dashboard', to: '/staff', icon: <DashboardOutlined /> },
@@ -87,19 +88,14 @@ export default function useSidebar() {
         { key: 'bookmarks', label: 'Bookmarks', to: '/staff/bookmarks', icon: <StarOutlined /> },
         { key: 'profile', label: 'Settings', to: '/settings-profile', icon: <SettingOutlined /> },
       ],
-      user: [
-        { key: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: <DashboardOutlined /> },
-        { key: 'profile', label: 'Profile / Settings', to: '/settings-profile', icon: <UserOutlined /> },
-        { key: 'logout', label: 'Logout', type: 'action', icon: <LogoutOutlined /> },
-      ],
     }
 
-    const roleKey = (role?.slug || role || 'user').toString().toLowerCase()
+    const roleKey = (role?.slug || role || 'business_owner').toString().toLowerCase()
     const isStaffRole = ['staff', 'lgu_officer', 'inspector'].includes(roleKey)
     if (isStaffRole && (currentUser?.mustChangeCredentials || currentUser?.mustSetupMfa)) {
       return staffOnboardingItems
     }
-    const result = perRole[roleKey] || perRole.user
+    const result = perRole[roleKey] || []
     return Array.isArray(result) ? result : []
   }, [role, currentUser])
 

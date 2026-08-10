@@ -57,28 +57,28 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Custom Scrollbar Styling */
-.custom-scrollbar {
+* {
   scrollbar-width: thin;
-  scrollbar-color: rgb(0 58 112 / 30%) rgb(0 58 112 / 5%);
+  scrollbar-color: var(--scrollbar-thumb, rgb(0 0 0 / 30%)) var(--scrollbar-track, rgb(0 0 0 / 5%));
 }
 
-.custom-scrollbar::-webkit-scrollbar {
+*::-webkit-scrollbar {
   width: 8px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgb(0 58 112 / 5%);
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track, rgb(0 0 0 / 5%));
   border-radius: 10px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgb(0 58 112 / 30%);
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, rgb(0 0 0 / 30%));
   border-radius: 10px;
   transition: background 0.3s ease;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgb(0 58 112 / 50%);
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover, rgb(0 0 0 / 50%));
 }
 
 /* Force Ant Design Message/Toast to use Urbanist font */
@@ -88,6 +88,28 @@ h1, h2, h3, h4, h5, h6 {
 .ant-notification-notice-message,
 .ant-notification-notice-description {
   font-family: Urbanist, sans-serif !important;
+}
+
+/* Message/Toast background color using CSS variables (dark mode workaround) */
+.ant-message-notice-content {
+  background-color: var(--message-bg, #fff) !important;
+}
+
+.ant-message-notice-content .ant-message-success,
+.ant-message-notice-content .ant-message-info,
+.ant-message-notice-content .ant-message-warning,
+.ant-message-notice-content .ant-message-error {
+  color: var(--message-text, rgb(0 0 0 / 88%));
+}
+
+/* Notification background color using CSS variables (dark mode workaround) */
+.ant-notification-notice {
+  background-color: var(--notification-bg, #fff) !important;
+}
+
+.ant-notification-notice-message,
+.ant-notification-notice-description {
+  color: var(--notification-text, rgb(0 0 0 / 88%));
 }
 
 /* Force Ant Design Modal to use Urbanist font */

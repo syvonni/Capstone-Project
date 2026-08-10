@@ -103,11 +103,11 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
     }
 
     // Default to role-based dashboard
-    let target = '/dashboard'
+    let target = '/owner'
     if (roleKey === 'admin') target = '/admin/dashboard'
     else if (roleKey === 'business_owner') target = '/owner'
     else if (staffRoles.includes(roleKey)) target = '/staff'
-    
+
     return <Navigate to={target} replace />
   }
 
@@ -142,8 +142,8 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
   // If roles are specified and user doesn't match
   if (isUnauthorized) {
     // Determine target dashboard based on role to avoid redirect loops or intermediate pages
-    let target = '/dashboard' // fallback
-    
+    let target = '/owner' // fallback
+
     if (roleKey === 'admin') target = '/admin/dashboard'
     else if (roleKey === 'business_owner') target = '/owner'
     else if (staffRoles.includes(roleKey)) target = '/staff'

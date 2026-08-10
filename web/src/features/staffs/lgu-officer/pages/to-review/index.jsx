@@ -326,6 +326,7 @@ export default function OfficerToReview() {
       listContent={
         <ListPanel
           items={filteredToReview}
+          isLoading={officerData?.loadingMap?.toReview}
           filterConfig={filterConfig}
           onFilterChange={handleFilterChange}
           onClearFilters={() => setActiveFilters({ itemType: null, secondaryFilter: 'all' })}

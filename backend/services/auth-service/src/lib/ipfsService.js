@@ -259,7 +259,7 @@ async function getFile(cid) {
   try {
     // For Pinata, we use the gateway to retrieve files
     if (currentProvider === "pinata" && pinataClient) {
-      const axios = require("axios");
+      const axios = require("axios"); // External IPFS gateway calls use axios directly
       const gatewayUrl = getGatewayUrl(cid);
       const response = await axios.get(gatewayUrl, {
         responseType: "arraybuffer",

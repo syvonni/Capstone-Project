@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Modal, Input, Button, Typography, Alert, Space } from 'antd'
+import { Modal, Input, Button, Typography, Alert, Space, theme } from 'antd'
 import { KeyOutlined } from '@ant-design/icons'
 import { stepUpWithTotp, stepUpWithPasskey } from '@/shared/services/stepUpService'
 import { useNotifier } from '@/shared/notifications'
@@ -16,6 +16,7 @@ const { Text } = Typography
  */
 export default function StepUpModal({ open, onCancel, onVerified, mfaMethod = 'authenticator' }) {
   const { error: notifyError } = useNotifier()
+  const { token } = theme.useToken()
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -83,6 +84,12 @@ export default function StepUpModal({ open, onCancel, onVerified, mfaMethod = 'a
       width={400}
       zIndex={10000}
       getContainer={false}
+      styles={{
+        header: { background: token.colorBgContainer },
+        content: { background: token.colorBgContainer },
+        body: { background: token.colorBgContainer },
+        container: { background: token.colorBgContainer },
+      }}
     >
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Text type="secondary">

@@ -1,6 +1,6 @@
 /**
  * Clear Fees and LOBs, then Reseed
- * 
+ *
  * Usage:
  *   node backend/services/business-service/src/seed/clearAndReseedFeesAndLobs.js
  */
@@ -19,10 +19,13 @@ if (!process.env.MONGO_URI && !process.env.MONGODB_URI) {
 
 // Use environment variable if set, otherwise use .env
 // Default to Docker MongoDB without authentication (matches .env)
-const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://localhost:27017/capstone_project";
+const mongoUri =
+  process.env.MONGO_URI ||
+  process.env.MONGODB_URI ||
+  "mongodb://localhost:27017/capstone_project";
 // Override to use Docker MongoDB without authentication for local development
 const finalMongoUri = "mongodb://localhost:27017/capstone_project";
-console.log('Using MONGO_URI:', finalMongoUri);
+console.log("Using MONGO_URI:", finalMongoUri);
 
 const Fee = require("../models/Fee");
 const Lob = require("../models/Lob");

@@ -2,17 +2,21 @@ import { get, post, put, del } from '@/lib/http.js'
 
 export async function getAnnouncements(audience) {
   const query = audience ? `?audience=${audience}` : ''
-  return get(`/api/admin/announcements${query}`)
+  const res = await get(`/api/admin/announcements${query}`)
+  return res || []
 }
 
 export async function createAnnouncement(payload) {
-  return post('/api/admin/announcements', payload)
+  const res = await post('/api/admin/announcements', payload)
+  return res
 }
 
 export async function updateAnnouncement(id, payload) {
-  return put(`/api/admin/announcements/${id}`, payload)
+  const res = await put(`/api/admin/announcements/${id}`, payload)
+  return res
 }
 
 export async function deleteAnnouncement(id) {
-  return del(`/api/admin/announcements/${id}`)
+  const res = await del(`/api/admin/announcements/${id}`)
+  return res
 }

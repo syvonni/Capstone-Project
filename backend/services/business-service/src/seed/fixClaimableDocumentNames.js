@@ -14,7 +14,7 @@ async function fixDocumentNames() {
     // Wait for mongoose to be connected
     if (mongoose.connection.readyState !== 1) {
       console.log("Waiting for mongoose connection...");
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
     const documents = await ClaimableDocument.find({ name: / Fee$/ });
@@ -24,7 +24,10 @@ async function fixDocumentNames() {
     for (const doc of documents) {
       const newName = doc.name.substring(0, doc.name.length - 4);
       console.log(`Updating: ${doc.name} -> ${newName}`);
-      await ClaimableDocument.updateOne({ _id: doc._id }, { $set: { name: newName } });
+      await ClaimableDocument.updateOne(
+        { _id: doc._id },
+        { $set: { name: newName } },
+      );
     }
 
     console.log("Document names fixed successfully");

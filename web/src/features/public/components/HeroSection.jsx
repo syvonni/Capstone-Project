@@ -6,8 +6,7 @@ import BizClearLogo from '@/shared/components/BizClearLogo.jsx'
 import BlurFade from '@/shared/components/BlurFade.jsx'
 import ZipperReveal from '@/shared/components/MosaicArt.jsx'
 import PanAnimation from '@/shared/components/PanAnimation.jsx'
-import ListCard from '@/shared/components/ListCard.jsx'
-import AnnouncementsModal from '@/features/business-owner/pages/applications/components/modals/AnnouncementsModal.jsx'
+import AnnouncementsCard from '@/shared/components/AnnouncementsCard.jsx'
 import { BENTO_CARDS } from '@/features/public/constants/landing.constants.js'
 import dayjs from 'dayjs'
 
@@ -26,7 +25,6 @@ export default function HeroSection({
   const screens = useBreakpoint()
   const navigate = useNavigate()
   const [hoveredCard, setHoveredCard] = useState(null)
-  const [announcementsModalOpen, setAnnouncementsModalOpen] = useState(false)
 
   // Filter bento cards based on maintenance status
   const visibleBentoCards = BENTO_CARDS.filter(card => {
@@ -251,43 +249,15 @@ export default function HeroSection({
 
         {/* Announcements Card */}
         {hasAnnouncementPanel && (
-          <BlurFade delay={(visibleBentoCards.length + (maintenanceStatus?.active ? 1 : 0)) * 0.1} duration={0.5} fullHeight={false}>
-            <ListCard
-              icon={<NotificationOutlined />}
-              title="Announcements"
-              items={announcements}
-              renderItem={(ann) => (
-                <span style={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  maxWidth: '100%',
-                  display: 'block',
-                }}>
-                  {ann.title}
-                </span>
-              )}
-              onItemClick={() => setAnnouncementsModalOpen(true)}
-              onViewAll={() => setAnnouncementsModalOpen(true)}
-              viewAllText="View all"
-              itemTypeText="announcements"
-              emptyText="No announcements"
-            />
-          </BlurFade>
+          <AnnouncementsCard
+            announcementItems={announcementItems}
+            announcements={announcements}
+            defaultOpenKey={defaultOpenKey}
+            enableUnreadTracking={false}
+            delay={(visibleBentoCards.length + (maintenanceStatus?.active ? 1 : 0)) * 0.1}
+          />
         )}
       </div>
-
-      {/* All Announcements Modal/Drawer */}
-      <AnnouncementsModal
-        open={announcementsModalOpen}
-        onCancel={() => setAnnouncementsModalOpen(false)}
-        announcementItems={announcementItems}
-        readAnnouncements={{}}
-        defaultOpenKey={defaultOpenKey}
-        handleCollapseChange={() => {}}
-        token={token}
-        screens={screens}
-      />
     </div>
   )
 }

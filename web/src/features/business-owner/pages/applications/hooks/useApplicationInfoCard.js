@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { GENERAL_PERMIT_CATEGORIES } from '../constants'
+
 
 export function useApplicationInfoCard(business, sections = [], refreshKey = 0) {
   const [permitModalOpen, setPermitModalOpen] = useState(false)
@@ -15,13 +15,28 @@ export function useApplicationInfoCard(business, sections = [], refreshKey = 0) 
   const isRejected = statusLower === 'rejected'
   const isReturned = statusLower === 'returned' || statusLower === 'needs_revision'
 
-  // Determine permit type: formType 'general_permit' = temporary, 'permit' = regular
-  const isGeneralPermit = safeBusiness?.formType === 'general_permit'
-  const categoryValue = safeBusiness?.category || safeBusiness?.formData?.category
-  const categoryLabel = GENERAL_PERMIT_CATEGORIES.find(cat => cat.value === categoryValue)?.label || categoryValue
-  const businessTypeLabel = isGeneralPermit 
-    ? (categoryLabel || 'Temporary') 
-    : 'Regular'
+  // Determine permit type: formType contains the specific form ID (e.g., 'association-foundation-permit', 'unified-business-permit')
+  const formType = safeBusiness?.formType
+
+  // Format kebab-case to Title Case for display
+  const formatToTitleCase = (str) => {
+    if (!str) return str
+    return str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+  }
+
+  // Extract permit type name from formType
+  // If formType is 'unified-business-permit', show 'Unified Business Permit'
+  // If formType is 'association-foundation-permit', show 'Association Foundation Permit'
+  let businessTypeLabel
+  if (formType === 'unified-business-permit') {
+    businessTypeLabel = 'Unified Business Permit'
+  } else if (formType) {
+    // Remove '-permit' suffix and format as title case
+    const baseName = formType.replace(/-permit$/, '')
+    businessTypeLabel = formatToTitleCase(baseName) + ' Permit'
+  } else {
+    businessTypeLabel = 'Unknown Permit'
+  }
 
   const rejectionReason = (safeBusiness?.hadAppealGranted && safeBusiness?.originalRejectionReason) || safeBusiness?.rejectionReason || null
   const approvalComment = safeBusiness?.reviewComments || null
@@ -84,17 +99,10 @@ export function useApplicationInfoCard(business, sections = [], refreshKey = 0) 
         const fieldKey = item.key || item.name
         const fullPath = `${sectionIdx}.${fieldKey}`
         
-        // Check if field has a value - handle special field mappings
-        let isComplete = false
-        
-        // Special mapping for aiLobRecommendation field
-        if (fieldKey === 'aiLobRecommendation') {
-          isComplete = !!(formData.businessDescriptionText || formData.businessActivities)
-        } else {
-          const value = formData[fieldKey]
-          isComplete = value !== undefined && value !== null && value !== '' && 
-                       (Array.isArray(value) ? value.length > 0 : true)
-        }
+        // Check if field has a value
+        const value = formData[fieldKey]
+        const isComplete = value !== undefined && value !== null && value !== '' &&
+                     (Array.isArray(value) ? value.length > 0 : true)
         
         if (isComplete) {
           completedFields++
@@ -122,8 +130,7 @@ export function useApplicationInfoCard(business, sections = [], refreshKey = 0) 
     isDraft,
     isRejected,
     isReturned,
-    isGeneralPermit,
-    categoryLabel,
+    formType,
     businessTypeLabel,
     rejectionReason,
     approvalComment,

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Modal, Button, Form, Select, Typography } from 'antd'
+import { Button, Form, Select, Typography } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import TemporaryPermitConfiguration from '../TemporaryPermitConfiguration'
 import { INDUSTRY_SECTIONS } from '../../constants/formDefinitions.constants'
 
@@ -118,7 +119,7 @@ export default function AddTemporaryPermitModal({ open, onClose, onSuccess }) {
   }
 
   return (
-    <Modal
+    <ResponsiveModal
       open={open}
       onCancel={onClose}
       title="Add Temporary Permit Form"
@@ -141,9 +142,8 @@ export default function AddTemporaryPermitModal({ open, onClose, onSuccess }) {
       width={800}
       destroyOnHidden
     >
-      <div style={{ padding: 16 }}>
-        <Text style={{ display: 'block', marginBottom: 16 }}>
-          Configure the temporary permit form below. Use the debug fill to populate with industry-specific sections.
+      <Text style={{ display: 'block', marginBottom: 16 }}>
+        Configure the temporary permit form below. Use the debug fill to populate with industry-specific sections.
         </Text>
         <TemporaryPermitConfiguration
           ref={configurationRef}
@@ -157,7 +157,6 @@ export default function AddTemporaryPermitModal({ open, onClose, onSuccess }) {
           definitionId={null}
           onSave={() => {}}
         />
-      </div>
-    </Modal>
+    </ResponsiveModal>
   )
 }

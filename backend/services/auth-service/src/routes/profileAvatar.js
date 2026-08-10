@@ -76,21 +76,15 @@ router.post(
 
           // Store CID in DocumentStorage contract (non-blocking)
           try {
-            const axios = require("axios");
-            const auditServiceUrl =
-              process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-            const auditHeaders = { "Content-Type": "application/json" };
-            if (process.env.AUDIT_SERVICE_API_KEY)
-              auditHeaders["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;
-            await axios
+            const { auditClient } = require("../../../../shared/lib/httpClient");
+            await auditClient
               .post(
-                `${auditServiceUrl}/api/audit/store-document`,
+                "/api/audit/store-document",
                 {
                   userId: String(doc._id),
                   docType: "AVATAR",
                   ipfsCid: cid,
                 },
-                { headers: auditHeaders },
               )
               .catch((err) => {
                 console.warn("Failed to store avatar CID in blockchain", {
@@ -237,21 +231,15 @@ router.post("/profile/avatar-file", requireJwt, async (req, res) => {
 
           // Store CID in DocumentStorage contract (non-blocking)
           try {
-            const axios = require("axios");
-            const auditServiceUrl =
-              process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-            const auditHeaders = { "Content-Type": "application/json" };
-            if (process.env.AUDIT_SERVICE_API_KEY)
-              auditHeaders["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;
-            await axios
+            const { auditClient } = require("../../../../shared/lib/httpClient");
+            await auditClient
               .post(
-                `${auditServiceUrl}/api/audit/store-document`,
+                "/api/audit/store-document",
                 {
                   userId: String(doc._id),
                   docType: "AVATAR",
                   ipfsCid: cid,
                 },
-                { headers: auditHeaders },
               )
               .catch((err) => {
                 console.warn("Failed to store avatar CID in blockchain", {

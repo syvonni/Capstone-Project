@@ -1,4 +1,4 @@
-const axios = require("axios");
+const { auditClient } = require("../../../../shared/lib/httpClient");
 const logger = require("../lib/logger");
 
 /**
@@ -15,12 +15,6 @@ async function getCmsAuditLogs(slotId, page = 1, limit = 20) {
   };
 
   // Query audit-service for logs
-  const auditServiceUrl =
-    process.env.AUDIT_SERVICE_URL || "http://localhost:3004";
-  const headers = { "Content-Type": "application/json" };
-  if (process.env.AUDIT_SERVICE_API_KEY)
-    headers["X-API-Key"] = process.env.AUDIT_SERVICE_API_KEY;
-
   const params = {
     skip,
     limit: parseInt(limit),
@@ -36,13 +30,12 @@ async function getCmsAuditLogs(slotId, page = 1, limit = 20) {
     // Can't filter by slotId via simple params, skip for now
   }
 
-  const response = await axios.get(`${auditServiceUrl}/api/audit/logs`, {
-    headers,
+  const response = await auditClient.get(`/api/audit/logs`, {
     params,
   });
 
-  const logs = response.data.logs || [];
-  const total = response.data.total || 0;
+  const logs = response.logs || [];
+  const total = response.total || 0;
 
   return {
     logs,

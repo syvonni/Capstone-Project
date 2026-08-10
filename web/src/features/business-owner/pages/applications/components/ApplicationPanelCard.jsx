@@ -1,7 +1,7 @@
 import PanelCard from '@/shared/components/PanelCard.jsx'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { getStatusTagColor, isDraftStatus } from '../utils/statusUtils'
+import { getStatusTagColor, isDraftStatus, formatKebabCaseToTitleCase } from '../utils/statusUtils'
 
 dayjs.extend(relativeTime)
 
@@ -21,6 +21,9 @@ export default function ApplicationPanelCard({ business, isSelected, onClick, st
   }
 
   const tags = [{ label: business.permitStatus, color: statusColor }]
+  if (business.permitType) {
+    tags.push({ label: formatKebabCaseToTitleCase(business.permitType), color: 'default' })
+  }
   if (hasRef) {
     tags.push({ label: business.referenceNumber, color: 'default' })
   }

@@ -265,7 +265,29 @@ vi.mock('@/shared/components/LottieSpinner.jsx', () => ({
   default: () => null,
 }))
 
-// Mock scrollTo to avoid errors in JSDOM (used by some AntD components)
+// Polyfill ResizeObserver for Ant Design components
+if (typeof window !== 'undefined' && typeof window.ResizeObserver !== 'function') {
+  window.ResizeObserver = class ResizeObserver {
+    constructor(callback) {
+      this.callback = callback
+      this.observations = new Map()
+    }
+    observe(target, options) {
+      if (!this.observations.has(target)) {
+        this.observations.set(target, new Map())
+      }
+      this.observations.get(target).set(options, true)
+    }
+    unobserve(target) {
+      this.observations.delete(target)
+    }
+    disconnect() {
+      this.observations.clear()
+    }
+  }
+}
+
+// Polyfill scrollTo to avoid errors in JSDOM (used by some AntD components)
 if (typeof window !== 'undefined' && typeof window.scrollTo !== 'function') {
   window.scrollTo = vi.fn()
 }

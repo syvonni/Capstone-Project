@@ -18,7 +18,8 @@ export async function getEditRequests({ role, limit, options = {} } = {}) {
   if (role) qs.set('role', role)
   if (limit) qs.set('limit', String(limit))
 
-  return get(`${BASE_PATH}?${qs.toString()}`, { skipAutoLogout: true, ...options })
+  const res = await get(`${BASE_PATH}?${qs.toString()}`, { skipAutoLogout: true, ...options })
+  return res || []
 }
 
 /**
@@ -26,5 +27,6 @@ export async function getEditRequests({ role, limit, options = {} } = {}) {
  * @param {string} businessId - Business ID
  */
 export async function getEditRequestsByBusiness(businessId) {
-  return get(`${BASE_PATH}/by-business/${businessId}`)
+  const res = await get(`${BASE_PATH}/by-business/${businessId}`)
+  return res || []
 }

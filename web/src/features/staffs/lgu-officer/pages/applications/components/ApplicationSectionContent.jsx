@@ -3,7 +3,7 @@ import { getFileUrlFromFormValue } from '../utils/applicationDetail.utils'
 import FieldDecisionControl from './ApplicationFieldDecisionControl'
 import DocumentViewer from '@/shared/components/DocumentViewer'
 import { getFieldKey } from '@/features/staffs/lgu-officer/utils/fieldKeyUtils'
-import DynamicFormRenderer from '@/features/business-owner/pages/applications/components/ApplicationDynamicFormRenderer'
+import DynamicFormRenderer from '@/shared/components/formPreview/DynamicFormRenderer'
 
 const { Text } = Typography
 const { useBreakpoint } = Grid

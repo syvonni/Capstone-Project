@@ -15,8 +15,11 @@ const {
   getAggregatedMetrics,
   getMetricsByOperation,
   getSlowestOperations,
+  getErrorsByType,
 } = require("../../../../../shared/lib/performanceMonitor");
-const { calculateStatus } = require("../../../../../shared/lib/entityPerformanceConfig");
+const {
+  calculateStatus,
+} = require("../../../../../shared/lib/entityPerformanceConfig");
 
 /**
  * Variable Performance Helper Class
@@ -65,6 +68,19 @@ class VariablePerformanceHelper {
   }
 
   /**
+   * Gets errors grouped by type
+   *
+   * USAGE:
+   * await VariablePerformanceHelper.getErrorsByType('24h')
+   *
+   * @param {string} timeRange - Time range: '1h', '24h', '7d', '30d'
+   * @returns {Promise<Array>} - Array of error groups
+   */
+  static async getErrorsByType(timeRange = "24h") {
+    return await getErrorsByType("variable", timeRange);
+  }
+
+  /**
    * Gets performance summary formatted for display in stats panel
    *
    * USAGE:
@@ -77,6 +93,7 @@ class VariablePerformanceHelper {
     const metrics = await this.getPerformanceMetrics(timeRange);
     const byOperation = await this.getMetricsByOperation(timeRange);
     const slowest = await this.getSlowestOperations(5, timeRange);
+    const errorDetails = await this.getErrorsByType(timeRange);
 
     const status = calculateStatus("variable", {
       avgResponseTime: metrics.avgResponseTime,
@@ -86,9 +103,11 @@ class VariablePerformanceHelper {
     return {
       avgResponseTime: metrics.avgResponseTime,
       errorRate: metrics.errorRate,
+      errorCount: metrics.errorCount,
       requestCount: metrics.requestCount,
       operations: byOperation,
       slowestOperations: slowest,
+      errorDetails,
       status,
     };
   }

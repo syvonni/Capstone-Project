@@ -24,7 +24,7 @@ export const getLobs = async (params = {}) => {
 
   // Create and cache the request promise
   const requestPromise = get(`/api/public/business/lobs?${queryString}`)
-    .then(res => res?.data || [])
+    .then(res => res || [])
     .finally(() => {
       pendingRequests.delete(cacheKey)
     })

@@ -12,32 +12,32 @@
  *   .catch((err) => console.error("Failed to log audit event for post requirement create", err));
  */
 
-const { AuditMetadataBuilder } = require('../auditMetadataBuilder');
-const { trackChanges } = require('../changeTracker');
-const { logAuditEvent } = require('../auditClient');
+const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
+const { trackChanges } = require("../changeTracker");
+const { logAuditEvent } = require("../auditClient");
 
 const POST_REQUIREMENT_METADATA_MAPPING = {
-  code: 'code',
-  name: 'name',
-  description: 'description',
-  notes: 'notes',
-  legalBasis: 'legalBasis',
-  isActive: 'isActive',
-  checklistId: 'checklistId',
-  customFields: 'customFields',
-  version: 'version',
+  code: "code",
+  name: "name",
+  description: "description",
+  notes: "notes",
+  legalBasis: "legalBasis",
+  isActive: "isActive",
+  checklistId: "checklistId",
+  customFields: "customFields",
+  version: "version",
 };
 
 const POST_REQUIREMENT_FIELD_MAPPING = {
-  code: 'code',
-  name: 'name',
-  description: 'description',
-  notes: 'notes',
-  legalBasis: 'legalBasis',
-  isActive: 'isActive',
-  checklistId: 'checklistId',
-  customFields: 'customFields',
-  version: 'version',
+  code: "code",
+  name: "name",
+  description: "description",
+  notes: "notes",
+  legalBasis: "legalBasis",
+  isActive: "isActive",
+  checklistId: "checklistId",
+  customFields: "customFields",
+  version: "version",
 };
 
 /**
@@ -68,14 +68,14 @@ class PostRequirementAuditHelper {
       .build();
 
     return await logAuditEvent(
-      'post_requirement_created',
+      "post_requirement_created",
       userId,
-      'PostRequirement',
+      "PostRequirement",
       postRequirement._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 
@@ -93,11 +93,23 @@ class PostRequirementAuditHelper {
    * @param {string} role - User role
    * @returns {Promise<object>} - Created audit log (single log for all field changes)
    */
-  static async logUpdated(req, userId, userInfo, oldPostRequirement, newPostRequirement, role) {
+  static async logUpdated(
+    req,
+    userId,
+    userInfo,
+    oldPostRequirement,
+    newPostRequirement,
+    role,
+  ) {
     // Track changes between old and new post requirement
-    const changes = trackChanges(oldPostRequirement, newPostRequirement, POST_REQUIREMENT_FIELD_MAPPING, {
-      ignoreFields: ['updatedAt', 'version'], // Ignore these fields
-    });
+    const changes = trackChanges(
+      oldPostRequirement,
+      newPostRequirement,
+      POST_REQUIREMENT_FIELD_MAPPING,
+      {
+        ignoreFields: ["updatedAt", "version"], // Ignore these fields
+      },
+    );
 
     // If no changes, don't log anything
     if (changes.length === 0) {
@@ -119,14 +131,14 @@ class PostRequirementAuditHelper {
 
     // Log a single audit event for all field changes
     const auditLog = await logAuditEvent(
-      'post_requirement_updated',
+      "post_requirement_updated",
       userId,
-      'PostRequirement',
+      "PostRequirement",
       newPostRequirement._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
 
     return auditLog;
@@ -150,21 +162,24 @@ class PostRequirementAuditHelper {
       .withUserInfo(userInfo)
       .withRequestInfo()
       .withEntityFields(postRequirement, POST_REQUIREMENT_METADATA_MAPPING)
-      .withEntitySnapshots(postRequirement, { ...postRequirement, isActive: false }) // Snapshot before and after
+      .withEntitySnapshots(postRequirement, {
+        ...postRequirement,
+        isActive: false,
+      }) // Snapshot before and after
       .withCustomFields({
-        previousStatus: postRequirement.isActive ? 'active' : 'inactive',
+        previousStatus: postRequirement.isActive ? "active" : "inactive",
       })
       .build();
 
     return await logAuditEvent(
-      'post_requirement_disabled',
+      "post_requirement_disabled",
       userId,
-      'PostRequirement',
+      "PostRequirement",
       postRequirement._id,
       {
         ...metadata,
         role,
-      }
+      },
     );
   }
 }

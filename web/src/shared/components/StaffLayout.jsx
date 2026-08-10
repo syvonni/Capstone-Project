@@ -25,6 +25,7 @@ export default function StaffLayout({
     <BaseSidebarLayout
       sidebar={sidebar}
       showPageHeader={showPageHeader}
+      hideProfileSettings={true}
       onRefresh={onRefresh}
       lastUpdated={lastUpdated}
       socketConnected={socketConnected}

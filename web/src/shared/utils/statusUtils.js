@@ -231,3 +231,16 @@ export function getBusinessId(business) {
   if (!business) return null
   return business.businessId || business._id || null
 }
+
+/**
+ * Format kebab-case string to Title Case
+ * @param {string} str - Kebab-case string (e.g., "unified-business-permit")
+ * @returns {string} Title Case string (e.g., "Unified Business Permit")
+ */
+export function formatKebabCaseToTitleCase(str) {
+  if (!str) return ''
+  return str
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}

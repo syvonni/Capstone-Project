@@ -1,6 +1,6 @@
 /**
  * Document Resolver
- * 
+ *
  * Resolves templateTexts bindings to actual values from application data.
  * Supports multiple source types: form_field, system, business_profile, static.
  */
@@ -10,18 +10,18 @@
  */
 function formatFieldValue(value, fieldType) {
   if (value === null || value === undefined) {
-    return '';
+    return "";
   }
 
   switch (fieldType) {
-    case 'address':
-    case 'address_alaminos':
+    case "address":
+    case "address_alaminos":
       return formatAddress(value);
-    case 'date':
+    case "date":
       return formatDate(value);
-    case 'date_range':
+    case "date_range":
       return formatDateRange(value);
-    case 'number':
+    case "number":
       return formatNumber(value);
     default:
       return String(value);
@@ -32,8 +32,8 @@ function formatFieldValue(value, fieldType) {
  * Format address object to string
  */
 function formatAddress(address) {
-  if (!address || typeof address !== 'object') {
-    return String(address || '');
+  if (!address || typeof address !== "object") {
+    return String(address || "");
   }
 
   const parts = [
@@ -45,21 +45,21 @@ function formatAddress(address) {
     address.zipCode,
   ].filter(Boolean);
 
-  return parts.join(', ') || '';
+  return parts.join(", ") || "";
 }
 
 /**
  * Format date to readable string
  */
 function formatDate(date) {
-  if (!date) return '';
+  if (!date) return "";
   const d = new Date(date);
   if (isNaN(d.getTime())) return String(date);
-  
-  return d.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }
 
@@ -67,15 +67,15 @@ function formatDate(date) {
  * Format date range to readable string
  */
 function formatDateRange(range) {
-  if (!range || typeof range !== 'object') {
-    return String(range || '');
+  if (!range || typeof range !== "object") {
+    return String(range || "");
   }
 
   const { startDate, endDate } = range;
-  if (!startDate && !endDate) return '';
+  if (!startDate && !endDate) return "";
 
-  const start = startDate ? formatDate(startDate) : '';
-  const end = endDate ? formatDate(endDate) : '';
+  const start = startDate ? formatDate(startDate) : "";
+  const end = endDate ? formatDate(endDate) : "";
 
   if (start && end) {
     return `${start} - ${end}`;
@@ -87,36 +87,41 @@ function formatDateRange(range) {
  * Format number with locale
  */
 function formatNumber(num) {
-  if (num === null || num === undefined) return '';
+  if (num === null || num === undefined) return "";
   const n = Number(num);
   if (isNaN(n)) return String(num);
-  return n.toLocaleString('en-US');
+  return n.toLocaleString("en-US");
 }
 
 /**
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text) {
-  if (text === null || text === undefined) return '';
+  if (text === null || text === undefined) return "";
   const str = String(text);
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 /**
  * Resolve templateTexts to actual values
- * 
+ *
  * @param {Array} templateTexts - Array of text attribute bindings from ClaimableDocument
  * @param {Object} application - Application document with formData
  * @param {Object} businessProfile - BusinessProfile document
  * @param {Object} permitForm - PermitForm document with sections/fields
  * @returns {Object} - Map of attributeName -> resolved value, plus unresolved tracking
  */
-function resolveTemplateTexts(templateTexts, application, businessProfile, permitForm) {
+function resolveTemplateTexts(
+  templateTexts,
+  application,
+  businessProfile,
+  permitForm,
+) {
   const resolved = {};
   const unresolved = [];
   const warnings = [];
@@ -126,44 +131,54 @@ function resolveTemplateTexts(templateTexts, application, businessProfile, permi
   }
 
   for (const textAttr of templateTexts) {
-    const { attributeName, sourceType, bindings, sourceKey, staticValue } = textAttr;
-    
+    const { attributeName, sourceType, bindings, sourceKey, staticValue } =
+      textAttr;
+
     if (!attributeName) {
-      warnings.push({ attributeName: '(missing)', reason: 'Missing attributeName' });
+      warnings.push({
+        attributeName: "(missing)",
+        reason: "Missing attributeName",
+      });
       continue;
     }
 
-    let value = '';
+    let value = "";
 
     try {
       switch (sourceType) {
-        case 'form_field':
+        case "form_field":
           value = resolveFormField(bindings, application, permitForm);
           break;
-        case 'system':
+        case "system":
           value = resolveSystemField(sourceKey, application);
           break;
-        case 'business_profile':
+        case "business_profile":
           value = resolveBusinessProfileField(sourceKey, businessProfile);
           break;
-        case 'static':
-          value = staticValue || '';
+        case "static":
+          value = staticValue || "";
           break;
         default:
-          warnings.push({ attributeName, reason: `Unknown sourceType: ${sourceType}` });
+          warnings.push({
+            attributeName,
+            reason: `Unknown sourceType: ${sourceType}`,
+          });
           unresolved.push(attributeName);
           continue;
       }
 
-      if (value === null || value === undefined || value === '') {
+      if (value === null || value === undefined || value === "") {
         unresolved.push(attributeName);
-        warnings.push({ attributeName, reason: 'Resolved to empty value' });
+        warnings.push({ attributeName, reason: "Resolved to empty value" });
       }
 
       resolved[attributeName] = value;
     } catch (error) {
       unresolved.push(attributeName);
-      warnings.push({ attributeName, reason: `Resolution error: ${error.message}` });
+      warnings.push({
+        attributeName,
+        reason: `Resolution error: ${error.message}`,
+      });
     }
   }
 
@@ -175,7 +190,7 @@ function resolveTemplateTexts(templateTexts, application, businessProfile, permi
  */
 function resolveFormField(bindings, application, permitForm) {
   if (!bindings || !Array.isArray(bindings) || bindings.length === 0) {
-    return '';
+    return "";
   }
 
   const binding = bindings[0];
@@ -183,7 +198,7 @@ function resolveFormField(bindings, application, permitForm) {
 
   // Get formData from application
   const formData = application?.formData || {};
-  
+
   // Navigate to the field value using the key
   // formData structure typically mirrors the form structure
   // For now, we'll do a simple key lookup
@@ -199,22 +214,22 @@ function resolveFormField(bindings, application, permitForm) {
     }
   }
 
-  return '';
+  return "";
 }
 
 /**
  * Resolve system field from application
  */
 function resolveSystemField(sourceKey, application) {
-  if (!sourceKey) return '';
+  if (!sourceKey) return "";
 
   switch (sourceKey) {
-    case 'applicationReferenceNumber':
-      return application?.applicationReferenceNumber || '';
-    case 'applicationStatus':
-      return application?.applicationStatus || '';
+    case "applicationReferenceNumber":
+      return application?.applicationReferenceNumber || "";
+    case "applicationStatus":
+      return application?.applicationStatus || "";
     default:
-      return '';
+      return "";
   }
 }
 
@@ -222,48 +237,52 @@ function resolveSystemField(sourceKey, application) {
  * Resolve business_profile field from BusinessProfile
  */
 function resolveBusinessProfileField(sourceKey, businessProfile) {
-  if (!sourceKey || !businessProfile) return '';
+  if (!sourceKey || !businessProfile) return "";
 
   // Get the primary business from the businesses array
   const businesses = businessProfile.businesses || [];
-  const primaryBusiness = businesses.find(b => b.isPrimary) || businesses[0];
+  const primaryBusiness = businesses.find((b) => b.isPrimary) || businesses[0];
 
-  if (!primaryBusiness) return '';
+  if (!primaryBusiness) return "";
 
   switch (sourceKey) {
-    case 'registeredBusinessName':
-      return primaryBusiness.registeredBusinessName || '';
-    case 'businessTradeName':
-      return primaryBusiness.businessTradeName || primaryBusiness.businessName || '';
-    case 'businessAddress':
-      return formatAddress(primaryBusiness.location || primaryBusiness.businessAddress || {});
-    case 'businessType':
-      return primaryBusiness.businessType || '';
-    case 'primaryLineOfBusiness':
-      return primaryBusiness.primaryLineOfBusiness || '';
+    case "registeredBusinessName":
+      return primaryBusiness.registeredBusinessName || "";
+    case "businessTradeName":
+      return (
+        primaryBusiness.businessTradeName || primaryBusiness.businessName || ""
+      );
+    case "businessAddress":
+      return formatAddress(
+        primaryBusiness.location || primaryBusiness.businessAddress || {},
+      );
+    case "businessType":
+      return primaryBusiness.businessType || "";
+    case "primaryLineOfBusiness":
+      return primaryBusiness.primaryLineOfBusiness || "";
     default:
       // Try direct lookup on primary business
-      return primaryBusiness[sourceKey] || '';
+      return primaryBusiness[sourceKey] || "";
   }
 }
 
 /**
  * Render document HTML with template substitution
- * 
+ *
  * @param {String} templateHtml - HTML template with {{attributeName}} placeholders
  * @param {Object} resolvedValues - Map of attributeName -> resolved value
  * @returns {String} - Rendered HTML with substituted values
  */
 function renderDocumentHtml(templateHtml, resolvedValues) {
-  if (!templateHtml) return '';
-  
+  if (!templateHtml) return "";
+
   let html = templateHtml;
 
   // Replace each {{attributeName}} with its resolved value
   for (const [attributeName, value] of Object.entries(resolvedValues)) {
     const placeholder = `{{${attributeName}}}`;
     const escapedValue = escapeHtml(value);
-    html = html.replace(new RegExp(placeholder, 'g'), escapedValue);
+    html = html.replace(new RegExp(placeholder, "g"), escapedValue);
   }
 
   return html;

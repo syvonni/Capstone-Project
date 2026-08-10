@@ -1,7 +1,10 @@
 import { useMemo } from 'react'
 import { ThunderboltOutlined } from '@ant-design/icons'
+import { Collapse, Typography } from 'antd'
 import SplitCard from '@/shared/components/SplitCard'
 import { usePerformance } from '../hooks/usePerformance'
+
+const { Text } = Typography
 
 /**
  * Generic Performance Stats Panel Component
@@ -23,69 +26,96 @@ export default function PerformanceStatsPanel({ entityType }) {
     }
 
     const links = []
-    const status = performanceMetrics?.status || 'good'
+
+    // Handle operations being either an object or array for backwards compatibility
+    const operationsArray = Array.isArray(performanceMetrics.operations)
+      ? performanceMetrics.operations
+      : Object.keys(performanceMetrics.operations || {}).map((op) => ({
+          operation: op,
+          ...performanceMetrics.operations[op],
+        }))
 
     // Average response time
+    let responseTimeColor = 'gray'
     if (performanceMetrics.avgResponseTime > 0) {
-      let linkColor = 'success'
-      if (status === 'critical') {
-        linkColor = 'error'
-      } else if (status === 'warning') {
-        linkColor = 'warning'
+      if (performanceMetrics.avgResponseTime >= 1000) {
+        responseTimeColor = 'error'
+      } else if (performanceMetrics.avgResponseTime >= 500) {
+        responseTimeColor = 'warning'
+      } else {
+        responseTimeColor = 'success'
       }
-
-      links.push({
-        count: performanceMetrics.avgResponseTime,
-        text: 'ms avg response time',
-        linkColor,
-        modalContent: {
-          title: 'Response time by operation in the last 24 hours',
-          items: performanceMetrics.operations ? performanceMetrics.operations.map(op => ({
-            text: `${op.operation} ${op.endpoint}: ${Math.round(op.avgResponseTime)}ms avg (${op.count} requests)`,
-          })) : [],
-        },
-      })
     }
+
+    links.push({
+      count: performanceMetrics.avgResponseTime,
+      text: 'ms avg response time',
+      linkColor: responseTimeColor,
+      modalContent: performanceMetrics.avgResponseTime > 0 ? {
+        title: 'Response time by operation in the last 24 hours',
+        items: operationsArray.map(op => ({
+          text: `${op.operation} ${op.endpoint || ''}: ${Math.round(op.avgResponseTime)}ms avg (${op.count} requests)`,
+        })),
+      } : null
+    })
 
     // Error rate
+    let errorRateColor = 'gray'
     if (performanceMetrics.errorRate > 0) {
-      let linkColor = 'success'
       if (performanceMetrics.errorRate < 0.01) {
-        linkColor = 'success' // Good
+        errorRateColor = 'success' // Good
       } else if (performanceMetrics.errorRate < 0.05) {
-        linkColor = 'warning'
+        errorRateColor = 'warning'
       } else {
-        linkColor = 'error'
+        errorRateColor = 'error'
       }
+    }
 
-      links.push({
-        count: `${Math.round(performanceMetrics.errorRate * 100)}%`,
-        text: 'error rate',
-        linkColor,
-        modalContent: {
-          title: 'Error details in the last 24 hours',
-          items: [
-            { text: `Total errors: ${performanceMetrics.errorCount || 0}` },
-            { text: `Total requests: ${performanceMetrics.requestCount || 0}` },
+    const errorDetailsItems = [
+      { text: `Total errors: ${performanceMetrics.errorCount || 0}` },
+      { text: `Total requests: ${performanceMetrics.requestCount || 0}` },
+    ]
+
+    // Add error details if available
+    if (performanceMetrics.errorDetails && performanceMetrics.errorDetails.length > 0) {
+      performanceMetrics.errorDetails.forEach((errorGroup) => {
+        const firstOccurrence = new Date(errorGroup.firstOccurrence).toLocaleString()
+        const lastOccurrence = new Date(errorGroup.lastOccurrence).toLocaleString()
+        
+        errorDetailsItems.push({
+          text: `${errorGroup.errorName}: ${errorGroup.count} occurrences`,
+          subItems: [
+            { text: `Message: ${errorGroup.errorMessage}` },
+            { text: `First seen: ${firstOccurrence}` },
+            { text: `Last seen: ${lastOccurrence}` },
+            ...(errorGroup.sampleEndpoints.length > 0 ? [{ text: `Endpoints: ${errorGroup.sampleEndpoints.join(', ')}` }] : []),
           ],
-        },
+        })
       })
     }
+
+    links.push({
+      count: `${Math.round(performanceMetrics.errorRate * 100)}%`,
+      text: 'error rate',
+      linkColor: errorRateColor,
+      modalContent: performanceMetrics.errorRate > 0 ? {
+        title: 'Error details in the last 24 hours',
+        items: errorDetailsItems,
+      } : null
+    })
 
     // Request volume
-    if (performanceMetrics.requestCount > 0) {
-      links.push({
-        count: performanceMetrics.requestCount,
-        text: 'requests (24h)',
-        linkColor: 'success',
-        modalContent: {
-          title: 'Request volume in the last 24 hours',
-          items: performanceMetrics.operations ? performanceMetrics.operations.map(op => ({
-            text: `${op.operation} ${op.endpoint}: ${op.count} requests`,
-          })) : [],
-        },
-      })
-    }
+    links.push({
+      count: performanceMetrics.requestCount,
+      text: 'requests',
+      linkColor: performanceMetrics.requestCount > 0 ? 'success' : 'gray',
+      modalContent: performanceMetrics.requestCount > 0 ? {
+        title: 'Request volume in the last 24 hours',
+        items: operationsArray.map(op => ({
+          text: `${op.operation} ${op.endpoint || ''}: ${op.count} requests`,
+        })),
+      } : null
+    })
 
     // Slowest operation
     if (performanceMetrics.slowestOperations && performanceMetrics.slowestOperations.length > 0) {
@@ -125,6 +155,7 @@ export default function PerformanceStatsPanel({ entityType }) {
       rightPanelWidth="80%"
       links={performanceLinks}
       loading={loading}
+      disableBorderBehavior={true}
     />
   )
 }

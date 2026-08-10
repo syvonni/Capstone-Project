@@ -52,7 +52,7 @@ export default function TaxBracketDetailPanel({ bracketId, lobId, onSave }) {
   const [initialValues, setInitialValues] = useState({})
   const [sampleValue, setSampleValue] = useState(500000)
   const [taxBasis, setTaxBasis] = useState('capitalization')
-  const [, setLoading] = useState(false)
+  const [loadingOverview, setLoadingOverview] = useState(false)
   const [overviewData, setOverviewData] = useState(null)
   const [lob, setLob] = useState(null)
   const [essentialCommodity, setEssentialCommodity] = useState(false)
@@ -84,7 +84,7 @@ export default function TaxBracketDetailPanel({ bracketId, lobId, onSave }) {
   useEffect(() => {
     // Load brackets from API based on LOB and edit mode
     const loadBrackets = async () => {
-      setLoading(true)
+      setLoadingOverview(true)
       try {
         // In view mode, load overview data only
         if (!isEditMode) {
@@ -144,7 +144,7 @@ export default function TaxBracketDetailPanel({ bracketId, lobId, onSave }) {
         console.error('Failed to load tax brackets:', error)
         message.error('Failed to load tax brackets')
       } finally {
-        setLoading(false)
+        setLoadingOverview(false)
       }
     }
 
@@ -222,6 +222,14 @@ export default function TaxBracketDetailPanel({ bracketId, lobId, onSave }) {
     form.setFieldsValue(initialValues)
     resetChangeTracking(initialValues)
   }
+
+  // Reset form when brackets data changes (in addition to the existing useEffect)
+  useEffect(() => {
+    if (localBrackets.length > 0 && !isEditMode) {
+      form.setFieldsValue(initialValues)
+      resetChangeTracking(initialValues)
+    }
+  }, [localBrackets, initialValues, form, resetChangeTracking, isEditMode])
 
   const handleSave = async () => {
     try {
@@ -424,6 +432,7 @@ export default function TaxBracketDetailPanel({ bracketId, lobId, onSave }) {
       <div style={{ padding: '24px 24px 16px 24px' }}>
         <InfoGrid
           noPadding
+          loading={loadingOverview || saving}
           items={items}
         />
       </div>

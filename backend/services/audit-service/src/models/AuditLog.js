@@ -72,13 +72,13 @@ AuditLogSchema.index({ eventType: 1, createdAt: -1 });
 // Each index supports queries that filter by entity ID in metadata and sort by creation date
 
 // Variables: queries like { "metadata.variableId": "123" } sorted by createdAt
-AuditLogSchema.index({ 'metadata.variableId': 1, createdAt: -1 });
+AuditLogSchema.index({ "metadata.variableId": 1, createdAt: -1 });
 
 // Applications: queries like { "metadata.applicationId": "123" } sorted by createdAt
-AuditLogSchema.index({ 'metadata.applicationId': 1, createdAt: -1 });
+AuditLogSchema.index({ "metadata.applicationId": 1, createdAt: -1 });
 
 // Fees: queries like { "metadata.feeId": "123" } sorted by createdAt
-AuditLogSchema.index({ 'metadata.feeId': 1, createdAt: -1 });
+AuditLogSchema.index({ "metadata.feeId": 1, createdAt: -1 });
 
 // Entity type + event type: queries like { entityType: "variable", eventType: "variable_created" } sorted by createdAt
 // This index supports filtering by both entity type and event type together

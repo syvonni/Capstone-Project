@@ -9,6 +9,7 @@ import { FormPreviewContent, TemporaryPermitConfiguration } from './index'
 import { useAudit } from '@/shared/audit/hooks/useAudit'
 import { usePermitForm } from '../hooks/usePermitForm'
 import { getPermitFormByFormId, getClaimableDocumentsByPermitFormId } from '@/features/admin/services/permitFormService'
+import { getPublicPermitFormByFormId } from '@/shared/services/permitFormService'
 import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 
 const { useBreakpoint } = Grid
@@ -19,6 +20,8 @@ export function FormDetailPanel({ formId, _onBackToMenu }) {
   const [activeTab, setActiveTab] = useState('overview')
   const [permitForm, setPermitForm] = useState(null)
   const [claimableDocuments, setClaimableDocuments] = useState([])
+  const [loadingPermitForm, setLoadingPermitForm] = useState(false)
+  const [loadingClaimableDocuments, setLoadingClaimableDocuments] = useState(false)
   const screens = useBreakpoint()
   const isMobile = !screens.lg
 
@@ -26,12 +29,22 @@ export function FormDetailPanel({ formId, _onBackToMenu }) {
   useEffect(() => {
     const fetchPermitForm = async () => {
       try {
-        const response = await getPermitFormByFormId(formId)
-        if (response?.form) {
-          setPermitForm(response.form)
+        setLoadingPermitForm(true)
+        // Try admin endpoint first, fall back to public endpoint
+        let form
+        try {
+          form = await getPermitFormByFormId(formId)
+        } catch (adminError) {
+          form = await getPublicPermitFormByFormId(formId)
+        }
+        
+        if (form) {
+          setPermitForm(form)
         }
       } catch (error) {
         console.error('Failed to fetch permit form:', error)
+      } finally {
+        setLoadingPermitForm(false)
       }
     }
     fetchPermitForm()
@@ -42,10 +55,13 @@ export function FormDetailPanel({ formId, _onBackToMenu }) {
     const fetchClaimableDocuments = async () => {
       if (permitForm?._id) {
         try {
+          setLoadingClaimableDocuments(true)
           const documents = await getClaimableDocumentsByPermitFormId(permitForm._id)
           setClaimableDocuments(documents)
         } catch (error) {
           console.error('Failed to fetch claimable documents:', error)
+        } finally {
+          setLoadingClaimableDocuments(false)
         }
       }
     }
@@ -80,12 +96,17 @@ export function FormDetailPanel({ formId, _onBackToMenu }) {
     // Refetch the form data to get latest changes
     if (formId) {
       const response = await getPermitFormByFormId(formId)
-      if (response?.form) {
-        setPermitForm(response.form)
+      if (response) {
+        setPermitForm(response)
       }
     }
     refresh()
   } })
+
+  const loading = saving || loadingPermitForm || loadingClaimableDocuments
+
+  // Determine if this is a new form (no _id yet)
+  const isNew = !permitForm?._id
 
   // Initialize form with values (only when in edit mode to avoid "form not connected" warning)
   useEffect(() => {
@@ -116,6 +137,15 @@ export function FormDetailPanel({ formId, _onBackToMenu }) {
     resetHistory(initialValues)
     resetChangeTracking(initialValues)
   }
+
+  // Reset form when permit form changes
+  useEffect(() => {
+    if (permitForm && !isNew) {
+      form.setFieldsValue(initialValues)
+      resetHistory(initialValues)
+      resetChangeTracking(initialValues)
+    }
+  }, [formId, permitForm, initialValues, form, resetHistory, resetChangeTracking, isNew])
 
   const getMainNavItems = (isEditMode) => {
     if (isEditMode) {
@@ -175,6 +205,24 @@ export function FormDetailPanel({ formId, _onBackToMenu }) {
     ? [{ text: 'Exit Edit Mode', icon: <CloseOutlined />, onClick: handleExitEditMode, type: 'default' }]
     : [{ text: 'Edit', icon: <EditOutlined />, onClick: handleEnterEditMode, type: 'default' }]
 
+  if (loadingPermitForm) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <DetailHeader
+          title="Loading Form"
+          subtitle="Please wait..."
+          iconButtons={iconButtons}
+          instructionSlotId="admin-forms-management"
+        />
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+          <div style={{ textAlign: 'center', padding: 32 }}>
+            Loading form details...
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!permitForm) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -210,9 +258,10 @@ export function FormDetailPanel({ formId, _onBackToMenu }) {
             notes={initialValues.notes || ''}
             activeTab={activeTab}
             disabled={true}
-            feeId={permitForm?.feeId?._id || permitForm?.feeId}
-            feeAmount={permitForm?.feeId?.amount}
+            feeId={typeof permitForm?.feeId === 'object' ? permitForm?.feeId?._id : permitForm?.feeId}
+            feeAmount={typeof permitForm?.feeId === 'object' ? permitForm?.feeId?.amount : undefined}
             claimableDocuments={claimableDocuments}
+            loading={loading}
           />
         )
       case 'configuration':
