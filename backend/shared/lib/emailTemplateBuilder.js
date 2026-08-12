@@ -68,10 +68,16 @@ function buildHeader(appUrl) {
       : localLogoUrl;
   }
 
-  return `<div style="background:${EMAIL_COLORS.bgWhite};padding:24px 32px;border-bottom:1px solid ${EMAIL_COLORS.border};display:flex;align-items:center;gap:32px;">
-  <img src="${logoUrl}" alt="BizClear Logo" width="40" height="40" style="display:block;border:none;flex-shrink:0;">
-  <h1 style="margin:0;color:${EMAIL_COLORS.textPrimary};font-size:24px;font-weight:600;letter-spacing:0.5px;font-family:'Urbanist', 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;line-height:40px;">BizClear</h1>
-</div>`;
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:${EMAIL_COLORS.bgWhite};border-bottom:1px solid ${EMAIL_COLORS.border};">
+  <tr>
+    <td style="padding:24px 0 24px 32px;vertical-align:middle;width:30px;">
+      <img src="${logoUrl}" alt="BizClear Logo" width="30" height="30" style="display:block;border:none;">
+    </td>
+    <td style="padding:24px 32px 24px 12px;vertical-align:middle;">
+      <h1 style="margin:0;color:${EMAIL_COLORS.textPrimary};font-size:24px;font-weight:600;letter-spacing:0.5px;font-family:'Urbanist', 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;line-height:30px;">BizClear</h1>
+    </td>
+  </tr>
+</table>`;
 }
 
 function buildFooter(appUrl) {
