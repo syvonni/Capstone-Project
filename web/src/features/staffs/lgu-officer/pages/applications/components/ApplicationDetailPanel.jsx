@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import dayjs from 'dayjs'
 import { Typography, Space, theme, Empty, App, Form, Modal, Grid } from 'antd'
 import { FileTextOutlined } from '@ant-design/icons'
 import { useStepUp } from '@/shared/hooks/useStepUp'
@@ -32,6 +33,7 @@ import { useApplicationPendingActions } from '../hooks/useApplicationPendingActi
 import { useApplicationActions } from '../hooks/useApplicationActions'
 import { useApplicationHandlers } from '../hooks/useApplicationHandlers'
 import { useApplicationTestData } from '@/features/business-owner/pages/applications/hooks/useApplicationTestData'
+import { formDataWithDayjs } from '@/features/business-owner/utils/businessFormUtils.js'
 import RejectApplicationModal from './modals/ApplicationRejectApplicationModal'
 import RejectAppealModal from './modals/ApplicationRejectAppealModal'
 import CompleteReviewModal from './modals/ApplicationCompleteReviewModal'
@@ -70,7 +72,7 @@ export default function ApplicationDetailPanel({
   const permitService = useMemo(() => new PermitApplicationService(), [])
   const [application, setApplication] = useState(initialApplication)
   const [loading, setLoading] = useState(false)
-  const { runWithStepUp } = useStepUp()
+  const { runWithStepUp, stepUpModal: handlersStepUpModal } = useStepUp()
 
   const { canReview, isFinalDecision, isWaitingForApplicant, isActiveReviewState, isDraft, isOfficerDraft, isClaimedByMe } = useApplicationStatus(application, currentUser)
 
@@ -204,6 +206,10 @@ export default function ApplicationDetailPanel({
     returnRequestOther, setReturnRequestOther,
   } = useApplicationModals()
 
+  const handleViewDocument = useCallback((doc) => {
+    setDocumentModal({ ...doc, open: true })
+  }, [setDocumentModal])
+
   const {
     handleReturnConfirm,
     handleRejectClick,
@@ -244,10 +250,7 @@ export default function ApplicationDetailPanel({
     return auditLogs.map(audit => ({
       ...audit,
       timestamp: audit.createdAt,
-      userName: audit.metadata?.officerName || audit.metadata?.claimedByName || audit.metadata?.releasedByName ||
-                 audit.metadata?.reviewedByName || audit.metadata?.submittedByName || audit.metadata?.rejectedByName ||
-                 audit.metadata?.returnedByName || audit.metadata?.inspectorName || audit.metadata?.registeredByName ||
-                 audit.metadata?.updatedByName || audit.metadata?.deletedByName || 'Unknown',
+      userName: audit.metadata?.userName || 'Unknown',
     }))
   }, [auditLogs])
 
@@ -255,12 +258,14 @@ export default function ApplicationDetailPanel({
   const searchFilter = useCallback((audit, searchValue) => {
     const searchLower = searchValue.toLowerCase()
     const metadata = audit.metadata || {}
-    const user = metadata.officerName || metadata.claimedByName || metadata.releasedByName ||
-           metadata.reviewedByName || metadata.submittedByName || metadata.rejectedByName ||
-           metadata.returnedByName || metadata.inspectorName || metadata.registeredByName ||
-           metadata.updatedByName || metadata.deletedByName || 'Unknown'
+    const user = metadata.userName || 'Unknown'
     const eventType = audit.eventType || ''
-    return user.toLowerCase().includes(searchLower) || eventType.toLowerCase().includes(searchLower)
+    const name = metadata.name || ''
+    const ref = metadata.applicationReferenceNumber || metadata.applicationId || ''
+    return user.toLowerCase().includes(searchLower) ||
+           eventType.toLowerCase().includes(searchLower) ||
+           name.toLowerCase().includes(searchLower) ||
+           ref.toLowerCase().includes(searchLower)
   }, [])
 
   const { latestAppeal, _getActiveAppeal } = useApplicationAppeals(application)
@@ -310,17 +315,24 @@ export default function ApplicationDetailPanel({
   const profile = application?.profile || {}
   const ownerName = application?.ownerName || ownerIdentity?.fullName || businessReg?.ownerFullName || bo?.name || profile?.fullName || 'N/A'
 
-  const formData = application?.formData && typeof application.formData === 'object' ? application.formData : {}
+  const formData = useMemo(() =>
+    application?.formData && typeof application.formData === 'object' ? application.formData : {},
+    [application?.formData]
+  )
+  const formDataForForm = useMemo(() =>
+    formDataWithDayjs(formData, formDefinition, application?.lguDocuments || {}),
+    [formData, formDefinition, application?.lguDocuments]
+  )
   const sections = formDefinition ? filterSectionsByFormValues(formDefinition.sections || [], formData) : []
 
   // Initialize form with existing formData for rendering and officer drafts
   // Only run when application is fully loaded (not just the initial prop from parent)
   useEffect(() => {
     if (application?.formData && application?.applicationId) {
-      form.setFieldsValue(application.formData)
-      setFormValues(application.formData)
+      form.setFieldsValue(formDataForForm)
+      setFormValues(formDataForForm)
     }
-  }, [application?.applicationId, application?.formData, form])
+  }, [application?.applicationId, application?.formData, form, formDataForForm])
 
   // Auto-save for officer drafts with debouncing
   const savingRef = useRef(false)
@@ -340,10 +352,29 @@ export default function ApplicationDetailPanel({
       setSaving(true)
       const values = form.getFieldsValue(true)
 
+      // Convert any dayjs instances back to date strings for the backend
+      const serializeFormValues = (obj) => {
+        if (dayjs.isDayjs(obj)) {
+          return obj.format('YYYY-MM-DD')
+        }
+        if (Array.isArray(obj)) {
+          return obj.map(serializeFormValues)
+        }
+        if (obj && typeof obj === 'object' && !(obj instanceof File) && !obj.uid) {
+          const out = {}
+          Object.keys(obj).forEach((k) => {
+            out[k] = serializeFormValues(obj[k])
+          })
+          return out
+        }
+        return obj
+      }
+      const serializedValues = serializeFormValues(values)
+
       // Extract CIDs from file fields
       const allFields = (formDefinition?.sections || []).flatMap(s => s.items || [])
       const mergedCids = { ...documentCids }
-      const cleanedValues = { ...values }
+      const cleanedValues = { ...serializedValues }
 
       allFields.forEach((field) => {
         if (field.type !== 'file') return
@@ -470,6 +501,7 @@ export default function ApplicationDetailPanel({
         token={token}
         disabled={reviewLocked}
         isMobile={isMobile}
+        block
         isFinalState={isFinalState}
         isResubmit={isResubmit}
       />
@@ -497,7 +529,7 @@ export default function ApplicationDetailPanel({
         disabled={reviewLocked}
         isMobile={false}
         isFinalState={isFinalState}
-        hideRequest={true}
+        block
       />
     )
   }, [isOfficerDraft, handleFieldDecision, reviewLocked, formData?.businessActivities, fieldReviewDecisions, handleAccept, handleReject, token, isFinalState])
@@ -636,7 +668,7 @@ export default function ApplicationDetailPanel({
       fieldReviewDecisions={isOfficerDraft ? undefined : fieldReviewDecisions}
       renderFieldActions={isOfficerDraft ? undefined : renderFieldActions}
       renderLineActions={isOfficerDraft ? undefined : renderLineActions}
-      onViewDocument={setDocumentModal}
+      onViewDocument={handleViewDocument}
       showAdminNotes={!isOfficerDraft}
       isMobile={isMobile}
       onLobChange={isOfficerDraft ? (businessActivities) => {
@@ -667,6 +699,7 @@ export default function ApplicationDetailPanel({
       layout="vertical"
       requiredMark={false}
       validateTrigger="onBlur"
+      style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
     >
       <ApplicationDetailPanelContent
         loading={loading}
@@ -761,12 +794,25 @@ export default function ApplicationDetailPanel({
             {...props}
             priorityFields={[
               'eventType',
+              'name',
+              'applicationId',
+              'applicationReferenceNumber',
               'createdAt',
               'userName',
-              'version',
-              'updatedByName',
-              'createdByName',
-              'deletedByName',
+              'role',
+              'oldStatus',
+              'newStatus',
+              'decision',
+              'comments',
+              'rejectionReason',
+              'changedFields',
+              'changeCount',
+              'changeSummary',
+              'fieldKey',
+              'fieldDecision',
+              'reasonCode',
+              'actionType',
+              'scheduledAt',
             ]}
           />
         )}
@@ -808,6 +854,7 @@ export default function ApplicationDetailPanel({
       />
       {claimStepUpModal}
       {pendingActionsStepUpModal}
+      {handlersStepUpModal}
     </Form>
   )
 }

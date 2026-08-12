@@ -12,7 +12,8 @@
 const Application = require("../../models/Application");
 const Business = require("../../models/Business");
 const GeneralPermit = require("../../models/GeneralPermit");
-const { logAuditEvent } = require("../../lib/auditClient");
+const ApplicationAuditHelper = require("../../lib/auditHelpers/applicationAuditHelper");
+const applicationEmailService = require("./applicationEmail.service");
 
 class PendingActionService {
   /**
@@ -65,10 +66,11 @@ class PendingActionService {
    * @param {object} payload - Action payload
    * @param {string} officerId - Officer ID
    * @param {number} undoWindowMinutes - Undo window in minutes (default 10)
+   * @param {object} [auditContext={}] - Optional audit context (e.g. { req })
    * @returns {Promise<object>} - Updated document
    * @throws {Error} - If document not found or conflict
    */
-  async createPendingAction(applicationId, actionType, payload, officerId, undoWindowMinutes = 10) {
+  async createPendingAction(applicationId, actionType, payload, officerId, undoWindowMinutes = 10, auditContext = {}) {
     const validActionTypes = ["complete_review", "reject", "return", "reject_appeal"];
     if (!actionType || !validActionTypes.includes(actionType)) {
       const error = new Error(`actionType must be one of: ${validActionTypes.join(", ")}`);
@@ -117,16 +119,13 @@ class PendingActionService {
     }
 
     // Log audit event
-    await logAuditEvent(
-      "pending_action_created",
+    await ApplicationAuditHelper.logPendingActionCreated(
+      auditContext?.req,
       officerId,
-      doc.constructor.modelName,
-      doc.applicationId || doc.businessId || doc._id.toString(),
-      {
-        applicationId: doc.applicationId || doc.businessId,
-        actionType,
-        scheduledAt,
-      },
+      doc,
+      actionType,
+      scheduledAt,
+      payload,
     );
 
     // Re-fetch and return updated document
@@ -144,10 +143,11 @@ class PendingActionService {
    *
    * @param {string} applicationId - Application ID
    * @param {string} officerId - Officer ID
+   * @param {object} [auditContext={}] - Optional audit context (e.g. { req })
    * @returns {Promise<object>} - Updated document
    * @throws {Error} - If document not found
    */
-  async cancelPendingAction(applicationId, officerId) {
+  async cancelPendingAction(applicationId, officerId, auditContext = {}) {
     const doc = await this.findDocument(applicationId);
     if (!doc) {
       const error = new Error("Application not found");
@@ -171,14 +171,11 @@ class PendingActionService {
     }
 
     // Log audit event
-    await logAuditEvent(
-      "pending_action_cancelled",
+    await ApplicationAuditHelper.logPendingActionCancelled(
+      auditContext?.req,
       officerId,
-      doc.constructor.modelName,
-      doc.applicationId || doc.businessId || doc._id.toString(),
-      {
-        applicationId: doc.applicationId || doc.businessId,
-      },
+      doc,
+      doc.pendingAction?.actionType,
     );
 
     // Re-fetch and return updated document
@@ -215,10 +212,11 @@ class PendingActionService {
    *
    * @param {string} applicationId - Application ID
    * @param {string} officerId - Officer ID
+   * @param {object} [auditContext={}] - Optional audit context (e.g. { req })
    * @returns {Promise<object>} - Updated document
    * @throws {Error} - If document not found, no pending action, or expired
    */
-  async executePendingAction(applicationId, officerId) {
+  async executePendingAction(applicationId, officerId, auditContext = {}) {
     const doc = await this.findDocument(applicationId);
     if (!doc) {
       const error = new Error("Application not found");
@@ -299,6 +297,8 @@ class PendingActionService {
       }
     }
 
+    const oldDoc = doc.toObject();
+
     // Update based on collection type
     if (doc.constructor.modelName === "Application") {
       await Application.updateOne({ _id: doc._id }, { $set: updateData });
@@ -308,25 +308,46 @@ class PendingActionService {
       await Business.updateOne({ _id: doc._id }, { $set: updateData });
     }
 
-    // Log audit event
-    await logAuditEvent(
-      "pending_action_executed",
-      officerId,
-      doc.constructor.modelName,
-      doc.applicationId || doc.businessId || doc._id.toString(),
-      {
-        applicationId: doc.applicationId || doc.businessId,
-        actionType: pendingAction.actionType,
-        newStatus,
-      },
-    );
-
-    // Re-fetch and return updated document
+    // Re-fetch updated document for audit logging and email
     const updatedDoc = await (doc.constructor.modelName === "Application"
       ? Application.findById(doc._id)
       : doc.constructor.modelName === "GeneralPermit"
         ? GeneralPermit.findById(doc._id)
         : Business.findById(doc._id));
+
+    // Log audit event
+    await ApplicationAuditHelper.logPendingActionExecuted(
+      auditContext?.req,
+      officerId,
+      updatedDoc,
+      pendingAction.actionType,
+      newStatus,
+      pendingAction.payload,
+      oldDoc,
+    );
+
+    // Send the appropriate notification email for this final action
+    if (doc.constructor.modelName === "Application" || doc.constructor.modelName === "GeneralPermit") {
+      try {
+        if (pendingAction.actionType === "complete_review") {
+          await applicationEmailService.sendApplicationEmail(updatedDoc, "approved");
+        } else if (pendingAction.actionType === "reject") {
+          await applicationEmailService.sendApplicationEmail(
+            updatedDoc,
+            "rejected",
+            { rejectionReason: pendingAction.payload?.rejectionReason || pendingAction.payload?.requestOther || "" },
+          );
+        } else if (pendingAction.actionType === "return") {
+          await applicationEmailService.sendApplicationEmail(
+            updatedDoc,
+            "returned",
+            { reviewComments: pendingAction.payload?.requestOther || pendingAction.payload?.comments || "" },
+          );
+        }
+      } catch (emailErr) {
+        console.error("[executePendingAction] Failed to send notification email:", emailErr.message);
+      }
+    }
 
     return updatedDoc;
   }

@@ -216,7 +216,7 @@ const ENTITY_CONFIG = {
     metadataFields: ['applicationId', 'entityId', 'businessId'],
     // Broader permissions for applications
     permissions: ['lgu_officer', 'staff', 'admin'],
-    searchFields: ['userName', 'businessName', 'updatedByName'],
+    searchFields: ['userName', 'name', 'businessName', 'applicationReferenceNumber', 'applicationId', 'updatedByName', 'fieldKey'],
     responseFormat: 'standard',
     globalEndpoint: 'applications',
     singularEndpoint: 'application',

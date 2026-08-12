@@ -17,6 +17,21 @@ const FIELD_LABELS = {
   changedFields: 'Changed Fields',
   changeCount: 'Number of Changes',
   changeSummary: 'Change Summary',
+  applicationId: 'Application ID',
+  applicationReferenceNumber: 'Reference Number',
+  role: 'Role',
+  oldStatus: 'Old Status',
+  newStatus: 'New Status',
+  decision: 'Decision',
+  comments: 'Comments',
+  rejectionReason: 'Rejection Reason',
+  fieldKey: 'Field',
+  fieldDecision: 'Field Decision',
+  reasonCode: 'Reason Code',
+  reasonOther: 'Other Reason',
+  actionType: 'Action Type',
+  scheduledAt: 'Scheduled At',
+  returnCount: 'Return Count',
 }
 
 // Helper to combine name and email into "Name (email)" format

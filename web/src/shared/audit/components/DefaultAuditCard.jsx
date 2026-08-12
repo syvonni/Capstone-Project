@@ -8,10 +8,11 @@ export default function DefaultAuditCard({ audit, selected, onSelect, showEntity
     { label: 'Timestamp', value: new Date(audit.createdAt).toLocaleString() },
   ]
 
-  if (metadata.userName || metadata.updatedByName || metadata.createdByName || metadata.deletedByName) {
-    metaInfo.push({ 
-      label: 'Performed By', 
-      value: metadata.userName || metadata.updatedByName || metadata.createdByName || metadata.deletedByName 
+  const performer = metadata.userName || metadata.updatedByName || metadata.createdByName || metadata.deletedByName || audit.userName
+  if (performer) {
+    metaInfo.push({
+      label: 'Performed By',
+      value: performer
     })
   }
 
@@ -43,7 +44,7 @@ export default function DefaultAuditCard({ audit, selected, onSelect, showEntity
       selected={selected}
       onClick={onSelect}
       metaInfo={metaInfo}
-      title={metadata.name || 'Unknown Entity'}
+      title={metadata.name || metadata.applicationReferenceNumber || metadata.applicationId || (audit.eventType?.startsWith('application_') ? 'Application' : 'Unknown Entity')}
       tags={tags}
     />
   )

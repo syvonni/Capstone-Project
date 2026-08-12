@@ -4,6 +4,7 @@ const BusinessProfile = require("../../models/BusinessProfile");
 const User = require("../../models/User");
 const PermitForm = require("../../../../../shared/models/PermitForm");
 const { logAuditEvent } = require("../../lib/auditClient");
+const ApplicationAuditHelper = require("../../lib/auditHelpers/applicationAuditHelper");
 const applicationEmailService = require("../lgu-officer/applicationEmail.service");
 
 class ApplicationService {
@@ -48,7 +49,7 @@ class ApplicationService {
   /**
    * Submit a new application
    */
-  async create(userId, applicationData) {
+  async create(userId, applicationData, auditContext = {}) {
     // Ensure BusinessProfile exists
     let businessProfile = await BusinessProfile.findOne({ userId });
     if (!businessProfile) {
@@ -83,13 +84,11 @@ class ApplicationService {
     });
 
     // Log a draft/created audit event, not a submission audit.
-    await logAuditEvent(
-      "application_created",
+    ApplicationAuditHelper.logCreated(
+      auditContext?.req,
       userId,
-      "application",
-      application.applicationId,
-      { applicationId: application.applicationId, userId },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      application,
+    );
 
     return { application };
   }
@@ -97,7 +96,7 @@ class ApplicationService {
   /**
    * Partial form data update for autosave
    */
-  async patchFormData(id, patch, userId) {
+  async patchFormData(id, patch, userId, auditContext = {}) {
     // Resolve by custom applicationId or MongoDB _id (same as _findById)
     const application = await this._findById(id);
 
@@ -145,16 +144,17 @@ class ApplicationService {
     }
 
     // Fire-and-forget audit (do not block response)
-    logAuditEvent(
-      "application_autosaved",
+    const changedKeys = Object.keys(allowedFields).filter((k) => k !== "updatedAt");
+    ApplicationAuditHelper.logAutosaved(
+      auditContext?.req,
       userId,
-      "application",
-      updatedApplication.applicationId,
-      {
-        applicationId: updatedApplication.applicationId,
-        fields: Object.keys(allowedFields),
-      },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      updatedApplication,
+      undefined,
+      changedKeys,
+    );
+
+    // Hide requested field changes until the application is formally returned.
+    this._filterFieldReviewDecisionsForView(updatedApplication);
 
     return { application: updatedApplication };
   }
@@ -181,6 +181,10 @@ class ApplicationService {
       const paginatedApplications = applications.slice(
         startIndex,
         startIndex + parseInt(limit),
+      );
+
+      paginatedApplications.forEach((app) =>
+        this._filterFieldReviewDecisionsForView(app),
       );
 
       return {
@@ -211,6 +215,8 @@ class ApplicationService {
 
     const total = await Application.countDocuments(filter);
 
+    applications.forEach((app) => this._filterFieldReviewDecisionsForView(app));
+
     return {
       applications,
       meta: {
@@ -220,6 +226,25 @@ class ApplicationService {
         totalPages: Math.ceil(total / parseInt(limit)),
       },
     };
+  }
+
+  /**
+   * Filter out field-level review decisions from an application record
+   * unless the application has been returned to the applicant for revision.
+   * This prevents business owners (and staff viewing as business owners) from
+   * seeing requested changes before the application is formally returned.
+   */
+  _filterFieldReviewDecisionsForView(application) {
+    if (!application) return application;
+
+    const status = application.applicationStatus;
+    const ownerCanSeeDecisions = ["needs_revision", "returned"].includes(status);
+
+    if (!ownerCanSeeDecisions) {
+      application.fieldReviewDecisions = {};
+    }
+
+    return application;
   }
 
   /**
@@ -297,13 +322,17 @@ class ApplicationService {
     // Add documents field for frontend compatibility
     application.documents = application.lguDocuments;
 
+    // Hide requested field changes from the owner until the application is
+    // formally returned for revision (needs_revision / returned).
+    this._filterFieldReviewDecisionsForView(application);
+
     return application;
   }
 
   /**
    * Update application
    */
-  async update(id, updateData, userId) {
+  async update(id, updateData, userId, auditContext = {}) {
     const application = await this._findById(id);
 
     if (!application) {
@@ -326,17 +355,20 @@ class ApplicationService {
       delete updateData.applicationStatus;
     }
 
+    const oldApplication = application.toObject();
     Object.assign(application, updateData);
     await application.save();
 
     // Log audit event
-    await logAuditEvent(
-      "application_updated",
+    ApplicationAuditHelper.logUpdated(
+      auditContext?.req,
       userId,
-      "application",
-      application.applicationId,
-      { applicationId: application.applicationId, updateData },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      oldApplication,
+      application,
+    );
+
+    // Hide requested field changes until the application is formally returned.
+    this._filterFieldReviewDecisionsForView(application);
 
     return { application };
   }
@@ -344,7 +376,7 @@ class ApplicationService {
   /**
    * Submit application (draft → submitted)
    */
-  async submit(id, userId) {
+  async submit(id, userId, auditContext = {}) {
     const application = await this._findById(id);
 
     if (!application) {
@@ -353,6 +385,8 @@ class ApplicationService {
       error.status = 404;
       throw error;
     }
+
+    const oldApplication = application.toObject();
 
     // Only allow owner to submit their own applications
     if (String(application.userId) !== String(userId)) {
@@ -399,18 +433,14 @@ class ApplicationService {
     await application.save();
 
     // Log audit event
-    await logAuditEvent(
-      "application_submitted",
+    const isResubmit = currentStatus === "returned";
+    ApplicationAuditHelper.logSubmitted(
+      auditContext?.req,
       userId,
-      "application",
-      application.applicationId,
-      {
-        applicationId: application.applicationId,
-        applicationReferenceNumber: application.applicationReferenceNumber,
-        submittedAt: application.submittedAt,
-        isResubmit: currentStatus === "returned",
-      },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      application,
+      undefined,
+      { isResubmit, oldApplication },
+    );
 
     // Send submission/resubmission email (fire and forget, but capture result for warning)
     const emailType = currentStatus === "returned" ? "resubmitted" : "submitted";
@@ -418,6 +448,9 @@ class ApplicationService {
       application,
       emailType,
     );
+
+    // Hide requested field changes until the application is formally returned.
+    this._filterFieldReviewDecisionsForView(application);
 
     return {
       application,
@@ -779,7 +812,7 @@ class ApplicationService {
   /**
    * Delete application
    */
-  async delete(id, userId) {
+  async delete(id, userId, auditContext = {}) {
     const application = await this._findById(id);
 
     if (!application) {
@@ -808,16 +841,14 @@ class ApplicationService {
       throw error;
     }
 
-    await Application.deleteOne({ _id: application._id });
-
-    // Log audit event
-    await logAuditEvent(
-      "application_deleted",
+    // Log audit event before the record is gone
+    ApplicationAuditHelper.logDeleted(
+      auditContext?.req,
       userId,
-      "application",
-      application.applicationId,
-      { applicationId: application.applicationId },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      application,
+    );
+
+    await Application.deleteOne({ _id: application._id });
 
     return { message: "Application deleted successfully" };
   }

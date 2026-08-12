@@ -16,7 +16,7 @@ class ApplicationController extends BaseController {
       req,
       res,
       async (req, res) => {
-        return await this.service.create(req._userId, req.body);
+        return await this.service.create(req._userId, req.body, { req });
       },
       { successStatus: 201 },
     );
@@ -27,7 +27,7 @@ class ApplicationController extends BaseController {
    */
   async submit(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.submit(req.params.id, req._userId);
+      return await this.service.submit(req.params.id, req._userId, { req });
     });
   }
 
@@ -71,7 +71,7 @@ class ApplicationController extends BaseController {
    */
   async update(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.update(req.params.id, req.body, req._userId);
+      return await this.service.update(req.params.id, req.body, req._userId, { req });
     });
   }
 
@@ -80,7 +80,7 @@ class ApplicationController extends BaseController {
    */
   async patchFormData(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.patchFormData(req.params.id, req.body, req._userId);
+      return await this.service.patchFormData(req.params.id, req.body, req._userId, { req });
     });
   }
 
@@ -134,7 +134,7 @@ class ApplicationController extends BaseController {
    */
   async delete(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.delete(req.params.id, req._userId);
+      return await this.service.delete(req.params.id, req._userId, { req });
     });
   }
 

@@ -135,15 +135,30 @@ const EVENT_TYPES = {
 
   // Application events - used when applications are submitted, reviewed, etc.
   applications: [
+    'application_created',
+    'walkin_application_created',
+    'officer_draft_finished',
+    'application_autosaved',
     'application_submitted',
-    'application_rejected',
-    'application_returned',
+    'application_resubmitted',
+    'application_updated',
     'application_claimed',
     'application_released',
     'application_transferred',
+    'field_reviewed',
+    'field_decisions_updated',
+    'pending_action_created',
+    'pending_action_cancelled',
+    'pending_action_executed',
+    'application_returned',
+    'application_rejected',
+    'application_approved',
+    'application_status_reset',
+    'application_deleted',
+    'application_email_resent',
+    'application_email_status_reset',
     'review_completed',
     'decision_revoked',
-    'walkin_application_created',
   ],
 
   // Appeal events - used when appeals are submitted and resolved
@@ -163,6 +178,7 @@ const EVENT_TYPES = {
   pending_actions: [
     'pending_action_created',
     'pending_action_cancelled',
+    'pending_action_executed',
   ],
 
   // Payment events - used when payments are recorded

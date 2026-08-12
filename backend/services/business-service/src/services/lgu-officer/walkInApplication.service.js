@@ -15,7 +15,7 @@
 
 const Application = require("../../models/Application");
 const User = require("../../models/User");
-const { logAuditEvent } = require("../../lib/auditClient");
+const ApplicationAuditHelper = require("../../lib/auditHelpers/applicationAuditHelper");
 const businessCreationService = require("./businessCreation.service");
 const applicationEmailService = require("./applicationEmail.service");
 
@@ -36,11 +36,12 @@ class WalkInApplicationService {
    * @param {string} permitType - Permit type (formType)
    * @param {string} category - Category (optional)
    * @param {string} officerId - Officer ID creating the application
+   * @param {object} [auditContext={}] - Optional audit context (e.g., { req })
    * @returns {Promise<object>} - Created application
    * @throws {Error} - If owner not found (code: NOT_FOUND)
    * @throws {Error} - If no permit form found (code: NOT_FOUND)
    */
-  async createWalkInApplication(ownerId, permitType, category, officerId) {
+  async createWalkInApplication(ownerId, permitType, category, officerId, auditContext = {}) {
     if (!ownerId) {
       const error = new Error("ownerId is required");
       error.code = "MISSING_OWNER";
@@ -107,19 +108,11 @@ class WalkInApplicationService {
     });
 
     // Log audit event
-    await logAuditEvent(
-      "walkin_application_created",
+    await ApplicationAuditHelper.logWalkInCreated(
+      auditContext?.req,
       officerId,
-      "application",
-      applicationId,
-      {
-        ownerId,
-        applicationId,
-        permitType,
-        category,
-        createdByOfficer: true,
-      },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      application,
+    );
 
     return { application };
   }
@@ -129,12 +122,13 @@ class WalkInApplicationService {
    *
    * @param {string} id - Application ID
    * @param {string} officerId - Officer ID
+   * @param {object} [auditContext={}] - Optional audit context (e.g., { req })
    * @returns {Promise<object>} - Updated application
    * @throws {Error} - If application not found (code: NOT_FOUND)
    * @throws {Error} - If invalid status (code: INVALID_STATUS)
    * @throws {Error} - If forbidden (code: FORBIDDEN)
    */
-  async finishWalkInApplication(id, officerId) {
+  async finishWalkInApplication(id, officerId, auditContext = {}) {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     const application = await Application.findOne({
       $or: isObjectId
@@ -213,16 +207,11 @@ class WalkInApplicationService {
     }
 
     // Log audit event
-    await logAuditEvent(
-      "officer_draft_finished",
+    await ApplicationAuditHelper.logOfficerDraftFinished(
+      auditContext?.req,
       officerId,
-      "application",
-      application.applicationId,
-      {
-        applicationId: application.applicationId,
-        applicationReferenceNumber: application.applicationReferenceNumber,
-      },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      application,
+    );
 
     return { application };
   }

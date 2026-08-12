@@ -80,15 +80,25 @@ export const EVENT_TYPE_LABELS = {
   requirement_group_disabled: 'Requirement Group Disabled',
 
   // Application events
+  application_created: 'Application Created',
   application_submitted: 'Application Submitted',
+  application_resubmitted: 'Application Resubmitted',
+  application_updated: 'Application Updated',
   application_rejected: 'Application Rejected',
   application_returned: 'Application Returned',
   application_claimed: 'Application Claimed',
   application_released: 'Application Released',
   application_transferred: 'Application Transferred',
+  application_approved: 'Application Approved',
+  application_status_reset: 'Application Status Reset',
+  application_deleted: 'Application Deleted',
+  application_autosaved: 'Application Autosaved',
+  application_email_resent: 'Application Email Resent',
+  application_email_status_reset: 'Application Email Status Reset',
   review_completed: 'Review Completed',
   decision_revoked: 'Decision Revoked',
   walkin_application_created: 'Walk-in Application Created',
+  officer_draft_finished: 'Officer Draft Finished',
 
   // Appeal events
   appeal_submitted: 'Appeal Submitted',
@@ -102,6 +112,7 @@ export const EVENT_TYPE_LABELS = {
   // Pending action events
   pending_action_created: 'Pending Action Created',
   pending_action_cancelled: 'Pending Action Cancelled',
+  pending_action_executed: 'Pending Action Executed',
 
   // Payment events
   payment_recorded: 'Payment Recorded',
@@ -238,15 +249,25 @@ export const AUDIT_EVENT_INFO = [
   { event: 'requirement_group_disabled', description: 'When an admin disables a requirement group (soft-delete)' },
 
   // Application events
+  { event: 'application_created', description: 'When a new application draft is created' },
   { event: 'application_submitted', description: 'When a business owner submits a new permit application' },
+  { event: 'application_resubmitted', description: 'When a business owner resubmits an application after a return or rejection' },
+  { event: 'application_updated', description: 'When an application is updated' },
   { event: 'application_rejected', description: 'When an LGU officer rejects an application' },
   { event: 'application_returned', description: 'When an application is returned to the business owner for revisions' },
-  { event: 'review_completed', description: 'When an officer completes the review process for an application' },
-  { event: 'decision_revoked', description: 'When an officer revokes a previous decision on an application' },
-  { event: 'walkin_application_created', description: 'When an LGU officer creates a walk-in application on behalf of a business owner' },
+  { event: 'application_approved', description: 'When an LGU officer approves an application' },
   { event: 'application_claimed', description: 'When an LGU officer claims an application for review' },
   { event: 'application_released', description: 'When an LGU officer releases an application back to the pool' },
   { event: 'application_transferred', description: 'When an LGU officer transfers an application to another officer' },
+  { event: 'application_status_reset', description: 'When an LGU officer resets an application status' },
+  { event: 'application_deleted', description: 'When an application is deleted' },
+  { event: 'application_autosaved', description: 'When an application form is autosaved' },
+  { event: 'application_email_resent', description: 'When an application email is manually resent' },
+  { event: 'application_email_status_reset', description: 'When an application email send status is reset' },
+  { event: 'review_completed', description: 'When an officer completes the review process for an application' },
+  { event: 'decision_revoked', description: 'When an officer revokes a previous decision on an application' },
+  { event: 'walkin_application_created', description: 'When an LGU officer creates a walk-in application on behalf of a business owner' },
+  { event: 'officer_draft_finished', description: 'When an LGU officer finishes a walk-in/officer draft application' },
 
   // Appeal events
   { event: 'appeal_submitted', description: 'When a business owner submits an appeal for a rejected application' },
@@ -260,6 +281,7 @@ export const AUDIT_EVENT_INFO = [
   // Pending action events
   { event: 'pending_action_created', description: 'When a pending action is scheduled' },
   { event: 'pending_action_cancelled', description: 'When a pending action is cancelled' },
+  { event: 'pending_action_executed', description: 'When a pending action is executed and the application status changes' },
 
   // Payment events
   { event: 'payment_recorded', description: 'When a payment is successfully recorded' },

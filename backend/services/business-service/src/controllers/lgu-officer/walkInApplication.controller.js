@@ -30,7 +30,8 @@ class WalkInApplicationController extends BaseController {
           req.body.ownerId,
           req.body.permitType,
           req.body.category,
-          req._userId
+          req._userId,
+          { req }
         );
       },
       { successStatus: 201 }
@@ -44,7 +45,8 @@ class WalkInApplicationController extends BaseController {
     return this.handleRequest(req, res, async (req, res) => {
       return await this.service.finishWalkInApplication(
         req.params.id,
-        req._userId
+        req._userId,
+        { req }
       );
     });
   }

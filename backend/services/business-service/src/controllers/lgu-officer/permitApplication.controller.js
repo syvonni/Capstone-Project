@@ -61,7 +61,7 @@ class PermitApplicationController extends BaseController {
    */
   async startReview(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.startReview(req.params.id, req._userId);
+      return await this.service.startReview(req.params.id, req._userId, { req });
     });
   }
 
@@ -73,7 +73,8 @@ class PermitApplicationController extends BaseController {
       return await this.service.reviewApplication(
         req.params.id,
         req._userId,
-        req.body
+        req.body,
+        { req }
       );
     });
   }
@@ -87,7 +88,8 @@ class PermitApplicationController extends BaseController {
       return await this.service.claimApplication(
         req.params.id,
         req._userId,
-        force
+        force,
+        { req }
       );
     });
   }
@@ -97,7 +99,7 @@ class PermitApplicationController extends BaseController {
    */
   async release(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.releaseApplication(req.params.id, req._userId);
+      return await this.service.releaseApplication(req.params.id, req._userId, { req });
     });
   }
 
@@ -109,7 +111,8 @@ class PermitApplicationController extends BaseController {
       return await this.service.resetApplicationStatus(
         req.params.id,
         req._userId,
-        req.body.newStatus
+        req.body.newStatus,
+        { req }
       );
     });
   }
@@ -122,7 +125,8 @@ class PermitApplicationController extends BaseController {
       return await this.service.updateFieldDecisions(
         req.params.id,
         req._userId,
-        req.body
+        req.body,
+        { req }
       );
     });
   }
@@ -146,7 +150,7 @@ class PermitApplicationController extends BaseController {
    */
   async delete(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.deleteApplication(req.params.id, req._userId);
+      return await this.service.deleteApplication(req.params.id, req._userId, { req });
     });
   }
 
@@ -160,7 +164,8 @@ class PermitApplicationController extends BaseController {
         req.body.actionType,
         req.body.payload,
         req._userId,
-        req.body.undoWindowMinutes
+        req.body.undoWindowMinutes,
+        { req }
       );
     });
   }
@@ -170,7 +175,7 @@ class PermitApplicationController extends BaseController {
    */
   async cancelPendingAction(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.cancelPendingAction(req.params.id, req._userId);
+      return await this.service.cancelPendingAction(req.params.id, req._userId, { req });
     });
   }
 
@@ -188,7 +193,7 @@ class PermitApplicationController extends BaseController {
    */
   async executePendingAction(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.executePendingAction(req.params.id, req._userId);
+      return await this.service.executePendingAction(req.params.id, req._userId, { req });
     });
   }
 
@@ -200,7 +205,8 @@ class PermitApplicationController extends BaseController {
       return await this.service.resendEmail(
         req.params.id,
         req.body.emailType,
-        req._userId
+        req._userId,
+        { req }
       );
     });
   }
@@ -213,7 +219,8 @@ class PermitApplicationController extends BaseController {
       return await this.service.resetEmailStatus(
         req.params.id,
         req.body.emailType,
-        req._userId
+        req._userId,
+        { req }
       );
     });
   }

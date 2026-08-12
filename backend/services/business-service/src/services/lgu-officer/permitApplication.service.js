@@ -28,8 +28,8 @@ const Business = require("../../models/Business");
 const BusinessProfile = require("../../models/BusinessProfile");
 const GeneralPermit = require("../../models/GeneralPermit");
 const User = require("../../models/User");
-const { logAuditEvent } = require("../../lib/auditClient");
 const applicationEmailService = require("./applicationEmail.service");
+const ApplicationAuditHelper = require("../../lib/auditHelpers/applicationAuditHelper");
 const businessCreationService = require("./businessCreation.service");
 const pendingActionService = require("./pendingAction.service");
 
@@ -262,7 +262,7 @@ class PermitApplicationService {
    * @throws {Error} - If application not found (code: NOT_FOUND)
    * @throws {Error} - If already claimed (code: ALREADY_CLAIMED)
    */
-  async startReview(id, officerId) {
+  async startReview(id, officerId, auditContext = {}) {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     const application = await Application.findOne({
       $or: isObjectId
@@ -311,6 +311,12 @@ class PermitApplicationService {
 
     await application.save();
 
+    await ApplicationAuditHelper.logClaimed(
+      auditContext?.req,
+      officerId,
+      application,
+    );
+
     return {
       application,
       lockedByOfficer: true,
@@ -330,7 +336,7 @@ class PermitApplicationService {
    * @throws {Error} - If application not found (code: NOT_FOUND)
    * @throws {Error} - If forbidden (code: FORBIDDEN)
    */
-  async reviewApplication(id, officerId, reviewData) {
+  async reviewApplication(id, officerId, reviewData, auditContext = {}) {
     const { decision, comments, rejectionReason } = reviewData;
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     const application = await Application.findOne({
@@ -353,6 +359,9 @@ class PermitApplicationService {
       throw error;
     }
 
+    // Capture pre-mutation state for audit diff
+    const oldApplication = application.toObject();
+
     // Update application based on decision
     if (decision === "approved") {
       application.applicationStatus = "approved";
@@ -366,6 +375,14 @@ class PermitApplicationService {
       }
 
       await application.save();
+
+      await ApplicationAuditHelper.logApproved(
+        auditContext?.req,
+        officerId,
+        application,
+        comments,
+        oldApplication,
+      );
 
       // Create business from approved application
       const businessProfile = await BusinessProfile.findOne({
@@ -389,6 +406,15 @@ class PermitApplicationService {
 
       await application.save();
 
+      await ApplicationAuditHelper.logRejected(
+        auditContext?.req,
+        officerId,
+        application,
+        comments,
+        rejectionReason,
+        oldApplication,
+      );
+
       // Send rejection email (fire and forget)
       applicationEmailService
         .sendApplicationEmail(application, "rejected", { rejectionReason })
@@ -400,6 +426,14 @@ class PermitApplicationService {
 
       await application.save();
 
+      await ApplicationAuditHelper.logReturned(
+        auditContext?.req,
+        officerId,
+        application,
+        comments,
+        oldApplication,
+      );
+
       // Send returned email (fire and forget)
       applicationEmailService
         .sendApplicationEmail(application, "returned", { reviewComments: comments })
@@ -410,20 +444,6 @@ class PermitApplicationService {
       error.status = 400;
       throw error;
     }
-
-    // Log audit event
-    await logAuditEvent(
-      "application_reviewed",
-      officerId,
-      "application",
-      application.applicationId,
-      {
-        applicationId: application.applicationId,
-        decision,
-        comments,
-        rejectionReason,
-      },
-    ).catch((err) => console.error("Failed to log audit event:", err));
 
     return application;
   }
@@ -438,7 +458,7 @@ class PermitApplicationService {
    * @throws {Error} - If application not found (code: NOT_FOUND)
    * @throws {Error} - If already claimed and not forced (code: ALREADY_CLAIMED)
    */
-  async claimApplication(id, officerId, force = false) {
+  async claimApplication(id, officerId, force = false, auditContext = {}) {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
 
     // Find application in Application collection
@@ -529,16 +549,11 @@ class PermitApplicationService {
     }
 
     // Log audit event
-    await logAuditEvent(
-      "application_claimed",
+    await ApplicationAuditHelper.logClaimed(
+      auditContext?.req,
       officerId,
-      updated.constructor.modelName,
-      updated.applicationId || updated.businessId,
-      {
-        applicationId: updated.applicationId || updated.businessId,
-        officerName,
-      },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      updated,
+    );
 
     return updated;
   }
@@ -552,7 +567,7 @@ class PermitApplicationService {
    * @throws {Error} - If application not found (code: NOT_FOUND)
    * @throws {Error} - If forbidden (code: FORBIDDEN)
    */
-  async releaseApplication(id, officerId) {
+  async releaseApplication(id, officerId, auditContext = {}) {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
 
     // Find application in Application collection
@@ -609,15 +624,11 @@ class PermitApplicationService {
     }
 
     // Log audit event
-    await logAuditEvent(
-      "application_released",
+    await ApplicationAuditHelper.logReleased(
+      auditContext?.req,
       officerId,
-      updated.constructor.modelName,
-      updated.applicationId || updated.businessId,
-      {
-        applicationId: updated.applicationId || updated.businessId,
-      },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      updated,
+    );
 
     return updated;
   }
@@ -631,7 +642,7 @@ class PermitApplicationService {
    * @returns {Promise<object>} - Updated application
    * @throws {Error} - If application not found (code: NOT_FOUND)
    */
-  async resetApplicationStatus(id, officerId, newStatus) {
+  async resetApplicationStatus(id, officerId, newStatus, auditContext = {}) {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     const application = await Application.findOne({
       $or: isObjectId
@@ -646,21 +657,19 @@ class PermitApplicationService {
       throw error;
     }
 
+    const oldApplication = application.toObject();
     application.applicationStatus = newStatus;
     application.updatedAt = new Date();
     await application.save();
 
     // Log audit event
-    await logAuditEvent(
-      "application_status_reset",
+    await ApplicationAuditHelper.logStatusReset(
+      auditContext?.req,
       officerId,
-      "application",
-      application.applicationId,
-      {
-        applicationId: application.applicationId,
-        newStatus,
-      },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      application,
+      newStatus,
+      oldApplication,
+    );
 
     return application;
   }
@@ -679,7 +688,7 @@ class PermitApplicationService {
    * @returns {Promise<object>} - Updated application
    * @throws {Error} - If application not found (code: NOT_FOUND)
    */
-  async updateFieldDecisions(id, officerId, decisionsData) {
+  async updateFieldDecisions(id, officerId, decisionsData, auditContext = {}) {
     const {
       fieldKey,
       status,
@@ -740,6 +749,9 @@ class PermitApplicationService {
         ? { ...doc.fieldReviewDecisions }
         : {};
 
+    // Keep a snapshot of existing field decisions for the diff
+    const oldFieldDecisionsMap = { ...decisionsObj };
+
     // Process each decision
     for (const item of payload) {
       const {
@@ -776,25 +788,18 @@ class PermitApplicationService {
       };
 
       // Log audit event for individual field review
-      await logAuditEvent(
-        "field_reviewed",
+      await ApplicationAuditHelper.logFieldReviewed(
+        auditContext?.req,
         officerId,
-        doc.constructor.modelName,
-        doc.applicationId || doc.businessId || doc._id.toString(),
-        {
-          applicationId: doc.applicationId || doc.businessId,
-          fieldKey: itemFieldKey,
-          decision: decisionStatus,
-          reasonCode:
-            decisionStatus === "request_changes"
-              ? itemReasonCode || requestCode || null
-              : undefined,
-          reasonOther:
-            decisionStatus === "request_changes"
-              ? itemReasonOther || requestOther || null
-              : undefined,
-          officerName,
-        },
+        doc,
+        itemFieldKey,
+        decisionStatus,
+        decisionStatus === "request_changes"
+          ? itemReasonCode || requestCode || null
+          : undefined,
+        decisionStatus === "request_changes"
+          ? itemReasonOther || requestOther || null
+          : undefined,
       );
     }
 
@@ -810,31 +815,37 @@ class PermitApplicationService {
       await Business.updateOne({ _id: doc._id }, { $set: updateData });
     }
 
-    // Log audit event for field decisions
-    await logAuditEvent(
-      "field_decisions_updated",
-      officerId,
-      doc.constructor.modelName,
-      doc.applicationId || doc.businessId || doc._id.toString(),
-      {
-        applicationId: doc.applicationId || doc.businessId,
-        decisionsCount: payload.length,
-        officerName,
-        decisions: payload.map((item) => ({
-          fieldKey: item.fieldKey,
-          status: item.status,
-          requestCode: item.requestCode,
-          requestOther: item.requestOther,
-          reasonCode: item.reasonCode,
-          reasonOther: item.reasonOther,
-        })),
-      },
-    );
-
-    // Re-fetch and return the updated application
+    // Re-fetch the updated application before logging
     const updatedApplication = await (doc.constructor.modelName === "Application"
       ? Application.findById(doc._id)
       : Business.findById(doc._id));
+
+    // Build audit-friendly decision arrays aligned by fieldKey
+    const normalizedDecisions = payload.map((item) => ({
+      fieldKey: item.fieldKey,
+      decision: item.status,
+      reasonCode: item.reasonCode || item.requestCode || null,
+      reasonOther: item.reasonOther || item.requestOther || null,
+    }));
+    const oldNormalizedDecisions = normalizedDecisions.map((d) => {
+      const old = oldFieldDecisionsMap[d.fieldKey];
+      return old
+        ? {
+            fieldKey: d.fieldKey,
+            decision: old.status,
+            reasonCode: old.requestCode || null,
+            reasonOther: old.requestOther || null,
+          }
+        : null;
+    });
+
+    await ApplicationAuditHelper.logFieldDecisionsUpdated(
+      auditContext?.req,
+      officerId,
+      updatedApplication,
+      normalizedDecisions,
+      oldNormalizedDecisions,
+    );
 
     return await this.enrichApplication(updatedApplication);
   }
@@ -898,7 +909,7 @@ class PermitApplicationService {
    * @throws {Error} - If invalid status (code: INVALID_STATUS)
    * @throws {Error} - If forbidden (code: FORBIDDEN)
    */
-  async deleteApplication(id, officerId) {
+  async deleteApplication(id, officerId, auditContext = {}) {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     const application = await Application.findOne({
       $or: isObjectId
@@ -928,18 +939,14 @@ class PermitApplicationService {
       throw error;
     }
 
-    await Application.deleteOne({ _id: application._id });
-
-    // Log audit event
-    await logAuditEvent(
+    // Log audit event before the record is gone
+    await ApplicationAuditHelper.logDeleted(
+      auditContext?.req,
       officerId,
-      "officer_draft_deleted",
-      "application",
-      JSON.stringify({ applicationId: application.applicationId }),
-      null,
-      "lgu_officer",
-      { applicationId: application.applicationId },
+      application,
     );
+
+    await Application.deleteOne({ _id: application._id });
 
     return { message: "Application deleted successfully" };
   }
@@ -954,7 +961,7 @@ class PermitApplicationService {
    * @throws {Error} - If application not found (code: NOT_FOUND)
    * @throws {Error} - If invalid email type (code: INVALID_DATA)
    */
-  async resendEmail(id, emailType, officerId) {
+  async resendEmail(id, emailType, officerId, auditContext = {}) {
     if (
       !emailType ||
       !["submitted", "resubmitted", "approved", "rejected", "returned"].includes(emailType)
@@ -993,16 +1000,12 @@ class PermitApplicationService {
     }
 
     // Log audit event
-    await logAuditEvent(
-      "email_resent",
+    await ApplicationAuditHelper.logEmailResent(
+      auditContext?.req,
       officerId,
-      "application",
-      application.applicationId,
-      {
-        applicationId: application.applicationId,
-        emailType,
-      },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      application,
+      emailType,
+    );
 
     return { application };
   }
@@ -1016,7 +1019,7 @@ class PermitApplicationService {
    * @returns {Promise<object>} - Updated application
    * @throws {Error} - If application not found (code: NOT_FOUND)
    */
-  async resetEmailStatus(id, emailType, officerId) {
+  async resetEmailStatus(id, emailType, officerId, auditContext = {}) {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     const application = await Application.findOne({
       $or: isObjectId
@@ -1047,18 +1050,34 @@ class PermitApplicationService {
     );
 
     // Log audit event
-    await logAuditEvent(
-      "email_status_reset",
+    await ApplicationAuditHelper.logEmailStatusReset(
+      auditContext?.req,
       officerId,
-      "application",
-      application.applicationId,
-      {
-        applicationId: application.applicationId,
-        emailType,
-      },
-    ).catch((err) => console.error("Failed to log audit event:", err));
+      application,
+      emailType,
+    );
 
     return { application };
+  }
+
+  /**
+   * Pending action proxies — the controller uses this.service, but the
+   * implementation lives in PendingActionService to keep undo logic separate.
+   */
+  async createPendingAction(applicationId, actionType, payload, officerId, undoWindowMinutes = 10, auditContext = {}) {
+    return pendingActionService.createPendingAction(applicationId, actionType, payload, officerId, undoWindowMinutes, auditContext);
+  }
+
+  async cancelPendingAction(applicationId, officerId, auditContext = {}) {
+    return pendingActionService.cancelPendingAction(applicationId, officerId, auditContext);
+  }
+
+  async getPendingAction(applicationId) {
+    return pendingActionService.getPendingAction(applicationId);
+  }
+
+  async executePendingAction(applicationId, officerId, auditContext = {}) {
+    return pendingActionService.executePendingAction(applicationId, officerId, auditContext);
   }
 }
 
