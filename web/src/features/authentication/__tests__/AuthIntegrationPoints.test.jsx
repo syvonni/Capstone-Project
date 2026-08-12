@@ -15,7 +15,7 @@ vi.mock('lottie-web', () => ({
 }))
 
 // Mock LottieSpinner
-vi.mock('@/shared/components/LottieSpinner.jsx', () => ({
+vi.mock('@/shared/components/graphics/LottieSpinner.jsx', () => ({
   default: () => null,
 }))
 

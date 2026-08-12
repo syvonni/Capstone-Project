@@ -1,15 +1,18 @@
 import { useState, useCallback } from 'react'
 
-export function useBusinessSelection() {
-  const [selectedBusinessId, setSelectedBusinessId] = useState(null)
+/**
+ * Hook for managing application selection state
+ */
+export function useApplicationSelection() {
+  const [selectedApplicationId, setSelectedApplicationId] = useState(null)
 
-  const selectBusiness = useCallback((businessId) => {
-    setSelectedBusinessId(businessId)
+  const selectApplication = useCallback((applicationId) => {
+    setSelectedApplicationId(applicationId)
   }, [])
 
   return {
-    selectedBusinessId,
-    setSelectedBusinessId,
-    selectBusiness,
+    selectedApplicationId,
+    setSelectedApplicationId,
+    selectApplication,
   }
 }

@@ -16,7 +16,7 @@ export default {
   },
 }
 
-const mockBusiness = {
+const mockApplication = {
   _id: 'app-1234567890',
   applicationId: 'app-1234567890',
   businessId: 'biz-1234567890',
@@ -51,8 +51,8 @@ const mockAppealDetails = {
 
 export const Submitted = {
   args: {
-    business: {
-      ...mockBusiness,
+    application: {
+      ...mockApplication,
       status: 'submitted',
       applicationStatus: 'submitted',
       reviewedAt: null,
@@ -62,8 +62,8 @@ export const Submitted = {
 
 export const UnderReview = {
   args: {
-    business: {
-      ...mockBusiness,
+    application: {
+      ...mockApplication,
       status: 'under_review',
       applicationStatus: 'under_review',
     },
@@ -72,8 +72,8 @@ export const UnderReview = {
 
 export const NeedsRevision = {
   args: {
-    business: {
-      ...mockBusiness,
+    application: {
+      ...mockApplication,
       status: 'needs_revision',
       applicationStatus: 'needs_revision',
       reviewComments: 'Please update your business address to include a street number.',
@@ -83,8 +83,8 @@ export const NeedsRevision = {
 
 export const Resubmitted = {
   args: {
-    business: {
-      ...mockBusiness,
+    application: {
+      ...mockApplication,
       status: 'resubmit',
       applicationStatus: 'resubmit',
     },
@@ -93,8 +93,8 @@ export const Resubmitted = {
 
 export const Approved = {
   args: {
-    business: {
-      ...mockBusiness,
+    application: {
+      ...mockApplication,
       status: 'approved',
       applicationStatus: 'approved',
       reviewComments: 'Application approved. All requirements met.',
@@ -105,8 +105,8 @@ export const Approved = {
 
 export const ApprovedWithoutComment = {
   args: {
-    business: {
-      ...mockBusiness,
+    application: {
+      ...mockApplication,
       status: 'approved',
       applicationStatus: 'approved',
     },
@@ -115,8 +115,8 @@ export const ApprovedWithoutComment = {
 
 export const Rejected = {
   args: {
-    business: {
-      ...mockBusiness,
+    application: {
+      ...mockApplication,
       status: 'rejected',
       applicationStatus: 'rejected',
       rejectionReason: 'Application rejected due to incomplete documentation.',
@@ -126,8 +126,8 @@ export const Rejected = {
 
 export const AppealPending = {
   args: {
-    business: {
-      ...mockBusiness,
+    application: {
+      ...mockApplication,
       status: 'appeal_pending',
       applicationStatus: 'appeal_pending',
       rejectionReason: 'Application rejected due to incomplete documentation.',
@@ -139,8 +139,8 @@ export const AppealPending = {
 
 export const AppealRejected = {
   args: {
-    business: {
-      ...mockBusiness,
+    application: {
+      ...mockApplication,
       status: 'appeal_rejected',
       applicationStatus: 'appeal_rejected',
       rejectionReason: 'Application rejected due to incomplete documentation.',
@@ -157,7 +157,7 @@ export const AllStates = {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: 24 }}>
       <h3>Submitted</h3>
       <ApplicationInfoCard
-        business={{ ...mockBusiness, status: 'submitted', applicationStatus: 'submitted', reviewedAt: null }}
+        application={{ ...mockApplication, status: 'submitted', applicationStatus: 'submitted', reviewedAt: null }}
         onProgressClick={() => {}}
         onViewReceipt={() => {}}
         onViewAppealReceipt={() => {}}
@@ -169,7 +169,7 @@ export const AllStates = {
       
       <h3>Under Review</h3>
       <ApplicationInfoCard
-        business={{ ...mockBusiness, status: 'under_review', applicationStatus: 'under_review' }}
+        application={{ ...mockApplication, status: 'under_review', applicationStatus: 'under_review' }}
         onProgressClick={() => {}}
         onViewReceipt={() => {}}
         onViewAppealReceipt={() => {}}
@@ -181,7 +181,7 @@ export const AllStates = {
       
       <h3>Needs Revision</h3>
       <ApplicationInfoCard
-        business={{ ...mockBusiness, status: 'needs_revision', applicationStatus: 'needs_revision', reviewComments: 'Please update your business address.' }}
+        application={{ ...mockApplication, status: 'needs_revision', applicationStatus: 'needs_revision', reviewComments: 'Please update your business address.' }}
         onProgressClick={() => {}}
         onViewReceipt={() => {}}
         onViewAppealReceipt={() => {}}
@@ -193,7 +193,7 @@ export const AllStates = {
       
       <h3>Resubmitted</h3>
       <ApplicationInfoCard
-        business={{ ...mockBusiness, status: 'resubmit', applicationStatus: 'resubmit' }}
+        application={{ ...mockApplication, status: 'resubmit', applicationStatus: 'resubmit' }}
         onProgressClick={() => {}}
         onViewReceipt={() => {}}
         onViewAppealReceipt={() => {}}
@@ -205,7 +205,7 @@ export const AllStates = {
       
       <h3>Approved</h3>
       <ApplicationInfoCard
-        business={{ ...mockBusiness, status: 'approved', applicationStatus: 'approved', reviewComments: 'Application approved.' }}
+        application={{ ...mockApplication, status: 'approved', applicationStatus: 'approved', reviewComments: 'Application approved.' }}
         onProgressClick={() => {}}
         onViewReceipt={() => {}}
         onViewAppealReceipt={() => {}}
@@ -217,7 +217,7 @@ export const AllStates = {
       
       <h3>Rejected</h3>
       <ApplicationInfoCard
-        business={{ ...mockBusiness, status: 'rejected', applicationStatus: 'rejected', rejectionReason: 'Application rejected due to incomplete documentation.' }}
+        application={{ ...mockApplication, status: 'rejected', applicationStatus: 'rejected', rejectionReason: 'Application rejected due to incomplete documentation.' }}
         onProgressClick={() => {}}
         onViewReceipt={() => {}}
         onViewAppealReceipt={() => {}}
@@ -229,7 +229,7 @@ export const AllStates = {
       
       <h3>Appeal Pending</h3>
       <ApplicationInfoCard
-        business={{ ...mockBusiness, status: 'appeal_pending', applicationStatus: 'appeal_pending', rejectionReason: 'Application rejected due to incomplete documentation.', hasActiveAppeal: true, appealId: 'appeal-123' }}
+        application={{ ...mockApplication, status: 'appeal_pending', applicationStatus: 'appeal_pending', rejectionReason: 'Application rejected due to incomplete documentation.', hasActiveAppeal: true, appealId: 'appeal-123' }}
         onProgressClick={() => {}}
         onViewReceipt={() => {}}
         onViewAppealReceipt={() => {}}
@@ -241,7 +241,7 @@ export const AllStates = {
       
       <h3>Appeal Rejected</h3>
       <ApplicationInfoCard
-        business={{ ...mockBusiness, status: 'appeal_rejected', applicationStatus: 'appeal_rejected', rejectionReason: 'Application rejected due to incomplete documentation.', hasActiveAppeal: false, appealExhausted: true, appealId: 'appeal-123' }}
+        application={{ ...mockApplication, status: 'appeal_rejected', applicationStatus: 'appeal_rejected', rejectionReason: 'Application rejected due to incomplete documentation.', hasActiveAppeal: false, appealExhausted: true, appealId: 'appeal-123' }}
         appealDetails={mockAppealDetails}
         onProgressClick={() => {}}
         onViewReceipt={() => {}}

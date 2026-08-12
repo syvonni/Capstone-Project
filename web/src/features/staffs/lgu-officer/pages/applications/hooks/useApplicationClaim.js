@@ -1,9 +1,11 @@
 import { useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { App } from 'antd'
 import { put } from '@/lib/http.js'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 
 export function useApplicationClaim(application, loadApplicationDetails, onReviewComplete, isClaimedByMe) {
+  const navigate = useNavigate()
   const { message, modal } = App.useApp()
   const { runWithStepUp, stepUpModal } = useStepUp()
   const isClaimed = application?.reviewedBy
@@ -27,6 +29,7 @@ export function useApplicationClaim(application, loadApplicationDetails, onRevie
             message.success('Application claimed')
             await loadApplicationDetails()
             onReviewComplete?.()
+            navigate('/staff/to-review')
           } catch (err) {
             if (err?.message !== 'Step-up cancelled') {
               message.error(err?.error?.message || 'Failed to claim')
@@ -48,6 +51,7 @@ export function useApplicationClaim(application, loadApplicationDetails, onRevie
             message.success('Application claimed')
             await loadApplicationDetails()
             onReviewComplete?.()
+            navigate('/staff/to-review')
           } catch (err) {
             if (err?.message !== 'Step-up cancelled') {
               message.error(err?.error?.message || 'Failed to claim')
@@ -56,7 +60,7 @@ export function useApplicationClaim(application, loadApplicationDetails, onRevie
         },
       })
     }
-  }, [application, isClaimed, isClaimedByMe, loadApplicationDetails, onReviewComplete, message, modal, runWithStepUp])
+  }, [application, isClaimed, isClaimedByMe, loadApplicationDetails, onReviewComplete, navigate, message, modal, runWithStepUp])
 
   const handleRelease = useCallback(async () => {
     const appId = application?.applicationId || application?._id || application?.businessId

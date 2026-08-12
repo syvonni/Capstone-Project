@@ -13,15 +13,11 @@ jest.mock(
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Violation",
 );
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee",
-);
+jest.mock("../../../../../shared/models/Fee");
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Checklist",
 );
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument",
-);
+jest.mock("../../../../../shared/models/ClaimableDocument");
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/InspectionItem",
 );
@@ -39,9 +35,9 @@ const VariableFeeRule = require("/Users/pendiaz/Documents/my-Projects/Capstone/b
 const Lob = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob");
 const PostRequirement = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/PostRequirement");
 const Violation = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Violation");
-const Fee = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const Checklist = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Checklist");
-const ClaimableDocument = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const InspectionItem = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/InspectionItem");
 const {
   getUserInfo,

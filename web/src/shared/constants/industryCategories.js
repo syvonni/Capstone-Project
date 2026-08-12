@@ -9,105 +9,117 @@
  * - Business permit application forms
  */
 
-const LINE_OF_BUSINESS = [
+const INDUSTRY_CATEGORIES = [
   {
-    taxCode: "RET",
-    lineOfBusiness: "retail",
-    name: "Retail",
-    description: "Selling goods directly to consumers through physical stores or online platforms",
+    taxCode: 'RET',
+    industryCategory: 'retail',
+    name: 'Retail',
+    description: 'Selling goods directly to consumers through physical stores or online platforms',
+    icon: 'ShopOutlined',
   },
   {
-    taxCode: "WHL",
-    lineOfBusiness: "wholesale",
-    name: "Wholesale",
-    description: "Selling goods in bulk to retailers and other businesses",
+    taxCode: 'WHL',
+    industryCategory: 'wholesale',
+    name: 'Wholesale',
+    description: 'Selling goods in bulk to retailers and other businesses',
+    icon: 'InboxOutlined',
   },
   {
-    taxCode: "FDS",
-    lineOfBusiness: "food_service",
-    name: "Food Service",
-    description: "Preparing and serving food and beverages to customers",
+    taxCode: 'FDS',
+    industryCategory: 'food_service',
+    name: 'Food Service',
+    description: 'Preparing and serving food and beverages to customers',
+    icon: 'CoffeeOutlined',
   },
   {
-    taxCode: "ACM",
-    lineOfBusiness: "accommodation",
-    name: "Accommodation",
-    description: "Providing lodging and short-term stays for travelers",
+    taxCode: 'ACM',
+    industryCategory: 'accommodation',
+    name: 'Accommodation',
+    description: 'Providing lodging and short-term stays for travelers',
+    icon: 'ApartmentOutlined',
   },
   {
-    taxCode: "MFG",
-    lineOfBusiness: "manufacturing",
-    name: "Manufacturing",
-    description: "Transforming raw materials into finished products through industrial processes",
+    taxCode: 'MFG',
+    industryCategory: 'manufacturing',
+    name: 'Manufacturing',
+    description: 'Transforming raw materials into finished products through industrial processes',
+    icon: 'BuildOutlined',
   },
   {
-    taxCode: "SVC",
-    lineOfBusiness: "services",
-    name: "Services",
-    description: "Providing professional and personal services to individuals and businesses",
+    taxCode: 'SVC',
+    industryCategory: 'services',
+    name: 'Services',
+    description: 'Providing professional and personal services to individuals and businesses',
+    icon: 'CustomerServiceOutlined',
   },
   {
-    taxCode: "FIN",
-    lineOfBusiness: "financial",
-    name: "Financial",
-    description: "Banking, lending, and investment activities",
+    taxCode: 'FIN',
+    industryCategory: 'financial',
+    name: 'Financial',
+    description: 'Banking, lending, and investment activities',
+    icon: 'BankOutlined',
   },
   {
-    taxCode: "RES",
-    lineOfBusiness: "real_estate",
-    name: "Real Estate",
-    description: "Property buying, selling, and leasing activities",
+    taxCode: 'RES',
+    industryCategory: 'real_estate',
+    name: 'Real Estate',
+    description: 'Property buying, selling, and leasing activities',
+    icon: 'HomeOutlined',
   },
   {
-    taxCode: "TRN",
-    lineOfBusiness: "transportation",
-    name: "Transportation",
-    description: "Moving people and goods through various modes of transport",
+    taxCode: 'TRN',
+    industryCategory: 'transportation',
+    name: 'Transportation',
+    description: 'Moving people and goods through various modes of transport',
+    icon: 'CarOutlined',
   },
   {
-    taxCode: "AGR",
-    lineOfBusiness: "agriculture",
-    name: "Agriculture",
-    description: "Crop production, livestock raising, and aquaculture activities",
+    taxCode: 'AGR',
+    industryCategory: 'agriculture',
+    name: 'Agriculture',
+    description: 'Crop production, livestock raising, and aquaculture activities',
+    icon: 'FieldTimeOutlined',
   },
   {
-    taxCode: "CON",
-    lineOfBusiness: "construction",
-    name: "Construction",
-    description: "Building and infrastructure development projects",
+    taxCode: 'CON',
+    industryCategory: 'construction',
+    name: 'Construction',
+    description: 'Building and infrastructure development projects',
+    icon: 'ToolOutlined',
   },
   {
-    taxCode: "MIN",
-    lineOfBusiness: "mining",
-    name: "Mining",
-    description: "Extraction of minerals and quarrying activities",
+    taxCode: 'MIN',
+    industryCategory: 'mining',
+    name: 'Mining',
+    description: 'Extraction of minerals and quarrying activities',
+    icon: 'GoldOutlined',
   },
   {
-    taxCode: "UTL",
-    lineOfBusiness: "utilities",
-    name: "Utilities",
-    description: "Providing essential public services such as water, electricity, and waste management",
+    taxCode: 'UTL',
+    industryCategory: 'utilities',
+    name: 'Utilities',
+    description:
+      'Providing essential public services such as water, electricity, and waste management',
+    icon: 'ThunderboltOutlined',
   },
 ];
 
 // Extract unique category keys for enum validation
-const LINE_OF_BUSINESS_CATEGORIES = LINE_OF_BUSINESS.map(
-  (l) => l.lineOfBusiness,
-);
+const INDUSTRY_CATEGORY_KEYS = INDUSTRY_CATEGORIES.map((l) => l.industryCategory);
 
 // Quick lookup by taxCode
-const LINE_OF_BUSINESS_BY_TAX_CODE = Object.fromEntries(
-  LINE_OF_BUSINESS.map((l) => [l.taxCode, l]),
+const INDUSTRY_CATEGORIES_BY_TAX_CODE = Object.fromEntries(
+  INDUSTRY_CATEGORIES.map((l) => [l.taxCode, l])
 );
 
 // Quick lookup by category
-const LINE_OF_BUSINESS_BY_CATEGORY = Object.fromEntries(
-  LINE_OF_BUSINESS.map((l) => [l.lineOfBusiness, l]),
+const INDUSTRY_CATEGORIES_BY_CATEGORY = Object.fromEntries(
+  INDUSTRY_CATEGORIES.map((l) => [l.industryCategory, l])
 );
 
 export {
-  LINE_OF_BUSINESS,
-  LINE_OF_BUSINESS_CATEGORIES,
-  LINE_OF_BUSINESS_BY_TAX_CODE,
-  LINE_OF_BUSINESS_BY_CATEGORY,
+  INDUSTRY_CATEGORIES,
+  INDUSTRY_CATEGORY_KEYS,
+  INDUSTRY_CATEGORIES_BY_TAX_CODE,
+  INDUSTRY_CATEGORIES_BY_CATEGORY,
 };

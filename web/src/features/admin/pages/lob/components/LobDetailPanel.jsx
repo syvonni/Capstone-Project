@@ -2,46 +2,96 @@
  * THERE WILL BE NO DIRECT HTTP CALLS! USE SERVICES!
  */
 
-import { useMemo, useState, useEffect } from 'react'
-import { theme } from 'antd'
-import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
-import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
-import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
-import LobOverview from './LobOverview'
-import LobConfiguration from './LobConfiguration'
-import { useLobForm } from '../hooks/useLobForm'
-import { getTaxBrackets } from '@/features/admin/services/feeService'
-import { getVariables } from '@/features/admin/services/variableService'
-import { getDocuments } from '@/features/admin/services/documentService'
-import { getPostRequirements } from '@/features/admin/services/lobService'
-import { useAudit } from '@/shared/audit/hooks/useAudit'
-import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
+import { useMemo, useState, useEffect } from 'react';
+import { theme } from 'antd';
+import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons';
+import DetailHeader from '@/shared/components/DetailHeader';
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal';
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails';
+import LobOverview from './LobOverview';
+import LobConfiguration from './LobConfiguration';
+import { useLobForm } from '../hooks/useLobForm';
+import { getTaxBrackets } from '@/features/admin/services/feeService';
+import { getVariables } from '@/features/admin/services/variableService';
+import { getDocuments } from '@/features/admin/services/documentService';
+import { getPostRequirements } from '@/features/admin/services/lobService';
+import { useAudit } from '@/shared/audit/hooks/useAudit';
+import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes';
 
 export default function LobDetailPanel({ lobId, lob, onSave }) {
-  const { token } = theme.useToken()
-  const [historyModalOpen, setHistoryModalOpen] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [variables, setVariables] = useState([])
-  const [taxBrackets, setTaxBrackets] = useState([])
-  const [documents, setDocuments] = useState([])
-  const [postRequirements, setPostRequirements] = useState([])
-  const [loadingData, setLoadingData] = useState(false)
-  const [loadingTaxBrackets, setLoadingTaxBrackets] = useState(false)
+  const { token } = theme.useToken();
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [variables, setVariables] = useState([]);
+  const [taxBrackets, setTaxBrackets] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [postRequirements, setPostRequirements] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
+  const [loadingTaxBrackets, setLoadingTaxBrackets] = useState(false);
 
-  const isNew = lobId === 'new' || !lob
+  const summaryFormatters = useMemo(() => {
+    const nameOf = (list) => (id) => {
+      if (!id) return '(empty)';
+      const match = list.find((item) => item._id === id || String(item._id) === String(id));
+      return match?.name || String(id);
+    };
 
-  const { auditLogs, auditLoading, refresh } = useAudit('lob', lobId, !isNew)
+    const joinNames = (list) => (ids) => {
+      if (!ids || ids.length === 0) return '(empty)';
+      return ids.map(nameOf(list)).join(', ');
+    };
+
+    return {
+      variables: joinNames(variables),
+      documents: joinNames(documents),
+      postRequirements: (value) => {
+        if (!value) return '(empty)';
+        const required = joinNames(postRequirements)(value.required);
+        const conditional = joinNames(postRequirements)(value.conditional);
+        if (required === '(empty)' && conditional === '(empty)') return '(empty)';
+        return `Required: ${required}; Conditional: ${conditional}`;
+      },
+    };
+  }, [variables, documents, postRequirements]);
+
+  const summaryFieldLabels = useMemo(
+    () => ({
+      lineOfBusiness: 'Line of Business',
+      variables: 'Variables',
+      documents: 'Claimable Documents',
+      postRequirements: 'Post Requirements',
+    }),
+    []
+  );
+
+  const isNew = lobId === 'new' || !lob;
+
+  const { auditLogs, auditLoading, refresh } = useAudit('lob', lobId, !isNew);
 
   const initialValues = useMemo(() => {
     if (isNew) {
-      return { code: '', name: '', category: '', description: '', notes: '', variables: [], documents: [], postRequirements: { required: [], conditional: [] }, essentialCommodity: false, status: 'draft' }
+      return {
+        code: '',
+        name: '',
+        category: '',
+        description: '',
+        notes: '',
+        variables: [],
+        documents: [],
+        postRequirements: { required: [], conditional: [] },
+        essentialCommodity: false,
+        status: 'draft',
+      };
     }
 
-    const variablesIds = (lob.variables || []).map(r => typeof r === 'object' ? r._id : r)
-    const documentsIds = (lob.documents || []).map(d => typeof d === 'object' ? d._id : d)
-    const requiredPostRequirementIds = (lob.postRequirements?.required || []).map(r => typeof r === 'object' ? r._id : r)
-    const conditionalPostRequirementIds = (lob.postRequirements?.conditional || []).map(r => typeof r === 'object' ? r._id : r)
+    const variablesIds = (lob.variables || []).map((r) => (typeof r === 'object' ? r._id : r));
+    const documentsIds = (lob.documents || []).map((d) => (typeof d === 'object' ? d._id : d));
+    const requiredPostRequirementIds = (lob.postRequirements?.required || []).map((r) =>
+      typeof r === 'object' ? r._id : r
+    );
+    const conditionalPostRequirementIds = (lob.postRequirements?.conditional || []).map((r) =>
+      typeof r === 'object' ? r._id : r
+    );
 
     return {
       code: lob.code,
@@ -57,8 +107,8 @@ export default function LobDetailPanel({ lobId, lob, onSave }) {
       },
       essentialCommodity: lob.essentialCommodity || false,
       status: lob.status || 'active',
-    }
-  }, [isNew, lob])
+    };
+  }, [isNew, lob]);
 
   const {
     form,
@@ -71,85 +121,87 @@ export default function LobDetailPanel({ lobId, lob, onSave }) {
     handleFormValuesChange,
     handleStatusChange,
     handleSave,
+    handleConfirm,
     resetChangeTracking,
     resetHistory,
     stepUpModal,
-  } = useLobForm({ lobId, lob, initialValues, onSave })
+    ChangesSummary,
+  } = useLobForm({ lobId, lob, initialValues, onSave });
 
   const handleEnterEditMode = () => {
-    setIsEditMode(true)
-  }
+    setIsEditMode(true);
+  };
 
   const handleExitEditMode = () => {
-    setIsEditMode(false)
-    form.setFieldsValue(initialValues)
-    resetChangeTracking(initialValues)
-  }
+    setIsEditMode(false);
+    form.setFieldsValue(initialValues);
+    resetChangeTracking(initialValues);
+  };
 
   // Seed undo history and change-tracking baseline on mount
   useEffect(() => {
-    form.setFieldsValue(initialValues)
-    resetHistory(initialValues)
-    resetChangeTracking(initialValues)
-  }, [form, initialValues, resetHistory, resetChangeTracking])
+    form.setFieldsValue(initialValues);
+    resetHistory(initialValues);
+    resetChangeTracking(initialValues);
+  }, [form, initialValues, resetHistory, resetChangeTracking]);
 
-  const loading = saving || loadingData || loadingTaxBrackets
+  const loading = saving || loadingData || loadingTaxBrackets;
 
   // Fetch variables, documents, and post requirements from API
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoadingData(true)
+        setLoadingData(true);
         const [varsRes, docsRes, postReqsRes] = await Promise.allSettled([
           getVariables({ isActive: true }),
           getDocuments({ isActive: true }),
-          getPostRequirements()
-        ])
-        if (varsRes.status === 'fulfilled') setVariables(varsRes.value)
-        else console.error('Failed to fetch variables:', varsRes.reason)
-        if (docsRes.status === 'fulfilled') setDocuments(docsRes.value)
-        else console.error('Failed to fetch documents:', docsRes.reason)
-        if (postReqsRes.status === 'fulfilled') setPostRequirements(postReqsRes.value)
-        else console.error('Failed to fetch post requirements:', postReqsRes.reason)
+          getPostRequirements(),
+        ]);
+        if (varsRes.status === 'fulfilled') setVariables(varsRes.value);
+        else console.error('Failed to fetch variables:', varsRes.reason);
+        if (docsRes.status === 'fulfilled') setDocuments(docsRes.value);
+        else console.error('Failed to fetch documents:', docsRes.reason);
+        if (postReqsRes.status === 'fulfilled') setPostRequirements(postReqsRes.value);
+        else console.error('Failed to fetch post requirements:', postReqsRes.reason);
       } finally {
-        setLoadingData(false)
+        setLoadingData(false);
       }
-    }
-    fetchData()
-  }, [])
+    };
+    fetchData();
+  }, []);
 
   // Fetch tax brackets for the current LOB
   useEffect(() => {
     const fetchTaxBrackets = async () => {
       if (!lobId || lobId === 'new') {
-        setTaxBrackets([])
-        return
+        setTaxBrackets([]);
+        return;
       }
       try {
-        setLoadingTaxBrackets(true)
-        const brackets = await getTaxBrackets({ lobId, isActive: true })
-        setTaxBrackets(brackets)
+        setLoadingTaxBrackets(true);
+        const brackets = await getTaxBrackets({ lobId, isActive: true });
+        setTaxBrackets(brackets);
       } catch (error) {
-        console.error('Failed to fetch tax brackets:', error)
-        setTaxBrackets([])
+        console.error('Failed to fetch tax brackets:', error);
+        setTaxBrackets([]);
       } finally {
-        setLoadingTaxBrackets(false)
+        setLoadingTaxBrackets(false);
       }
-    }
-    fetchTaxBrackets()
-  }, [lobId, lob?.name])
+    };
+    fetchTaxBrackets();
+  }, [lobId, lob?.name]);
 
   // Status options - remove draft if LOB is already active
   const statusOptions = [
     { value: 'draft', label: 'Draft' },
     { value: 'active', label: 'Active' },
     { value: 'disabled', label: 'Disabled' },
-  ].filter(option => {
+  ].filter((option) => {
     if (option.value === 'draft' && lob?.status === 'active') {
-      return false
+      return false;
     }
-    return true
-  })
+    return true;
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -170,20 +222,40 @@ export default function LobDetailPanel({ lobId, lob, onSave }) {
         iconButtons={[
           { icon: <HistoryOutlined />, onClick: () => setHistoryModalOpen(true), title: 'History' },
         ]}
-        actionButtons={isEditMode
-          ? [{ text: 'Exit Edit Mode', icon: <CloseOutlined />, onClick: handleExitEditMode, type: 'default' }]
-          : [{ text: 'Edit', icon: <EditOutlined />, onClick: handleEnterEditMode, type: 'default' }]}
+        actionButtons={
+          isEditMode
+            ? [
+                {
+                  text: 'Exit Edit Mode',
+                  icon: <CloseOutlined />,
+                  onClick: handleExitEditMode,
+                  type: 'default',
+                },
+              ]
+            : [
+                {
+                  text: 'Edit',
+                  icon: <EditOutlined />,
+                  onClick: handleEnterEditMode,
+                  type: 'default',
+                },
+              ]
+        }
         instructionSlotId="admin-lob"
         selectFieldsPosition="left"
-        selectFields={!isNew ? [
-          {
-            label: 'Status',
-            value: lob?.status || 'draft',
-            onChange: handleStatusChange,
-            width: 120,
-            options: statusOptions,
-          },
-        ] : []}
+        selectFields={
+          !isNew
+            ? [
+                {
+                  label: 'Status',
+                  value: lob?.status || 'draft',
+                  onChange: handleStatusChange,
+                  width: 120,
+                  options: statusOptions,
+                },
+              ]
+            : []
+        }
       />
       <AuditHistoryModal
         open={historyModalOpen}
@@ -192,16 +264,36 @@ export default function LobDetailPanel({ lobId, lob, onSave }) {
         loading={auditLoading}
         onRefresh={refresh}
         DetailPanelComponent={AuditEventDetails}
-        eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('lob_'))}
+        eventDescriptions={AUDIT_EVENT_INFO.filter((e) => e.event.startsWith('lob_'))}
       />
       {stepUpModal}
+      <ChangesSummary
+        onConfirm={handleConfirm}
+        formatters={summaryFormatters}
+        fieldLabels={summaryFieldLabels}
+      />
       <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
         {isEditMode ? (
-          <LobConfiguration form={form} handleFormValuesChange={handleFormValuesChange} variables={variables} documents={documents} postRequirements={postRequirements} />
+          <LobConfiguration
+            form={form}
+            handleFormValuesChange={handleFormValuesChange}
+            variables={variables}
+            documents={documents}
+            postRequirements={postRequirements}
+          />
         ) : (
-          <LobOverview lob={lob} initialValues={initialValues} variables={variables} documents={documents} postRequirements={postRequirements} taxBrackets={taxBrackets} token={token} loading={loading} />
+          <LobOverview
+            lob={lob}
+            initialValues={initialValues}
+            variables={variables}
+            documents={documents}
+            postRequirements={postRequirements}
+            taxBrackets={taxBrackets}
+            token={token}
+            loading={loading}
+          />
         )}
       </div>
     </div>
-  )
+  );
 }

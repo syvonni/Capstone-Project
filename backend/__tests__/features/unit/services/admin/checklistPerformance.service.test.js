@@ -1,11 +1,11 @@
-const ChecklistPerformanceService = require("../../../../services/business-service/src/services/admin/checklistPerformance.service");
+const ChecklistPerformanceService = require("../../../../../services/business-service/src/services/admin/checklistPerformance.service");
 
 // Mock the dependencies
 jest.mock(
-  "../../../../services/business-service/src/lib/performanceHelpers/checklistPerformanceHelper",
+  "../../../../../services/business-service/src/lib/performanceHelpers/checklistPerformanceHelper",
 );
 
-const ChecklistPerformanceHelper = require("../../../../services/business-service/src/lib/performanceHelpers/checklistPerformanceHelper");
+const ChecklistPerformanceHelper = require("../../../../../services/business-service/src/lib/performanceHelpers/checklistPerformanceHelper");
 
 describe("ChecklistPerformanceService", () => {
   beforeEach(() => {

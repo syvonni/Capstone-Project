@@ -164,12 +164,6 @@ app.use(
 const notificationsRouter = require("./routes/notifications");
 app.use("/api/notifications", notificationsRouter);
 
-// Tamper incident routes (for testing)
-if (process.env.NODE_ENV === "test") {
-  const tamperIncidentsRouter = require("../../admin-service/src/routes/tamperIncidents");
-  app.use("/api/admin/tamper", tamperIncidentsRouter);
-}
-
 // Internal service-to-service endpoints
 const internalRouter = require("./routes/internal");
 app.use("/api/internal", internalRouter);

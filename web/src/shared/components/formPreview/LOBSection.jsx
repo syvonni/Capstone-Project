@@ -1,13 +1,13 @@
 /**
  * LOB Section Component
- * 
+ *
  * This component renders the Line of Business selection interface
  * for business permit forms. It provides a prebuilt, non-configurable
  * interface for LOB selection with category and classification options.
  */
 
-import { useState, useEffect } from 'react'
-import { Typography, Button, theme, Grid, Alert, Tooltip } from 'antd'
+import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react'
+import { Typography, Button, theme, Alert, Tooltip } from 'antd'
 import { useLOBData } from '@/features/admin/pages/forms/components/hooks/useLOBData'
 import { useIndustrySelection } from '@/features/admin/pages/forms/components/hooks/useIndustrySelection'
 import { useVariableInputs } from '@/features/admin/pages/forms/components/hooks/useVariableInputs'
@@ -15,32 +15,35 @@ import IndustryCard from './IndustryCard'
 import IndustrySelectionModal from './IndustrySelectionModal'
 import AddLineOfBusinessModal from './AddLineOfBusinessModal'
 import { getTaxBrackets } from '@/features/admin/services/feeService'
+import {
+  businessActivitiesToUiState,
+  uiStateToBusinessActivities,
+  generateTestBusinessActivity,
+} from '@/features/business-owner/utils/lobTestData'
 
 const { Text } = Typography
 
-export default function LobSection({ isEditMode = false }) {
+function LOBSection({ isEditMode = false, onCompleteChange = null, onLobChange = null, form = null, businessActivities = null }, ref) {
   const { token } = theme.useToken()
-  const screens = Grid.useBreakpoint()
-  
+
   // Custom hooks
   const { lobs, allVariables, lobsError } = useLOBData()
-  const { 
-    selectedIndustryTaxCodes, 
+  const {
+    selectedIndustryTaxCodes,
     setSelectedIndustryTaxCodes,
-    industryDetailedLines, 
+    industryDetailedLines,
+    setIndustryDetailedLines,
     lobAllocatedCapital,
     setLobAllocatedCapital,
-    handleRemoveIndustry,
-    handleDetailedLinesChange,
+    handleRemoveIndustry: removeIndustryFromHook,
     handleRemoveLineOfBusiness,
   } = useIndustrySelection()
-  
-  const { 
+
+  const {
     savedVariableInputs,
-    saveVariableInputs,
-    removeVariableInputs,
+    setSavedVariableInputs,
   } = useVariableInputs()
-  
+
   const [industryModalOpen, setIndustryModalOpen] = useState(false)
   const [preSelectedIndustry, setPreSelectedIndustry] = useState(null)
   const [taxBrackets, setTaxBrackets] = useState([])
@@ -66,6 +69,67 @@ export default function LobSection({ isEditMode = false }) {
     return null
   }
 
+  // Sync a new UI state to the form so it is persisted.
+  const syncToForm = useCallback((nextState) => {
+    if (!form || !lobs.length) return
+    const activities = uiStateToBusinessActivities(lobs, nextState)
+    form.setFieldsValue({ businessActivities: activities })
+    if (onLobChange) {
+      onLobChange(activities)
+    }
+  }, [form, lobs, onLobChange])
+
+  // Replace the entire UI state from a businessActivities array.
+  const setBusinessActivities = useCallback((activities) => {
+    const uiState = businessActivitiesToUiState(activities)
+    setSelectedIndustryTaxCodes(uiState.selectedIndustryTaxCodes)
+    setIndustryDetailedLines(uiState.industryDetailedLines)
+    setLobAllocatedCapital(uiState.lobAllocatedCapital)
+    setSavedVariableInputs(uiState.savedVariableInputs)
+  }, [setSelectedIndustryTaxCodes, setIndustryDetailedLines, setLobAllocatedCapital, setSavedVariableInputs])
+
+  // Initialize / restore from the form or from parent props.
+  useEffect(() => {
+    if (businessActivities != null) {
+      setBusinessActivities(businessActivities)
+    } else if (form) {
+      const fromForm = form.getFieldValue('businessActivities')
+      if (Array.isArray(fromForm) && fromForm.length > 0) {
+        setBusinessActivities(fromForm)
+      }
+    }
+  }, [businessActivities, form, setBusinessActivities])
+
+  // Report completion status to parent
+  useEffect(() => {
+    if (onCompleteChange) {
+      const isComplete = selectedIndustryTaxCodes.length > 0
+      onCompleteChange(isComplete)
+    }
+  }, [selectedIndustryTaxCodes, industryDetailedLines, onCompleteChange])
+
+  // Imperative API for test data and external control.
+  useImperativeHandle(ref, () => ({
+    fillTestData: () => {
+      const activity = generateTestBusinessActivity(lobs, allVariables)
+      if (!activity) return null
+      setBusinessActivities([activity])
+      if (form) {
+        form.setFieldsValue({ businessActivities: [activity] })
+      }
+      return activity
+    },
+    getBusinessActivities: () => {
+      return uiStateToBusinessActivities(lobs, {
+        selectedIndustryTaxCodes,
+        industryDetailedLines,
+        lobAllocatedCapital,
+        savedVariableInputs,
+      })
+    },
+    setBusinessActivities,
+  }), [lobs, allVariables, form, setBusinessActivities, selectedIndustryTaxCodes, industryDetailedLines, lobAllocatedCapital, savedVariableInputs])
+
   const handleAddFromModal = ({ industry, lob, capital, variableInputs }) => {
     // If adding to a pre-selected industry, use that instead of the modal selection
     const targetIndustry = preSelectedIndustry || industry
@@ -75,24 +139,37 @@ export default function LobSection({ isEditMode = false }) {
     if ((industryDetailedLines[targetIndustry] || []).includes(lob)) {
       return // Prevent duplicate LOB
     }
-    
-    if (!selectedIndustryTaxCodes.includes(targetIndustry)) {
-      setSelectedIndustryTaxCodes(prev => [...prev, targetIndustry])
-      handleDetailedLinesChange(targetIndustry, lob)
-      setLobAllocatedCapital(prev => ({
-        ...prev,
-        [capitalKey]: capital
-      }))
-      saveVariableInputs(capitalKey, variableInputs)
-    } else {
-      // Industry already exists, just add the LOB
-      handleDetailedLinesChange(targetIndustry, lob)
-      setLobAllocatedCapital(prev => ({
-        ...prev,
-        [capitalKey]: capital
-      }))
-      saveVariableInputs(capitalKey, variableInputs)
+
+    const newSelected = selectedIndustryTaxCodes.includes(targetIndustry)
+      ? selectedIndustryTaxCodes
+      : [...selectedIndustryTaxCodes, targetIndustry]
+
+    const newLines = {
+      ...industryDetailedLines,
+      [targetIndustry]: [...(industryDetailedLines[targetIndustry] || []), lob]
     }
+
+    const newCapital = {
+      ...lobAllocatedCapital,
+      [capitalKey]: capital
+    }
+
+    const newVariables = {
+      ...savedVariableInputs,
+      [capitalKey]: { ...variableInputs }
+    }
+
+    setSelectedIndustryTaxCodes(newSelected)
+    setIndustryDetailedLines(newLines)
+    setLobAllocatedCapital(newCapital)
+    setSavedVariableInputs(newVariables)
+
+    syncToForm({
+      selectedIndustryTaxCodes: newSelected,
+      industryDetailedLines: newLines,
+      lobAllocatedCapital: newCapital,
+      savedVariableInputs: newVariables,
+    })
   }
 
   const handleAddLineOfBusiness = (taxCode) => {
@@ -106,59 +183,153 @@ export default function LobSection({ isEditMode = false }) {
 
     // If in edit mode and LOB name hasn't changed, just update capital and variable inputs
     if (isEditMode && originalLob && originalLob === lob) {
-      setLobAllocatedCapital(prev => ({
-        ...prev,
-        [capitalKey]: capital
-      }))
-      saveVariableInputs(capitalKey, variableInputs)
+      const newCapital = { ...lobAllocatedCapital, [capitalKey]: capital }
+      const newVariables = { ...savedVariableInputs, [capitalKey]: { ...variableInputs } }
+
+      setLobAllocatedCapital(newCapital)
+      setSavedVariableInputs(newVariables)
+
+      syncToForm({
+        selectedIndustryTaxCodes,
+        industryDetailedLines,
+        lobAllocatedCapital: newCapital,
+        savedVariableInputs: newVariables,
+      })
       return
     }
+
+    let workingSelected = selectedIndustryTaxCodes
+    let workingLines = industryDetailedLines
+    let workingCapital = lobAllocatedCapital
+    let workingVariables = savedVariableInputs
 
     // If in edit mode and LOB changed, remove the old LOB first
     if (isEditMode && originalLob && originalLob !== lob) {
       const oldCapitalKey = `${targetIndustry}-${originalLob}`
-      handleRemoveLineOfBusiness(targetIndustry, originalLob)
-      setLobAllocatedCapital(prev => {
-        const updated = { ...prev }
-        delete updated[oldCapitalKey]
-        return updated
-      })
-      removeVariableInputs(oldCapitalKey)
+
+      if (industryDetailedLines[targetIndustry]) {
+        const updatedLines = {
+          ...industryDetailedLines,
+          [targetIndustry]: industryDetailedLines[targetIndustry].filter(name => name !== originalLob)
+        }
+        setIndustryDetailedLines(updatedLines)
+        workingLines = updatedLines
+      }
+
+      const updatedCapital = { ...lobAllocatedCapital }
+      delete updatedCapital[oldCapitalKey]
+      setLobAllocatedCapital(updatedCapital)
+      workingCapital = updatedCapital
+
+      const updatedVariables = { ...savedVariableInputs }
+      delete updatedVariables[oldCapitalKey]
+      setSavedVariableInputs(updatedVariables)
+      workingVariables = updatedVariables
     }
 
     // Check if LOB already exists in this industry
-    if ((industryDetailedLines[targetIndustry] || []).includes(lob)) {
+    if ((workingLines[targetIndustry] || []).includes(lob)) {
       return // Prevent duplicate LOB
     }
 
     // Add new LOB
-    if (!selectedIndustryTaxCodes.includes(targetIndustry)) {
-      setSelectedIndustryTaxCodes(prev => [...prev, targetIndustry])
-      handleDetailedLinesChange(targetIndustry, lob)
-      setLobAllocatedCapital(prev => ({
-        ...prev,
-        [capitalKey]: capital
-      }))
-      saveVariableInputs(capitalKey, variableInputs)
-    } else {
-      handleDetailedLinesChange(targetIndustry, lob)
-      setLobAllocatedCapital(prev => ({
-        ...prev,
-        [capitalKey]: capital
-      }))
-      saveVariableInputs(capitalKey, variableInputs)
+    if (!workingSelected.includes(targetIndustry)) {
+      const newSelected = [...workingSelected, targetIndustry]
+      setSelectedIndustryTaxCodes(newSelected)
+      workingSelected = newSelected
     }
+
+    const newLines = {
+      ...workingLines,
+      [targetIndustry]: [...(workingLines[targetIndustry] || []), lob]
+    }
+    setIndustryDetailedLines(newLines)
+    workingLines = newLines
+
+    const newCapital = { ...workingCapital, [capitalKey]: capital }
+    setLobAllocatedCapital(newCapital)
+    workingCapital = newCapital
+
+    const newVariables = { ...workingVariables, [capitalKey]: { ...variableInputs } }
+    setSavedVariableInputs(newVariables)
+    workingVariables = newVariables
+
+    syncToForm({
+      selectedIndustryTaxCodes: workingSelected,
+      industryDetailedLines: workingLines,
+      lobAllocatedCapital: workingCapital,
+      savedVariableInputs: workingVariables,
+    })
+  }
+
+  const handleRemoveIndustryWithSync = (taxCode) => {
+    removeIndustryFromHook(taxCode)
+
+    const newSelected = selectedIndustryTaxCodes.filter(code => code !== taxCode)
+    const newLines = { ...industryDetailedLines }
+    delete newLines[taxCode]
+
+    const newCapital = { ...lobAllocatedCapital }
+    Object.keys(newCapital).forEach(key => {
+      if (key.startsWith(`${taxCode}-`)) {
+        delete newCapital[key]
+      }
+    })
+
+    const newVariables = { ...savedVariableInputs }
+    Object.keys(newVariables).forEach(key => {
+      if (key.startsWith(`${taxCode}-`)) {
+        delete newVariables[key]
+      }
+    })
+
+    setSelectedIndustryTaxCodes(newSelected)
+    setIndustryDetailedLines(newLines)
+    setLobAllocatedCapital(newCapital)
+    setSavedVariableInputs(newVariables)
+
+    syncToForm({
+      selectedIndustryTaxCodes: newSelected,
+      industryDetailedLines: newLines,
+      lobAllocatedCapital: newCapital,
+      savedVariableInputs: newVariables,
+    })
   }
 
   const handleRemoveLineOfBusinessWithCleanup = (taxCode, lineName) => {
     handleRemoveLineOfBusiness(taxCode, lineName)
     const capitalKey = `${taxCode}-${lineName}`
-    setLobAllocatedCapital(prev => {
-      const updated = { ...prev }
-      delete updated[capitalKey]
-      return updated
+
+    const newCapital = { ...lobAllocatedCapital }
+    delete newCapital[capitalKey]
+
+    const newVariables = { ...savedVariableInputs }
+    delete newVariables[capitalKey]
+
+    const newLines = {
+      ...industryDetailedLines,
+      [taxCode]: (industryDetailedLines[taxCode] || []).filter(name => name !== lineName)
+    }
+
+    // If the industry has no more LOBs, remove the industry as well
+    const newSelected = newLines[taxCode]?.length > 0
+      ? selectedIndustryTaxCodes
+      : selectedIndustryTaxCodes.filter(code => code !== taxCode)
+    if (!newLines[taxCode]?.length) {
+      delete newLines[taxCode]
+    }
+
+    setSelectedIndustryTaxCodes(newSelected)
+    setIndustryDetailedLines(newLines)
+    setLobAllocatedCapital(newCapital)
+    setSavedVariableInputs(newVariables)
+
+    syncToForm({
+      selectedIndustryTaxCodes: newSelected,
+      industryDetailedLines: newLines,
+      lobAllocatedCapital: newCapital,
+      savedVariableInputs: newVariables,
     })
-    removeVariableInputs(capitalKey)
   }
 
   const handleEditLineOfBusiness = (taxCode, lineName) => {
@@ -200,7 +371,7 @@ export default function LobSection({ isEditMode = false }) {
                 allVariables={allVariables}
                 taxBrackets={taxBrackets}
                 token={token}
-                onRemoveIndustry={handleRemoveIndustry}
+                onRemoveIndustry={handleRemoveIndustryWithSync}
                 onRemoveLineOfBusiness={handleRemoveLineOfBusinessWithCleanup}
                 onAddLineOfBusiness={handleAddLineOfBusiness}
                 onEditLineOfBusiness={handleEditLineOfBusiness}
@@ -212,12 +383,12 @@ export default function LobSection({ isEditMode = false }) {
         )}
       </div>
 
-      <Tooltip title="Line of Business selection is not editable in edit mode">
+      <Tooltip title={isEditMode ? "Line of Business selection is editable in edit mode" : "Line of Business selection is not editable in view mode"}>
         <Button
           type="dashed"
           onClick={() => setIndustryModalOpen(true)}
           block
-          disabled={isEditMode}
+          disabled={!isEditMode}
         >
           {selectedIndustryTaxCodes.length === 0 ? '+ Select line of business' : '+ Add another industry'}
         </Button>
@@ -233,7 +404,6 @@ export default function LobSection({ isEditMode = false }) {
         selectedIndustryTaxCodes={selectedIndustryTaxCodes}
         allVariables={allVariables}
         token={token}
-        screens={screens}
         onAddIndustry={handleAddFromModal}
         preSelectedIndustry={preSelectedIndustry}
       />
@@ -256,3 +426,5 @@ export default function LobSection({ isEditMode = false }) {
     </div>
   )
 }
+
+export default forwardRef(LOBSection)

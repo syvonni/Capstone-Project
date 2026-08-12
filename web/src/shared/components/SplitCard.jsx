@@ -71,11 +71,14 @@ export default function SplitCard({
     }
 
     return (
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(2, 1fr)', 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gridAutoRows: '1fr',
         gap: '1px',
         background: token.colorBorderSecondary,
+        flex: isMobileLayout ? 1 : 'none',
+        height: isMobileLayout ? '100%' : 'auto',
       }}>
         {links.map((link, index) => {
           const getLinkColor = () => {
@@ -105,7 +108,8 @@ export default function SplitCard({
                 transition: link.modalContent ? 'all 0.2s' : 'none',
                 ...(links.length % 2 !== 0 && index === links.length - 1 ? { gridColumn: 'span 2' } : {}),
               }}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
                 if (link.modalContent) {
                   setModalContent(link.modalContent)
                   setModalLinkColor(getLinkColor())
@@ -115,6 +119,7 @@ export default function SplitCard({
               onKeyDown={(e) => {
                 if (link.modalContent && (e.key === 'Enter' || e.key === ' ')) {
                   e.preventDefault()
+                  e.stopPropagation()
                   setModalContent(link.modalContent)
                   setModalLinkColor(getLinkColor())
                   setModalOpen(true)
@@ -143,7 +148,14 @@ export default function SplitCard({
                            link.linkColor === 'gray' ? token.colorTextTertiary :
                            token.colorTextTertiary,
               }} />
-              <Text>
+              <Text
+                style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  lineHeight: '1.5',
+                }}
+              >
                 {link.count} {link.text}
               </Text>
             </div>
@@ -427,13 +439,17 @@ export default function SplitCard({
           alignItems: 'flex-start',
           justifyContent: 'flex-start',
         }}
-        onClick={onClick}
+        onClick={(e) => {
+          e.stopPropagation()
+          onClick(e)
+        }}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
-            onClick()
+            e.stopPropagation()
+            onClick(e)
           }
         }}
         onMouseEnter={screens.lg ? (!clickable ? () => setIsLeftPanelHovered(true) : () => setIsHovered(true)) : undefined}
@@ -565,7 +581,7 @@ export default function SplitCard({
         </div>
       )}
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: isMobileLayout ? 'row' : 'column', height: isMobileLayout ? 'auto' : '100%', minHeight: isMobileLayout ? 'auto' : '100%' }}>
+          <div style={{ display: 'flex', flexDirection: isMobileLayout ? 'row' : 'column', height: isMobileLayout ? 'auto' : '100%', minHeight: isMobileLayout ? 'auto' : '100%', alignItems: 'stretch' }}>
             {to ? (
               <Link
                 to={to}
@@ -639,7 +655,7 @@ export default function SplitCard({
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: isMobileLayout ? 'row' : 'column', height: '100%', minHeight: isMobileLayout ? 'auto' : '100%' }}>
+          <div style={{ display: 'flex', flexDirection: isMobileLayout ? 'row' : 'column', height: '100%', minHeight: isMobileLayout ? 'auto' : '100%', alignItems: 'stretch' }}>
             {leftPanelWrapper}
             <div
               style={{

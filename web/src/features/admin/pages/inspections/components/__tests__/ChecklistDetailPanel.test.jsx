@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { axe, toHaveNoViolations } from 'jest-axe'
+import { render } from '@testing-library/react'
+import { toHaveNoViolations } from 'jest-axe'
 import { BrowserRouter } from 'react-router-dom'
 import ChecklistDetailPanel from '../ChecklistDetailPanel'
 
@@ -133,7 +133,7 @@ describe('ChecklistDetailPanel', () => {
 
   describe('Accessibility', () => {
     it('renders with accessible structure', async () => {
-      const { container } = renderWithRouter(
+      renderWithRouter(
         <ChecklistDetailPanel
           checklist={mockChecklist}
           initialValues={mockInitialValues}
@@ -147,7 +147,7 @@ describe('ChecklistDetailPanel', () => {
     })
 
     it('renders with accessible structure with loading state', async () => {
-      const { container } = renderWithRouter(
+      renderWithRouter(
         <ChecklistDetailPanel
           checklist={mockChecklist}
           initialValues={mockInitialValues}
@@ -176,7 +176,7 @@ describe('ChecklistDetailPanel', () => {
         isActive: true,
       }
 
-      const { container } = renderWithRouter(
+      renderWithRouter(
         <ChecklistDetailPanel
           checklist={minimalChecklist}
           initialValues={minimalInitialValues}

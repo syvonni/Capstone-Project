@@ -89,7 +89,7 @@ export default function LobsStatsPanel() {
     } finally {
       setLobsLoading(false)
     }
-  }, [fetchAuditLogs, getLobs])
+  }, [fetchAuditLogs])
 
   // Calculate last activity from audit logs separately to prevent infinite loop
   useEffect(() => {
@@ -142,7 +142,7 @@ export default function LobsStatsPanel() {
       {
         count: disabledLobs,
         text: 'Disabled',
-        linkColor: disabledLobs > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledLobs > 0 ? {
           title: 'Disabled LOBs',
           items: lobs.filter(l => !l.isActive).map(l => ({

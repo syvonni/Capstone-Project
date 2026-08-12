@@ -16,14 +16,13 @@ const {
 const Lob = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -63,8 +62,8 @@ describe("LOBs API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data).toHaveLength(0);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body).toHaveLength(0);
     });
 
     it("should return list of LOBs when LOBs exist", async () => {
@@ -83,8 +82,8 @@ describe("LOBs API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
     });
   });
 
@@ -114,7 +113,7 @@ describe("LOBs API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data._id).toBe(testLob._id.toString());
+      expect(response.body._id).toBe(testLob._id.toString());
     });
   });
 
@@ -176,7 +175,7 @@ describe("LOBs API Integration Tests", () => {
         .send(lobData)
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should validate missing required fields", async () => {
@@ -313,7 +312,7 @@ describe("LOBs API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data.status).toBe("disabled");
+      expect(response.body.status).toBe("disabled");
     });
   });
 

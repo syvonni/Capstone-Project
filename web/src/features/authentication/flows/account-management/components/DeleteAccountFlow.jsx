@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Result, Button, Typography, Alert } from 'antd'
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
 import { useLoggedInDeleteAccountFlow } from "../hooks/useLoggedInDeleteAccountFlow.js"
 import { useSendDeleteAccountCode } from "../hooks/useSendDeleteAccountCode.js"
 import { useResendDeleteAccountCode } from "../hooks/useResendDeleteAccountCode.js"

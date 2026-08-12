@@ -7,7 +7,10 @@ function respondError(res, status, code, message, details) {
 }
 
 function signAccessToken(user) {
-  const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is required");
+  }
   const ttlMin = Number(process.env.ACCESS_TOKEN_TTL_MINUTES) || 240; // Default 4 hours (240 minutes)
   const nowSec = Math.floor(Date.now() / 1000);
   const expSec = nowSec + Math.max(1, ttlMin) * 60;
@@ -44,7 +47,10 @@ async function requireJwt(req, res, next) {
         "unauthorized",
         "Unauthorized: missing token",
       );
-    const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error("JWT_SECRET environment variable is required");
+    }
     const decoded = jwt.verify(token, secret);
 
     // Skip user lookup in test mode to avoid cross-service model conflicts
@@ -140,8 +146,15 @@ function requireRole(allowedRoles) {
 
 /** Require internal service-to-service authentication (shared secret). */
 function requireInternalAuth(req, res, next) {
-  const INTERNAL_API_KEY =
-    process.env.INTERNAL_API_KEY || "internal-service-secret";
+  const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+  if (!INTERNAL_API_KEY) {
+    return respondError(
+      res,
+      500,
+      "CONFIGURATION_ERROR",
+      "INTERNAL_API_KEY environment variable is required",
+    );
+  }
   const apiKey = req.headers["x-internal-api-key"];
   if (apiKey === INTERNAL_API_KEY) {
     next();
@@ -157,7 +170,10 @@ function requireInternalAuth(req, res, next) {
 
 /** Short-lived JWT for admin step-up (re-auth). Verified by admin-service. */
 function signStepUpToken(userId) {
-  const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is required");
+  }
   const ttlMin = Math.min(
     5,
     Number(process.env.STEP_UP_TOKEN_TTL_MINUTES) || 5,

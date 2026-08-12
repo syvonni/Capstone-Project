@@ -75,7 +75,7 @@ describe('InspectionItemCard', () => {
   })
 
   it('handles selected state correctly', () => {
-    const { container } = renderWithProviders(
+    renderWithProviders(
       <InspectionItemCard item={mockItem} selected={true} onClick={mockOnClick} />
     )
 

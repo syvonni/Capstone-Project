@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import InspectionsView from '../views/InspectionsView'
 
@@ -58,7 +58,7 @@ describe('Checklists - Cross-Component Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    getChecklists.mockResolvedValue({ data: mockChecklists, total: 2, page: 1, limit: 20 })
+    getChecklists.mockResolvedValue(mockChecklists)
     getInspectionItems.mockResolvedValue(mockInspectionItems)
     getPostRequirements.mockResolvedValue(mockPostRequirements)
   })
@@ -117,7 +117,7 @@ describe('Checklists - Cross-Component Integration', () => {
 
   describe('Data Handling', () => {
     it('handles empty data responses', async () => {
-      getChecklists.mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 })
+      getChecklists.mockResolvedValue([])
 
       render(
         <MemoryRouter>
@@ -130,7 +130,7 @@ describe('Checklists - Cross-Component Integration', () => {
     })
 
     it('handles null data responses', async () => {
-      getChecklists.mockResolvedValue({ data: null, total: 0, page: 1, limit: 20 })
+      getChecklists.mockResolvedValue(null)
 
       render(
         <MemoryRouter>
@@ -204,7 +204,7 @@ describe('Checklists - Cross-Component Integration', () => {
 
       // Resolve the promise if it was set
       if (resolveFetch) {
-        resolveFetch({ data: mockChecklists, total: 2, page: 1, limit: 20 })
+        resolveFetch(mockChecklists)
       }
     })
   })

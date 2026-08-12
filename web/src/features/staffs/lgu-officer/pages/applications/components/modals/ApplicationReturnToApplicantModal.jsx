@@ -1,23 +1,26 @@
-import { Modal, Space, Input, Descriptions } from 'antd'
+import { Button, Space, Input, Descriptions } from 'antd'
 import { Typography } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 
 const { Text } = Typography
 
 export default function ReturnToApplicantModal({ open, onClose, onConfirm, returnRequestOther, setReturnRequestOther, requestChangeFields }) {
   return (
-    <Modal
+    <ResponsiveModal
       title="Return to Applicant"
       open={open}
       onCancel={onClose}
-      onOk={onConfirm}
-      okText="Return"
-      cancelButtonProps={{ style: { display: 'none' } }}
+      width={600}
+      footer={[
+        <Button key="return" type="primary" onClick={onConfirm}>
+          Return
+        </Button>,
+      ]}
     >
-      <div style={{ padding: 16 }}>
-        <Space direction="vertical" style={{ width: '100%' }} size={16}>
-          <Text>
-            Return this application to the applicant for additional information or corrections.
-          </Text>
+      <Space direction="vertical" style={{ width: '100%' }} size={16}>
+        <Text>
+          Return this application to the applicant for additional information or corrections.
+        </Text>
 
           {requestChangeFields && requestChangeFields.length > 0 && (
             (() => {
@@ -47,7 +50,7 @@ export default function ReturnToApplicantModal({ open, onClose, onConfirm, retur
                       <Text style={{ display: 'block', marginBottom: 12 }}>{sectionName}</Text>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {fields.map((field) => (
-                          <Descriptions key={field.fieldKey} column={1} bordered size="small" labelStyle={{ width: '120px' }}>
+                          <Descriptions key={field.fieldKey} column={1} bordered size="small" styles={{ label: { width: '120px' } }}>
                             <Descriptions.Item label="Field Name">{field.fieldName}</Descriptions.Item>
                             <Descriptions.Item label="Reason">{field.reason}</Descriptions.Item>
                           </Descriptions>
@@ -71,7 +74,6 @@ export default function ReturnToApplicantModal({ open, onClose, onConfirm, retur
             />
           </div>
         </Space>
-      </div>
-    </Modal>
+    </ResponsiveModal>
   )
 }

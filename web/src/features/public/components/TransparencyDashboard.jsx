@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Typography, Grid, theme, Card } from 'antd'
-import BlurFade from '@/shared/components/BlurFade.jsx'
-import ScrambleText from '@/shared/components/ScrambleText.jsx'
+import { Typography, Grid, theme, Card, Statistic } from 'antd'
+import CountUp from 'react-countup'
+import BlurFade from '@/shared/components/animations/BlurFade.jsx'
 
 const { Title, Text } = Typography
 const { useBreakpoint } = Grid
+
+const countUpFormatter = (value) => (
+  <CountUp key={String(value)} end={Number(value)} separator="," duration={1.5} />
+)
 
 export default function TransparencyDashboard({ publicStats }) {
   const { token } = theme.useToken()
@@ -128,12 +132,11 @@ export default function TransparencyDashboard({ publicStats }) {
                   onMouseEnter={screens.md ? () => setHoveredCard(index) : undefined}
                   onMouseLeave={screens.md ? () => setHoveredCard(null) : undefined}
                 >
-                  <ScrambleText
-                    text={String(item.value)}
-                    duration={900}
-                    chars={'0123456789'}
-                    autoScramble={inView}
-                    style={{
+                  <Statistic
+                    title={<Text type="secondary" style={{ fontSize: 13, lineHeight: 1.5 }}>{item.label}</Text>}
+                    value={inView ? item.value : 0}
+                    formatter={countUpFormatter}
+                    valueStyle={{
                       display: 'block',
                       fontSize: screens.md ? 32 : 28,
                       fontWeight: 700,
@@ -141,17 +144,6 @@ export default function TransparencyDashboard({ publicStats }) {
                       lineHeight: 1.1,
                     }}
                   />
-                  <Text
-                    type="secondary"
-                    style={{
-                      display: 'block',
-                      marginTop: 8,
-                      fontSize: 13,
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {item.label}
-                  </Text>
                 </Card>
               </BlurFade>
             ))}

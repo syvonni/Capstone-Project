@@ -23,7 +23,7 @@ function normalizeSize(value) {
  * @param {Object} props
  * @param {React.ReactNode} props.listContent - Left panel content (list of items)
  * @param {React.ReactNode} props.detailContent - Right panel content (detail view)
- * @param {string} props.drawerTitle - Title for mobile drawer
+ * @param {React.ReactNode} props.drawerTitle - Title for mobile drawer
  * @param {Function} props.onDrawerClose - Callback when drawer closes
  * @param {boolean} props.drawerOpen - Explicit control over drawer open state (mobile only)
  * @param {string} props.mobileDrawerPlacement - Drawer placement for mobile: 'right' | 'bottom' (default: 'right')

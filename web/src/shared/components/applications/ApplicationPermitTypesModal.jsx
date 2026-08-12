@@ -7,7 +7,7 @@ import { getIconForForm } from '@/shared/utils/permitIconMap'
 
 const { Text } = Typography
 
-function PermitTypesModal({ open, onCancel, selectedPermitType = 'regular' }) {
+function ApplicationPermitTypesModal({ open, onCancel, selectedPermitType = 'regular' }) {
   const [formsData, setFormsData] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -18,7 +18,7 @@ function PermitTypesModal({ open, onCancel, selectedPermitType = 'regular' }) {
         const data = await getPublicPermitFormsGrouped()
         setFormsData(data)
       } catch (error) {
-        console.error('[PermitTypesModal] Failed to fetch permit forms:', error)
+        console.error('[ApplicationPermitTypesModal] Failed to fetch permit forms:', error)
       } finally {
         setLoading(false)
       }
@@ -104,6 +104,7 @@ function PermitTypesModal({ open, onCancel, selectedPermitType = 'regular' }) {
       open={open}
       onCancel={onCancel}
       width={800}
+      footer={null}
     >
       <div style={{ display: 'flex', flexDirection: 'column'}}>
         {/* Selected permit type */}
@@ -145,4 +146,4 @@ function PermitTypesModal({ open, onCancel, selectedPermitType = 'regular' }) {
   )
 }
 
-export default PermitTypesModal
+export default ApplicationPermitTypesModal

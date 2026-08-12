@@ -51,7 +51,6 @@ const getStaleDuration = (item) => {
 }
 
 export default function OfficerApplications() {
-  console.log('[AUTOSAVE] OfficerApplications (PARENT) rendered')
   const [searchParams] = useSearchParams()
   const [selectedItem, setSelectedItem] = useState(null)
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set())
@@ -131,7 +130,6 @@ export default function OfficerApplications() {
   }, [selectedItem])
 
   useEffect(() => {
-    console.log('[AUTOSAVE][PARENT-SYNC] Sync effect fired - applications.length:', officerData?.applications?.length, 'selectedItem._itemId:', selectedItem?._itemId)
     if (selectedItem && officerData?.applications) {
       const updatedItem = officerData.applications.find(app => getItemId(app) === selectedItem._itemId)
       if (updatedItem) {
@@ -141,7 +139,6 @@ export default function OfficerApplications() {
         const newData = { ...updatedItem }
         // Only update if the actual application data changed (not just array reference)
         if (JSON.stringify(currentData) !== JSON.stringify(newData)) {
-          console.log('[AUTOSAVE][PARENT-SYNC] Data changed, updating selectedItem')
           setSelectedItem({ ...updatedItem, _itemType: 'applications', _itemId: getItemId(updatedItem) })
         }
       }

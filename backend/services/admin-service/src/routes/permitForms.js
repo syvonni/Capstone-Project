@@ -8,8 +8,9 @@ const { validateBody, Joi } = require("../middleware/validation");
 const respond = require("../middleware/respond");
 const logger = require("../lib/logger");
 const { logAuditEvent } = require("../lib/auditClient");
-const PermitForm = require("../models/PermitForm");
-const { createHttpClient } = require("../../../../shared/lib/httpClient");
+const PermitForm = require("../../../../shared/models/PermitForm");
+const Fee = require("../../../../shared/models/Fee");
+const ClaimableDocument = require("../../../../shared/models/ClaimableDocument");
 const PermitFormAuditHelper = require("../lib/auditHelpers/permitFormAuditHelper");
 const User = require("../models/User");
 
@@ -37,30 +38,6 @@ async function getUserInfo(userId) {
 }
 
 const router = express.Router();
-const businessClient = createHttpClient("business");
-
-// Local getUserInfo function using admin-service User model
-async function getUserInfo(userId) {
-  try {
-    const user = await User.findById(userId)
-      .select("firstName lastName email")
-      .lean();
-    const fullName =
-      user?.firstName && user?.lastName
-        ? `${user.firstName} ${user.lastName}`
-        : user?.email || userId;
-    return {
-      name: fullName,
-      email: user?.email || null,
-    };
-  } catch (err) {
-    console.error("Failed to fetch user info for audit:", err);
-    return {
-      name: userId,
-      email: null,
-    };
-  }
-}
 
 // Validation schemas
 const createPermitFormSchema = Joi.object({
@@ -97,30 +74,11 @@ const createTemporaryPermitFormSchema = Joi.object({
 // GET /api/admin/permit-forms - List all permit forms
 router.get("/", requireJwt, requireRole("admin"), async (req, res) => {
   try {
-    const forms = await PermitForm.find().sort({ createdAt: -1 }).lean();
-    // Populate feeId for each form
-    const formsWithFees = await Promise.all(
-      forms.map(async (form) => {
-        if (form.feeId) {
-          try {
-            const feeResponse = await businessClient.get(
-              `/api/business/admin/fees/${form.feeId}`,
-              {
-                headers: {
-                  Authorization: req.headers.authorization,
-                },
-              },
-            );
-            return { ...form, feeId: feeResponse.data };
-          } catch (error) {
-            console.error("Failed to fetch fee for permit form:", error);
-            return form;
-          }
-        }
-        return form;
-      }),
-    );
-    respond.success(res, 200, formsWithFees);
+    const forms = await PermitForm.find()
+      .sort({ createdAt: -1 })
+      .populate("feeId")
+      .lean();
+    respond.success(res, 200, forms);
   } catch (error) {
     logger.error("Error fetching permit forms:", error);
     respond.error(res, 500, "fetch_failed", "Failed to fetch permit forms");
@@ -137,27 +95,12 @@ router.get(
     try {
       const form = await PermitForm.findOne({
         formId: req.params.formId,
-      }).lean();
+      })
+        .populate("feeId")
+        .lean();
 
       if (!form) {
         return respond.error(res, 404, "not_found", "Permit form not found");
-      }
-
-      // Populate feeId if exists
-      if (form.feeId) {
-        try {
-          const feeResponse = await businessClient.get(
-            `/api/business/admin/fees/${form.feeId}`,
-            {
-              headers: {
-                Authorization: req.headers.authorization,
-              },
-            },
-          );
-          form.feeId = feeResponse.data;
-        } catch (error) {
-          console.error("Failed to fetch fee for permit form:", error);
-        }
       }
 
       respond.success(res, 200, form);
@@ -198,7 +141,9 @@ router.get(
   requireRole("admin"),
   async (req, res) => {
     try {
-      const form = await PermitForm.findById(req.params.id).lean();
+      const form = await PermitForm.findById(req.params.id)
+        .populate("claimableDocumentIds")
+        .lean();
 
       if (!form) {
         return respond.error(res, 404, "not_found", "Permit form not found");
@@ -211,28 +156,7 @@ router.get(
         return respond.success(res, 200, []);
       }
 
-      // Fetch claimable documents from business-service
-      const documents = await Promise.all(
-        form.claimableDocumentIds.map(async (docId) => {
-          try {
-            const docResponse = await businessClient.get(
-              `/api/business/admin/documents/${docId}`,
-              {
-                headers: {
-                  Authorization: req.headers.authorization,
-                },
-              },
-            );
-            return docResponse.data;
-          } catch (error) {
-            console.error("Failed to fetch claimable document:", error);
-            return null;
-          }
-        }),
-      );
-
-      const validDocuments = documents.filter((doc) => doc !== null);
-      respond.success(res, 200, validDocuments);
+      respond.success(res, 200, form.claimableDocumentIds);
     } catch (error) {
       logger.error(
         "Error fetching claimable documents for permit form:",
@@ -282,23 +206,13 @@ router.post(
       let feeId = null;
       if (applicationFeeAmount && applicationFeeAmount > 0) {
         try {
-          const feeResponse = await businessClient.post(
-            `/api/business/admin/fees/internal`,
-            {
-              name: `${name} Fee`,
-              amount: applicationFeeAmount,
-              category: "application_fee",
-              isActive: isActive !== undefined ? isActive : true,
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "x-internal-api-key":
-                  process.env.INTERNAL_API_KEY || "internal-service-secret",
-              },
-            },
-          );
-          feeId = feeResponse._id;
+          const fee = await Fee.create({
+            name: `${name} Fee`,
+            amount: applicationFeeAmount,
+            category: "application_fee",
+            isActive: isActive !== undefined ? isActive : true,
+          });
+          feeId = fee._id;
 
           // Log audit event for fee creation
           await logAuditEvent(
@@ -308,10 +222,10 @@ router.post(
             feeId,
             {
               feeId: feeId,
-              name: feeResponse.data.name,
-              amount: feeResponse.data.amount,
-              category: feeResponse.data.category,
-              isActive: feeResponse.data.isActive,
+              name: fee.name,
+              amount: fee.amount,
+              category: fee.category,
+              isActive: fee.isActive,
             },
           ).catch((err) =>
             console.error(
@@ -338,8 +252,14 @@ router.post(
 
       // Log audit event using helper
       const userInfo = await getUserInfo(req._userId);
-      PermitFormAuditHelper.logCreated(req, req._userId, userInfo, form, "admin").catch(
-        (err) => console.error("Failed to log audit event for permit form create", err),
+      PermitFormAuditHelper.logCreated(
+        req,
+        req._userId,
+        userInfo,
+        form,
+        "admin",
+      ).catch((err) =>
+        console.error("Failed to log audit event for permit form create", err),
       );
 
       logger.info(`Created permit form: ${formId}`);
@@ -370,17 +290,7 @@ router.put(
       // Sync fee status if isActive is changing
       if (isActive !== undefined && isActive !== form.isActive && form.feeId) {
         try {
-          await businessClient.put(
-            `/api/business/admin/fees/${form.feeId}`,
-            { isActive },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "x-internal-api-key":
-                  process.env.INTERNAL_API_KEY || "internal-service-secret",
-              },
-            },
-          );
+          await Fee.findByIdAndUpdate(form.feeId, { isActive });
           await logAuditEvent(
             isActive ? "application_fee_updated" : "application_fee_disabled",
             req._userId,
@@ -411,7 +321,10 @@ router.put(
       if (description !== undefined && description !== form.description) {
         changes.description = { from: form.description, to: description };
       }
-      if (sections !== undefined && JSON.stringify(sections) !== JSON.stringify(form.sections)) {
+      if (
+        sections !== undefined &&
+        JSON.stringify(sections) !== JSON.stringify(form.sections)
+      ) {
         changes.sections = { from: form.sections, to: sections };
       }
       if (notes !== undefined && notes !== form.notes) {
@@ -422,7 +335,10 @@ router.put(
       }
 
       // Only increment version if there are actual changes
-      const newVersion = Object.keys(changes).length > 0 ? (form.version || 0) + 1 : form.version;
+      const newVersion =
+        Object.keys(changes).length > 0
+          ? (form.version || 0) + 1
+          : form.version;
 
       const updatedForm = await PermitForm.findByIdAndUpdate(
         req.params.id,
@@ -486,17 +402,7 @@ router.patch(
       // Sync fee status if form has a linked fee
       if (form.feeId) {
         try {
-          await businessClient.put(
-            `/api/business/admin/fees/${form.feeId}`,
-            { isActive },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "x-internal-api-key":
-                  process.env.INTERNAL_API_KEY || "internal-service-secret",
-              },
-            },
-          );
+          await Fee.findByIdAndUpdate(form.feeId, { isActive });
           await logAuditEvent(
             isActive ? "application_fee_updated" : "application_fee_disabled",
             req._userId,
@@ -532,8 +438,19 @@ router.patch(
 
       // Log audit event using helper
       const userInfo = await getUserInfo(req._userId);
-      PermitFormAuditHelper.logStatusChanged(req, req._userId, userInfo, form, form.isActive, isActive, "admin").catch(
-        (err) => console.error("Failed to log audit event for permit form status change", err),
+      PermitFormAuditHelper.logStatusChanged(
+        req,
+        req._userId,
+        userInfo,
+        form,
+        form.isActive,
+        isActive,
+        "admin",
+      ).catch((err) =>
+        console.error(
+          "Failed to log audit event for permit form status change",
+          err,
+        ),
       );
 
       logger.info(
@@ -577,23 +494,13 @@ router.post(
       let feeId = null;
       if (applicationFeeAmount && applicationFeeAmount > 0) {
         try {
-          const feeResponse = await businessClient.post(
-            `/api/business/admin/fees/internal`,
-            {
-              name: `${name} Fee`,
-              amount: applicationFeeAmount,
-              category: "application_fee",
-              isActive: isActive !== undefined ? isActive : true,
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "x-internal-api-key":
-                  process.env.INTERNAL_API_KEY || "internal-service-secret",
-              },
-            },
-          );
-          feeId = feeResponse._id;
+          const fee = await Fee.create({
+            name: `${name} Fee`,
+            amount: applicationFeeAmount,
+            category: "application_fee",
+            isActive: isActive !== undefined ? isActive : true,
+          });
+          feeId = fee._id;
 
           // Log audit event for fee creation
           await logAuditEvent(
@@ -603,10 +510,10 @@ router.post(
             feeId,
             {
               feeId: feeId,
-              name: feeResponse.data.name,
-              amount: feeResponse.data.amount,
-              category: feeResponse.data.category,
-              isActive: feeResponse.data.isActive,
+              name: fee.name,
+              amount: fee.amount,
+              category: fee.category,
+              isActive: fee.isActive,
             },
           ).catch((err) =>
             console.error(
@@ -629,13 +536,22 @@ router.post(
         notes: notes || "",
         isActive: isActive !== undefined ? isActive : true,
         feeId,
-        formType: 'temporary',
+        formType: "temporary",
       });
 
       // Log audit event using helper
       const userInfo = await getUserInfo(req._userId);
-      PermitFormAuditHelper.logCreated(req, req._userId, userInfo, form, "admin").catch(
-        (err) => console.error("Failed to log audit event for temporary permit form create", err),
+      PermitFormAuditHelper.logCreated(
+        req,
+        req._userId,
+        userInfo,
+        form,
+        "admin",
+      ).catch((err) =>
+        console.error(
+          "Failed to log audit event for temporary permit form create",
+          err,
+        ),
       );
 
       logger.info(`Created temporary permit form: ${formId}`);
@@ -705,16 +621,9 @@ router.get(
 
       // Check which keys are used in claimable document bindings
       try {
-        const documentsResponse = await businessClient.get(
-          `/api/business/admin/documents`,
-          {
-            headers: {
-              Authorization: req.headers.authorization,
-            },
-          },
-        );
-
-        const documents = documentsResponse.data || [];
+        const documents = await ClaimableDocument.find({
+          isActive: true,
+        }).lean();
         const keyUsage = {};
 
         // Initialize all keys as unused
@@ -786,16 +695,9 @@ router.delete(
 
       // Check if form is used in any claimable document's templateTexts bindings
       try {
-        const documentsResponse = await businessClient.get(
-          `/api/business/admin/documents`,
-          {
-            headers: {
-              Authorization: req.headers.authorization,
-            },
-          },
-        );
-
-        const documents = documentsResponse.data || [];
+        const documents = await ClaimableDocument.find({
+          isActive: true,
+        }).lean();
         const dependentDocuments = [];
 
         for (const doc of documents) {

@@ -1,5 +1,5 @@
 module.exports = {
   ...require("./industries"),
-  ...require("./lineOfBusiness"),
+  ...require("./industryCategories"),
   ...require("./generalPermitCategories"),
 };

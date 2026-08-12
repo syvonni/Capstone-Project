@@ -158,13 +158,21 @@ export function useApplicationHandlers(application, setApplication, onReview, on
 
     try {
       console.log('[handleResendEmail] Calling runWithStepUp')
-      await runWithStepUp(async (stepUpToken) => {
+      const response = await runWithStepUp(async (stepUpToken) => {
         console.log('[handleResendEmail] Step-up callback, calling permitService')
-        await permitService.resendApplicationEmail(appId, emailType, { stepUpToken })
+        const res = await permitService.resendApplicationEmail(appId, emailType, { stepUpToken })
         console.log('[handleResendEmail] permitService call done')
+        return res
       })
-      console.log('[handleResendEmail] runWithStepUp done')
-      message.success('Email sent successfully')
+      console.log('[handleResendEmail] runWithStepUp done', response)
+
+      const status = response?.application?.emailSendStatus?.[emailType]
+      if (status?.status === 'sent') {
+        message.success('Email sent successfully')
+      } else {
+        console.error('[handleResendEmail] Send did not succeed:', status)
+        message.error('Failed to resend email')
+      }
       await loadApplicationDetails()
     } catch (error) {
       console.error('[handleResendEmail] ERROR:', error)
@@ -199,10 +207,17 @@ export function useApplicationHandlers(application, setApplication, onReview, on
     }
 
     try {
-      await runWithStepUp(async (stepUpToken) => {
-        await permitService.resendAppealEmail(appealId, emailType, { stepUpToken })
+      const response = await runWithStepUp(async (stepUpToken) => {
+        return await permitService.resendAppealEmail(appealId, emailType, { stepUpToken })
       })
-      message.success('Appeal email sent successfully')
+
+      const status = response?.application?.emailSendStatus?.[emailType]
+      if (status?.status === 'sent') {
+        message.success('Appeal email sent successfully')
+      } else {
+        console.error('Appeal email resend did not succeed:', status)
+        message.error('Failed to resend appeal email')
+      }
       await loadApplicationDetails()
     } catch (error) {
       if (error?.message !== 'Step-up cancelled') {

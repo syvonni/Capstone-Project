@@ -18,7 +18,7 @@ dotenv.config({
 });
 
 const Variable = require("../models/Variable");
-const Fee = require("../models/Fee");
+const Fee = require("../../../../shared/models/Fee");
 const VariableFeeRule = require("../models/VariableFeeRule");
 const Checklist = require("../models/Checklist");
 const {

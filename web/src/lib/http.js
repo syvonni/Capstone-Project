@@ -464,6 +464,13 @@ export async function fetchJsonWithFallback(path, options = {}) {
       if (errorCode) {
         errorObj.code = errorCode
       }
+      // Extract rate-limit retry-after from backend extra payload
+      const errExtra = err?.error?.extra ?? err?.extra
+      const retryAfterSec = errExtra?.retryAfterSec
+      if (retryAfterSec != null) {
+        errorObj.retryAfterSec = Number(retryAfterSec)
+        errorObj.retryAfter = Number(retryAfterSec) * 1000
+      }
       // Store status code and original error for more detailed inspection
       if (statusCode) {
         errorObj.status = statusCode

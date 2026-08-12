@@ -1,41 +1,32 @@
 import PanelCard from '@/shared/components/PanelCard.jsx'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
-import { getStatusTagColor, isDraftStatus, formatKebabCaseToTitleCase } from '../utils/statusUtils'
+import { getStatusTagColor, formatKebabCaseToTitleCase } from '../utils/statusUtils'
+import { formatDateLong } from '../utils/formatters'
 
-dayjs.extend(relativeTime)
-
-export default function ApplicationPanelCard({ business, isSelected, onClick, style }) {
-  const isDraft = isDraftStatus(business.permitStatus)
-  const hasRef = business.referenceNumber != null && business.referenceNumber !== ''
-  const timeSinceCreation = business.createdAt ? dayjs(business.createdAt).fromNow() : null
-  const timeSinceUpdate = business.updatedAt ? dayjs(business.updatedAt).fromNow() : null
-  const statusColor = business.rawStatus ? getStatusTagColor(business.rawStatus) : getStatusTagColor(business.permitStatus)
+export default function ApplicationPanelCard({ application, isSelected, onClick }) {
+  const creationDate = application.createdAt ? formatDateLong(application.createdAt) : null
+  const updateDate = application.updatedAt ? formatDateLong(application.updatedAt) : null
+  const statusColor = application.rawStatus ? getStatusTagColor(application.rawStatus) : getStatusTagColor(application.permitStatus)
 
   const metaInfo = []
-  if (timeSinceUpdate) {
-    metaInfo.push({ label: 'Updated', value: timeSinceUpdate })
+  if (creationDate) {
+    metaInfo.push({ label: 'Created On', value: creationDate })
   }
-  if (isDraft && timeSinceCreation) {
-    metaInfo.push({ label: 'Created', value: timeSinceCreation })
+  if (updateDate) {
+    metaInfo.push({ label: 'Last Updated On', value: updateDate })
   }
 
-  const tags = [{ label: business.permitStatus, color: statusColor }]
-  if (business.permitType) {
-    tags.push({ label: formatKebabCaseToTitleCase(business.permitType), color: 'default' })
-  }
-  if (hasRef) {
-    tags.push({ label: business.referenceNumber, color: 'default' })
+  const tags = [{ label: application.permitStatus, color: statusColor }]
+  if (application.permitType) {
+    tags.push({ label: formatKebabCaseToTitleCase(application.permitType), color: 'default' })
   }
 
   return (
     <PanelCard
-      title={business.name}
+      title={application.name || 'Unnamed Application'}
       selected={isSelected}
       onClick={onClick}
       metaInfo={metaInfo}
       tags={tags}
-      style={style}
     />
   )
 }

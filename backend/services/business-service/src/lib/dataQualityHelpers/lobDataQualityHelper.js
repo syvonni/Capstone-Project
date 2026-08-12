@@ -16,7 +16,7 @@ const {
 } = require("../../../../../shared/lib/dataQualityValidator");
 const Lob = require("../../models/Lob");
 const Variable = require("../../models/Variable");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const PostRequirement = require("../../models/PostRequirement");
 
 /**
@@ -45,9 +45,7 @@ async function enrichIssuesWithNames(issues) {
       .select("_id name")
       .lean();
 
-    const lobMap = new Map(
-      lobs.map((l) => [l._id.toString(), l.name]),
-    );
+    const lobMap = new Map(lobs.map((l) => [l._id.toString(), l.name]));
 
     const enrichedEntityIds = issue.entityIds.map((id) => ({
       id,
@@ -117,7 +115,11 @@ class LobDataQualityHelper {
 
     // Find LOBs with invalid variable associations
     const lobsWithInvalidVariables = lobs
-      .filter((l) => l.variables && l.variables.some(v => !variableIdSet.has(v.toString())))
+      .filter(
+        (l) =>
+          l.variables &&
+          l.variables.some((v) => !variableIdSet.has(v.toString())),
+      )
       .map((l) => l._id.toString());
 
     // Add variable association issue if any LOBs have invalid variables
@@ -137,7 +139,11 @@ class LobDataQualityHelper {
 
     // Find LOBs with invalid document associations
     const lobsWithInvalidDocuments = lobs
-      .filter((l) => l.documents && l.documents.some(d => !documentIdSet.has(d.toString())))
+      .filter(
+        (l) =>
+          l.documents &&
+          l.documents.some((d) => !documentIdSet.has(d.toString())),
+      )
       .map((l) => l._id.toString());
 
     // Add document association issue if any LOBs have invalid documents
@@ -152,14 +158,21 @@ class LobDataQualityHelper {
     }
 
     // Custom check for post requirements association
-    const allPostRequirements = await PostRequirement.find({}).select("_id").lean();
-    const postRequirementIdSet = new Set(allPostRequirements.map((p) => p._id.toString()));
+    const allPostRequirements = await PostRequirement.find({})
+      .select("_id")
+      .lean();
+    const postRequirementIdSet = new Set(
+      allPostRequirements.map((p) => p._id.toString()),
+    );
 
     // Find LOBs with invalid post requirement associations
     const lobsWithInvalidPostRequirements = lobs
       .filter((l) => {
-        const allPrs = [...(l.postRequirements?.required || []), ...(l.postRequirements?.conditional || [])];
-        return allPrs.some(pr => !postRequirementIdSet.has(pr.toString()));
+        const allPrs = [
+          ...(l.postRequirements?.required || []),
+          ...(l.postRequirements?.conditional || []),
+        ];
+        return allPrs.some((pr) => !postRequirementIdSet.has(pr.toString()));
       })
       .map((l) => l._id.toString());
 
@@ -222,18 +235,22 @@ class LobDataQualityHelper {
     const enrichedLobs = await Promise.all(
       lobs.map(async (lob) => {
         const variableWithNames = await Promise.all(
-          (lob.variables || []).map(async (v) => enrichSingleRelation(v, Variable))
+          (lob.variables || []).map(async (v) =>
+            enrichSingleRelation(v, Variable),
+          ),
         );
 
         const documentWithNames = await Promise.all(
-          (lob.documents || []).map(async (d) => enrichSingleRelation(d, ClaimableDocument))
+          (lob.documents || []).map(async (d) =>
+            enrichSingleRelation(d, ClaimableDocument),
+          ),
         );
 
         const postRequirementWithNames = await Promise.all(
           [
             ...(lob.postRequirements?.required || []),
             ...(lob.postRequirements?.conditional || []),
-          ].map(async (pr) => enrichSingleRelation(pr, PostRequirement))
+          ].map(async (pr) => enrichSingleRelation(pr, PostRequirement)),
         );
 
         return {
@@ -241,8 +258,12 @@ class LobDataQualityHelper {
           variables: variableWithNames,
           documents: documentWithNames,
           postRequirements: {
-            required: postRequirementWithNames.filter((_, i) => i < (lob.postRequirements?.required?.length || 0)),
-            conditional: postRequirementWithNames.filter((_, i) => i >= (lob.postRequirements?.required?.length || 0)),
+            required: postRequirementWithNames.filter(
+              (_, i) => i < (lob.postRequirements?.required?.length || 0),
+            ),
+            conditional: postRequirementWithNames.filter(
+              (_, i) => i >= (lob.postRequirements?.required?.length || 0),
+            ),
           },
         };
       }),

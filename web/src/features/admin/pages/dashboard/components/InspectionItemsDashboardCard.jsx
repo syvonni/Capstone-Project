@@ -103,7 +103,7 @@ export default function InspectionItemsDashboardCard() {
       {
         count: disabledInspectionItems,
         text: 'Disabled',
-        linkColor: disabledInspectionItems > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledInspectionItems > 0 ? {
           title: 'Disabled Inspection Items',
           items: inspectionItems.filter(i => !i.isActive).map(i => ({
@@ -143,7 +143,7 @@ export default function InspectionItemsDashboardCard() {
     })
 
     return links
-  }, [inspectionItems, dataQualityIssues, lastActivity])
+  }, [inspectionItems, lastActivity])
 
   // Issues link - single link with detailed modal
   const issuesLink = useMemo(() => {

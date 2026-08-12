@@ -1,8 +1,8 @@
 import { Alert, Typography, Grid } from 'antd'
 import { useNavigate } from 'react-router-dom'
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
 import ApplicationDetailHeader from './ApplicationDetailHeader'
-import FormNavigation from './ApplicationFormNavigation'
+import FormNavigation from '@/shared/components/FormNavigation'
 
 const { Text } = Typography
 const { useBreakpoint } = Grid
@@ -52,6 +52,13 @@ export default function ApplicationDetailPanelContent({
   const screens = useBreakpoint()
   const isMobile = !screens.lg
   const navigate = useNavigate()
+
+  // Adapt getSectionStatus(sectionIdx) to FormNavigation's getItemStatus(item) interface
+  const getItemStatus = (item) => {
+    if (!getSectionStatus) return null
+    const sectionIdx = parseInt(String(item.key).replace('section-', ''), 10)
+    return getSectionStatus(sectionIdx)
+  }
 
   const handleGoToBusiness = () => {
     const businessId = application?.businessId || application?._id
@@ -137,7 +144,7 @@ export default function ApplicationDetailPanelContent({
                 formNavItems={formNavItems}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                getSectionStatus={getSectionStatus}
+                getItemStatus={getItemStatus}
                 isMobile={isMobile}
               />
               <div style={{ flex: 1, overflow: 'auto' }}>
@@ -151,7 +158,7 @@ export default function ApplicationDetailPanelContent({
                 formNavItems={formNavItems}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                getSectionStatus={getSectionStatus}
+                getItemStatus={getItemStatus}
                 isMobile={isMobile}
               />
               <div

@@ -1,19 +1,20 @@
-import { Modal, Upload } from 'antd'
+import { Upload } from 'antd'
 import { Typography } from 'antd'
 import { resolveIpfsUrl } from '@/lib/ipfsUtils'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 
 const { Text } = Typography
 
 export default function AppealLetterModal({ open, onClose, latestAppeal, setDocumentPreview }) {
   return (
-    <Modal
+    <ResponsiveModal
       title="Appeal Letter"
       open={open}
       onCancel={onClose}
       footer={null}
       width={600}
     >
-      <div style={{ padding: 16 }}>
+      <div>
         <div style={{ marginBottom: 16 }}>
           <Text>{latestAppeal?.description || 'No appeal letter provided.'}</Text>
         </div>
@@ -56,6 +57,6 @@ export default function AppealLetterModal({ open, onClose, latestAppeal, setDocu
           </div>
         )}
       </div>
-    </Modal>
+    </ResponsiveModal>
   )
 }

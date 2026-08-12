@@ -1,10 +1,10 @@
 const mongoose = require("mongoose");
 const PostRequirement = require("../../models/PostRequirement");
 const Violation = require("../../models/Violation");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const Lob = require("../../models/Lob");
 const Checklist = require("../../models/Checklist");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const InspectionItem = require("../../models/InspectionItem");
 const { auditClient } = require("../../../../../shared/lib/httpClient");
 const { getUserInfo } = require("../../../../../shared/lib/getUserInfo");
@@ -17,7 +17,7 @@ class PostRequirementService {
   async list(filters = {}) {
     const { isActive } = filters;
     const filter = {};
-    
+
     if (isActive !== undefined) filter.isActive = isActive === "true";
 
     const postRequirements = await PostRequirement.find(filter)
@@ -38,8 +38,9 @@ class PostRequirementService {
       throw error;
     }
 
-    const postRequirement = await PostRequirement.findById(id).populate("checklistId");
-    
+    const postRequirement =
+      await PostRequirement.findById(id).populate("checklistId");
+
     if (!postRequirement) {
       const error = new Error("Post-requirement not found");
       error.code = "NOT_FOUND";
@@ -100,7 +101,9 @@ class PostRequirementService {
     for (const RelatedModel of relatedCollections) {
       const existing = await RelatedModel.findOne({ name });
       if (existing) {
-        const error = new Error(`Name already exists in ${RelatedModel.modelName}`);
+        const error = new Error(
+          `Name already exists in ${RelatedModel.modelName}`,
+        );
         error.code = "DUPLICATE_NAME";
         error.status = 400;
         throw error;
@@ -120,8 +123,17 @@ class PostRequirementService {
     });
 
     const userInfo = await getUserInfo(userId);
-    PostRequirementAuditHelper.logCreated(req, userId, userInfo, postRequirement, "admin").catch((err) =>
-      console.error("Failed to log audit event for post requirement create", err),
+    PostRequirementAuditHelper.logCreated(
+      req,
+      userId,
+      userInfo,
+      postRequirement,
+      "admin",
+    ).catch((err) =>
+      console.error(
+        "Failed to log audit event for post requirement create",
+        err,
+      ),
     );
 
     return postRequirement;
@@ -170,15 +182,18 @@ class PostRequirementService {
     // Increment version if any definition field changed
     const definitionChanged =
       (name && name !== postRequirement.name) ||
-      (description !== undefined && description !== postRequirement.description) ||
+      (description !== undefined &&
+        description !== postRequirement.description) ||
       (notes !== undefined && notes !== postRequirement.notes) ||
       (legalBasis !== undefined &&
-        JSON.stringify(legalBasis) !== JSON.stringify(postRequirement.legalBasis)) ||
+        JSON.stringify(legalBasis) !==
+          JSON.stringify(postRequirement.legalBasis)) ||
       (checklistId !== undefined &&
         checklistId !== postRequirement.checklistId?.toString()) ||
       (isActive !== undefined && isActive !== postRequirement.isActive) ||
       (customFields !== undefined &&
-        JSON.stringify(customFields) !== JSON.stringify(postRequirement.customFields));
+        JSON.stringify(customFields) !==
+          JSON.stringify(postRequirement.customFields));
 
     if (definitionChanged) {
       updates.version = postRequirement.version + 1;
@@ -226,7 +241,10 @@ class PostRequirementService {
       updated,
       "admin",
     ).catch((err) =>
-      console.error("Failed to log audit event for post requirement update", err),
+      console.error(
+        "Failed to log audit event for post requirement update",
+        err,
+      ),
     );
 
     return updated;
@@ -273,8 +291,17 @@ class PostRequirementService {
     const oldPostRequirement = new PostRequirement(oldValues);
     oldPostRequirement._id = postRequirement._id;
 
-    PostRequirementAuditHelper.logDisabled(req, userId, userInfo, oldPostRequirement, "admin").catch(
-      (err) => console.error("Failed to log audit event for post requirement delete", err),
+    PostRequirementAuditHelper.logDisabled(
+      req,
+      userId,
+      userInfo,
+      oldPostRequirement,
+      "admin",
+    ).catch((err) =>
+      console.error(
+        "Failed to log audit event for post requirement delete",
+        err,
+      ),
     );
 
     return { disabled: true };
@@ -285,17 +312,25 @@ class PostRequirementService {
    */
   async getAuditHistory(id, query = {}) {
     const { page = 1, limit = 20 } = query;
-    
+
     try {
       const response = await auditClient.get(
         `/api/audit/post-requirement/${id}`,
         {
           params: { page, limit },
+        },
+      );
+      return (
+        response || {
+          logs: [],
+          pagination: { total: 0, page, limit, totalPages: 0 },
         }
       );
-      return response || { logs: [], pagination: { total: 0, page, limit, totalPages: 0 } };
     } catch (error) {
-      console.error("Failed to fetch audit history for post requirement:", error);
+      console.error(
+        "Failed to fetch audit history for post requirement:",
+        error,
+      );
       return { logs: [], pagination: { total: 0, page, limit, totalPages: 0 } };
     }
   }
@@ -305,15 +340,17 @@ class PostRequirementService {
    */
   async getAllAuditLogs(query = {}) {
     const { page = 1, limit = 20 } = query;
-    
+
     try {
-      const response = await auditClient.get(
-        `/api/audit/post-requirements`,
-        {
-          params: { page, limit },
+      const response = await auditClient.get(`/api/audit/post-requirements`, {
+        params: { page, limit },
+      });
+      return (
+        response || {
+          logs: [],
+          pagination: { total: 0, page, limit, totalPages: 0 },
         }
       );
-      return response || { logs: [], pagination: { total: 0, page, limit, totalPages: 0 } };
     } catch (error) {
       console.error("Failed to fetch all post requirement audit logs:", error);
       return { logs: [], pagination: { total: 0, page, limit, totalPages: 0 } };

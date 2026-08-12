@@ -1,39 +1,50 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Typography, theme, Empty, Grid, App } from 'antd'
 import { FileTextOutlined } from '@ant-design/icons'
 import { filterSectionsByFormValues } from '@/features/business-owner/utils/formUtils.js'
 import { useFormDefinition } from '@/features/staffs/lgu-officer/pages/applications/hooks/useFormDefinition'
-import { useBusinessOwnerApplicationStatus } from '../hooks/useBusinessOwnerApplicationStatus'
-import { useApplicationModals } from '../hooks/useApplicationModals'
+import { useApplicationStatus } from '../hooks/useApplicationStatus'
+import { useApplicationCompletionStatus } from '../hooks/useApplicationCompletionStatus'
+import { useBusinessOwnerApplicationModals } from '../hooks/useBusinessOwnerApplicationModals'
+import { useApplicationFees } from '../hooks/useApplicationFees'
 import { useApplicationInfoCard } from '../hooks/useApplicationInfoCard'
 import { useApplicationAppealHandlers } from '../hooks/useApplicationAppealHandlers'
 import { useApplicationPaymentHandlers } from '../hooks/useApplicationPaymentHandlers'
 import { useApplicationFormHandlers } from '../hooks/useApplicationFormHandlers'
-import PermitApplicationForm from './ApplicationPermitForm'
-import ApplicationHeader from './ApplicationHeader'
-import PaymentReceiptModal from './modals/PaymentReceiptModal'
-import MockPaymentModal from './modals/MockPaymentModal'
+import { useApplicationDelete } from '../hooks/useApplicationDelete'
+import ApplicationForm from './ApplicationForm'
+import ApplicationDetailHeader from './ApplicationDetailHeader'
+import ApplicationPaymentReceiptModal from './modals/ApplicationPaymentReceiptModal'
+import ApplicationMockPaymentModal from './modals/ApplicationMockPaymentModal'
 import ApplicationAppealDetailsModal from './modals/ApplicationAppealDetailsModal'
 import ApplicationRejectionReasonModal from './modals/ApplicationRejectionReasonModal'
 import ApplicationAppealRejectionReasonModal from './modals/ApplicationAppealRejectionReasonModal'
 import ApplicationApprovalCommentModal from './modals/ApplicationApprovalCommentModal'
 import ApplicationRequestedChangesModal from './modals/ApplicationRequestedChangesModal'
-import ApplicationProgressModal from '@/shared/components/ApplicationProgressModal'
+import ApplicationProgressModal from '@/shared/components/applications/ApplicationProgressModal'
 import ApplicationAppealModal from './modals/ApplicationAppealModal'
 
 const { Text } = Typography
 const { useBreakpoint } = Grid
 
 export default function ApplicationDetailPanel({
-  business,
+  application,
   dashboardState,
-  isMobile: isMobileProp = false
+  isMobile: isMobileProp = false,
+  onSaveStatusChange = () => {},
 }) {
   const { token: themeToken } = theme.useToken()
   const { message } = App.useApp()
   const screens = useBreakpoint()
   const isMobile = isMobileProp || !screens.lg
   const [showProgressModal, setShowProgressModal] = useState(false)
+  const [formAllSectionsComplete, setFormAllSectionsComplete] = useState(false)
+  const [autosaveStatus, setAutosaveStatus] = useState({ isAutosaving: false, hasUnsavedChanges: false, saveError: null })
+
+  const handleAutosaveStatusChange = useCallback((status) => {
+    setAutosaveStatus(status)
+    onSaveStatusChange(status)
+  }, [onSaveStatusChange])
 
   // Handle progress click to show modal
   const handleProgressClick = () => {
@@ -48,15 +59,23 @@ export default function ApplicationDetailPanel({
     handleFormRef,
     handleFormSubmitted,
     handleDraftCreated,
-    handleDeleteDraft,
   } = useApplicationFormHandlers({
-    business,
+    application,
     dashboardState,
     message,
   })
 
+  // Delete confirmation
+  const { handleDeleteClick } = useApplicationDelete({
+    application,
+    onAfterDelete: () => {
+      window.location.href = '/business-owner/applications'
+    },
+    message,
+  })
+
   // Status hooks
-  const statusFlags = useBusinessOwnerApplicationStatus(business)
+  const statusFlags = useApplicationStatus(application)
   const {
     isDraft,
     isReturned,
@@ -65,17 +84,17 @@ export default function ApplicationDetailPanel({
   } = statusFlags
 
   // Form definition
-  const appIdentifier = business?.businessId || business?._id
-  const formDefId = business?.formDefinitionId
-  const formType = business?.formType || 'permit'
-  const businessType = business?.primaryLineOfBusiness || business?.lineOfBusiness || null
+  const appIdentifier = application?.applicationId || application?._id
+  const formDefId = application?.formDefinitionId
+  const formType = application?.formType || 'permit'
+  const businessType = application?.primaryLineOfBusiness || application?.lineOfBusiness || null
   const { formDefinition } = useFormDefinition(appIdentifier, formDefId, formType, businessType)
+  const { feeData } = useApplicationFees(formType)
 
   // Modal state
   const {
     showReceiptModal,
     setShowReceiptModal,
-    feeData,
     receiptData,
     setReceiptData,
     showAppealPaymentModal,
@@ -99,7 +118,7 @@ export default function ApplicationDetailPanel({
     appealReceiptData,
     submittingAppeal,
     setSubmittingAppeal,
-  } = useApplicationModals()
+  } = useBusinessOwnerApplicationModals()
 
   // Payment handlers hook
   const {
@@ -107,7 +126,7 @@ export default function ApplicationDetailPanel({
     handleReceiptModalClose,
     handleViewReceipt,
   } = useApplicationPaymentHandlers({
-    business,
+    application,
     formRef,
     setReceiptData,
     setShowReceiptModal,
@@ -123,7 +142,7 @@ export default function ApplicationDetailPanel({
     handleViewAppealDetails,
     handleViewAppealReceipt,
   } = useApplicationAppealHandlers({
-    business,
+    application,
     setAppealModalOpen,
     setSubmittingAppeal,
     setShowAppealDetailsModal,
@@ -139,7 +158,7 @@ export default function ApplicationDetailPanel({
   })
 
   // Form data
-  const formData = useMemo(() => currentFormData && typeof currentFormData === 'object' ? currentFormData : (business?.formData && typeof business.formData === 'object' ? business.formData : {}), [currentFormData, business?.formData])
+  const formData = useMemo(() => currentFormData && typeof currentFormData === 'object' ? currentFormData : (application?.formData && typeof application.formData === 'object' ? application.formData : {}), [currentFormData, application?.formData])
   const sections = useMemo(() => formDefinition ? filterSectionsByFormValues(formDefinition.sections || [], formData) : [], [formDefinition, formData])
 
   // Application info card data
@@ -147,59 +166,24 @@ export default function ApplicationDetailPanel({
     rejectionReason,
     approvalComment,
     requestChangeFields,
-    formProgress,
   } = useApplicationInfoCard(
-    { ...business, formData: currentFormData },
+    { ...application, formData: currentFormData },
     sections
   )
 
-  // Calculate if all sections are complete for submit button
-  // For returned state, only check requested fields (those with status === 'request_changes')
-  const allSectionsComplete = (() => {
-    if (!isReturned) {
-      // Normal submit: all sections must be complete
-      return formProgress.total > 0 && formProgress.completed === formProgress.total
-    }
-    
-    // Returned state: only requested fields need to be complete
-    const requestedFieldKeys = Object.entries(business?.fieldReviewDecisions || {})
-      .filter(([_key, decision]) => decision.status === 'request_changes')
-      .map(([key]) => key)
-    
-    if (requestedFieldKeys.length === 0) return false
-    
-    // Check if all requested fields have values in formData
-    const formData = business?.formData || {}
-    const allRequestedComplete = requestedFieldKeys.every(key => {
-      // Handle section prefixes (e.g., "0.activityLocation" -> check formData for "activityLocation")
-      const fieldKey = key.includes('.') ? key.split('.').pop() : key
-      const value = formData[fieldKey]
-      return value !== undefined && value !== null && value !== ''
-    })
-    
-    return allRequestedComplete
-  })()
-
-  // Locked fields for needs_revision/returned
-  // For returned state: lock all fields EXCEPT those with status === 'request_changes'
-  // For needs_revision: lock fields where approved === true
-  const lockedFields = hasLockedFields && business?.fieldReviewDecisions
-    ? (isReturned
-        ? Object.entries(business.fieldReviewDecisions)
-            .filter(([_fieldKey, decision]) => decision.status !== 'request_changes')
-            .map(([fieldKey]) => fieldKey)
-        : Object.entries(business.fieldReviewDecisions)
-            .filter(([_fieldKey, decision]) => decision.approved === true)
-            .map(([fieldKey]) => fieldKey)
-      )
-    : []
+  const { allSectionsComplete, lockedFields } = useApplicationCompletionStatus({
+    application,
+    formAllSectionsComplete,
+    isReturned,
+    hasLockedFields,
+  })
 
   // Single form instance - always mounted to preserve state
   const singleForm = (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <PermitApplicationForm
+      <ApplicationForm
         ref={handleFormRef}
-        editingApplication={business}
+        editingApplication={application}
         readOnly={isReadOnly}
         lockedFields={lockedFields}
         hideActionButtons={!isReturned}
@@ -220,18 +204,18 @@ export default function ApplicationDetailPanel({
           dashboardState.setShowAddForm(false)
           dashboardState.setEditingApplication(null)
         }}
-        onDeleteDraft={handleDeleteDraft}
+        onDeleteDraft={handleDeleteClick}
         onToggleForm={() => dashboardState.setShowAddForm(prev => !prev)}
-        allSectionsComplete={false}
-        onSectionCompleteChange={() => {}}
+        onSectionCompleteChange={setFormAllSectionsComplete}
         onPaymentSuccess={isReturned ? handlePaymentSuccess : undefined}
         onProgressClick={handleProgressClick}
+        onAutosaveStatusChange={handleAutosaveStatusChange}
       />
     </div>
   )
 
   // Empty state - only show if not adding a new application
-  if (!business && !dashboardState?.showAddForm) {
+  if (!application && !dashboardState?.showAddForm) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 24 }}>
         <Empty
@@ -247,21 +231,23 @@ export default function ApplicationDetailPanel({
     <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
       {/* Header */}
       {!isMobile && (
-        <ApplicationHeader
-          business={business}
+        <ApplicationDetailHeader
+          application={application}
           isDraft={isDraft}
           isReturned={isReturned}
           formSubmitting={false}
           isMobile={isMobile}
-          onDeleteDraft={isDraft ? handleDeleteDraft : undefined}
+          onDeleteDraft={isDraft ? handleDeleteClick : undefined}
           onPaymentSuccess={isDraft || isReturned ? handlePaymentSuccess : undefined}
           onFillTestData={() => {
             formRef?.current?.fillTestData?.()
           }}
           allSectionsComplete={allSectionsComplete}
           token={themeToken}
-          isAutosaving={false}
-          hasUnsavedChanges={false}
+          isAutosaving={autosaveStatus.isAutosaving}
+          hasUnsavedChanges={autosaveStatus.hasUnsavedChanges}
+          saveError={autosaveStatus.saveError}
+          feeData={feeData}
         />
       )}
 
@@ -270,28 +256,32 @@ export default function ApplicationDetailPanel({
         {singleForm}
       </div>
 
-      {/* Mobile footer header */}
-      {isMobile && (
-        <ApplicationHeader
-          business={business}
+      {/* Mobile actions footer */}
+      {isMobile && (isDraft || isReturned) && (
+        <ApplicationDetailHeader
+          application={application}
           isDraft={isDraft}
           isReturned={isReturned}
           formSubmitting={false}
           isMobile={isMobile}
-          onDeleteDraft={isDraft ? handleDeleteDraft : undefined}
+          onDeleteDraft={isDraft ? handleDeleteClick : undefined}
           onPaymentSuccess={isDraft || isReturned ? handlePaymentSuccess : undefined}
           onFillTestData={() => {
             formRef?.current?.fillTestData?.()
           }}
           allSectionsComplete={allSectionsComplete}
           token={themeToken}
-          hasUnsavedChanges={false}
+          isAutosaving={autosaveStatus.isAutosaving}
+          hasUnsavedChanges={autosaveStatus.hasUnsavedChanges}
+          saveError={autosaveStatus.saveError}
+          feeData={feeData}
+          showSaveTag={false}
           isFooter={true}
         />
       )}
 
       {/* Modals */}
-      <PaymentReceiptModal
+      <ApplicationPaymentReceiptModal
         visible={showReceiptModal}
         onClose={handleReceiptModalClose}
         receiptId={receiptData?.receiptId}
@@ -303,7 +293,7 @@ export default function ApplicationDetailPanel({
         applicationReferenceNumber={receiptData?.applicationReferenceNumber}
         paymentType={receiptData?.paymentType}
       />
-      <MockPaymentModal
+      <ApplicationMockPaymentModal
         visible={showAppealPaymentModal}
         onClose={() => setShowAppealPaymentModal(false)}
         onSubmit={() => {}}
@@ -336,9 +326,8 @@ export default function ApplicationDetailPanel({
       <ApplicationProgressModal
         open={showProgressModal}
         onClose={() => setShowProgressModal(false)}
-        application={business}
-        status={business?.applicationStatus}
-        statusLower={business?.applicationStatus?.toLowerCase()}
+        application={application}
+        statusLower={application?.applicationStatus?.toLowerCase()}
       />
       <ApplicationAppealModal
         open={appealModalOpen}

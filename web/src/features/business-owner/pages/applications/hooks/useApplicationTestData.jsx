@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { addBusiness } from '../../../services/businessProfileService'
+import { createApplication } from '../../../services/applicationService'
 import { generateTestDataForDefinition, formDataWithDayjs } from '../../../utils/businessFormUtils'
 
 /**
@@ -9,11 +9,15 @@ import { generateTestDataForDefinition, formDataWithDayjs } from '../../../utils
  * @param {string} generalPermitCategory - General permit category
  * @param {Object} form - Form instance
  * @param {Function} setFormValues - Function to set form values
+ * @param {Object} lobSectionRef - Ref to the LOBSection component
  * @param {boolean} isEditing - Whether editing an existing application
- * @param {string} draftBusinessId - Draft business ID
- * @param {Function} setDraftBusinessId - Function to set draft business ID
+ * @param {string} draftApplicationId - Draft application ID
+ * @param {Function} setDraftApplicationId - Function to set draft application ID
  * @param {string} registrationType - Registration type
  * @param {Object} message - Ant Design message API
+ * @param {string} mode - 'create' (business owner) or 'update' (LGU officer)
+ * @param {Function} updateFn - Optional update function for officer mode
+ * @param {string} applicationId - Application ID for update mode
  * @returns {Object} Test data handler
  */
 export function useApplicationTestData({
@@ -21,39 +25,75 @@ export function useApplicationTestData({
   generalPermitCategory,
   form,
   setFormValues,
+  lobSectionRef = null,
   isEditing,
-  draftBusinessId,
-  setDraftBusinessId,
+  draftApplicationId,
+  setDraftApplicationId,
   registrationType,
   message,
+  mode = 'create',
+  updateFn = null,
+  applicationId = null,
 }) {
   const doFillTestData = useCallback(async () => {
     if (!formDefinition) {
       message.error('Form definition not loaded yet. Please wait a moment and try again.')
       return
     }
-    const testData = generateTestDataForDefinition(formDefinition, generalPermitCategory)
+    const testData = generateTestDataForDefinition(formDefinition, generalPermitCategory, [], registrationType)
     const processedTestData = formDataWithDayjs(testData, formDefinition)
+
+    // Set category fields first so conditional metadata fields mount before values are applied
+    const categoryFields = {}
+    Object.keys(processedTestData).forEach((key) => {
+      if (key.endsWith('_category')) categoryFields[key] = processedTestData[key]
+    })
+    form.setFieldsValue(categoryFields)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // Fill the LOB section if it is mounted (unified business permit)
+    if (lobSectionRef?.current) {
+      const lobActivity = lobSectionRef.current.fillTestData()
+      if (lobActivity) {
+        processedTestData.businessActivities = [lobActivity]
+      }
+    }
+
     form.setFieldsValue(processedTestData)
     setFormValues((prev) => ({ ...prev, ...processedTestData }))
 
-    // Create draft if one doesn't exist yet (so test data persists on refresh)
-    if (!isEditing && !draftBusinessId) {
+    // Handle saving based on mode
+    if (mode === 'create') {
+      // Business owner mode: create draft if one doesn't exist yet
+      if (!isEditing && !draftApplicationId) {
+        try {
+          const payload = {
+            businessName: 'New Business Application',
+            applicationStatus: 'draft',
+            formType: registrationType,
+            category: generalPermitCategory,
+            formData: processedTestData,
+          }
+          const response = await createApplication(payload)
+          const application = response.application
+          const newApplicationId = application?.applicationId || application?._id
+          if (newApplicationId) {
+            setDraftApplicationId(newApplicationId)
+          }
+        } catch (err) {
+          console.error('Failed to create draft for test data:', err)
+        }
+      }
+    } else if (mode === 'update' && updateFn && applicationId) {
+      // LGU officer mode: update existing application
       try {
-        const payload = {
-          businessName: 'New Business Application',
-          applicationStatus: 'draft',
-          formType: registrationType,
-          category: generalPermitCategory,
-          formData: processedTestData,
-        }
-        const response = await addBusiness(payload)
-        const businessId = response.businessId
-        if (businessId) {
-          setDraftBusinessId(businessId)
-        }
+        await updateFn(applicationId, {
+          formData: processedTestData
+        })
       } catch (err) {
-        console.error('Failed to create draft for test data:', err)
+        console.error('Failed to save test data:', err)
+        message.error('Failed to save test data')
+        return
       }
     }
 
@@ -63,11 +103,15 @@ export function useApplicationTestData({
     generalPermitCategory,
     form,
     message,
+    lobSectionRef,
     isEditing,
-    draftBusinessId,
+    draftApplicationId,
     registrationType,
-    setDraftBusinessId,
+    setDraftApplicationId,
     setFormValues,
+    mode,
+    updateFn,
+    applicationId,
   ])
 
   return {

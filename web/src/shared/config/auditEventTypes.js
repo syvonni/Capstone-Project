@@ -95,10 +95,6 @@ export const EVENT_TYPE_LABELS = {
   appeal_resolved: 'Appeal Resolved',
   appeal_rejected: 'Appeal Rejected',
 
-  // Edit request events
-  edit_request_submitted: 'Edit Request Submitted',
-  edit_request_applied: 'Edit Request Applied',
-
   // Field review events
   field_reviewed: 'Field Reviewed',
   field_decisions_updated: 'Field Decisions Updated',
@@ -256,10 +252,6 @@ export const AUDIT_EVENT_INFO = [
   { event: 'appeal_submitted', description: 'When a business owner submits an appeal for a rejected application' },
   { event: 'appeal_resolved', description: 'When an LGU officer approves an appeal' },
   { event: 'appeal_rejected', description: 'When an LGU officer rejects an appeal' },
-
-  // Edit request events
-  { event: 'edit_request_submitted', description: 'When a business owner submits an edit request' },
-  { event: 'edit_request_applied', description: 'When an LGU officer applies an edit request' },
 
   // Field review events
   { event: 'field_reviewed', description: 'When an officer reviews and approves/rejects specific form fields' },

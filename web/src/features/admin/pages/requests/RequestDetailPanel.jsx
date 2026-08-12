@@ -131,7 +131,7 @@ export default function RequestDetailPanel({ approval, _loading, onRefresh }) {
           column={1}
           size="small"
           style={{ marginBottom: 16 }}
-          labelStyle={{ color: token.colorTextSecondary, width: 120 }}
+          styles={{ label: { color: token.colorTextSecondary, width: 120 } }}
         >
           <Descriptions.Item label="Target user">
             {userName(approval.userId)} {userEmail(approval.userId) && `(${userEmail(approval.userId)})`}

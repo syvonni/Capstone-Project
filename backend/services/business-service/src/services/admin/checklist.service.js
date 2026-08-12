@@ -3,9 +3,9 @@ const Checklist = require("../../models/Checklist");
 const InspectionItem = require("../../models/InspectionItem");
 const PostRequirement = require("../../models/PostRequirement");
 const Violation = require("../../models/Violation");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const Lob = require("../../models/Lob");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const { auditClient } = require("../../../../../shared/lib/httpClient");
 const { getUserInfo } = require("../../../../../shared/lib/getUserInfo");
 const ChecklistAuditHelper = require("../../lib/auditHelpers/checklistAuditHelper");
@@ -17,7 +17,7 @@ class ChecklistService {
   async list(filters = {}) {
     const { isActive } = filters;
     const filter = {};
-    
+
     if (isActive !== undefined) {
       filter.isActive = isActive === "true";
     }
@@ -58,7 +58,7 @@ class ChecklistService {
       .populate("postRequirementId")
       .populate("variableId")
       .populate("documentId");
-    
+
     if (!checklist) {
       const error = new Error("Checklist not found");
       error.code = "NOT_FOUND";
@@ -83,7 +83,8 @@ class ChecklistService {
    * Create checklist
    */
   async create(data, userId, req) {
-    const { name, description, notes, legalBasis, items, postRequirementId } = data;
+    const { name, description, notes, legalBasis, items, postRequirementId } =
+      data;
 
     if (!name) {
       const error = new Error("Name is required");
@@ -105,7 +106,9 @@ class ChecklistService {
     for (const RelatedModel of relatedCollections) {
       const existing = await RelatedModel.findOne({ name });
       if (existing) {
-        const error = new Error(`Name already exists in ${RelatedModel.modelName}`);
+        const error = new Error(
+          `Name already exists in ${RelatedModel.modelName}`,
+        );
         error.code = "DUPLICATE_NAME";
         error.status = 400;
         throw error;
@@ -127,7 +130,9 @@ class ChecklistService {
     });
 
     if (inspectionItems.length !== inspectionItemIds.length) {
-      const error = new Error("One or more inspection items not found or inactive");
+      const error = new Error(
+        "One or more inspection items not found or inactive",
+      );
       error.code = "VALIDATION_ERROR";
       error.status = 400;
       throw error;
@@ -219,7 +224,9 @@ class ChecklistService {
       });
 
       if (inspectionItems.length !== inspectionItemIds.length) {
-        const error = new Error("One or more inspection items not found or inactive");
+        const error = new Error(
+          "One or more inspection items not found or inactive",
+        );
         error.code = "VALIDATION_ERROR";
         error.status = 400;
         throw error;

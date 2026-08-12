@@ -17,7 +17,7 @@ dotenv.config({
   path: path.resolve(__dirname, "..", "..", "..", "..", ".env"),
 });
 
-const ClaimableDocument = require("../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../shared/models/ClaimableDocument");
 const PostDocument = require("../models/PostDocument");
 
 async function clearAndReseed() {

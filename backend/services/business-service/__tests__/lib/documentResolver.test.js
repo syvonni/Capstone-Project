@@ -87,21 +87,17 @@ describe("documentResolver", () => {
       },
     };
 
-    const mockBusinessProfile = {
-      businesses: [
-        {
-          isPrimary: true,
-          registeredBusinessName: "Test Corp",
-          businessTradeName: "Test Biz",
-          businessType: "corporation",
-          primaryLineOfBusiness: "retail",
-          location: {
-            street: "123 Main St",
-            barangay: "Barangay 1",
-            cityMunicipality: "City",
-          },
-        },
-      ],
+    const mockBusiness = {
+      registeredBusinessName: "Test Corp",
+      businessTradeName: "Test Biz",
+      businessName: "Test Biz",
+      businessType: "corporation",
+      primaryLineOfBusiness: "retail",
+      location: {
+        street: "123 Main St",
+        barangay: "Barangay 1",
+        cityMunicipality: "City",
+      },
     };
 
     it("should resolve form_field bindings", () => {
@@ -118,7 +114,7 @@ describe("documentResolver", () => {
       const { resolved, unresolved } = resolveTemplateTexts(
         templateTexts,
         mockApplication,
-        mockBusinessProfile,
+        mockBusiness,
         null,
       );
 
@@ -143,7 +139,7 @@ describe("documentResolver", () => {
       const { resolved, unresolved } = resolveTemplateTexts(
         templateTexts,
         mockApplication,
-        mockBusinessProfile,
+        mockBusiness,
         null,
       );
 
@@ -169,7 +165,7 @@ describe("documentResolver", () => {
       const { resolved, unresolved } = resolveTemplateTexts(
         templateTexts,
         mockApplication,
-        mockBusinessProfile,
+        mockBusiness,
         null,
       );
 
@@ -190,7 +186,7 @@ describe("documentResolver", () => {
       const { resolved, unresolved } = resolveTemplateTexts(
         templateTexts,
         mockApplication,
-        mockBusinessProfile,
+        mockBusiness,
         null,
       );
 
@@ -212,7 +208,7 @@ describe("documentResolver", () => {
       const { resolved, unresolved, warnings } = resolveTemplateTexts(
         templateTexts,
         mockApplication,
-        mockBusinessProfile,
+        mockBusiness,
         null,
       );
 
@@ -225,7 +221,7 @@ describe("documentResolver", () => {
       const { resolved, unresolved, warnings } = resolveTemplateTexts(
         null,
         mockApplication,
-        mockBusinessProfile,
+        mockBusiness,
         null,
       );
 
@@ -245,7 +241,7 @@ describe("documentResolver", () => {
       const { resolved, unresolved, warnings } = resolveTemplateTexts(
         templateTexts,
         mockApplication,
-        mockBusinessProfile,
+        mockBusiness,
         null,
       );
 

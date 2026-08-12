@@ -1,11 +1,11 @@
-const AppealService = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/services/business/appeal.service");
+const AppealService = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/services/business-owner/appeal.service");
 
 // Mock the dependencies
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Appeal",
 );
 jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/BusinessProfile",
+  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Business",
 );
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Application",
@@ -24,7 +24,7 @@ jest.mock(
 );
 
 const Appeal = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Appeal");
-const BusinessProfile = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/BusinessProfile");
+const Business = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Business");
 const Application = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Application");
 const Payment = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Payment");
 const User = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/User");
@@ -35,6 +35,34 @@ const {
   crossClaimForBusiness,
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/lib/crossClaimService");
 
+const createLeanQuery = (leanResult) => {
+  const q = Promise.resolve(leanResult);
+  q.lean = jest.fn().mockResolvedValue(leanResult);
+  q.select = jest.fn().mockReturnThis();
+  return q;
+};
+
+const MOCK_BUSINESS_ID = "507f1f77bcf86cd799439013";
+const MOCK_USER_ID = "507f1f77bcf86cd799439011";
+
+const mockBusiness = {
+  _id: MOCK_BUSINESS_ID,
+  userId: MOCK_USER_ID,
+  businessId: "TEST-BUSINESS-001",
+  businessName: "Test Business",
+  reviewedBy: null,
+};
+
+const mockApplication = {
+  _id: "507f1f77bcf86cd799439014",
+  applicationId: "TEST-APP-001",
+  userId: MOCK_USER_ID,
+  businessName: "Test Business",
+  applicationStatus: "rejected",
+  rejectedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+  save: jest.fn().mockResolvedValue(),
+};
+
 describe("AppealService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -42,6 +70,26 @@ describe("AppealService", () => {
     // Setup default mock implementations
     crossClaimForBusiness.mockResolvedValue();
     logAuditEvent.mockResolvedValue();
+
+    Business.findById.mockReturnValue(createLeanQuery(null));
+    Business.findOne.mockReturnValue(createLeanQuery(mockBusiness));
+
+    Application.findById.mockReturnValue(createLeanQuery(null));
+    Application.findOne.mockReturnValue(createLeanQuery(mockApplication));
+    Application.updateOne.mockResolvedValue({});
+
+    Payment.create.mockResolvedValue({
+      _id: "507f1f77bcf86cd799439015",
+      paymentId: "PAY-APPEAL-001",
+    });
+
+    User.findById.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        firstName: "John",
+        lastName: "Doe",
+        email: "john@example.com",
+      }),
+    });
   });
 
   describe("getById", () => {
@@ -66,12 +114,12 @@ describe("AppealService", () => {
       };
 
       Appeal.findById.mockResolvedValue(mockAppeal);
-      BusinessProfile.find.mockResolvedValue([]);
 
       const result = await AppealService.getById("507f1f77bcf86cd799439011");
 
       expect(result).toBeDefined();
       expect(result._id).toBe("507f1f77bcf86cd799439011");
+      expect(result.businessName).toBe("Test Business");
     });
 
     it("should throw error when appeal not found", async () => {
@@ -104,18 +152,8 @@ describe("AppealService", () => {
       };
 
       Appeal.create.mockResolvedValue(mockAppeal);
-      Application.findOne.mockResolvedValue({
-        applicationId: "TEST-APP-001",
-        businessName: "Test Business",
-        save: jest.fn().mockResolvedValue(),
-      });
-      User.findById.mockResolvedValue({
-        firstName: "John",
-        lastName: "Doe",
-        email: "john@example.com",
-      });
 
-      const result = await AppealService.create("507f1f77bcf86cd799439011", {
+      const result = await AppealService.create(MOCK_USER_ID, {
         businessId: "TEST-BUSINESS-001",
         appealType: "incorrect_fees",
         description: "Test appeal description",

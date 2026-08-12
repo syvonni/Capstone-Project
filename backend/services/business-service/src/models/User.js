@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+require("./Role"); // Register Role model so User.populate('role') works
 
 const UserSchema = new mongoose.Schema(
   {

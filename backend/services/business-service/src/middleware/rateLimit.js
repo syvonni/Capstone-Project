@@ -146,8 +146,58 @@ function sensitiveOperationRateLimit() {
   });
 }
 
+/**
+ * Rate limiter for autosave (PATCH form-data)
+ * 1 request per 10 seconds per user+application
+ */
+function autosaveRateLimit() {
+  return rateLimit({
+    windowMs: 10 * 1000, // 10 seconds
+    max: 1,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => {
+      // Key by user ID + application ID so each draft is limited independently
+      const applicationId = req.params.id || req.params.applicationId || "unknown";
+      return `${req._userId || ipKeyGenerator(req)}:${applicationId}`;
+    },
+    handler: (req, res) => {
+      // Flag rate limit violation for security monitoring
+      req.rateLimitViolated = true;
+
+      let retryAfterSec = 0;
+      try {
+        const rl = req.rateLimit || {};
+        let resetMs = 0;
+        if (rl.resetTime) {
+          resetMs = new Date(rl.resetTime).getTime();
+        } else if (typeof rl.resetMs === "number") {
+          resetMs = rl.resetMs;
+        }
+        if (resetMs > Date.now()) {
+          retryAfterSec = Math.ceil((resetMs - Date.now()) / 1000);
+        }
+      } catch (_) {}
+      const baseMsg = "Too many autosaves";
+      const msg =
+        retryAfterSec > 0
+          ? `${baseMsg}. Try again in ${retryAfterSec}s.`
+          : baseMsg;
+      return respond.error(
+        res,
+        429,
+        "autosave_rate_limit_exceeded",
+        msg,
+        undefined,
+        { retryAfterSec },
+      );
+    },
+  });
+}
+
 module.exports = {
   globalRateLimit,
   writeOperationRateLimit,
   sensitiveOperationRateLimit,
+  autosaveRateLimit,
 };

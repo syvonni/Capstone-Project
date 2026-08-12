@@ -16,14 +16,13 @@ const {
 const Appeal = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Appeal");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -65,7 +64,7 @@ describe("Appeals API Integration Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(response.body.data).toBeDefined();
+        expect(response.body).toBeDefined();
       });
     });
 
@@ -94,7 +93,7 @@ describe("Appeals API Integration Tests", () => {
         expect([200, 404]).toContain(response.status);
         if (response.status === 200) {
           expectStandardResponse(response);
-          expect(response.body.data).toBeDefined();
+          expect(response.body).toBeDefined();
         }
       });
     });
@@ -117,7 +116,7 @@ describe("Appeals API Integration Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(response.body.data).toBeDefined();
+        expect(response.body).toBeDefined();
       });
     });
 
@@ -137,8 +136,8 @@ describe("Appeals API Integration Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(response.body.data).toBeDefined();
-        expect(response.body.data._id).toBe(appeal._id.toString());
+        expect(response.body).toBeDefined();
+        expect(response.body._id).toBe(appeal._id.toString());
       });
 
       it("should return 404 for invalid ID", async () => {
@@ -186,7 +185,7 @@ describe("Appeals API Integration Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(response.body.data).toBeDefined();
+        expect(response.body).toBeDefined();
       });
     });
 
@@ -206,7 +205,7 @@ describe("Appeals API Integration Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(response.body.data).toBeDefined();
+        expect(response.body).toBeDefined();
       });
     });
 
@@ -232,7 +231,7 @@ describe("Appeals API Integration Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(response.body.data).toBeDefined();
+        expect(response.body).toBeDefined();
       });
     });
 
@@ -258,7 +257,7 @@ describe("Appeals API Integration Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(response.body.data).toBeDefined();
+        expect(response.body).toBeDefined();
       });
     });
 

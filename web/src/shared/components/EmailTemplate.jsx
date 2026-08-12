@@ -45,10 +45,6 @@ export default function EmailTemplate(props) {
   appUrl = 'http://localhost:5173',
   alertType,
   details,
-  severity,
-  verificationStatus,
-  message,
-  detectedAt,
   field,
   userName,
   userEmail,
@@ -69,7 +65,6 @@ export default function EmailTemplate(props) {
   const isEmailChange = oldEmail !== undefined
   const isHelpRequest = requestId !== undefined
   const isSystemAlert = alertType !== undefined
-  const isTamperIncident = severity !== undefined && verificationStatus !== undefined
   const isAdminAlert = field !== undefined && userName !== undefined
   const isPermitDecision = applicationReferenceNumber !== undefined && !requestId
   const isDeletionReminder = daysRemaining !== undefined && !requestId
@@ -273,30 +268,6 @@ export default function EmailTemplate(props) {
         ${intro}
       </p>
       ${buildJsonDetailsBox({ alertType, details })}
-      <p style="margin:0 0 24px;color:rgba(0,0,0,0.88);font-size:14px;">
-        Regards, BizClear Team
-      </p>
-    </div>
-    `
-    html = buildEmailHtml({ bodyContent })
-  } else if (isTamperIncident) {
-    const detectedTime = detectedAt ? new Date(detectedAt).toLocaleString() : new Date().toLocaleString()
-    const bodyContent = `
-    <div style="padding:40px 32px;">
-      <p style="margin:0 0 24px;color:${EMAIL_COLORS.textPrimary};font-size:14px;">${greeting},</p>
-      <p style="margin:0 0 24px;color:rgba(0,0,0,0.88);font-size:14px;line-height:1.5715;">
-        ${intro}
-      </p>
-      ${buildInfoBox({
-        bgColor: EMAIL_COLORS.bgError,
-        borderColor: EMAIL_COLORS.borderError,
-        fields: [
-          { label: 'Severity', value: severity, color: EMAIL_COLORS.antError, fontSize: '14px', fontWeight: '700' },
-          { label: 'Status', value: verificationStatus },
-          { label: 'Message', value: message || 'N/A' },
-          { label: 'Detected', value: detectedTime }
-        ]
-      })}
       <p style="margin:0 0 24px;color:rgba(0,0,0,0.88);font-size:14px;">
         Regards, BizClear Team
       </p>

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Button, Select, Form, Space, Grid, theme, Tooltip, Modal } from 'antd'
 import { BookOutlined, InfoCircleOutlined, UndoOutlined, RedoOutlined, RollbackOutlined } from '@ant-design/icons'
-import DynamicPageContent from './DynamicPageContent'
-import DynamicInfoModal from './DynamicInfoModal'
+import DynamicPageContent from '@/shared/components/cms/DynamicPageContent'
+import DynamicInfoModal from '@/shared/components/cms/DynamicInfoModal'
 
 const { useBreakpoint } = Grid
 

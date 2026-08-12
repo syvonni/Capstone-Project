@@ -261,7 +261,7 @@ vi.mock('@/features/authentication/components/PasskeySignInOptions.jsx', () => (
 }))
 
 // Mock LottieSpinner to prevent canvas errors in headless test environment
-vi.mock('@/shared/components/LottieSpinner.jsx', () => ({
+vi.mock('@/shared/components/graphics/LottieSpinner.jsx', () => ({
   default: () => null,
 }))
 

@@ -15,16 +15,16 @@ const {
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/__tests__/helpers/cleanup");
 const Payment = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Payment");
 const BusinessProfile = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/BusinessProfile");
+const Business = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Business");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -56,20 +56,23 @@ describe("Payments API Integration Tests", () => {
   beforeEach(async () => {
     await Payment.deleteMany({});
     await BusinessProfile.deleteMany({});
+    await Business.deleteMany({});
 
-    // Create a test business profile for the business owner
+    // Create a test business profile and business for the business owner
     testBusinessSubdocId = new mongoose.Types.ObjectId();
     testBusinessId = "TEST-BUSINESS-001";
 
-    await BusinessProfile.create({
+    const profile = await BusinessProfile.create({
       userId: businessOwnerId,
-      businesses: [
-        {
-          _id: testBusinessSubdocId,
-          businessId: testBusinessSubdocId,
-          businessName: "Test Business",
-        },
-      ],
+    });
+
+    await Business.create({
+      _id: testBusinessSubdocId,
+      businessId: testBusinessId,
+      userId: businessOwnerId,
+      ownerProfileId: profile._id,
+      businessName: "Test Business",
+      businessRegistrationNumber: "BRN-001",
     });
   });
 
@@ -81,8 +84,8 @@ describe("Payments API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body).toBeDefined();
+      expect(Array.isArray(response.body)).toBe(true);
     });
 
     it("should return list with payments", async () => {
@@ -102,8 +105,8 @@ describe("Payments API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body).toBeDefined();
+      expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
@@ -126,8 +129,8 @@ describe("Payments API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body).toBeDefined();
+      expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
@@ -150,8 +153,8 @@ describe("Payments API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body).toBeDefined();
+      expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
@@ -173,8 +176,8 @@ describe("Payments API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.paymentId).toBe(payment.paymentId);
+      expect(response.body).toBeDefined();
+      expect(response.body.paymentId).toBe(payment.paymentId);
     });
 
     it("should return 404 for invalid ID", async () => {
@@ -201,10 +204,10 @@ describe("Payments API Integration Tests", () => {
             Date.now() + 30 * 24 * 60 * 60 * 1000,
           ).toISOString(),
         })
-        .expect(200);
+        .expect(201);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
 
     it("should validate missing required fields", async () => {
@@ -243,7 +246,7 @@ describe("Payments API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -268,7 +271,7 @@ describe("Payments API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -292,7 +295,7 @@ describe("Payments API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -309,10 +312,10 @@ describe("Payments API Integration Tests", () => {
             { label: "Sanitary Fee", amount: 200, type: "other" },
           ],
         })
-        .expect(200);
+        .expect(201);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
   });
 });

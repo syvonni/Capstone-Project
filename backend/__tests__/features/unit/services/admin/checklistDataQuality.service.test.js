@@ -1,11 +1,11 @@
-const ChecklistDataQualityService = require("../../../../services/business-service/src/services/admin/checklistDataQuality.service");
+const ChecklistDataQualityService = require("../../../../../services/business-service/src/services/admin/checklistDataQuality.service");
 
 // Mock the dependencies
 jest.mock(
-  "../../../../services/business-service/src/lib/dataQualityHelpers/checklistDataQualityHelper",
+  "../../../../../services/business-service/src/lib/dataQualityHelpers/checklistDataQualityHelper",
 );
 
-const ChecklistDataQualityHelper = require("../../../../services/business-service/src/lib/dataQualityHelpers/checklistDataQualityHelper");
+const ChecklistDataQualityHelper = require("../../../../../services/business-service/src/lib/dataQualityHelpers/checklistDataQualityHelper");
 
 describe("ChecklistDataQualityService", () => {
   beforeEach(() => {

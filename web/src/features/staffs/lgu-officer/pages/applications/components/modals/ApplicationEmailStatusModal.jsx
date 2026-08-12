@@ -1,5 +1,9 @@
-import { Modal, Button, Drawer, Empty, Space, message } from 'antd'
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { Button, Empty, Space, Tag, Typography, Tooltip, Card, message } from 'antd'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import dayjs from 'dayjs'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
+
+const { Text } = Typography
 
 export default function EmailStatusModal({
   open,
@@ -11,7 +15,6 @@ export default function EmailStatusModal({
   isApproved,
   isRejected,
   isReturned,
-  isMobile = false,
   isClaimed = false,
   applicationId,
   businessId,
@@ -41,80 +44,94 @@ export default function EmailStatusModal({
       setLocalEmailSendStatus(emailSendStatus)
     }
   }, [open, applicationId, businessId, permitService, emailSendStatus])
-  // Only show email types that have been attempted (sent or failed)
-  const emailTypes = [
-    {
-      key: 'submitted',
-      label: 'Application Submission',
-      status: localEmailSendStatus.submitted?.status,
-      canResend: true,
-      isAppeal: false,
-    },
-    {
-      key: 'resubmitted',
-      label: 'Application Resubmission',
-      status: localEmailSendStatus.resubmitted?.status,
-      canResend: true,
-      isAppeal: false,
-      // Only show resubmitted if the application was returned first
-      show: localEmailSendStatus.returned?.status === 'sent',
-    },
-    {
-      key: 'rejected',
-      label: 'Application Rejection',
-      status: localEmailSendStatus.rejected?.status,
-      canResend: isRejected,
-      isAppeal: false,
-    },
-    {
-      key: 'returned',
-      label: 'Application Return',
-      status: localEmailSendStatus.returned?.status,
-      canResend: isReturned,
-      isAppeal: false,
-    },
-    {
-      key: 'appeal_submitted',
-      label: 'Appeal Submission',
-      status: localEmailSendStatus.appeal_submitted?.status,
-      canResend: !!appealId, // Enable resend when appealId is available
-      isAppeal: true,
-    },
-    {
-      key: 'appeal_approved',
-      label: 'Appeal Approval',
-      status: localEmailSendStatus.appeal_approved?.status,
-      canResend: !!appealId, // Enable resend when appealId is available
-      isAppeal: true,
-    },
-    {
-      key: 'appeal_denied',
-      label: 'Appeal Denial',
-      status: localEmailSendStatus.appeal_denied?.status,
-      canResend: !!appealId, // Enable resend when appealId is available
-      isAppeal: true,
-    },
-    {
-      key: 'approved',
-      label: 'Application Approval',
-      status: localEmailSendStatus.approved?.status,
-      canResend: isApproved,
-      isAppeal: false,
-    },
-  ].filter(email => {
-    // Filter out emails that haven't been attempted (status is null or pending)
-    if (!email.status || email.status === 'pending') return false;
-    // Filter out resubmitted if application wasn't returned first
-    if (email.key === 'resubmitted' && !email.show) return false;
-    return true;
-  })
 
-  const getButtonText = (item) => {
-    if (resendingKey === item.key) {
-      return 'Retrying...'
-    }
-    const action = item.status === 'failed' ? 'failed to send. Retry?' : 'was sent successfully.'
-    return `Email for ${item.label} ${action}`
+  // Build the list of attempted email types with their metadata
+  const emailTypes = useMemo(() => {
+    const baseTypes = [
+      {
+        key: 'submitted',
+        label: 'Application Submission',
+        canResend: true,
+        isAppeal: false,
+      },
+      {
+        key: 'resubmitted',
+        label: 'Application Resubmission',
+        canResend: true,
+        isAppeal: false,
+        showWhen: localEmailSendStatus.returned?.status === 'sent',
+      },
+      {
+        key: 'rejected',
+        label: 'Application Rejection',
+        canResend: isRejected,
+        isAppeal: false,
+      },
+      {
+        key: 'returned',
+        label: 'Application Return',
+        canResend: isReturned,
+        isAppeal: false,
+      },
+      {
+        key: 'appeal_submitted',
+        label: 'Appeal Submission',
+        canResend: !!appealId,
+        isAppeal: true,
+      },
+      {
+        key: 'appeal_approved',
+        label: 'Appeal Approval',
+        canResend: !!appealId,
+        isAppeal: true,
+      },
+      {
+        key: 'appeal_denied',
+        label: 'Appeal Denial',
+        canResend: !!appealId,
+        isAppeal: true,
+      },
+      {
+        key: 'approved',
+        label: 'Application Approval',
+        canResend: isApproved,
+        isAppeal: false,
+      },
+    ]
+
+    const attempted = baseTypes
+      .map((type) => {
+        const meta = localEmailSendStatus[type.key] || {}
+        return {
+          ...type,
+          ...meta,
+        }
+      })
+      .filter((item) => {
+        // Filter out emails that haven't been attempted (status is null or pending)
+        if (!item.status || item.status === 'pending') return false
+        // Filter out resubmitted if application wasn't returned first
+        if (item.key === 'resubmitted' && !item.showWhen) return false
+        return true
+      })
+
+    // Most recent attempts first
+    return attempted.sort((a, b) => {
+      const aTime = a.lastAttempt ? new Date(a.lastAttempt).getTime() : 0
+      const bTime = b.lastAttempt ? new Date(b.lastAttempt).getTime() : 0
+      return bTime - aTime
+    })
+  }, [localEmailSendStatus, appealId, isApproved, isRejected, isReturned])
+
+  const getStatusColor = (status) => {
+    if (status === 'sent') return 'green'
+    if (status === 'failed') return 'red'
+    return 'default'
+  }
+
+  const getResendLabel = (status) => {
+    if (status === 'failed') return 'Retry'
+    return 'Resend'
   }
 
   const handleResend = useCallback(async (key, isAppeal) => {
@@ -143,46 +160,93 @@ export default function EmailStatusModal({
   const content = emailTypes.length === 0 ? (
     <Empty description="No emails have been sent yet" />
   ) : (
-    <Space direction="vertical" style={{ width: '100%' }} size={8}>
-      {emailTypes.map((item) => (
-        <Button
-          key={item.key}
-          block
-          onClick={() => handleResend(item.key, item.isAppeal)}
-          disabled={item.isAppeal ? !onResendAppealEmail || !item.canResend || item.status !== 'failed' || resendingKey !== null : !onResendEmail || !item.canResend || item.status !== 'failed' || resendingKey !== null}
-          loading={resendingKey === item.key}
-          style={!isClaimed ? { opacity: 0.5 } : undefined}
-        >
-          {getButtonText(item)}
-        </Button>
-      ))}
+    <Space direction="vertical" style={{ width: '100%' }} size={12}>
+      {emailTypes.map((item) => {
+        const statusColor = getStatusColor(item.status)
+        const actionHandler = item.isAppeal ? onResendAppealEmail : onResendEmail
+        const canAction = isClaimed && actionHandler && resendingKey === null
+
+        const primaryText = (
+          <Space>
+            <Tag color={statusColor}>{item.status}</Tag>
+            <Text strong>{item.label}</Text>
+          </Space>
+        )
+
+        const metaLines = [
+          item.lastAttempt && (
+            <Text key="lastAttempt" type="secondary" style={{ fontSize: 12 }}>
+              {item.status === 'sent' ? 'Sent' : 'Last attempt'}:
+              {' '}{dayjs(item.lastAttempt).format('MMM D, YYYY h:mm A')}
+            </Text>
+          ),
+          (item.retryCount > 0) && (
+            <Text key="retryCount" type="secondary" style={{ fontSize: 12 }}>
+              Attempt {item.retryCount}
+            </Text>
+          ),
+          (item.to || item.provider) && (
+            <Text key="toProvider" type="secondary" style={{ fontSize: 12 }}>
+              {item.to && `To: ${item.to}`}
+              {item.to && item.provider && ' · '}
+              {item.provider && `via ${item.provider}`}
+            </Text>
+          ),
+        ].filter(Boolean)
+
+        const actionButton = (
+          <Button
+            size="small"
+            type={item.status === 'failed' ? 'primary' : 'default'}
+            danger={item.status === 'failed'}
+            loading={resendingKey === item.key}
+            disabled={!canAction}
+            onClick={() => handleResend(item.key, item.isAppeal)}
+          >
+            {resendingKey === item.key ? 'Sending...' : getResendLabel(item.status)}
+          </Button>
+        )
+
+        const cardContent = (
+          <Card
+            key={item.key}
+            size="small"
+            extra={actionButton}
+            style={{ width: '100%' }}
+          >
+            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+              {primaryText}
+              <Space size={16} wrap>
+                {metaLines}
+              </Space>
+            </Space>
+          </Card>
+        )
+
+        // For failed emails, wrap the card in a generic tooltip that explains
+        // the retry action without surfacing raw provider errors in the UI.
+        if (item.status === 'failed') {
+          return (
+            <Tooltip key={item.key} title="Send failed. Click Retry to attempt again." placement="topLeft">
+              {cardContent}
+            </Tooltip>
+          )
+        }
+
+        return cardContent
+      })}
     </Space>
   )
 
-  if (isMobile) {
-    return (
-      <Drawer
-        title="Email Status"
-        open={open}
-        onClose={onClose}
-        width="75%"
-      >
-        {content}
-      </Drawer>
-    )
-  }
-
   return (
-    <Modal
+    <ResponsiveModal
       title="Email Status"
       open={open}
       onCancel={onClose}
       footer={null}
-      width={500}
+      width={520}
     >
-      <div style={{ padding: 16 }}>
-        {content}
-      </div>
-    </Modal>
+      {content}
+    </ResponsiveModal>
   )
 }

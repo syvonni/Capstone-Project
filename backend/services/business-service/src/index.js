@@ -33,6 +33,9 @@ try {
 
 const app = express();
 
+// Disable ETag to prevent 304 responses (browser caching)
+app.disable('etag');
+
 const helmet = require("helmet");
 app.use(
   helmet({
@@ -206,7 +209,7 @@ const uploadsDir = path.join(__dirname, "..", "..", "..", "uploads");
 app.use("/uploads", express.static(uploadsDir));
 
 // Business routes - Phase 1: Use feature aggregators
-const businessRouter = require("./routes/business");
+const businessRouter = require("./routes/business-owner");
 app.use("/api/business", businessRouter);
 
 // Admin routes - Phase 1: Use feature aggregators

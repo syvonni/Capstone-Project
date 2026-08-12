@@ -130,7 +130,7 @@ export default function InspectionItemsStatsPanel() {
       {
         count: disabledInspectionItems,
         text: 'Disabled',
-        linkColor: disabledInspectionItems > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledInspectionItems > 0 ? {
           title: 'Disabled Inspection Items',
           items: inspectionItems.filter(i => !i.isActive).map(i => ({

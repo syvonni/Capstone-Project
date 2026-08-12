@@ -47,6 +47,6 @@ Reference: [Citizen's Charter - OCBPLO 2025 (General Trias)](https://www.general
 
 1. Contact BPLO Alaminos for official tax code list
 2. Map each Alaminos code to the corresponding line-of-business categories
-3. Update `backend/shared/constants/lineOfBusiness.js` with Alaminos-specific codes
-4. Update `web/src/constants/lineOfBusiness.js` (frontend mirror)
+3. Update `backend/shared/constants/industryCategories.js` with Alaminos-specific codes
+4. Update `web/src/shared/constants/industryCategories.js` (frontend mirror)
 5. Re-seed `FeeConfiguration` collection with Alaminos-specific rates (update the seed script)

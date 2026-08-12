@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import InspectionsView from '../views/InspectionsView'
 
@@ -19,7 +19,7 @@ vi.mock('@/features/admin/services/postRequirementService', () => ({
   getPostRequirements: vi.fn(),
 }))
 
-import { getChecklists, createChecklist, updateChecklist, deleteChecklist } from '@/features/admin/services/checklistService'
+import { getChecklists } from '@/features/admin/services/checklistService'
 import { getInspectionItems } from '@/features/admin/services/inspectionItemService'
 import { getPostRequirements } from '@/features/admin/services/postRequirementService'
 
@@ -65,7 +65,7 @@ describe('InspectionsView Integration (Checklists)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    getChecklists.mockResolvedValue({ data: mockChecklists, total: 2, page: 1, limit: 20 })
+    getChecklists.mockResolvedValue(mockChecklists)
     getInspectionItems.mockResolvedValue(mockInspectionItems)
     getPostRequirements.mockResolvedValue(mockPostRequirements)
   })
@@ -150,7 +150,7 @@ describe('InspectionsView Integration (Checklists)', () => {
     })
 
     it('handles empty checklists list', async () => {
-      getChecklists.mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 })
+      getChecklists.mockResolvedValue([])
 
       renderWithRouter(<InspectionsView />)
 

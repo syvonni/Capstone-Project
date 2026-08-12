@@ -1,6 +1,6 @@
 /**
- * Custom hook for business dashboard data fetching and socket events
- * Extracts data fetching and realtime logic from BusinessOwnerDashboard
+ * Custom hook for applications dashboard data fetching and socket events
+ * Extracts data fetching and realtime logic from BusinessOwnerMasterView
  */
 
 import { useCallback, useEffect, useRef } from 'react'
@@ -10,9 +10,9 @@ import { useSocketConnection, useSocketEvent } from '@/shared/hooks/useSocket'
 import { getApplications } from '../../../services/applicationService'
 import { getStatusLabel } from '../utils/statusUtils'
 
-export function useBusinessDashboard({
-  businesses: _businesses,
-  setBusinesses,
+export function useApplicationsDashboard({
+  _applications,
+  setApplications,
   editingApplication,
   setEditingApplication,
   loading: _loading,
@@ -33,22 +33,22 @@ export function useBusinessDashboard({
   const { message } = App.useApp()
   const { currentUser, roleSlug } = useAuthSession()
   const { connected: socketConnected } = useSocketConnection()
-  const fetchBusinessesRef = useRef(null)
+  const fetchApplicationsRef = useRef(null)
 
-  // Fetch applications with pagination
-  const fetchBusinesses = useCallback(async (resetPage = false) => {
+  // Fetch applications
+  const fetchApplications = useCallback(async (resetPage = false) => {
     if (resetPage) {
       setCurrentPage(1)
     }
-    
+
     setLoading(true)
     try {
       const data = await getApplications({
         status: statusFilter,
         search: searchTerm
       })
-      
-      setBusinesses(data || [])
+
+      setApplications(data || [])
       setTotalItems(data?.length || 0)
     } catch (err) {
       console.error('Failed to fetch applications:', err)
@@ -57,72 +57,72 @@ export function useBusinessDashboard({
       setLoading(false)
       setPaginationLoading(false)
     }
-  }, [statusFilter, searchTerm, setBusinesses, setLoading, setPaginationLoading, message, setTotalItems])
+  }, [statusFilter, searchTerm, setApplications, setLoading, setPaginationLoading, setCurrentPage, message, setTotalItems])
 
-  const fetchBusinessesPaginated = useCallback(async () => {
+  const fetchApplicationsPaginated = useCallback(async () => {
     setPaginationLoading(true)
-    await fetchBusinesses()
-  }, [fetchBusinesses, setPaginationLoading])
+    await fetchApplications()
+  }, [fetchApplications, setPaginationLoading])
 
   // Keep ref updated for socket callbacks
   useEffect(() => {
-    fetchBusinessesRef.current = fetchBusinesses
-  }, [fetchBusinesses])
+    fetchApplicationsRef.current = fetchApplications
+  }, [fetchApplications])
 
   // Initial fetch
   useEffect(() => {
     if (currentUser && roleSlug === 'business_owner' && !initialFetchDone.current) {
       initialFetchDone.current = true
-      fetchBusinesses()
+      fetchApplications()
     }
-  }, [currentUser, roleSlug, initialFetchDone, fetchBusinesses])
+  }, [currentUser, roleSlug, initialFetchDone, fetchApplications])
 
-  // Re-fetch when filters change (not on currentUser/roleSlug changes - handled by initial fetch)
+  // Re-fetch when filters change
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false
       return
     }
     if (currentUser && roleSlug === 'business_owner') {
-      fetchBusinesses()
+      fetchApplications()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, pageSize, searchTerm, statusFilter, sortBy, sortOrder, isFirstRender, fetchBusinesses])
+  }, [currentPage, pageSize, searchTerm, statusFilter, sortBy, sortOrder, isFirstRender, fetchApplications])
 
   // Socket: application status updates
   useSocketEvent('application:updated', useCallback((data) => {
     console.log('[Realtime] Application updated:', data)
     const updatedApp = data.application
     if (!updatedApp) return
-    
-    setBusinesses(prev => prev.map(b => {
-      if ((b.applicationId || b._id) === updatedApp.applicationId || (b.applicationId || b._id) === updatedApp._id) {
-        return { ...b, ...updatedApp }
+
+    setApplications(prev => prev.map(app => {
+      if ((app.applicationId || app._id) === updatedApp.applicationId || (app.applicationId || app._id) === updatedApp._id) {
+        return { ...app, ...updatedApp }
       }
-      return b
+      return app
     }))
-    
+
     if (editingApplication && ((editingApplication.applicationId || editingApplication._id) === updatedApp.applicationId || (editingApplication.applicationId || editingApplication._id) === updatedApp._id)) {
       setEditingApplication(prev => prev ? { ...prev, ...updatedApp } : prev)
     }
-    
+
     if (updatedApp.applicationStatus) {
       const statusLabel = getStatusLabel(updatedApp.applicationStatus)
       message.info(`${updatedApp.businessName || 'Your application'} status: ${statusLabel}`)
     }
-  }, [editingApplication, message, setBusinesses, setEditingApplication]))
+  }, [editingApplication, message, setApplications, setEditingApplication]))
 
   // Socket: payment verified
   useSocketEvent('payment:verified', useCallback((data) => {
     console.log('[Realtime] Payment verified:', data)
     message.success('Payment has been verified!')
-    fetchBusinessesRef.current?.(false)
+    fetchApplicationsRef.current?.(false)
   }, [message]))
 
   return {
     socketConnected,
-    fetchBusinesses,
-    fetchBusinessesPaginated,
-    fetchBusinessesRef
+    fetchApplications,
+    fetchApplicationsPaginated,
+    fetchApplicationsRef
   }
 }

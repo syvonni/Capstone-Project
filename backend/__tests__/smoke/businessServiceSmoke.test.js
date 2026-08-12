@@ -7,22 +7,21 @@ const {
 } = require("../helpers/setup");
 const { createTestUsers, getTestTokens } = require("../helpers/fixtures");
 const { cleanupTestData } = require("../helpers/cleanup");
-const Fee = require("../../services/business-service/src/models/Fee");
+const Fee = require("../../shared/models/Fee");
 const Variable = require("../../services/business-service/src/models/Variable");
 const TaxBracket = require("../../services/business-service/src/models/TaxBracket");
 const Lob = require("../../services/business-service/src/models/Lob");
 
 // Helper function to validate standard response shape
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 // Helper function to validate error response shape
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -69,7 +68,7 @@ describe("Business Service Smoke Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(Array.isArray(response.body)).toBe(true);
       });
 
       it("should reject without auth", async () => {
@@ -120,7 +119,7 @@ describe("Business Service Smoke Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(Array.isArray(response.body)).toBe(true);
       });
     });
 
@@ -132,7 +131,7 @@ describe("Business Service Smoke Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(Array.isArray(response.body)).toBe(true);
       });
     });
   });
@@ -146,8 +145,8 @@ describe("Business Service Smoke Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(response.body.data).toHaveProperty("status");
-        expect(response.body.data).toHaveProperty("userId");
+        expect(response.body).toHaveProperty("status");
+        expect(response.body).toHaveProperty("userId");
       });
     });
 
@@ -159,7 +158,7 @@ describe("Business Service Smoke Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(Array.isArray(response.body)).toBe(true);
       });
     });
   });
@@ -172,8 +171,8 @@ describe("Business Service Smoke Tests", () => {
           .expect(200);
 
         expectStandardResponse(response);
-        expect(response.body.data).toHaveProperty("totalRegisteredThisYear");
-        expect(response.body.data).toHaveProperty(
+        expect(response.body).toHaveProperty("totalRegisteredThisYear");
+        expect(response.body).toHaveProperty(
           "applicationsProcessedThisYear",
         );
       });
@@ -185,8 +184,7 @@ describe("Business Service Smoke Tests", () => {
       it("should return health status", async () => {
         const response = await request(app).get("/api/health").expect(200);
 
-        // Health check already returns { ok: true, service: ... } which matches our standard
-        expect(response.body).toHaveProperty("ok");
+        // Health check returns service status fields
         expect(response.body).toHaveProperty("service");
       });
     });

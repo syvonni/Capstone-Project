@@ -1,10 +1,11 @@
-import { Modal, Typography } from 'antd'
+import { Typography } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 
 const { Text } = Typography
 
 export default function ApplicationRejectionReasonModal({ open, onCancel, rejectionReason }) {
   return (
-    <Modal
+    <ResponsiveModal
       title="Application Rejection Reason"
       open={open}
       onCancel={onCancel}
@@ -14,6 +15,6 @@ export default function ApplicationRejectionReasonModal({ open, onCancel, reject
       <div style={{ padding: 16 }}>
         <Text>{rejectionReason || 'No rejection reason provided.'}</Text>
       </div>
-    </Modal>
+    </ResponsiveModal>
   )
 }

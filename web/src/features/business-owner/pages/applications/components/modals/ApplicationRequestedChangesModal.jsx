@@ -1,10 +1,11 @@
-import { Modal, Typography, Descriptions } from 'antd'
+import { Typography, Descriptions } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 
 const { Text } = Typography
 
 export default function ApplicationRequestedChangesModal({ open, onCancel, requestChangeFields }) {
   return (
-    <Modal
+    <ResponsiveModal
       title="Requested Changes"
       open={open}
       onCancel={onCancel}
@@ -40,7 +41,7 @@ export default function ApplicationRequestedChangesModal({ open, onCancel, reque
                     <Text style={{ display: 'block', marginBottom: 12 }}>{sectionName}</Text>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {fields.map((field) => (
-                        <Descriptions key={field.fieldKey} column={1} bordered size="small" labelStyle={{ width: '120px' }}>
+                        <Descriptions key={field.fieldKey} column={1} bordered size="small" styles={{ label: { width: '120px' } }}>
                           <Descriptions.Item label="Field Name">{field.fieldName}</Descriptions.Item>
                           <Descriptions.Item label="Reason">{field.reason}</Descriptions.Item>
                         </Descriptions>
@@ -55,6 +56,6 @@ export default function ApplicationRequestedChangesModal({ open, onCancel, reque
           <Text type="secondary">No requested changes</Text>
         )}
       </div>
-    </Modal>
+    </ResponsiveModal>
   )
 }

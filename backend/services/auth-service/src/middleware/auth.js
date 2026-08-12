@@ -1,7 +1,10 @@
 const jwt = require("jsonwebtoken");
 
 function signAccessToken(user) {
-  const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is required");
+  }
   const ttlMin = Number(process.env.ACCESS_TOKEN_TTL_MINUTES) || 240; // Default 4 hours (240 minutes)
   const nowSec = Math.floor(Date.now() / 1000);
   const expSec = nowSec + Math.max(1, ttlMin) * 60;
@@ -21,7 +24,10 @@ function signAccessToken(user) {
 
 /** Short-lived JWT for admin step-up (re-auth). Verified by admin-service. */
 function signStepUpToken(userId) {
-  const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is required");
+  }
   const ttlMin = Math.min(
     5,
     Number(process.env.STEP_UP_TOKEN_TTL_MINUTES) || 5,
@@ -50,7 +56,10 @@ async function requireJwt(req, res, next) {
           message: "Unauthorized: missing token",
         },
       });
-    const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error("JWT_SECRET environment variable is required");
+    }
     const decoded = jwt.verify(token, secret); // REQUIREMENT IAS-1.6: validated tokens (JWT)
 
     // Verify token version matches user's current token version (session invalidation check)
@@ -142,7 +151,10 @@ function requireAdminStepUp(req, res, next) {
     });
   }
   try {
-    const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error("JWT_SECRET environment variable is required");
+    }
     const decoded = jwt.verify(stepUpToken, secret);
     if (!decoded || decoded.stepUp !== true) {
       return res.status(403).json({

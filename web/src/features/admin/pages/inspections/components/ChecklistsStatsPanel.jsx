@@ -130,7 +130,7 @@ export default function ChecklistsStatsPanel() {
       {
         count: disabledChecklists,
         text: 'Disabled',
-        linkColor: disabledChecklists > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledChecklists > 0 ? {
           title: 'Disabled Checklists',
           items: checklists.filter(c => !c.isActive).map(c => ({

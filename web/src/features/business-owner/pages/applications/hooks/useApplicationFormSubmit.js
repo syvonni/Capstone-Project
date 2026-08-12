@@ -1,28 +1,29 @@
 import { useState } from 'react'
 import { App } from 'antd'
-import { addBusiness, updateBusiness } from '../../../services/businessProfileService'
+import { createApplication, updateApplication, submitApplication, patchApplicationFormData } from '../../../services/applicationService'
+import { getBusinessNameFromFormDefinition } from '../../../utils/formUtils'
 
-function useBusinessFormSubmit({
+export function useApplicationFormSubmit({
   _isEditing,
-  editingBusiness,
+  editingApplication,
   registrationType,
   generalPermitCategory,
   documentCids,
   formDefinition,
   onSubmitted,
-  draftBusinessId,
-  setDraftBusinessId,
+  draftApplicationId,
+  setDraftApplicationId,
   setSubmitted,
   setHasUnsavedChanges,
-  updateFn, // Optional: override updateBusiness (e.g. officer walk-in uses PUT /api/business/walk-in/:id)
+  updateFn, // Optional: override updateApplication (e.g. officer walk-in uses PUT /api/business/walk-in/:id)
   onSaveSuccess, // Callback when save succeeds (for triggering overview refresh)
-  currentApplicationStatus, // Current status to preserve during auto-save
+  _currentApplicationStatus, // Current status to preserve during auto-save
 }) {
   const { message } = App.useApp()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
-  const handleSubmit = async (values, isFinalSubmit = false) => {
+  const handleSubmit = async (values, isFinalSubmit = false, options = {}) => {
     if (!formDefinition) {
       message.error('Form definition not loaded. Please try again.')
       return
@@ -31,14 +32,9 @@ function useBusinessFormSubmit({
     setSubmitting(true)
     setError(null)
 
-    // Try to extract business name from various possible fields
-    // For general permits, the field is 'activityName' not 'businessName'
-    const businessName = values.businessName || 
-                        values.registeredBusinessName || 
-                        values['Business / trade name'] ||
-                        values.businessTradeName ||
-                        values.activityName ||
-                        'Business Application'
+    // Extract business name from the form definition's designated business name field
+    const extractedBusinessName = getBusinessNameFromFormDefinition(formDefinition, values)
+    const businessName = extractedBusinessName || 'Business Application'
 
     // Extract CIDs from file fields in form values and merge into documentCids.
     // File fields are stored as [{uid, name, status, cid}] by DynamicFormRenderer's customRequest.
@@ -80,35 +76,45 @@ function useBusinessFormSubmit({
       documentCids: mergedCids,
     }
 
-    // Determine application status:
-    // - If final submit, set to 'submitted' (or 'resubmit' if current is 'returned')
-    // - If auto-save, preserve current status if it's not 'draft'
-    // - Otherwise, default to 'draft' for new applications
-    if (isFinalSubmit) {
-      payload.applicationStatus = currentApplicationStatus === 'returned' ? 'resubmit' : 'submitted'
-      payload.submittedAt = new Date().toISOString()
-    } else {
-      // Auto-save: preserve current status if it's not draft
-      const normalizedCurrentStatus = (currentApplicationStatus || '').toLowerCase()
-      if (normalizedCurrentStatus && normalizedCurrentStatus !== 'draft') {
-        payload.applicationStatus = currentApplicationStatus
-      } else {
-        payload.applicationStatus = 'draft'
-      }
-    }
-
     try {
       let response
-      // Use draftBusinessId if available (draft was already created), otherwise check isEditing
-      const existingBusinessId = editingBusiness?.businessId || editingBusiness?._id || draftBusinessId
-      
-      if (existingBusinessId) {
-        const doUpdate = updateFn || updateBusiness
-        response = await doUpdate(existingBusinessId, payload)
+      // Use draftApplicationId if available (draft was already created), otherwise check isEditing
+      const existingApplicationId = editingApplication?.applicationId || editingApplication?._id || draftApplicationId
+
+      if (isFinalSubmit) {
+        // Final submit: use dedicated submit endpoint
+        if (!existingApplicationId) {
+          // First create the draft, then submit it
+          response = await createApplication(payload)
+          const application = response.application
+          const newApplicationId = application?.applicationId || application?._id
+          if (newApplicationId) {
+            setDraftApplicationId(newApplicationId)
+          }
+          // Now submit it
+          response = await submitApplication(newApplicationId)
+        } else {
+          // Draft exists, update it first then submit
+          await updateApplication(existingApplicationId, payload)
+          response = await submitApplication(existingApplicationId)
+        }
       } else {
-        response = await addBusiness(payload)
-        if (response.businessId) {
-          setDraftBusinessId(response.businessId)
+        // Auto-save: use lightweight PATCH for form data only
+        const patchPayload = {
+          formData: cleanedValues,
+          businessName,
+          documentCids: mergedCids,
+        }
+        if (existingApplicationId) {
+          const doUpdate = updateFn || patchApplicationFormData
+          response = await doUpdate(existingApplicationId, patchPayload, { signal: options.signal })
+        } else {
+          response = await createApplication(payload, { signal: options.signal })
+          const application = response.application
+          const newApplicationId = application?.applicationId || application?._id
+          if (newApplicationId) {
+            setDraftApplicationId(newApplicationId)
+          }
         }
       }
 
@@ -128,7 +134,7 @@ function useBusinessFormSubmit({
       // Return the response so caller can use it
       return response
     } catch (err) {
-      console.error('Failed to save business:', err)
+      console.error('Failed to save application:', err)
       const errorMsg = err?.message || (isFinalSubmit ? 'Failed to submit application' : 'Failed to save draft')
       setError(errorMsg)
       message.error(errorMsg)
@@ -141,4 +147,4 @@ function useBusinessFormSubmit({
   return { handleSubmit, submitting, error, setError }
 }
 
-export default useBusinessFormSubmit
+

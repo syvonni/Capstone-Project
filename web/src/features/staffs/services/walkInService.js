@@ -171,7 +171,7 @@ export async function uploadServiceDocuments(appointmentId, documents) {
  * @param {string} citizenId - Citizen ID
  */
 export async function getAppointmentHistory(citizenId) {
-  return get(`${BASE_PATH}/citizens/${citId}/history`)
+  return get(`${BASE_PATH}/citizens/${citizenId}/history`)
 }
 
 /**
@@ -194,7 +194,6 @@ export async function sendNotification(appointmentId, notificationData) {
 // Constants for service types and statuses
 export const WALK_IN_SERVICE_TYPES = {
   BUSINESS_REGISTRATION: 'business_registration',
-  BUSINESS_RENEWAL: 'business_renewal',
   PERMIT_APPLICATION: 'permit_application',
   DOCUMENT_REQUEST: 'document_request',
   COMPLAINT_FILING: 'complaint_filing',
@@ -224,7 +223,6 @@ export const WALK_IN_PRIORITIES = {
 export const getWalkInServiceTypeLabel = (type) => {
   const labels = {
     [WALK_IN_SERVICE_TYPES.BUSINESS_REGISTRATION]: 'Business Registration',
-    [WALK_IN_SERVICE_TYPES.BUSINESS_RENEWAL]: 'Business Renewal',
     [WALK_IN_SERVICE_TYPES.PERMIT_APPLICATION]: 'Permit Application',
     [WALK_IN_SERVICE_TYPES.DOCUMENT_REQUEST]: 'Document Request',
     [WALK_IN_SERVICE_TYPES.COMPLAINT_FILING]: 'Complaint Filing',

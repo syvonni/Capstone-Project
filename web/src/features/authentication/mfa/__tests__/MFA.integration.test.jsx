@@ -18,7 +18,7 @@ vi.mock('lottie-web', () => ({
 }))
 
 // Mock LottieSpinner
-vi.mock('@/shared/components/LottieSpinner.jsx', () => ({
+vi.mock('@/shared/components/graphics/LottieSpinner.jsx', () => ({
   default: () => null,
 }))
 
@@ -65,7 +65,7 @@ describe('MFA Integration Tests', () => {
     renderWithProviders(<MfaSetup />)
 
     // Verify component renders
-    expect(screen.getByText(/Security Setup/i)).toBeInTheDocument()
+    expect(screen.getByText(/Secure Your Account/i)).toBeInTheDocument()
   })
 
   it('should render TOTP verification form', () => {
@@ -107,21 +107,21 @@ describe('MFA Integration Tests', () => {
     renderWithProviders(<MfaSetup />)
 
     // Verify component renders for disable flow
-    expect(screen.getByText(/Security Setup/i)).toBeInTheDocument()
+    expect(screen.getByText(/Secure Your Account/i)).toBeInTheDocument()
   })
 
   it('should handle backup code display', () => {
     renderWithProviders(<MfaSetup />)
 
     // Verify component renders for backup codes
-    expect(screen.getByText(/Security Setup/i)).toBeInTheDocument()
+    expect(screen.getByText(/Secure Your Account/i)).toBeInTheDocument()
   })
 
   it('should handle backup code generation', () => {
     renderWithProviders(<MfaSetup />)
 
     // Verify component renders for backup code generation
-    expect(screen.getByText(/Security Setup/i)).toBeInTheDocument()
+    expect(screen.getByText(/Secure Your Account/i)).toBeInTheDocument()
   })
 
   it('should handle backup code usage', () => {
@@ -135,6 +135,6 @@ describe('MFA Integration Tests', () => {
     renderWithProviders(<MfaSetup />)
 
     // Verify setup component can be re-used
-    expect(screen.getByText(/Security Setup/i)).toBeInTheDocument()
+    expect(screen.getByText(/Secure Your Account/i)).toBeInTheDocument()
   })
 })

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 
-export function usePagination(initialPageSize = 10) {
+export function useApplicationPagination(initialPageSize = 10) {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(initialPageSize)
   const [totalItems, setTotalItems] = useState(0)

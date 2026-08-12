@@ -16,7 +16,7 @@ const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
 const { trackChanges } = require("../changeTracker");
 const { logAuditEvent } = require("../auditClient");
 const Variable = require("../../models/Variable");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const PostRequirement = require("../../models/PostRequirement");
 
 /**

@@ -20,9 +20,34 @@ export async function mockPayment(paymentData) {
  * @param {string} [params.status] - Filter by status
  * @param {number} [params.limit] - Limit results
  */
-export async function getPayments({ businessId, paymentType, status, limit } = {}) {
+/**
+ * Create a payment record for an application or appeal.
+ * @param {Object} params
+ * @param {string} params.businessId - Business ID
+ * @param {number} params.amount - Payment amount
+ * @param {Array} [params.fees] - Fee breakdown
+ * @param {string} [params.transactionName] - Transaction name
+ * @param {string} [params.paymentType] - Payment type
+ * @returns {Promise<Object>} Payment response
+ */
+export async function createPaymentRecord({ businessId, applicationId, amount, fees = [], transactionName = 'Business Permit Application', paymentType = 'registration_fee', receiptNumber, paymentId }) {
+  const entityId = businessId || applicationId
+  const res = await mockPayment({
+    businessId: entityId,
+    amount,
+    fees,
+    transactionName,
+    paymentType,
+    receiptNumber,
+    paymentId,
+  })
+  return res
+}
+
+export async function getPayments({ businessId, applicationId, paymentType, status, limit } = {}) {
   const qs = new URLSearchParams()
-  if (businessId) qs.set('businessId', businessId)
+  const entityId = businessId || applicationId
+  if (entityId) qs.set('businessId', entityId)
   if (paymentType) qs.set('paymentType', paymentType)
   if (status) qs.set('status', status)
   if (limit) qs.set('limit', String(limit))

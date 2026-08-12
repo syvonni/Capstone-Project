@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Typography, Grid, theme, Card } from 'antd'
 import { CustomerServiceOutlined } from '@ant-design/icons'
-import DynamicFaqSection from '@/shared/components/DynamicFaqSection'
-import BlurFade from '@/shared/components/BlurFade.jsx'
+import DynamicFaqSection from '@/shared/components/cms/DynamicFaqSection'
+import BlurFade from '@/shared/components/animations/BlurFade.jsx'
 
 const { Title, Text } = Typography
 const { useBreakpoint } = Grid

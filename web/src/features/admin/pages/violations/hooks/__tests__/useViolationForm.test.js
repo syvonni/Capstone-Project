@@ -1,16 +1,18 @@
-import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useViolationForm } from '../useViolationForm'
+import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { useViolationForm } from '../useViolationForm';
 
 // Mock the dependencies
 vi.mock('antd', () => ({
   Form: {
-    useForm: vi.fn(() => [{
-      setFieldsValue: vi.fn(),
-      getFieldsValue: vi.fn(() => ({})),
-      validateFields: vi.fn(() => Promise.resolve({})),
-      resetFields: vi.fn(),
-    }]),
+    useForm: vi.fn(() => [
+      {
+        setFieldsValue: vi.fn(),
+        getFieldsValue: vi.fn(() => ({})),
+        validateFields: vi.fn(() => Promise.resolve({})),
+        resetFields: vi.fn(),
+      },
+    ]),
   },
   message: {
     success: vi.fn(),
@@ -23,18 +25,32 @@ vi.mock('antd', () => ({
       },
     })),
   },
-}))
+}));
 
-vi.mock('@/shared/hooks/useStepUp', () => ({
-  useStepUp: vi.fn(() => ({
+const mockResetChangeTracking = vi.fn();
+const mockHandleValuesChange = vi.fn();
+const mockOpenSummary = vi.fn();
+const mockCloseSummary = vi.fn();
+
+vi.mock('@/shared/hooks/useStepUpSummary', () => ({
+  useStepUpSummary: vi.fn(() => ({
+    hasChanges: false,
+    changedFields: [],
+    resetChangeTracking: mockResetChangeTracking,
+    handleValuesChange: mockHandleValuesChange,
+    openSummary: mockOpenSummary,
+    closeSummary: mockCloseSummary,
+    confirmWithStepUp: vi.fn((callback) => callback('test-step-up-token')),
     runWithStepUp: vi.fn((callback) => callback('test-step-up-token')),
     stepUpModal: null,
+    ChangesSummary: () => null,
   })),
-}))
+}));
 
 vi.mock('@/features/admin/services/violationService', () => ({
+  createViolation: vi.fn(),
   updateViolation: vi.fn(),
-}))
+}));
 
 describe('useViolationForm', () => {
   const mockViolation = {
@@ -43,7 +59,7 @@ describe('useViolationForm', () => {
     description: 'Test description',
     severity: 'major',
     isActive: true,
-  }
+  };
 
   const mockInitialValues = {
     _id: '1',
@@ -51,13 +67,13 @@ describe('useViolationForm', () => {
     description: 'Test description',
     severity: 'major',
     isActive: true,
-  }
+  };
 
-  const mockOnSave = vi.fn()
+  const mockOnSave = vi.fn();
 
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
   it('initializes form with initial values', () => {
     const { result } = renderHook(() =>
@@ -67,12 +83,12 @@ describe('useViolationForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
-    expect(result.current.form).toBeDefined()
-  })
+    expect(result.current.form).toBeDefined();
+  });
 
-  it('handles save operation', async () => {
+  it('handles save operation for existing violation', async () => {
     const { result } = renderHook(() =>
       useViolationForm({
         violationId: '1',
@@ -80,14 +96,32 @@ describe('useViolationForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
+
+    result.current.handleSave();
+    await act(async () => {
+      await result.current.handleConfirm();
+    });
+
+    expect(result.current.saving).toBe(false);
+  });
+
+  it('handles save operation for new violation', async () => {
+    const { result } = renderHook(() =>
+      useViolationForm({
+        violationId: 'new',
+        violation: null,
+        initialValues: mockInitialValues,
+        onSave: mockOnSave,
+      })
+    );
 
     await act(async () => {
-      await result.current.handleSave()
-    })
+      await result.current.handleSave();
+    });
 
-    expect(result.current.saving).toBe(false)
-  })
+    expect(result.current.saving).toBe(false);
+  });
 
   it('handles undo operation', () => {
     const { result } = renderHook(() =>
@@ -97,14 +131,14 @@ describe('useViolationForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
     act(() => {
-      result.current.handleUndo()
-    })
+      result.current.handleUndo();
+    });
 
-    expect(result.current.canUndo()).toBeDefined()
-  })
+    expect(result.current.canUndo()).toBeDefined();
+  });
 
   it('handles redo operation', () => {
     const { result } = renderHook(() =>
@@ -114,14 +148,14 @@ describe('useViolationForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
     act(() => {
-      result.current.handleRedo()
-    })
+      result.current.handleRedo();
+    });
 
-    expect(result.current.canRedo()).toBeDefined()
-  })
+    expect(result.current.canRedo()).toBeDefined();
+  });
 
   it('handles status change', () => {
     const { result } = renderHook(() =>
@@ -131,14 +165,14 @@ describe('useViolationForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
     act(() => {
-      result.current.handleStatusChange('disabled')
-    })
+      result.current.handleStatusChange('disabled');
+    });
 
-    expect(result.current.handleStatusChange).toBeDefined()
-  })
+    expect(result.current.handleStatusChange).toBeDefined();
+  });
 
   it('resets change tracking', () => {
     const { result } = renderHook(() =>
@@ -148,14 +182,14 @@ describe('useViolationForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
     act(() => {
-      result.current.resetChangeTracking(mockInitialValues)
-    })
+      result.current.resetChangeTracking(mockInitialValues);
+    });
 
-    expect(result.current.hasChanges).toBe(false)
-  })
+    expect(result.current.hasChanges).toBe(false);
+  });
 
   it('returns correct state structure', () => {
     const { result } = renderHook(() =>
@@ -165,19 +199,24 @@ describe('useViolationForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
-    expect(result.current.form).toBeDefined()
-    expect(result.current.saving).toBeDefined()
-    expect(result.current.hasChanges).toBeDefined()
-    expect(result.current.canUndo).toBeDefined()
-    expect(result.current.canRedo).toBeDefined()
-    expect(result.current.handleUndo).toBeDefined()
-    expect(result.current.handleRedo).toBeDefined()
-    expect(result.current.handleFormValuesChange).toBeDefined()
-    expect(result.current.handleStatusChange).toBeDefined()
-    expect(result.current.handleSave).toBeDefined()
-    expect(result.current.resetChangeTracking).toBeDefined()
-    expect(result.current.stepUpModal).toBeDefined()
-  })
-})
+    expect(result.current.form).toBeDefined();
+    expect(result.current.saving).toBeDefined();
+    expect(result.current.hasChanges).toBeDefined();
+    expect(result.current.canUndo).toBeDefined();
+    expect(result.current.canRedo).toBeDefined();
+    expect(result.current.handleUndo).toBeDefined();
+    expect(result.current.handleRedo).toBeDefined();
+    expect(result.current.handleFormValuesChange).toBeDefined();
+    expect(result.current.handleStatusChange).toBeDefined();
+    expect(result.current.handleSave).toBeDefined();
+    expect(result.current.handleConfirm).toBeDefined();
+    expect(result.current.handleSummaryClose).toBeDefined();
+    expect(result.current.resetChangeTracking).toBeDefined();
+    expect(result.current.resetHistory).toBeDefined();
+    expect(result.current.stepUpModal).toBeDefined();
+    expect(result.current.ChangesSummary).toBeDefined();
+    expect(result.current.changedFields).toBeDefined();
+  });
+});

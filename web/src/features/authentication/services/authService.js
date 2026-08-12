@@ -406,6 +406,18 @@ export async function getProfile() {
   })
 }
 
+/**
+ * Mark the business-owner welcome state as completed
+ */
+export async function markWelcomeComplete() {
+  const current = getCurrentUser()
+  const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })
+  return await fetchJsonWithFallback('/api/auth/welcome-complete', {
+    method: 'PATCH',
+    headers,
+  })
+}
+
 export async function firstLoginChangeCredentials(payload) {
   const current = getCurrentUser()
   const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })

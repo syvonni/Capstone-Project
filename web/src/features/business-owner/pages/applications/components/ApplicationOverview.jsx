@@ -1,75 +1,26 @@
-import { useState, useEffect } from 'react'
-import { Typography, Card, Grid, Modal, Drawer, Spin, Progress } from 'antd'
+import { useState } from 'react'
+import { Typography, Card, Grid, Modal, Drawer } from 'antd'
 import {
   BookOutlined,
   CustomerServiceOutlined
 } from '@ant-design/icons'
-import DynamicPageContent from '@/shared/components/DynamicPageContent'
+import DynamicPageContent from '@/shared/components/cms/DynamicPageContent'
 import ApplicationInfoCard from './ApplicationInfoCard'
-import ApplicationFeeBreakdownModal from './modals/ApplicationFeeBreakdownModal'
-import { isReturnedStatus } from '../utils/statusUtils'
-import { get } from '@/lib/http'
+import ApplicationFeeBreakdownModal from '@/shared/components/applications/ApplicationFeeBreakdownModal'
+import { useApplicationFees } from '../hooks/useApplicationFees'
 
 const { Title, Text } = Typography
 const { useBreakpoint } = Grid
 
-export default function ApplicationOverview({ visibleSections, sectionCompleteMap, token, _formType, _category, business = null, onViewReceipt, onViewAppealReceipt, onViewAppealDetails, onAppealClick, loadingAppealDetails, appealDetails, onShowAppRejectionModal, onShowAppealRejectionModal, onShowApprovalCommentModal, onProgressClick }) {
+export default function ApplicationOverview({ visibleSections, _sectionCompleteMap, formValues, token, _formType, _category, application = null, onViewReceipt, onViewAppealReceipt, onViewAppealDetails, onAppealClick, loadingAppealDetails, appealDetails, onShowAppRejectionModal, onShowAppealRejectionModal, onShowApprovalCommentModal, onProgressClick }) {
   const screens = useBreakpoint()
   const [hoveredCard, setHoveredCard] = useState(null)
   const [manualVisible, setManualVisible] = useState(false)
   const [feeModalVisible, setFeeModalVisible] = useState(false)
-  const [feeData, setFeeData] = useState(null)
-  const [loadingFees, setLoadingFees] = useState(false)
-
-  const appStatus = business?.applicationStatus || ''
-  const isReturned = isReturnedStatus(appStatus)
-
-  const completedCount = visibleSections.filter((_, idx) => sectionCompleteMap[idx] === true).length
-  const totalCount = visibleSections.length
-  const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
-
-  // Fetch fee data when business formType changes
-  useEffect(() => {
-    const fetchFees = async () => {
-      if (!business?.formType) return
-
-      try {
-        setLoadingFees(true)
-        const response = await get(`/api/business/application-fees/by-permit-form/${business.formType}`)
-        
-        if (response?.success) {
-          setFeeData(response)
-        } else {
-          setFeeData({ success: false, fees: [], total: 0 })
-        }
-      } catch (error) {
-        console.error('Failed to fetch fees:', error)
-        setFeeData({ success: false, fees: [], total: 0 })
-      } finally {
-        setLoadingFees(false)
-      }
-    }
-
-    fetchFees()
-  }, [business?.formType])
+  const { feeData, loadingFees } = useApplicationFees(application?.formType)
 
   // Different cards for returned state vs new application
-  const overviewCards = isReturned ? [
-    {
-      key: 'manual',
-      icon: <BookOutlined />,
-      title: 'BizClear Manual',
-      isButton: true,
-      onClick: () => setManualVisible(true)
-    },
-    {
-      key: 'help',
-      icon: <CustomerServiceOutlined />,
-      title: 'Need More Help?',
-      isButton: true,
-      onClick: () => window.location.href = '/help'
-    }
-  ] : [
+  const overviewCards = [
     {
       key: 'manual',
       icon: <BookOutlined />,
@@ -88,11 +39,11 @@ export default function ApplicationOverview({ visibleSections, sectionCompleteMa
 
   return (
     <div>
-      {/* ApplicationInfoCard - always shown if business exists */}
-      {business && (
+      {/* ApplicationInfoCard - always shown if application exists */}
+      {application && (
         <div>
           <ApplicationInfoCard
-            business={business}
+            application={application}
             onProgressClick={onProgressClick}
             onViewReceipt={onViewReceipt}
             onViewAppealReceipt={onViewAppealReceipt}
@@ -107,6 +58,7 @@ export default function ApplicationOverview({ visibleSections, sectionCompleteMa
             feeData={feeData}
             loadingFees={loadingFees}
             sections={visibleSections || []}
+            formValues={formValues}
           />
         </div>
       )}
@@ -162,53 +114,7 @@ export default function ApplicationOverview({ visibleSections, sectionCompleteMa
               <Title level={5} style={{ margin: 0 }}>
                 {card.title}
               </Title>
-              {card.isProgress ? (
-                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  <Progress
-                    type="dashboard"
-                    percent={percentage}
-                    gapDegree={50}
-                    gapPlacement="bottom"
-                    size={140}
-                    strokeColor={token.colorPrimary}
-                  />
-                </div>
-              ) : card.isFeeCard ? (
-                <>
-                  {card.loadingFees ? (
-                    <Spin size="small" />
-                  ) : (
-                    <Text type="secondary" style={{ marginTop: 4 }}>
-                      {card.feeData?.success
-                        ? `${card.feeData.fees?.length || 0} fee item${(card.feeData.fees?.length || 0) > 1 ? 's' : ''}`
-                        : 'Fee information unavailable'
-                      }
-                    </Text>
-                  )}
-                  <div
-                    style={{
-                      maxHeight: screens.md && hoveredCard === card.key ? 30 : 0,
-                      overflow: 'hidden',
-                      transition: screens.md ? 'max-height 0.15s ease-out' : 'none',
-                    }}
-                  >
-                    <Text
-                      style={{
-                        display: 'block',
-                        marginTop: 8,
-                        color: token.colorPrimary,
-                        fontSize: 12,
-                        fontWeight: 500,
-                        opacity: screens.md && hoveredCard === card.key ? 1 : 0,
-                        transform: screens.md && hoveredCard === card.key ? 'translateY(0)' : 'translateY(10px)',
-                        transition: screens.md ? 'opacity 0.15s ease-out, transform 0.15s ease-out' : 'none',
-                      }}
-                    >
-                      View fees →
-                    </Text>
-                  </div>
-                </>
-              ) : card.isButton ? (
+              {card.isButton ? (
                 <>
                   <Text type="secondary" style={{ marginTop: 4 }}>
                     {card.key === 'help' ? 'Request help from our officers!' : 'Read policies and guidelines.'}
@@ -236,30 +142,7 @@ export default function ApplicationOverview({ visibleSections, sectionCompleteMa
                     </Text>
                   </div>
                 </>
-              ) : (
-                card.key === 'how-it-works' ? (
-                  <Text style={{
-                    margin: 0,
-                    marginTop: 4,
-                    color: token.colorTextSecondary
-                  }}>
-                    {card.content[0]}
-                  </Text>
-                ) : (
-                  <ul style={{
-                    paddingLeft: 20,
-                    margin: 0,
-                    marginTop: 4,
-                    color: token.colorTextSecondary
-                  }}>
-                    {card.content.map((item, idx) => (
-                      <li key={idx} style={{ marginBottom: idx < card.content.length - 1 ? 4 : 0 }}>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                )
-              )}
+              ) : null}
             </div>
           </Card>
         ))}
@@ -294,7 +177,6 @@ export default function ApplicationOverview({ visibleSections, sectionCompleteMa
         onCancel={() => setFeeModalVisible(false)}
         feeData={feeData}
         loadingFees={loadingFees}
-        token={token}
       />
     </div>
   )

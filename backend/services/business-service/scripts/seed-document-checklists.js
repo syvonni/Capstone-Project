@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
-const ClaimableDocument = require("./src/models/ClaimableDocument");
-const Checklist = require("./src/models/Checklist");
-const InspectionItem = require("./src/models/InspectionItem");
-const Violation = require("./src/models/Violation");
-const Fee = require("./src/models/Fee");
+const ClaimableDocument = require("../../../shared/models/ClaimableDocument");
+const Checklist = require("../src/models/Checklist");
+const InspectionItem = require("../src/models/InspectionItem");
+const Violation = require("../src/models/Violation");
+const Fee = require("../../../shared/models/Fee");
 
 mongoose
   .connect(

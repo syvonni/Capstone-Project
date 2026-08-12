@@ -141,6 +141,8 @@ export async function deleteBusiness(businessId) {
   return res
 }
 
+
+
 /**
  * Set a business as primary
  * @param {string} businessId - Business ID
@@ -165,30 +167,4 @@ export async function createWalkInApplication(ownerId, businessData) {
   return res
 }
 
-/**
- * Submit a business application
- * @param {string} businessId - Business ID
- */
-export async function submitBusinessApplication(businessId) {
-  const res = await post(`${BASE_PATH}/business-registration/${businessId}/submit`)
-  return res
-}
 
-/**
- * Update payment generation status for a business
- * @param {string} businessId - Business ID
- * @param {object} status - Payment generation status
- */
-export async function updatePaymentGenerationStatus(businessId, status) {
-  const res = await put(`${BASE_PATH}/businesses/${businessId}/payment-generation-status`, status)
-  return res
-}
-
-/**
- * Get payment generation status for a business
- * @param {string} businessId - Business ID
- */
-export async function getPaymentGenerationStatus(businessId) {
-  const res = await get(`${BASE_PATH}/businesses/${businessId}/payment-generation-status`)
-  return res
-}

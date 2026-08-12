@@ -13,17 +13,16 @@ const {
 const {
   cleanupTestData,
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/__tests__/helpers/cleanup");
-const ClaimableDocument = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument");
+const ClaimableDocument = require("../../../../shared/models/ClaimableDocument");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -63,7 +62,7 @@ describe("Claimable Documents API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
 
     it("should return list of documents when documents exist", async () => {
@@ -79,7 +78,7 @@ describe("Claimable Documents API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -106,7 +105,7 @@ describe("Claimable Documents API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data._id).toBe(testDocument._id.toString());
+      expect(response.body._id).toBe(testDocument._id.toString());
     });
   });
 

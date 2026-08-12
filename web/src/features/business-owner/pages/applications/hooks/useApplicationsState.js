@@ -4,15 +4,15 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useBusinessSelection } from './useBusinessSelection'
-import { usePagination } from './usePagination'
-import { useFilters } from './useFilters'
-import { useFormState } from './useFormState'
-import { useBusinessDashboard } from './useBusinessDashboard'
+import { useApplicationSelection } from './useApplicationSelection'
+import { useApplicationPagination } from './useApplicationPagination'
+import { useApplicationFilters } from './useApplicationFilters'
+import { useApplicationFormState } from './useApplicationFormState'
+import { useApplicationsDashboard } from './useApplicationsDashboard'
 
 export function useApplicationsState() {
-  // Business data state
-  const [businesses, setBusinesses] = useState([])
+  // Application data state
+  const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null)
 
@@ -22,21 +22,22 @@ export function useApplicationsState() {
   // UI view state
   const [showSettings, setShowSettings] = useState(false)
   const [showWelcomeState, setShowWelcomeState] = useState(false)
+  const [showApplicationTypeSelector, setShowApplicationTypeSelector] = useState(false)
 
   // Refs
   const initialFetchDone = useRef(false)
   const isFirstRender = useRef(true)
 
   // Composed hooks
-  const businessSelection = useBusinessSelection()
-  const pagination = usePagination()
-  const filters = useFilters()
-  const formState = useFormState()
-  
-  // Business dashboard hook (needs state props)
-  const businessDashboard = useBusinessDashboard({
-    businesses,
-    setBusinesses,
+  const applicationSelection = useApplicationSelection()
+  const pagination = useApplicationPagination()
+  const filters = useApplicationFilters()
+  const formState = useApplicationFormState()
+
+  // Applications dashboard hook (needs state props)
+  const applicationsDashboard = useApplicationsDashboard({
+    _applications: applications,
+    setApplications,
     editingApplication: formState.editingApplication,
     setEditingApplication: formState.setEditingApplication,
     loading,
@@ -66,7 +67,7 @@ export function useApplicationsState() {
       const savedRead = localStorage.getItem('bizclear_read_announcements')
       if (savedRead) {
         const parsed = JSON.parse(savedRead)
-        
+
         // Migrate old boolean format to timestamp format
         const migrated = Object.fromEntries(
           Object.entries(parsed).map(([key, value]) => [
@@ -74,18 +75,18 @@ export function useApplicationsState() {
             typeof value === 'boolean' ? Date.now() : value
           ])
         )
-        
+
         // Filter out any entries older than 30 days to prevent localStorage bloat
         const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000)
         const filtered = Object.fromEntries(
           Object.entries(migrated).filter(([_, timestamp]) => timestamp > thirtyDaysAgo)
         )
-        
+
         // Save migrated data if format changed
         if (JSON.stringify(parsed) !== JSON.stringify(filtered)) {
           localStorage.setItem('bizclear_read_announcements', JSON.stringify(filtered))
         }
-        
+
         setReadAnnouncements(filtered)
       }
     } catch (e) {
@@ -109,9 +110,9 @@ export function useApplicationsState() {
   }, [])
 
   return {
-    // Business data
-    businesses,
-    setBusinesses,
+    // Application data
+    applications,
+    setApplications,
     loading,
     setLoading,
     lastUpdatedAt,
@@ -124,12 +125,14 @@ export function useApplicationsState() {
     setShowSettings,
     showWelcomeState,
     setShowWelcomeState,
+    showApplicationTypeSelector,
+    setShowApplicationTypeSelector,
     // Composed hooks
-    ...businessSelection,
+    ...applicationSelection,
     ...pagination,
     ...filters,
     ...formState,
-    ...businessDashboard,
+    ...applicationsDashboard,
     // Refs
     initialFetchDone,
     isFirstRender,

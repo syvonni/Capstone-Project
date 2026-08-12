@@ -153,12 +153,6 @@ const EVENT_TYPES = {
     'appeal_rejected',
   ],
 
-  // Edit request events - used when edit requests are submitted and applied
-  edit_requests: [
-    'edit_request_submitted',
-    'edit_request_applied',
-  ],
-
   // Field review events - used when fields are reviewed
   field_reviews: [
     'field_reviewed',

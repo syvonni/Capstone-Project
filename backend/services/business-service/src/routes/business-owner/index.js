@@ -10,8 +10,8 @@ const applicationFeesRouter = require("./applicationFees.routes");
 // Mount routes at their specific paths (matching original index.js)
 router.use(profileRouter); // profile was mounted at /api/business directly
 router.use(applicationsRouter); // applicationsRouter already has /applications prefix
-router.use(appealsRouter);
-router.use(paymentsRouter);
+router.use("/appeals", appealsRouter);
+router.use("/payments", paymentsRouter);
 router.use("/application-fees", applicationFeesRouter);
 
 module.exports = router;

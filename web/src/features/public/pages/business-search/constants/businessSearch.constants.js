@@ -23,7 +23,7 @@ export const MOCK_BUSINESSES = [
     permitValidity: 'Valid until Jan 2027',
     businessType: 'Retail',
     barangay: 'Poblacion',
-    verificationBadge: 'For Renewal',
+    verificationBadge: 'Active',
     ownerName: 'Maria Santos',
     ownerAddress: '456 Market Ave, Poblacion, Alaminos City',
     issuedOn: 'Feb 20, 2024',

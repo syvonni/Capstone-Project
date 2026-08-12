@@ -1,4 +1,5 @@
-import { mockPayment } from '../../../services/paymentService'
+import { createPaymentRecord } from '../../../services/paymentService'
+import { buildReceiptInfo } from '../utils/paymentUtils'
 
 /**
  * Hook for managing payment flow for permit applications
@@ -31,7 +32,7 @@ export function useApplicationPaymentFlow({
 
     if (isReturned) {
       // For returned applications, show confirmation modal via the component
-      // This is handled by the parent component (ApplicationHeader or ApplicationPermitForm)
+      // This is handled by the parent component (ApplicationDetailHeader or ApplicationForm)
       // which will call handleSubmit directly after confirmation
       setShowPaymentModal(false)
     } else {
@@ -43,39 +44,61 @@ export function useApplicationPaymentFlow({
     setShowPaymentModal(false)
     setIsSubmittingPayment(true)
     // Store receipt data to show after submission
-    const receiptInfo = {
+    const receiptInfo = buildReceiptInfo({
       receiptId,
-      transactionDate: new Date().toLocaleString(),
+      application: editingApplication,
+      feeData,
       transactionName: 'Business Permit Application',
-      fees: feeData?.fees || [],
-      totalAmount: feeData?.total || 0,
-      applicationReferenceNumber: editingApplication?.applicationReferenceNumber || 'N/A',
-    }
+    })
     setReceiptData(receiptInfo)
     // Submit application after successful payment
     try {
       const values = await form.validateFields()
-      await handleSubmit(values, true)
+      const businessActivities = form.getFieldValue('businessActivities')
+      const allValues = businessActivities !== undefined
+        ? { ...form.getFieldsValue(true), ...values, businessActivities }
+        : { ...form.getFieldsValue(true), ...values }
+      const submitResponse = await handleSubmit(allValues, true)
+      const submittedApplication =
+        submitResponse?.application ||
+        submitResponse?.data?.application ||
+        editingApplication
 
       // Create mock payment record in backend
       let backendReceiptNumber = null
+      let backendPaymentId = null
       try {
-        const businessId = editingApplication?.businessId || editingApplication?._id
-        const paymentResponse = await mockPayment({
-          businessId,
-          amount: receiptInfo.totalAmount,
-          fees: receiptInfo.fees,
-          transactionName: receiptInfo.transactionName,
-          paymentType: 'registration_fee',
-        })
-        backendReceiptNumber = paymentResponse?.receiptNumber
+        const applicationId = submittedApplication?.applicationId || submittedApplication?._id
+        if (applicationId) {
+          const paymentResponse = await createPaymentRecord({
+            businessId: applicationId,
+            amount: receiptInfo.totalAmount,
+            fees: receiptInfo.fees,
+            transactionName: receiptInfo.transactionName,
+            paymentType: 'registration_fee',
+            receiptNumber: receiptId,
+            paymentId: receiptId,
+          })
+          backendReceiptNumber = paymentResponse?.receiptNumber
+          backendPaymentId = paymentResponse?.paymentId
+        }
       } catch (err) {
         console.error('Failed to create mock payment record:', err)
         // Continue anyway - payment record creation is non-blocking
       }
 
-      // Update receipt data with backend receipt number
-      setReceiptData((prev) => ({ ...prev, receiptNumber: backendReceiptNumber }))
+      const finalReceiptId = backendReceiptNumber || backendPaymentId || receiptId
+
+      // Update receipt data with backend receipt details and submitted application reference
+      setReceiptData((prev) => ({
+        ...prev,
+        receiptId: finalReceiptId,
+        receiptNumber: backendReceiptNumber,
+        applicationReferenceNumber:
+          submittedApplication?.applicationReferenceNumber ||
+          prev?.applicationReferenceNumber ||
+          'N/A',
+      }))
 
       // Show receipt modal after successful submission
       setShowReceiptModal(true)

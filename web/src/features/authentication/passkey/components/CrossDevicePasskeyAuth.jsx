@@ -1,6 +1,6 @@
 import React from 'react'
 import { Button, Space, Typography, Alert, theme } from 'antd'
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
 import { ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons'
 import QrDisplay from '@/features/authentication/mfa/components/QrDisplay.jsx'
 import useWebAuthn from '@/features/authentication/hooks/useWebAuthn.js'

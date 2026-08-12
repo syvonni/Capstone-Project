@@ -957,7 +957,7 @@ class PermitApplicationService {
   async resendEmail(id, emailType, officerId) {
     if (
       !emailType ||
-      !["submitted", "approved", "rejected", "returned"].includes(emailType)
+      !["submitted", "resubmitted", "approved", "rejected", "returned"].includes(emailType)
     ) {
       const error = new Error("Invalid email type");
       error.code = "INVALID_DATA";
@@ -979,8 +979,18 @@ class PermitApplicationService {
       throw error;
     }
 
-    // Send email (fire and forget)
-    await applicationEmailService.sendApplicationEmail(application, emailType);
+    // Send email and capture real result
+    const emailResult = await applicationEmailService.sendApplicationEmail(
+      application,
+      emailType,
+    );
+
+    if (emailResult?.success === false) {
+      const error = new Error(emailResult.error || "Failed to resend email");
+      error.code = "EMAIL_SEND_FAILED";
+      error.status = 500;
+      throw error;
+    }
 
     // Log audit event
     await logAuditEvent(

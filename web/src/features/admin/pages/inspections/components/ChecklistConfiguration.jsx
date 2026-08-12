@@ -12,9 +12,9 @@ import { getPostRequirements } from '@/features/admin/services/postRequirementSe
 const { Text } = Typography
 const { TextArea } = Input
 
-export default function ChecklistConfiguration({ form, handleFormValuesChange }) {
+export default function ChecklistConfiguration({ form, handleFormValuesChange, onFormattersChange }) {
   const { token } = theme.useToken()
-  
+
   const [inspectionItems, setInspectionItems] = useState([])
   const [selectedItem, setSelectedItem] = useState(null)
   const [postRequirements, setPostRequirements] = useState([])
@@ -28,7 +28,6 @@ export default function ChecklistConfiguration({ form, handleFormValuesChange })
       } catch (error) {
         console.error('Failed to fetch inspection items:', error)
         message.error('Failed to load inspection items')
-      } finally {
       }
     }
     fetchInspectionItems()
@@ -48,6 +47,32 @@ export default function ChecklistConfiguration({ form, handleFormValuesChange })
     }
     fetchPostRequirements()
   }, [])
+
+  useEffect(() => {
+    if (!onFormattersChange) return;
+
+    const nameOf = (list) => (id) => {
+      if (!id) return '(empty)';
+      const match = list.find((item) => item._id === id || String(item._id) === String(id));
+      return match?.name || String(id);
+    };
+
+    const joinNames = (list) => (ids) => {
+      if (!ids || ids.length === 0) return '(empty)';
+      return ids.map(nameOf(list)).join(', ');
+    };
+
+    onFormattersChange({
+      formatters: {
+        postRequirementId: nameOf(postRequirements),
+        items: joinNames(inspectionItems),
+      },
+      fieldLabels: {
+        postRequirementId: 'Post Requirement',
+        items: 'Inspection Items',
+      },
+    });
+  }, [inspectionItems, postRequirements, onFormattersChange]);
 
   const moveItem = (fromIndex, toIndex) => {
     const currentItems = form.getFieldValue('items') || []
@@ -152,6 +177,7 @@ export default function ChecklistConfiguration({ form, handleFormValuesChange })
                   <Form.Item
                     name={[field.name, 'title']}
                     label="Title"
+                    initialValue=""
                     style={{ marginBottom: 0 }}
                   >
                     <Input placeholder="e.g., NFPA 10 - Portable Fire Extinguishers" />
@@ -159,6 +185,7 @@ export default function ChecklistConfiguration({ form, handleFormValuesChange })
                   <Form.Item
                     name={[field.name, 'description']}
                     label="Description"
+                    initialValue=""
                     style={{ marginBottom: 0 }}
                   >
                     <TextArea rows={2} placeholder="Brief description of the legal reference" />

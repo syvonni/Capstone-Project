@@ -1,8 +1,7 @@
 import { Form, Input, Select, theme, Typography } from 'antd'
 import { useState, useEffect, useRef } from 'react'
 import { getDocuments } from '@/features/admin/services/documentService'
-import FormContentEditor from '@/shared/components/FormContentEditor'
-import { UNIFIED_BUSINESS_PERMIT_SECTIONS } from '../constants/formDefinitions.constants'
+import FormContentEditor from '@/shared/components/formEditor/FormContentEditor'
 
 const { Text } = Typography
 
@@ -32,7 +31,7 @@ export default function ConfigurationPanel({ form, handleFormValuesChange, title
       name: title || '',
       description: description || '',
       notes: notes || '',
-      sections: sections || UNIFIED_BUSINESS_PERMIT_SECTIONS,
+      sections: sections || [],
     })
   }, [title, description, notes, sections, form])
 
@@ -108,7 +107,7 @@ export default function ConfigurationPanel({ form, handleFormValuesChange, title
         <Text style={{ marginBottom: 8, display: 'block' }}>Form Sections</Text>
         <FormContentEditor
           ref={editorRef}
-          initialSections={sections || UNIFIED_BUSINESS_PERMIT_SECTIONS}
+          initialSections={sections || []}
           definitionId="unified-business-permit"
           onChange={() => {
             const newSections = editorRef.current?.getSections()

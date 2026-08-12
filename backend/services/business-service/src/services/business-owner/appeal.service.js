@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const Appeal = require("../../models/Appeal");
-const BusinessProfile = require("../../models/BusinessProfile");
+const Business = require("../../models/Business");
 const Application = require("../../models/Application");
 const Payment = require("../../models/Payment");
 const User = require("../../models/User");
@@ -33,17 +33,18 @@ class AppealService {
       };
 
       // Import mailer from auth-service lib
-      const mailer = require("../../../../services/auth-service/src/lib/mailer");
+      const mailer = require("../../../../auth-service/src/lib/mailer");
 
+      let result;
       switch (emailType) {
         case "appeal_submitted":
-          await mailer.sendAppealSubmittedEmail(emailData);
+          result = await mailer.sendAppealSubmittedEmail(emailData);
           break;
         case "appeal_approved":
-          await mailer.sendAppealApprovedEmail(emailData);
+          result = await mailer.sendAppealApprovedEmail(emailData);
           break;
         case "appeal_denied":
-          await mailer.sendAppealDeniedEmail({
+          result = await mailer.sendAppealDeniedEmail({
             ...emailData,
             resolution: metadata.resolution,
           });
@@ -53,6 +54,10 @@ class AppealService {
           return;
       }
 
+      if (!result || result.success === false) {
+        throw new Error(result?.error || "Provider did not confirm send");
+      }
+
       // Update emailSendStatus to sent
       application.emailSendStatus = application.emailSendStatus || {};
       application.emailSendStatus[emailType] = {
@@ -60,6 +65,8 @@ class AppealService {
         retryCount: 0,
         lastAttempt: new Date(),
         lockUntil: null,
+        to: emailData.to,
+        provider: process.env.EMAIL_API_PROVIDER || "resend",
       };
       await application.save();
     } catch (err) {
@@ -76,8 +83,14 @@ class AppealService {
         retryCount: currentRetry,
         lastAttempt: new Date(),
         lockUntil: null,
+        error: err.message,
+        to: emailData?.to || null,
+        provider: process.env.EMAIL_API_PROVIDER || "resend",
       };
       await application.save();
+
+      // Re-throw so callers (e.g. resend) know the email failed
+      throw err;
     }
   }
 
@@ -94,15 +107,107 @@ class AppealService {
   }
 
   /**
-   * Helper: build query that matches either businessId or subdoc _id
+   * Resolve a business/application identifier to an entity.
+   * The identifier may be a Business.businessId, Business._id,
+   * Application.applicationId or Application._id.
+   * Returns { type, id, userId, reviewedBy, name } or null.
    */
-  buildBusinessLookupQuery(identifier) {
+  async _resolveEntity(identifier, userId) {
     const target = String(identifier || "");
-    const clauses = [{ "businesses.businessId": target }];
-    if (mongoose.Types.ObjectId.isValid(target)) {
-      clauses.push({ "businesses._id": new mongoose.Types.ObjectId(target) });
+    if (!target) return null;
+    const isObjectId = mongoose.Types.ObjectId.isValid(target);
+
+    // Try Business by _id
+    if (isObjectId) {
+      const business = await Business.findById(target).lean();
+      if (business) {
+        return {
+          type: "business",
+          id: business._id,
+          userId: business.userId,
+          reviewedBy: business.reviewedBy || null,
+          name:
+            business.businessName ||
+            business.registeredBusinessName ||
+            business.formData?.businessName ||
+            null,
+        };
+      }
     }
-    return clauses.length === 1 ? clauses[0] : { $or: clauses };
+
+    // Try Business by businessId string
+    const businessByString = await Business.findOne({
+      businessId: target,
+    }).lean();
+    if (businessByString) {
+      return {
+        type: "business",
+        id: businessByString._id,
+        userId: businessByString.userId,
+        reviewedBy: businessByString.reviewedBy || null,
+        name:
+          businessByString.businessName ||
+          businessByString.registeredBusinessName ||
+          businessByString.formData?.businessName ||
+          null,
+      };
+    }
+
+    // Try Application by _id
+    if (isObjectId) {
+      const application = await Application.findById(target).lean();
+      if (application) {
+        return {
+          type: "application",
+          id: application._id,
+          userId: application.userId,
+          reviewedBy: application.reviewedBy || null,
+          name:
+            application.businessName ||
+            application.formData?.businessName ||
+            null,
+        };
+      }
+    }
+
+    // Try Application by applicationId string
+    const applicationByString = await Application.findOne({
+      applicationId: target,
+    }).lean();
+    if (applicationByString) {
+      return {
+        type: "application",
+        id: applicationByString._id,
+        userId: applicationByString.userId,
+        reviewedBy: applicationByString.reviewedBy || null,
+        name:
+          applicationByString.businessName ||
+          applicationByString.formData?.businessName ||
+          null,
+      };
+    }
+
+    // Owner-wide fallback
+    if (userId) {
+      const ownerApplication = await Application.findOne({
+        userId,
+        $or: [{ _id: target }, { applicationId: target }],
+      }).lean();
+      if (ownerApplication) {
+        return {
+          type: "application",
+          id: ownerApplication._id,
+          userId: ownerApplication.userId,
+          reviewedBy: ownerApplication.reviewedBy || null,
+          name:
+            ownerApplication.businessName ||
+            ownerApplication.formData?.businessName ||
+            null,
+        };
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -130,28 +235,6 @@ class AppealService {
   }
 
   /**
-   * Helper: find business in profile by either businessId or subdoc _id
-   */
-  findBusinessInProfile(profile, identifier) {
-    if (!profile?.businesses) return null;
-    const target = String(identifier);
-    return profile.businesses.find(
-      (b) => b.businessId === target || String(b._id) === target,
-    );
-  }
-
-  /**
-   * Helper: find business index in profile
-   */
-  findBusinessIndexInProfile(profile, identifier) {
-    if (!profile?.businesses) return -1;
-    const target = String(identifier);
-    return profile.businesses.findIndex(
-      (b) => b.businessId === target || String(b._id) === target,
-    );
-  }
-
-  /**
    * Helper: generate payment ID
    */
   async generatePaymentId() {
@@ -162,23 +245,12 @@ class AppealService {
   }
 
   /**
-   * Find profile for appeal
+   * Find the entity (Business or Application) an appeal is for.
    */
-  async findProfileForAppeal(appeal) {
+  async findEntityForAppeal(appeal) {
     const businessId = appeal?.businessId;
     const requestedBy = appeal?.requestedBy;
-
-    let profile = await BusinessProfile.findOne(
-      this.buildBusinessLookupQuery(businessId),
-    );
-    let businessIndex = this.findBusinessIndexInProfile(profile, businessId);
-
-    if ((!profile || businessIndex === -1) && requestedBy) {
-      profile = await BusinessProfile.findOne({ userId: requestedBy });
-      businessIndex = this.findBusinessIndexInProfile(profile, businessId);
-    }
-
-    return { profile, businessIndex };
+    return this._resolveEntity(businessId, requestedBy);
   }
 
   /**
@@ -208,49 +280,60 @@ class AppealService {
       Appeal.countDocuments(filter),
     ]);
 
-    // Populate businessName from BusinessProfile for each appeal
-    // NOTE: Do NOT use .lean() here — we need Mongoose decryption hooks to fire
-    // so that businessId/businessName fields are readable plaintext.
+    // Populate businessName from Business or Application records
     const businessIds = [
       ...new Set(appeals.map((a) => a.businessId).filter(Boolean)),
     ];
-    const profileQuery =
+
+    const [businesses, applications] = await Promise.all([
       businessIds.length > 0
-        ? {
+        ? Business.find({
             $or: businessIds.flatMap((id) => {
-              const clauses = [{ "businesses.businessId": id }];
+              const clauses = [{ businessId: id }];
               if (mongoose.Types.ObjectId.isValid(id)) {
-                clauses.push({
-                  "businesses._id": new mongoose.Types.ObjectId(id),
-                });
+                clauses.push({ _id: new mongoose.Types.ObjectId(id) });
               }
               return clauses;
             }),
-          }
-        : { _id: null }; // no-op query if no businessIds
-    const profiles =
-      businessIds.length > 0 ? await BusinessProfile.find(profileQuery) : [];
+          })
+          .select("businessId businessName registeredBusinessName formData.businessName")
+          .lean()
+        : [],
+      businessIds.length > 0
+        ? Application.find({
+            $or: businessIds.flatMap((id) => {
+              const clauses = [{ applicationId: id }];
+              if (mongoose.Types.ObjectId.isValid(id)) {
+                clauses.push({ _id: new mongoose.Types.ObjectId(id) });
+              }
+              return clauses;
+            }),
+          })
+          .select("applicationId businessName formData.businessName")
+          .lean()
+        : [],
+    ]);
 
-    // Build businessId -> { name, subdocId, businessId } map for alias resolution
+    // Build identifier -> { name, canonicalId, type } map
     const businessInfoMap = new Map();
-    for (const profile of profiles) {
-      for (const biz of profile.businesses || []) {
-        const bizId = biz.businessId || String(biz._id);
-        const subdocId = String(biz._id || "");
-        const name =
-          biz.businessName ||
-          biz.registeredBusinessName ||
-          biz.formData?.businessName;
-        const info = { name, subdocId, businessId: biz.businessId || "" };
-        // Map both businessId and subdoc _id to the same info
-        if (bizId && !businessInfoMap.has(bizId))
-          businessInfoMap.set(bizId, info);
-        if (subdocId && !businessInfoMap.has(subdocId))
-          businessInfoMap.set(subdocId, info);
-      }
+    for (const biz of businesses) {
+      const name =
+        biz.businessName ||
+        biz.registeredBusinessName ||
+        biz.formData?.businessName ||
+        null;
+      const info = { name, canonicalId: String(biz.businessId || biz._id) };
+      if (biz.businessId) businessInfoMap.set(biz.businessId, info);
+      businessInfoMap.set(String(biz._id), info);
+    }
+    for (const app of applications) {
+      const name = app.businessName || app.formData?.businessName || null;
+      const info = { name, canonicalId: app.applicationId || String(app._id) };
+      if (app.applicationId) businessInfoMap.set(app.applicationId, info);
+      businessInfoMap.set(String(app._id), info);
     }
 
-    // Attach businessName and alias IDs to each appeal
+    // Attach businessName and canonical ID to each appeal
     const enrichedAppeals = appeals.map((appeal) => {
       const info =
         businessInfoMap.get(appeal.businessId) ||
@@ -258,8 +341,7 @@ class AppealService {
       return {
         ...appeal,
         businessName: info?.name || null,
-        _businessSubdocId: info?.subdocId || null,
-        _canonicalBusinessId: info?.businessId || null,
+        _canonicalBusinessId: info?.canonicalId || null,
       };
     });
 
@@ -282,15 +364,9 @@ class AppealService {
     }
 
     // Populate businessName
-    const { profile } = await this.findProfileForAppeal(appeal);
-    if (profile) {
-      const business = this.findBusinessInProfile(profile, appeal.businessId);
-      if (business) {
-        appeal.businessName =
-          business.businessName ||
-          business.registeredBusinessName ||
-          business.formData?.businessName;
-      }
+    const entity = await this.findEntityForAppeal(appeal);
+    if (entity?.name) {
+      appeal.businessName = entity.name;
     }
 
     return appeal;
@@ -369,17 +445,12 @@ class AppealService {
       throw error;
     }
 
-    // Look up claiming officer on the business so the appeal is auto-assigned
+    // Look up claiming officer on the business/application so the appeal is auto-assigned
     let claimingOfficerId = null;
     try {
-      const profile = await BusinessProfile.findOne(
-        this.buildBusinessLookupQuery(businessId),
-      );
-      if (profile) {
-        const biz = this.findBusinessInProfile(profile, businessId);
-        if (biz?.reviewedBy) {
-          claimingOfficerId = biz.reviewedBy;
-        }
+      const entity = await this._resolveEntity(businessId);
+      if (entity?.reviewedBy) {
+        claimingOfficerId = entity.reviewedBy;
       }
     } catch (lookupErr) {
       console.error(

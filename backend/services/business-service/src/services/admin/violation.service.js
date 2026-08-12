@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
 const Violation = require("../../models/Violation");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const InspectionItem = require("../../models/InspectionItem");
 const PostRequirement = require("../../models/PostRequirement");
 const Lob = require("../../models/Lob");
 const Checklist = require("../../models/Checklist");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const { getUserInfo } = require("../../../../../shared/lib/getUserInfo");
 const ViolationAuditHelper = require("../../lib/auditHelpers/violationAuditHelper");
 const { auditClient } = require("../../../../../shared/lib/httpClient");
@@ -17,15 +17,13 @@ class ViolationService {
   async list(filters = {}) {
     const { category, severity, isActive, feeId } = filters;
     const filter = {};
-    
+
     if (category) filter.category = category;
     if (severity) filter.severity = severity;
     if (isActive !== undefined) filter.isActive = isActive === "true";
     if (feeId) filter.feeId = new mongoose.Types.ObjectId(feeId);
 
-    const violations = await Violation.find(filter)
-      .populate("feeId")
-      .sort({ name: 1 });
+    const violations = await Violation.find(filter).sort({ name: 1 });
 
     return violations;
   }
@@ -41,8 +39,8 @@ class ViolationService {
       throw error;
     }
 
-    const violation = await Violation.findById(id).populate("feeId");
-    
+    const violation = await Violation.findById(id);
+
     if (!violation) {
       const error = new Error("Violation not found");
       error.code = "NOT_FOUND";
@@ -102,7 +100,9 @@ class ViolationService {
     for (const RelatedModel of relatedCollections) {
       const existing = await RelatedModel.findOne({ name });
       if (existing) {
-        const error = new Error(`Name already exists in ${RelatedModel.modelName}`);
+        const error = new Error(
+          `Name already exists in ${RelatedModel.modelName}`,
+        );
         error.code = "DUPLICATE_NAME";
         error.status = 400;
         throw error;
@@ -134,7 +134,13 @@ class ViolationService {
     const violation = await Violation.create(violationData);
 
     const userInfo = await getUserInfo(userId);
-    ViolationAuditHelper.logCreated(req, userId, userInfo, violation, "admin").catch((err) =>
+    ViolationAuditHelper.logCreated(
+      req,
+      userId,
+      userInfo,
+      violation,
+      "admin",
+    ).catch((err) =>
       console.error("Failed to log audit event for violation create", err),
     );
 
@@ -212,7 +218,7 @@ class ViolationService {
 
     const updated = await Violation.findByIdAndUpdate(id, updates, {
       new: true,
-    }).populate("feeId");
+    });
 
     // Disable the associated penalty fee if violation is being disabled
     if (
@@ -327,8 +333,14 @@ class ViolationService {
     const oldViolation = new Violation(oldValues);
     oldViolation._id = violation._id;
 
-    ViolationAuditHelper.logDisabled(req, userId, userInfo, oldViolation, "admin").catch(
-      (err) => console.error("Failed to log audit event for violation delete", err),
+    ViolationAuditHelper.logDisabled(
+      req,
+      userId,
+      userInfo,
+      oldViolation,
+      "admin",
+    ).catch((err) =>
+      console.error("Failed to log audit event for violation delete", err),
     );
 
     return { disabled: true };

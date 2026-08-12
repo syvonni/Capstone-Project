@@ -1,10 +1,10 @@
 const mongoose = require("mongoose");
 const PostRequirement = require("../../models/PostRequirement");
 const Violation = require("../../models/Violation");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const Lob = require("../../models/Lob");
 const Checklist = require("../../models/Checklist");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const InspectionItem = require("../../models/InspectionItem");
 
 class NameValidationService {

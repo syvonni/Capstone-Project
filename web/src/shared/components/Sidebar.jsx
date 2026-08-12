@@ -1,7 +1,7 @@
   import React, { useState } from 'react'
   import { Layout, Menu, Typography, Grid, Drawer, theme, ConfigProvider } from 'antd'
   import { LeftOutlined, RightOutlined } from '@ant-design/icons'
-  import AnimatedBrandLogo from '@/shared/components/AnimatedBrandLogo.jsx'
+  import AnimatedBrandLogo from '@/shared/components/graphics/AnimatedBrandLogo.jsx'
 
   const { Sider } = Layout
   const { Text } = Typography

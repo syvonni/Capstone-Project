@@ -1,40 +1,49 @@
-import { useState, useMemo, useEffect } from 'react'
-import { theme } from 'antd'
-import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
-import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
-import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
-import VariableConfiguration from './VariableConfiguration'
-import VariableOverview from './VariableOverview'
-import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
-import { useVariableDependencies } from '../hooks/useVariableDependencies'
-import { useVariableForm } from '../hooks/useVariableForm'
-import { useAudit } from '@/shared/audit/hooks/useAudit'
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { theme } from 'antd';
+import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons';
+import DetailHeader from '@/shared/components/DetailHeader';
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal';
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails';
+import VariableConfiguration from './VariableConfiguration';
+import VariableOverview from './VariableOverview';
+import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes';
+import { useVariableDependencies } from '../hooks/useVariableDependencies';
+import { useVariableForm } from '../hooks/useVariableForm.jsx';
+import { useAudit } from '@/shared/audit/hooks/useAudit';
 
 export default function VariableDetailPanel({ variableId, variable, onSave }) {
-  const { token } = theme.useToken()
-  const [historyModalOpen, setHistoryModalOpen] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
+  const { token } = theme.useToken();
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [summaryFormatters, setSummaryFormatters] = useState({});
+  const [summaryFieldLabels, setSummaryFieldLabels] = useState({});
 
-  const isNew = variableId === 'new' || !variable
+  const isNew = variableId === 'new' || !variable;
 
-  const { auditLogs, auditLoading, refresh } = useAudit('variable', variableId, !isNew)
+  const { auditLogs, auditLoading, refresh } = useAudit('variable', variableId, !isNew);
 
-  const initialValues = useMemo(() => ({
-    name: variable?.name || '',
-    description: variable?.description || '',
-    notes: variable?.notes || '',
-    question: variable?.question || '',
-    unit: variable?.unit || '',
-    unitSingular: variable?.unitSingular || '',
-    unitPlural: variable?.unitPlural || '',
-    unitContextSingular: variable?.unitContextSingular || '',
-    unitContextPlural: variable?.unitContextPlural || '',
-    legalBasis: variable?.legalBasis || [],
-    checklistId: variable?.checklistId?._id || null,
-  }), [variable])
+  const initialValues = useMemo(
+    () => ({
+      name: variable?.name || '',
+      description: variable?.description || '',
+      notes: variable?.notes || '',
+      question: variable?.question || '',
+      unit: variable?.unit || '',
+      unitSingular: variable?.unitSingular || '',
+      unitPlural: variable?.unitPlural || '',
+      unitContextSingular: variable?.unitContextSingular || '',
+      unitContextPlural: variable?.unitContextPlural || '',
+      legalBasis: (variable?.legalBasis || []).map((item) => ({
+        url: item?.url || '',
+        title: item?.title ?? '',
+        description: item?.description ?? '',
+      })),
+      checklistId: variable?.checklistId?._id || null,
+    }),
+    [variable]
+  );
 
-  const { dependencies, loading: loadingDependencies } = useVariableDependencies(variableId, isNew)
+  const { dependencies, loading: loadingDependencies } = useVariableDependencies(variableId, isNew);
   const {
     form,
     saving,
@@ -48,27 +57,40 @@ export default function VariableDetailPanel({ variableId, variable, onSave }) {
     handleSave,
     resetChangeTracking,
     stepUpModal,
-  } = useVariableForm({ variableId, variable, initialValues, onSave })
+    changesSummaryModal,
+  } = useVariableForm({
+    variableId,
+    variable,
+    initialValues,
+    onSave,
+    formatters: summaryFormatters,
+    fieldLabels: summaryFieldLabels,
+  });
 
-  const loading = saving || loadingDependencies
+  const loading = saving || loadingDependencies;
 
   // Reset form when variable changes
   useEffect(() => {
     if (variable && !isNew) {
-      form.setFieldsValue(initialValues)
-      resetChangeTracking(initialValues)
+      form.setFieldsValue(initialValues);
+      resetChangeTracking(initialValues);
     }
-  }, [variableId, variable, initialValues, form, resetChangeTracking, isNew])
+  }, [variableId, variable, initialValues, form, resetChangeTracking, isNew]);
+
+  const handleFormattersChange = useCallback(({ formatters, fieldLabels }) => {
+    setSummaryFormatters(formatters);
+    setSummaryFieldLabels(fieldLabels);
+  }, []);
 
   const handleEnterEditMode = () => {
-    setIsEditMode(true)
-  }
+    setIsEditMode(true);
+  };
 
   const handleExitEditMode = () => {
-    setIsEditMode(false)
-    form.setFieldsValue(initialValues)
-    resetChangeTracking(initialValues)
-  }
+    setIsEditMode(false);
+    form.setFieldsValue(initialValues);
+    resetChangeTracking(initialValues);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -90,43 +112,80 @@ export default function VariableDetailPanel({ variableId, variable, onSave }) {
         iconButtons={[
           { icon: <HistoryOutlined />, onClick: () => setHistoryModalOpen(true), title: 'History' },
         ]}
-        actionButtons={isEditMode
-          ? [{ text: 'Exit Edit Mode', icon: <CloseOutlined />, onClick: handleExitEditMode, type: 'default' }]
-          : [{ text: 'Edit', icon: <EditOutlined />, onClick: handleEnterEditMode, type: 'default' }]}
+        actionButtons={
+          isEditMode
+            ? [
+                {
+                  text: 'Exit Edit Mode',
+                  icon: <CloseOutlined />,
+                  onClick: handleExitEditMode,
+                  type: 'default',
+                },
+              ]
+            : [
+                {
+                  text: 'Edit',
+                  icon: <EditOutlined />,
+                  onClick: handleEnterEditMode,
+                  type: 'default',
+                },
+              ]
+        }
         instructionSlotId="admin-variables"
-        selectFields={!isNew ? [
-          {
-            label: 'Status',
-            value: variable?.isActive ? 'active' : 'disabled',
-            onChange: handleStatusChange,
-            width: 120,
-            disabled: dependencies.length > 0,
-            tooltip: dependencies.length > 0 ? 'Cannot change status - variable has dependent items' : undefined,
-            options: [
-              { value: 'active', label: 'Active' },
-              { value: 'disabled', label: 'Disabled' },
-            ],
-          },
-        ] : []}
+        selectFields={
+          !isNew
+            ? [
+                {
+                  label: 'Status',
+                  value: variable?.isActive ? 'active' : 'disabled',
+                  onChange: handleStatusChange,
+                  width: 120,
+                  disabled: dependencies.length > 0,
+                  tooltip:
+                    dependencies.length > 0
+                      ? 'Cannot change status - variable has dependent items'
+                      : undefined,
+                  options: [
+                    { value: 'active', label: 'Active' },
+                    { value: 'disabled', label: 'Disabled' },
+                  ],
+                },
+              ]
+            : []
+        }
       />
       <AuditHistoryModal
         open={historyModalOpen}
         onClose={() => setHistoryModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
-        eventDescriptions={AUDIT_EVENT_INFO.filter(e => ['variable_created', 'variable_updated', 'variable_disabled'].includes(e.event))}
+        eventDescriptions={AUDIT_EVENT_INFO.filter((e) =>
+          ['variable_created', 'variable_updated', 'variable_disabled'].includes(e.event)
+        )}
         showEntityName={false}
         DetailPanelComponent={AuditEventDetails}
         onRefresh={refresh}
       />
+      {changesSummaryModal}
       {stepUpModal}
       <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
         {isEditMode ? (
-          <VariableConfiguration form={form} handleFormValuesChange={handleFormValuesChange} token={token} />
+          <VariableConfiguration
+            form={form}
+            handleFormValuesChange={handleFormValuesChange}
+            onFormattersChange={handleFormattersChange}
+            token={token}
+          />
         ) : (
-          <VariableOverview variable={variable} initialValues={initialValues} dependencies={dependencies} token={token} loading={loading} />
+          <VariableOverview
+            variable={variable}
+            initialValues={initialValues}
+            dependencies={dependencies}
+            token={token}
+            loading={loading}
+          />
         )}
       </div>
     </div>
-  )
+  );
 }

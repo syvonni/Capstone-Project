@@ -1,22 +1,22 @@
 import { useState, useMemo, useCallback } from 'react'
+import { isFieldComplete } from '@/features/business-owner/utils/formCompletion'
 
-
-export function useApplicationInfoCard(business, sections = [], refreshKey = 0) {
+export function useApplicationInfoCard(application, sections = [], formValues = null) {
   const [permitModalOpen, setPermitModalOpen] = useState(false)
   const [changesModalOpen, setChangesModalOpen] = useState(false)
   const [progressModalOpen, setProgressModalOpen] = useState(false)
 
-  // Guard against undefined business
-  const safeBusiness = business || {}
+  // Guard against undefined application
+  const safeApplication = application || {}
   
-  const status = safeBusiness.applicationStatus || safeBusiness.permitStatus || 'submitted'
+  const status = safeApplication.applicationStatus || safeApplication.permitStatus || 'submitted'
   const statusLower = status.toLowerCase()
   const isDraft = statusLower === 'draft'
   const isRejected = statusLower === 'rejected'
   const isReturned = statusLower === 'returned' || statusLower === 'needs_revision'
 
   // Determine permit type: formType contains the specific form ID (e.g., 'association-foundation-permit', 'unified-business-permit')
-  const formType = safeBusiness?.formType
+  const formType = safeApplication?.formType
 
   // Format kebab-case to Title Case for display
   const formatToTitleCase = (str) => {
@@ -27,19 +27,19 @@ export function useApplicationInfoCard(business, sections = [], refreshKey = 0) 
   // Extract permit type name from formType
   // If formType is 'unified-business-permit', show 'Unified Business Permit'
   // If formType is 'association-foundation-permit', show 'Association Foundation Permit'
-  let businessTypeLabel
+  let permitTypeLabel
   if (formType === 'unified-business-permit') {
-    businessTypeLabel = 'Unified Business Permit'
+    permitTypeLabel = 'Unified Business Permit'
   } else if (formType) {
     // Remove '-permit' suffix and format as title case
     const baseName = formType.replace(/-permit$/, '')
-    businessTypeLabel = formatToTitleCase(baseName) + ' Permit'
+    permitTypeLabel = formatToTitleCase(baseName) + ' Permit'
   } else {
-    businessTypeLabel = 'Unknown Permit'
+    permitTypeLabel = 'Unknown Permit'
   }
 
-  const rejectionReason = (safeBusiness?.hadAppealGranted && safeBusiness?.originalRejectionReason) || safeBusiness?.rejectionReason || null
-  const approvalComment = safeBusiness?.reviewComments || null
+  const rejectionReason = (safeApplication?.hadAppealGranted && safeApplication?.originalRejectionReason) || safeApplication?.rejectionReason || null
+  const approvalComment = safeApplication?.reviewComments || null
 
   // Helper to get section and field name from fieldKey
   const getFieldDisplayName = useCallback((fieldKey) => {
@@ -50,7 +50,7 @@ export function useApplicationInfoCard(business, sections = [], refreshKey = 0) 
     const section = sections[sectionIdx]
     if (!section) {
       // Fallback: try to get field name from formDefinition if available
-      const formDef = safeBusiness?.formDefinition || safeBusiness?.formData?.formDefinition
+      const formDef = safeApplication?.formDefinition || safeApplication?.formData?.formDefinition
       if (formDef?.sections?.[sectionIdx]) {
         const sec = formDef.sections[sectionIdx]
         const secName = sec?.label || sec?.title || `Section ${sectionIdx + 1}`
@@ -68,10 +68,10 @@ export function useApplicationInfoCard(business, sections = [], refreshKey = 0) 
     const fieldName = item?.label || item?.name || fieldKeyPart
 
     return `${sectionName} - ${fieldName}`
-  }, [sections, safeBusiness?.formDefinition, safeBusiness?.formData?.formDefinition])
+  }, [sections, safeApplication?.formDefinition, safeApplication?.formData?.formDefinition])
 
   // Calculate fields with request changes
-  const fieldReviewDecisions = safeBusiness?.fieldReviewDecisions || {}
+  const fieldReviewDecisions = safeApplication?.fieldReviewDecisions || {}
   const requestChangeFields = Object.entries(fieldReviewDecisions)
     .filter(([_, decision]) => decision?.status === 'request_changes')
     .map(([fieldKey, decision]) => ({
@@ -80,43 +80,67 @@ export function useApplicationInfoCard(business, sections = [], refreshKey = 0) 
       reason: decision?.requestOther || decision?.requestCode || 'No reason provided'
     }))
 
-  // Calculate form completion progress for draft mode
+  // Calculate form completion progress for draft mode.
+  // When live formValues are provided (overview tab) we use the same helpers as
+  // useApplicationSectionCompletion so metadata, category uploads and LOB are all checked.
+  // Otherwise we fall back to the saved application.formData (stories, list view, etc.)
   const formProgress = useMemo(() => {
     if (!isDraft || !sections.length) {
-      return { completed: 0, total: 0, incompleteFields: [] }
+      return { completed: 0, total: 0, incompleteFields: [], isSectionLevel: false }
     }
 
-    const formData = safeBusiness?.formData || {}
+    const liveFormValues = formValues || safeApplication?.formData || {}
     let totalFields = 0
     let completedFields = 0
-    const incompleteFields = []
+    const incompleteFieldsMap = new Map()
 
     sections.forEach((section, sectionIdx) => {
+      // LOB section is special: it has no `items`, so we count it as one field.
+      if (section?.type === 'lob_section') {
+        totalFields++
+        const hasLob = Array.isArray(liveFormValues.businessActivities) && liveFormValues.businessActivities.length > 0
+        if (hasLob) {
+          completedFields++
+        } else {
+          const sectionName = `Section ${sectionIdx + 1}`
+          const fieldName = section?.label || section?.title || 'Line of Business'
+          const fullPath = `${sectionIdx}.lob`
+          if (!incompleteFieldsMap.has(fullPath)) {
+            incompleteFieldsMap.set(fullPath, {
+              fieldKey: fullPath,
+              displayName: `${sectionName} - ${fieldName}`
+            })
+          }
+        }
+        return
+      }
+
       if (!section?.items) return
 
       section.items.forEach((item) => {
+        // Only count fields that have a key/label
+        const fieldKey = (item.key && item.key !== '') ? item.key : (item.name || item.label)
+        if (!fieldKey) return
+
         totalFields++
-        const fieldKey = item.key || item.name
         const fullPath = `${sectionIdx}.${fieldKey}`
-        
-        // Check if field has a value
-        const value = formData[fieldKey]
-        const isComplete = value !== undefined && value !== null && value !== '' &&
-                     (Array.isArray(value) ? value.length > 0 : true)
-        
-        if (isComplete) {
+
+        if (isFieldComplete(item, fieldKey, liveFormValues)) {
           completedFields++
         } else {
-          incompleteFields.push({
-            fieldKey: fullPath,
-            displayName: getFieldDisplayName(fullPath)
-          })
+          if (!incompleteFieldsMap.has(fullPath)) {
+            incompleteFieldsMap.set(fullPath, {
+              fieldKey: fullPath,
+              displayName: getFieldDisplayName(fullPath)
+            })
+          }
         }
       })
     })
 
+    const incompleteFields = Array.from(incompleteFieldsMap.values())
     return { completed: completedFields, total: totalFields, incompleteFields }
-  }, [isDraft, sections, safeBusiness?.formData, getFieldDisplayName, refreshKey])
+  }, [isDraft, sections, safeApplication?.formData, getFieldDisplayName, formValues])
 
   return {
     permitModalOpen,
@@ -131,7 +155,7 @@ export function useApplicationInfoCard(business, sections = [], refreshKey = 0) 
     isRejected,
     isReturned,
     formType,
-    businessTypeLabel,
+    permitTypeLabel,
     rejectionReason,
     approvalComment,
     getFieldDisplayName,

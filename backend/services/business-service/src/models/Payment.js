@@ -17,19 +17,24 @@ const PaymentSchema = new mongoose.Schema(
     businessId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Business",
-      required: true,
+      required: function () {
+        return !this.applicationId;
+      },
       index: true,
+      default: null,
     },
     applicationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Application",
+      required: function () {
+        return !this.businessId;
+      },
       default: null,
     },
     paymentType: {
       type: String,
       enum: [
         "registration_fee",
-        "renewal_fee",
         "penalty",
         "violation_fine",
         "general_permit_fee",
@@ -78,7 +83,6 @@ const PaymentSchema = new mongoose.Schema(
     relatedEntityType: {
       type: String,
       enum: [
-        "renewal",
         "registration",
         "violation",
         "general_permit",

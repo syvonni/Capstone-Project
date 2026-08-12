@@ -137,7 +137,7 @@ export default function VariablesStatsPanel() {
       {
         count: disabledVariables,
         text: 'Disabled',
-        linkColor: disabledVariables > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledVariables > 0 ? {
           title: 'Disabled Variables',
           items: variables.filter(v => !v.isActive).map(v => ({

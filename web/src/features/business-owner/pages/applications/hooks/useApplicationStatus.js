@@ -1,5 +1,21 @@
-export function useBusinessOwnerApplicationStatus(business) {
-  const status = business?.applicationStatus || business?.permitStatus || ''
+const EDITABLE_STATUSES = [
+  'draft',
+  'requirements_viewed',
+  'form_completed',
+  'documents_uploaded',
+  'bir_registered',
+  'agencies_registered',
+  'needs_revision',
+  'returned',
+]
+
+export function isApplicationEditable(status) {
+  const statusLower = (status || '').toLowerCase()
+  return EDITABLE_STATUSES.includes(statusLower)
+}
+
+export function useApplicationStatus(application) {
+  const status = application?.applicationStatus || application?.permitStatus || ''
   const statusLower = status?.toLowerCase() || ''
 
   // Draft statuses - editable form with autosave
@@ -30,7 +46,7 @@ export function useBusinessOwnerApplicationStatus(business) {
   const isResubmitted = statusLower === 'resubmit'
 
   // Whether form should be editable
-  const isEditable = isDraft || isNeedsRevision || isReturned
+  const isEditable = isApplicationEditable(status)
 
   // Whether form should be read-only
   const isReadOnly = !isEditable

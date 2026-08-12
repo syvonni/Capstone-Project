@@ -1,10 +1,11 @@
-import { Modal, Typography } from 'antd'
+import { Typography } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 
 const { Text } = Typography
 
 export default function ApplicationApprovalCommentModal({ open, onCancel, comment }) {
   return (
-    <Modal
+    <ResponsiveModal
       title="Approval Comment"
       open={open}
       onCancel={onCancel}
@@ -14,6 +15,6 @@ export default function ApplicationApprovalCommentModal({ open, onCancel, commen
       <div style={{ padding: 16 }}>
         <Text>{comment || 'No approval comment provided.'}</Text>
       </div>
-    </Modal>
+    </ResponsiveModal>
   )
 }

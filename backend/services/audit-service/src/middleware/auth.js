@@ -1,7 +1,10 @@
 const jwt = require("jsonwebtoken");
 
 function signAccessToken(user) {
-  const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is required");
+  }
   const ttlMin = Number(process.env.ACCESS_TOKEN_TTL_MINUTES) || 60;
   const nowSec = Math.floor(Date.now() / 1000);
   const expSec = nowSec + Math.max(1, ttlMin) * 60;
@@ -38,7 +41,10 @@ async function requireJwt(req, res, next) {
         },
       });
     }
-    const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error("JWT_SECRET environment variable is required");
+    }
     console.log("[requireJwt] JWT_SECRET present:", !!secret);
     const decoded = jwt.verify(token, secret);
     console.log("[requireJwt] Token verified successfully, decoded:", {

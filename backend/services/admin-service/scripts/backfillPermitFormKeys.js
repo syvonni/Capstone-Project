@@ -185,6 +185,30 @@ function generateUniqueKey(label, existingKeys = []) {
   return uniqueKey;
 }
 
+/**
+ * Assigns keys to any metadataFields entry that is missing one, keeping keys unique
+ * within the given array. Returns how many entries were changed.
+ */
+function backfillMetadataFields(metadataFields, fallbackLabel) {
+  if (!Array.isArray(metadataFields) || metadataFields.length === 0) return 0;
+
+  const siblingKeys = metadataFields
+    .filter((m) => m && m.key)
+    .map((m) => m.key);
+  let changed = 0;
+
+  for (const metaField of metadataFields) {
+    if (!metaField || metaField.key) continue;
+    const labelToUse = metaField.label || `${fallbackLabel} Metadata`;
+    const newKey = generateUniqueKey(labelToUse, siblingKeys);
+    metaField.key = newKey;
+    siblingKeys.push(newKey);
+    changed++;
+  }
+
+  return changed;
+}
+
 async function backfillPermitFormKeys(dryRun = true) {
   try {
     // Connect to MongoDB
@@ -194,7 +218,7 @@ async function backfillPermitFormKeys(dryRun = true) {
     console.log("Connected to MongoDB");
 
     // Get PermitForm model
-    const PermitForm = require("../src/models/PermitForm");
+    const PermitForm = require("../../../shared/models/PermitForm");
 
     // Find all permit forms
     const permitForms = await PermitForm.find({});
@@ -247,22 +271,46 @@ async function backfillPermitFormKeys(dryRun = true) {
           }
         }
 
-        // Also backfill metadataFields in category_upload items
+        // Also backfill metadataFields and dropdownOption ids.
+        //
+        // These are namespaced by their parent field in the rendered form path
+        // (`[<fieldKey>_metadata, metaField.key]`), so they only need to be unique
+        // among their siblings -- matching what MetadataFieldsEditor and
+        // DropdownOptionsEditor generate in the admin form editor.
         for (const item of section.items || []) {
-          if (item.type === "category_upload" && item.metadataFields) {
-            for (const metaField of item.metadataFields) {
-              if (!metaField.key) {
-                const labelToUse = metaField.label || `${item.label} Metadata`;
-                const newKey = generateUniqueKey(labelToUse, existingKeys);
-                metaField.key = newKey;
-                existingKeys.push(newKey);
-                itemsBackfilled++;
-                formUpdated = true;
-              }
+          // metadataFields declared directly on the item (e.g. `file` fields)
+          itemsBackfilled += backfillMetadataFields(
+            item.metadataFields,
+            item.label,
+          );
+
+          // metadataFields declared per dropdown option (e.g. `category_upload`)
+          const options = item.dropdownOptions || [];
+          const optionIds = options
+            .filter((o) => o && typeof o === "object" && o.id)
+            .map((o) => o.id);
+
+          for (const option of options) {
+            if (!option || typeof option !== "object") continue;
+
+            if (!option.id && option.label) {
+              const newId = generateUniqueKey(option.label, optionIds);
+              option.id = newId;
+              optionIds.push(newId);
+              itemsBackfilled++;
             }
+
+            itemsBackfilled += backfillMetadataFields(
+              option.metadataFields,
+              option.label || item.label,
+            );
           }
         }
       }
+
+      // `itemsBackfilled` is compared against its pre-pass value below, so recompute
+      // `formUpdated` rather than relying on the flag set during the key passes.
+      formUpdated = formUpdated || itemsBackfilled > 0;
 
       if (formUpdated) {
         totalFormsUpdated++;
@@ -273,6 +321,9 @@ async function backfillPermitFormKeys(dryRun = true) {
             `[DRY-RUN] Would update form "${form.name}" (${form._id}): ${itemsBackfilled} items backfilled`,
           );
         } else {
+          // `dropdownOptions` is a Mixed array, so mongoose cannot see mutations made
+          // to option ids or their nested metadataFields. Mark the whole tree dirty.
+          form.markModified("sections");
           await form.save({ validateBeforeSave: false });
           console.log(
             `Updated form "${form.name}" (${form._id}): ${itemsBackfilled} items backfilled`,

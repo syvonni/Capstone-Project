@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 
-export function useFilters() {
+export function useApplicationFilters() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [sortBy, setSortBy] = useState('updatedAt')

@@ -5,7 +5,7 @@
  * Uses the existing mongoose connection from business-service.
  */
 
-const ClaimableDocument = require("../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../shared/models/ClaimableDocument");
 
 async function fixDocumentNames() {
   try {

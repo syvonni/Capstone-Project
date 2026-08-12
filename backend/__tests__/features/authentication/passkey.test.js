@@ -219,11 +219,10 @@ describe("Passkey (WebAuthn) Tests", () => {
 
   describe("Role-based MFA gating", () => {
     it("allows business owner to use email OTP when MFA is optional", async () => {
-      const role = await Role.findOne({ slug: "business_owner" });
       const email = `bo-${Date.now()}@example.com`;
       const password = "Password123!";
       await User.create({
-        role: role ? role._id : undefined,
+        role: testRole ? testRole._id : undefined,
         firstName: "Biz",
         lastName: "Owner",
         email,

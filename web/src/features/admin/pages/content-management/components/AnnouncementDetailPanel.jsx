@@ -14,7 +14,6 @@ export default function AnnouncementDetailPanel({
   onSave,
   onDelete,
   onUnpublish,
-  audience,
   form: externalForm,
   onFillTestData,
   undoRedo,
@@ -22,7 +21,6 @@ export default function AnnouncementDetailPanel({
   onFormChange,
   auditLogs = [],
   auditLogsLoading = false,
-  isMobile = false,
   isBookmarked = false,
   onBookmarkToggle,
   onHistoryClick,
@@ -45,8 +43,6 @@ export default function AnnouncementDetailPanel({
       })
     }
   }, [selected, actualForm])
-
-  const statusColors = { draft: 'orange', published: 'green' }
 
   const handleSave = async (publish = false) => {
     try {

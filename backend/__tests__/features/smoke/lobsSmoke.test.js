@@ -15,14 +15,13 @@ const {
 const Lob = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -60,7 +59,7 @@ describe("LOBs Smoke Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(Array.isArray(response.body)).toBe(true);
     });
 
     it("should reject without auth", async () => {

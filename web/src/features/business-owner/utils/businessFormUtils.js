@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
-import { ALAMINOS_TEST_ADDRESS } from '../constants/businessFormConstants'
 import { resolveIpfsUrl } from '@/lib/ipfsUtils'
+import { PERMIT_TEST_DATA_CONFIG, generateCategoryUploadTestData, generateFileFieldTestData } from './documentTestData.js'
 
 function createMockFile(fieldName) {
   const fileName = `${fieldName.replace(/[^a-zA-Z0-9]/g, '_')}_sample.pdf`
@@ -28,12 +28,21 @@ function formDataWithDayjs(formData, definition, documents = {}) {
     (section.items || []).forEach((item) => {
       const key = item.key || item.label
       if (item.type === 'date') dateKeys.add(key)
+      if (item.type === 'date_range') {
+        // Add both _start and _end variants for date_range fields
+        dateKeys.add(`${key}_start`)
+        dateKeys.add(`${key}_end`)
+      }
       if (item.type === 'file') fileKeys.add(key)
       if (item.type === 'repeatable_group' && item.groupFields?.length) {
         const groupDateKeys = new Set()
         const groupFileKeys = new Set()
         item.groupFields.forEach((gf) => {
           if (gf.type === 'date') groupDateKeys.add(gf.key || gf.label)
+          if (gf.type === 'date_range') {
+            groupDateKeys.add(`${gf.key || gf.label}_start`)
+            groupDateKeys.add(`${gf.key || gf.label}_end`)
+          }
           if (gf.type === 'file') groupFileKeys.add(gf.key || gf.label)
         })
         if (groupDateKeys.size) repeatableDateKeys[key] = groupDateKeys
@@ -42,6 +51,8 @@ function formDataWithDayjs(formData, definition, documents = {}) {
     })
   })
   const out = { ...formData }
+  
+  // Convert top-level date fields to Dayjs
   dateKeys.forEach((k) => {
     const v = out[k]
     if (v != null && v !== '' && !dayjs.isDayjs(v)) {
@@ -49,6 +60,25 @@ function formDataWithDayjs(formData, definition, documents = {}) {
       out[k] = d.isValid() ? d : undefined
     }
   })
+  
+  // Convert nested metadata date fields to Dayjs (e.g., fieldName_metadata.metaFieldKey)
+  // Only convert values that are actually date strings, not all values
+  Object.keys(out).forEach((key) => {
+    if (key.endsWith('_metadata') && typeof out[key] === 'object' && out[key] !== null) {
+      Object.keys(out[key]).forEach((metaKey) => {
+        const v = out[key][metaKey]
+        // Only convert if it's a string that looks like a date (ISO format or YYYY-MM-DD)
+        if (v != null && v !== '' && typeof v === 'string' && !dayjs.isDayjs(v)) {
+          if (/^\d{4}-\d{2}-\d{2}/.test(v)) {
+            const d = dayjs(v)
+            out[key][metaKey] = d.isValid() ? d : undefined
+          }
+        }
+        // Don't touch objects (like addresses) - leave them as-is
+      })
+    }
+  })
+  
   // Convert file field CID strings back to Upload component format
   fileKeys.forEach((k) => {
     const v = out[k]
@@ -128,7 +158,7 @@ function formDataWithDayjs(formData, definition, documents = {}) {
     } else if (Array.isArray(v) && v.length > 0) {
       // Handle array of Upload objects that might be missing url field
       if (typeof v[0] === 'object' && v[0] !== null) {
-        out[k] = v.map((item, idx) => {
+        out[k] = v.map((item, _idx) => {
           if (item.url && item.thumbUrl) {
             // Already has url and thumbUrl, return as-is
             return item
@@ -147,7 +177,7 @@ function formDataWithDayjs(formData, definition, documents = {}) {
         })
       } else if (typeof v[0] === 'string') {
         // Array of CID strings or URLs - convert to Upload format
-        out[k] = v.map((item, idx) => {
+        out[k] = v.map((item, _idx) => {
           const trimmed = item.trim()
           let cid, url
           if (trimmed.startsWith('Qm') || trimmed.startsWith('bafy')) {
@@ -165,8 +195,8 @@ function formDataWithDayjs(formData, definition, documents = {}) {
             url = trimmed
           }
           return {
-            uid: `file-${k}-${idx}`,
-            name: `${k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()} ${idx + 1}`,
+            uid: `file-${k}-${_idx}`,
+            name: `${k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()} ${_idx + 1}`,
             status: 'done',
             cid,
             url,
@@ -220,7 +250,7 @@ function formDataWithDayjs(formData, definition, documents = {}) {
           } else if (Array.isArray(v) && v.length > 0) {
             // Handle array of Upload objects that might be missing url field
             if (typeof v[0] === 'object' && v[0] !== null) {
-              r[fk] = v.map((item, idx) => {
+              r[fk] = v.map((item, _idx) => {
                 if (item.url && item.thumbUrl) {
                   return item
                 }
@@ -269,29 +299,36 @@ function formDataWithDayjs(formData, definition, documents = {}) {
       return r
     })
   })
+  
   return out
 }
 
-function generateTestDataForField(field) {
+function generateTestDataForField(field, permitConfig = {}) {
   const fieldName = field.key
 
   switch (field.type) {
     case 'text':
       if (fieldName.toLowerCase().includes('business') && fieldName.toLowerCase().includes('name')) return 'ABC Trading Corp.'
-      if (fieldName.toLowerCase().includes('name')) return 'Juan Dela Cruz'
-      if (fieldName.toLowerCase().includes('email')) return 'juan.delacruz@example.com'
-      if (fieldName.toLowerCase().includes('phone') || fieldName.toLowerCase().includes('contact')) return '09171234567'
       if (fieldName.toLowerCase().includes('tin')) return '123-456-789-000'
+      if (fieldName.toLowerCase().includes('phone') || fieldName.toLowerCase().includes('mobile') || fieldName.toLowerCase().includes('contact')) return '09171234567'
+      if (fieldName.toLowerCase().includes('email')) return 'juan.delacruz@example.com'
+      if (fieldName.toLowerCase().includes('number') || fieldName.toLowerCase().includes('no')) return 'TEST-2024-001'
+      if (fieldName.toLowerCase().includes('name')) return 'Juan Dela Cruz'
       return `Test ${field.label || 'Value'}`
 
     case 'textarea':
+      if (fieldName.toLowerCase().includes('description') || fieldName.toLowerCase().includes('details')) {
+        return `This is a sample description for ${field.label || 'this field'}. The business operates in accordance with all local regulations and requirements.`
+      }
       return `This is sample text for ${field.label || 'this field'}. Lorem ipsum dolor sit amet, consectetur adipiscing elit.`
 
     case 'number':
       if (fieldName.toLowerCase().includes('capital')) return 500000
-      if (fieldName.toLowerCase().includes('employee')) return 10
-      if (fieldName.toLowerCase().includes('gross')) return 1200000
+      if (fieldName.toLowerCase().includes('employee') || fieldName.toLowerCase().includes('worker')) return 10
+      if (fieldName.toLowerCase().includes('gross') || fieldName.toLowerCase().includes('revenue')) return 1200000
       if (fieldName.toLowerCase().includes('area') || fieldName.toLowerCase().includes('sqm')) return 150
+      if (fieldName.toLowerCase().includes('rental') || fieldName.toLowerCase().includes('monthly')) return 15000
+      if (fieldName.toLowerCase().includes('value') || fieldName.toLowerCase().includes('building')) return 500000
       return 100
 
     case 'date': {
@@ -304,6 +341,9 @@ function generateTestDataForField(field) {
       }
       return dayjs().subtract(1, 'month')
     }
+
+    case 'date_range':
+      return undefined // Handled separately in generateTestDataForDefinition
 
     case 'select':
       if (field.dropdownOptions?.length > 0) {
@@ -324,15 +364,27 @@ function generateTestDataForField(field) {
       return true
 
     case 'file':
-      // Skip file fields - mock files can't be uploaded to IPFS without user interaction
-      // User must manually upload files after filling test data
+      // Return metadata-only data for file fields
+      return generateFileFieldTestData(field, permitConfig)
+
+    case 'category_upload':
+      // Return metadata-only data for category_upload fields
+      return generateCategoryUploadTestData(field, permitConfig)
+
+    case 'required_documents':
+      // This is a section type, not a field type - handle at section level
       return undefined
 
     case 'download':
+      // Download fields don't need test data - they're for templates
       return undefined
 
     case 'address':
     case 'address_alaminos':
+      return undefined
+
+    case 'lob_section':
+      // LOB section is handled separately by the LOB selection component
       return undefined
 
     case 'repeatable_group': {
@@ -360,35 +412,87 @@ function generateTestDataForField(field) {
   }
 }
 
-function generateTestDataForDefinition(definition, category = null, lobs = []) {
+function generateTestDataForDefinition(definition, category = null, _lobs = [], permitType = null) {
   const testData = {}
 
   if (category) {
     testData.category = category
   }
 
+  // Get permit-specific config
+  const permitConfig = PERMIT_TEST_DATA_CONFIG[permitType] || {}
+
   const sections = definition?.sections || []
 
   sections.forEach(section => {
+    // Handle required_documents section type
+    if (section.type === 'required_documents') {
+      const items = section.items || []
+      items.forEach(field => {
+        const fieldName = field.key
+
+        if (field.type === 'file') {
+          const fileData = generateFileFieldTestData(field, permitConfig)
+          Object.assign(testData, fileData)
+        } else if (field.type === 'category_upload') {
+          const categoryData = generateCategoryUploadTestData(field, permitConfig)
+          Object.assign(testData, categoryData)
+        } else {
+          // Handle non-document fields in required_documents section
+          const value = generateTestDataForField(field, permitConfig)
+          if (value !== undefined && typeof value !== 'object') {
+            testData[fieldName] = value
+          } else if (value !== undefined && typeof value === 'object') {
+            // Handle object returns (from file/category_upload)
+            Object.assign(testData, value)
+          }
+          // Handle date_range fields separately
+          if (field.type === 'date_range') {
+            testData[`${fieldName}_start`] = dayjs().subtract(1, 'year')
+            testData[`${fieldName}_end`] = dayjs().add(1, 'year')
+          }
+        }
+      })
+      return
+    }
+
+    // Handle regular sections
     const items = section.items || []
     items.forEach(field => {
       const fieldName = field.key
       if (field.type === 'address') {
-        testData[fieldName] = { ...ALAMINOS_TEST_ADDRESS }
+        testData[fieldName] = {
+          streetAddress: '123 Rizal Street',
+          province: '015500000',
+          provinceName: 'Pangasinan',
+          city: '015503000',
+          cityName: 'City of Alaminos',
+          barangay: '015503021',
+          barangayName: 'Poblacion',
+          postalCode: '2404',
+        }
         return
       }
       if (field.type === 'address_alaminos') {
         testData[fieldName] = {
-          streetAddress: ALAMINOS_TEST_ADDRESS.streetAddress,
-          barangay: ALAMINOS_TEST_ADDRESS.barangay,
-          barangayName: ALAMINOS_TEST_ADDRESS.barangayName,
-          postalCode: ALAMINOS_TEST_ADDRESS.postalCode,
+          streetAddress: '123 Rizal Street',
+          barangay: '015503021',
+          barangayName: 'Poblacion',
+          postalCode: '2404',
         }
         return
       }
-      const value = generateTestDataForField(field)
-      if (value !== undefined) {
+      if (field.type === 'date_range') {
+        testData[`${fieldName}_start`] = dayjs().subtract(1, 'year')
+        testData[`${fieldName}_end`] = dayjs().add(1, 'year')
+        return
+      }
+      const value = generateTestDataForField(field, permitConfig)
+      if (value !== undefined && typeof value !== 'object') {
         testData[fieldName] = value
+      } else if (value !== undefined && typeof value === 'object') {
+        // Handle object returns (from file/category_upload)
+        Object.assign(testData, value)
       }
     })
   })

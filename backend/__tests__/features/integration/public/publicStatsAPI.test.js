@@ -10,9 +10,9 @@ const {
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/__tests__/helpers/cleanup");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
@@ -37,12 +37,12 @@ describe("Public Stats API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
-      expect(typeof response.body.data.totalRegisteredThisYear).toBe("number");
-      expect(typeof response.body.data.applicationsProcessedThisYear).toBe(
+      expect(response.body).toBeDefined();
+      expect(typeof response.body.totalRegisteredThisYear).toBe("number");
+      expect(typeof response.body.applicationsProcessedThisYear).toBe(
         "number",
       );
-      expect(typeof response.body.data.pendingApplications).toBe("number");
+      expect(typeof response.body.pendingApplications).toBe("number");
     });
   });
 
@@ -53,8 +53,8 @@ describe("Public Stats API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body).toBeDefined();
+      expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
@@ -65,8 +65,8 @@ describe("Public Stats API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body).toBeDefined();
+      expect(Array.isArray(response.body)).toBe(true);
     });
   });
 });

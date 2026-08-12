@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Button, Form, Select, Typography } from 'antd'
 import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import TemporaryPermitConfiguration from '../TemporaryPermitConfiguration'
-import { INDUSTRY_SECTIONS } from '../../constants/formDefinitions.constants'
+import { INDUSTRY_SECTIONS } from '../../constants/industrySectionTemplates.constants'
 
 const { Text } = Typography
 

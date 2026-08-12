@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Modal, Input, Button, Typography, Alert, Space, theme } from 'antd'
+import { Modal, Input, Button, Typography, Space, theme } from 'antd'
 import { KeyOutlined } from '@ant-design/icons'
 import { stepUpWithTotp, stepUpWithPasskey } from '@/shared/services/stepUpService'
 import { useNotifier } from '@/shared/notifications'
@@ -19,7 +19,6 @@ export default function StepUpModal({ open, onCancel, onVerified, mfaMethod = 'a
   const { token } = theme.useToken()
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
 
   const methodLower = String(mfaMethod || '').toLowerCase()
   const isPasskey = methodLower.includes('passkey') || methodLower.includes('webauthn')
@@ -27,21 +26,19 @@ export default function StepUpModal({ open, onCancel, onVerified, mfaMethod = 'a
   const handleTotpSubmit = async () => {
     const trimmed = String(code || '').trim()
     if (!/^[0-9]{6}$/.test(trimmed)) {
-      setError('Enter a 6-digit code from your authenticator app')
+      notifyError('Enter a 6-digit code from your authenticator app')
       return
     }
-    setError(null)
     setLoading(true)
     try {
       const data = await stepUpWithTotp(trimmed)
       if (data?.stepUpToken) {
         onVerified?.(data.stepUpToken)
       } else {
-        setError('Verification failed. Please try again.')
+        notifyError('Verification failed. Please try again.')
       }
     } catch (e) {
       const msg = e?.message || e?.originalError?.error?.message || 'Verification failed'
-      setError(msg)
       notifyError(msg)
     } finally {
       setLoading(false)
@@ -49,18 +46,16 @@ export default function StepUpModal({ open, onCancel, onVerified, mfaMethod = 'a
   }
 
   const handlePasskeyClick = async () => {
-    setError(null)
     setLoading(true)
     try {
       const data = await stepUpWithPasskey()
       if (data?.stepUpToken) {
         onVerified?.(data.stepUpToken)
       } else {
-        setError('Verification failed. Please try again.')
+        notifyError('Verification failed. Please try again.')
       }
     } catch (e) {
       const msg = e?.message || e?.originalError?.error?.message || 'Passkey verification failed'
-      setError(msg)
       notifyError(msg)
     } finally {
       setLoading(false)
@@ -69,7 +64,6 @@ export default function StepUpModal({ open, onCancel, onVerified, mfaMethod = 'a
 
   const handleClose = () => {
     setCode('')
-    setError(null)
     onCancel?.()
   }
 
@@ -97,7 +91,6 @@ export default function StepUpModal({ open, onCancel, onVerified, mfaMethod = 'a
               ? 'Use your passkey to confirm your identity.'
               : 'Enter the 6-digit code from your authenticator app to confirm your identity.'}
           </Text>
-          {error && <Alert type="error" message={error} showIcon />}
           {isPasskey ? (
             <Button
               type="primary"

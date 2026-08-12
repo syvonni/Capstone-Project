@@ -1,4 +1,4 @@
-import { Typography, Button, Select, Form, Grid } from 'antd'
+import { Typography, Button, Select, Grid } from 'antd'
 import { CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import { theme } from 'antd'
 
@@ -22,11 +22,12 @@ export default function FormNavigation({
   if (isMobile || !screens.lg) {
     return (
       <div style={{ padding: 16, borderBottom: `1px solid ${token.colorBorderSecondary}`, flexShrink: 0 }}>
-        <Form.Item label="Section" style={{ marginBottom: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Text style={{ flexShrink: 0 }}>Section:</Text>
           <Select
             value={activeTab}
             onChange={onTabChange}
-            style={{ width: '100%' }}
+            style={{ flex: 1 }}
             options={allNavItems.map((item) => {
               let labelText = ''
               if (typeof item.label === 'string') {
@@ -51,7 +52,7 @@ export default function FormNavigation({
               }
             })}
           />
-        </Form.Item>
+        </div>
       </div>
     )
   }
@@ -90,7 +91,8 @@ export default function FormNavigation({
             }}
           >
             <span style={{ display: 'inline-flex', alignItems: 'center', color: isSelected ? token.colorPrimary : undefined }}>
-              {item.label}
+              {item.icon || item.label}
+              {item.icon && <span style={{ marginLeft: 8 }}>{item.label}</span>}
             </span>
           </Button>
         )

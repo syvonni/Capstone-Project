@@ -5,13 +5,21 @@ import FieldRow from './FieldRow'
 
 const { Text } = Typography
 
-export default function SectionPanel({ section, sectionIndex, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast, token, isMobile, definitionId, readOnly }) {
+export default function SectionPanel({ section, sectionIndex, onUpdate, onBusinessNameChange, onDelete, onMoveUp, onMoveDown, isFirst, isLast, token, isMobile, definitionId, readOnly }) {
   const items = section.items || []
 
   const updateItem = (idx, updatedItem) => {
     const newItems = [...items]
     newItems[idx] = updatedItem
     onUpdate({ ...section, items: newItems })
+  }
+
+  const handleBusinessNameChange = (idx, isBusinessName) => {
+    if (onBusinessNameChange) {
+      onBusinessNameChange(sectionIndex, idx, isBusinessName)
+    } else {
+      updateItem(idx, { ...items[idx], isBusinessName })
+    }
   }
 
   const deleteItem = (idx) => {
@@ -138,6 +146,7 @@ export default function SectionPanel({ section, sectionIndex, onUpdate, onDelete
                   key={item.id}
                   field={item}
                   onUpdate={(updated) => updateItem(idx, updated)}
+                  onBusinessNameChange={(isBusinessName) => handleBusinessNameChange(idx, isBusinessName)}
                   onDelete={() => deleteItem(idx)}
                   onMoveUp={() => moveItem(idx, -1)}
                   onMoveDown={() => moveItem(idx, 1)}

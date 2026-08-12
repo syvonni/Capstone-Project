@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Modal, Descriptions, Typography, Card, Tag, Empty, Skeleton, theme } from 'antd'
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import { Descriptions, Typography, Card, Tag, Empty, Skeleton, theme } from 'antd'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { ShopOutlined } from '@ant-design/icons'
 import { get } from '@/lib/http'
 import dayjs from 'dayjs'
@@ -151,15 +152,15 @@ export default function OwnerDetailsModal({ open, onClose, application, ownerIde
   }, [ownerId, currentBusinessId])
 
   return (
-    <Modal
+    <ResponsiveModal
       title="Owner Details"
       open={open}
       onCancel={onClose}
       footer={null}
       width={800}
+      styles={{ body: { maxHeight: '70vh', overflowY: 'auto', background: token.colorBgContainer } }}
     >
-      <div style={{ padding: 16, maxHeight: '70vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Basic information — same labels as Settings > General */}
           <div>
             <Text strong style={{ display: 'block', marginBottom: 12 }}>Basic information</Text>
@@ -269,7 +270,6 @@ export default function OwnerDetailsModal({ open, onClose, application, ownerIde
             )}
           </div>
         </div>
-      </div>
-    </Modal>
+    </ResponsiveModal>
   )
 }

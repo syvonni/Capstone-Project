@@ -1,9 +1,11 @@
-import { mockPayment, getPayments } from '@/features/business-owner/services/paymentService.js'
+import { createPaymentRecord } from '@/features/business-owner/services/paymentService.js'
+import { useApplicationViewReceipt } from './useApplicationViewReceipt'
+import { isApplicationEditable } from './useApplicationStatus'
 
 /**
  * Hook for managing payment-related handlers
  * @param {Object} params
- * @param {Object} business - Current business/application
+ * @param {Object} application - Current application/application
  * @param {Object} formRef - Form ref for submission
  * @param {Function} setReceiptData - Function to set receipt data
  * @param {Function} setShowReceiptModal - Function to show receipt modal
@@ -13,7 +15,7 @@ import { mockPayment, getPayments } from '@/features/business-owner/services/pay
  * @returns {Object} Payment handlers
  */
 export function useApplicationPaymentHandlers({
-  business,
+  application,
   formRef,
   setReceiptData,
   setShowReceiptModal,
@@ -36,46 +38,60 @@ export function useApplicationPaymentHandlers({
         return
       }
       
-      // Check if the response contains the updated application with submitted status
-      const updatedApplication = response?.businesses?.[0] || response?.business
+      // Check if the response contains the updated application with a non-editable status
+      const updatedApplication = response?.applicationes?.[0] || response?.application
       if (!updatedApplication) {
         message.error('Failed to submit application. Invalid response format.')
         return
       }
 
-      // Accept both 'submitted' and 'resubmit' as valid statuses
-      const validStatuses = ['submitted', 'resubmit']
-      if (!validStatuses.includes(updatedApplication.applicationStatus)) {
-        message.error(`Failed to submit application. Status is: ${updatedApplication.applicationStatus}`)
+      const submittedStatus = updatedApplication.applicationStatus || application?.applicationStatus
+      if (isApplicationEditable(submittedStatus)) {
+        message.error(`Failed to submit application. Status is still editable: ${submittedStatus}`)
         return
       }
-      
+
+      // Surface any non-blocking email warnings without blocking payment
+      if (response?.warnings?.length) {
+        response.warnings.forEach((warning) => message.warning(warning))
+      }
+
       // Submission succeeded, proceed with payment creation
       let backendReceiptNumber = null
+      let backendPaymentId = null
       try {
-        const businessId = business?.businessId || business?._id
-        const paymentResponse = await mockPayment({
-          businessId,
-          amount: receiptInfo.totalAmount,
-          fees: receiptInfo.fees,
-          transactionName: receiptInfo.transactionName,
-          paymentType: 'registration_fee',
-        })
-        backendReceiptNumber = paymentResponse?.receiptNumber
+        const applicationId = updatedApplication?.applicationId || updatedApplication?._id
+        if (applicationId) {
+          const paymentResponse = await createPaymentRecord({
+            businessId: applicationId,
+            amount: receiptInfo.totalAmount,
+            fees: receiptInfo.fees,
+            transactionName: receiptInfo.transactionName,
+            paymentType: 'registration_fee',
+            receiptNumber: receiptInfo.receiptId,
+            paymentId: receiptInfo.receiptId,
+          })
+          backendReceiptNumber = paymentResponse?.receiptNumber
+          backendPaymentId = paymentResponse?.paymentId
+        }
       } catch (err) {
         console.error('Failed to create mock payment record:', err)
         // Continue anyway since submission succeeded
       }
-      
-      // Refresh the full businesses list BEFORE showing receipt modal
+
+      // Refresh the full applicationes list BEFORE showing receipt modal
       // This ensures the header re-renders with the updated status
-      await dashboardState.fetchBusinesses()
-      
+      await dashboardState.fetchApplications()
+
+      const finalReceiptId = backendReceiptNumber || backendPaymentId || receiptInfo.receiptId
+
       const updatedReceiptInfo = {
         ...receiptInfo,
+        receiptId: finalReceiptId,
         receiptNumber: backendReceiptNumber,
-        applicationReferenceNumber: updatedApplication.applicationReferenceNumber || 
-                                    receiptInfo.applicationReferenceNumber,
+        applicationReferenceNumber:
+          updatedApplication.applicationReferenceNumber ||
+          receiptInfo.applicationReferenceNumber,
       }
       setReceiptData(updatedReceiptInfo)
       setShowReceiptModal(true)
@@ -92,47 +108,18 @@ export function useApplicationPaymentHandlers({
       formRef.current.handleTabChange('overview')
     }
     // Don't close the detail panel - keep the application selected so user can view it
-    // Just refresh the businesses list to get updated status
-    dashboardState.fetchBusinesses()
+    // Just refresh the applicationes list to get updated status
+    dashboardState.fetchApplications()
   }
 
-  const handleViewReceipt = async () => {
-    const businessId = business.businessId || business._id
-    try {
-      const res = await getPayments({ businessId, paymentType: 'registration_fee', status: 'paid', limit: 1 })
-      const payments = res || []
-      if (payments.length > 0) {
-        const payment = payments[0]
-        const fees = payment.feeBreakdown || []
-        setReceiptData({
-          receiptId: payment.receiptNumber || payment.paymentId,
-          receiptNumber: payment.receiptNumber,
-          transactionDate: payment.paidAt || payment.createdAt,
-          transactionName: payment.description || 'Business Permit Application',
-          fees,
-          totalAmount: payment.amount || 0,
-          applicationReferenceNumber: business.applicationReferenceNumber || 'N/A',
-          paymentType: payment.paymentType || 'registration_fee',
-        })
-        setShowReceiptModal(true)
-        return
-      }
-    } catch (err) {
-      console.error('Failed to fetch payment data:', err)
-    }
-
-    // Fallback
-    const submittedDate = business.submittedAt ? new Date(business.submittedAt) : new Date()
-    setReceiptData({
-      receiptId: 'MOCK-NOT-FOUND',
-      transactionDate: submittedDate.toLocaleString(),
-      transactionName: 'Business Permit Application',
-      fees: feeData?.fees || [],
-      totalAmount: feeData?.total || 0,
-      applicationReferenceNumber: business.applicationReferenceNumber || 'N/A',
-    })
-    setShowReceiptModal(true)
-  }
+  const { handleViewReceipt } = useApplicationViewReceipt({
+    application,
+    paymentType: 'registration_fee',
+    feeData,
+    setReceiptData,
+    setShowReceiptModal,
+    transactionName: 'Business Permit Application',
+  })
 
   return {
     handlePaymentSuccess,

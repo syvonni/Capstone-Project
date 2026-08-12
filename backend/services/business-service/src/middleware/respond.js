@@ -1,6 +1,7 @@
-function error(res, status, code, message, details) {
+function error(res, status, code, message, details, extra) {
   const payload = { error: { code, message } };
   if (details !== undefined) payload.error.details = details;
+  if (extra !== undefined && extra !== null) payload.error.extra = extra;
   return res.status(status).json(payload);
 }
 

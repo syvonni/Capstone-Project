@@ -1,12 +1,8 @@
 const ClaimableDocumentService = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/services/admin/claimableDocument.service");
 
 // Mock the dependencies
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument",
-);
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee",
-);
+jest.mock("../../../../../shared/models/ClaimableDocument");
+jest.mock("../../../../../shared/models/Fee");
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/PostRequirement",
 );
@@ -32,8 +28,8 @@ jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/lib/auditHelpers/claimableDocumentAuditHelper",
 );
 
-const ClaimableDocument = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument");
-const Fee = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
+const Fee = require("../../../../../shared/models/Fee");
 const PostRequirement = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/PostRequirement");
 const Violation = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Violation");
 const Lob = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob");
@@ -145,8 +141,7 @@ describe("ClaimableDocumentService", () => {
   describe("getById", () => {
     it("should throw error for invalid ID", async () => {
       const mockQuery = {
-        select: jest.fn().mockReturnThis(),
-        populate: jest.fn().mockResolvedValue(null),
+        select: jest.fn().mockResolvedValue(null),
       };
       ClaimableDocument.findById.mockReturnValue(mockQuery);
 

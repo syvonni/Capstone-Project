@@ -17,8 +17,8 @@ dotenv.config({
   path: path.resolve(__dirname, "..", "..", "..", "..", ".env"),
 });
 
-const ClaimableDocument = require("../models/ClaimableDocument");
-const Fee = require("../models/Fee");
+const ClaimableDocument = require("../../../../shared/models/ClaimableDocument");
+const Fee = require("../../../../shared/models/Fee");
 
 // HTML template for Fire Safety Inspection Certificate
 const FIRE_SAFETY_TEMPLATE = `

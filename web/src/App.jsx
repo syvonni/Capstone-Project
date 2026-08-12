@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { ProtectedRoute, PublicRoute } from "@/features/authentication"
 import { useNavigationNotifications, useSessionActivity, useAuthSync, useSessionTimeout, useAuthSession } from "@/features/authentication/hooks"
-import PageSlide from "@/shared/components/PageTransition.jsx"
+import PageSlide from "@/shared/components/animations/PageTransition.jsx"
 import StaffLayout from "@/shared/components/StaffLayout"
 
 // Eager-load only the homepage (LCP) and auth shell - everything else is lazy
@@ -20,7 +20,6 @@ const BusinessSearch = lazy(() => import("@/features/public/pages/BusinessSearch
 const PasskeyMobileAuth = lazy(() => import("@/features/authentication/pages/PasskeyMobileAuth.jsx"))
 const MfaSetup = lazy(() => import("@/features/authentication/mfa/components/MfaSetup.jsx"))
 const ProfileSettings = lazy(() => import("@/features/user/views/ProfileSettings"))
-const NotificationHistoryPage = lazy(() => import("@/features/user/views/NotificationHistoryPage.jsx"))
 const AdminOnboarding = lazy(() => import("@/features/admin/pages/AdminOnboarding.jsx"))
 const AdminDashboard = lazy(() => import("@/features/admin/pages/dashboard/index.jsx"))
 const AdminContentManagement = lazy(() => import("@/features/admin/pages/content-management").then(m => ({ default: m.ContentManagementView })))
@@ -38,7 +37,7 @@ const AdminVariables = lazy(() => import("@/features/admin/pages/variables").the
 const AdminViolations = lazy(() => import("@/features/admin/pages/violations").then(m => ({ default: m.ViolationsView })))
 const AdminInspections = lazy(() => import("@/features/admin/pages/inspections").then(m => ({ default: m.InspectionsView })))
 const BusinessOwnerDashboard = lazy(() => import("@/features/business-owner/pages/BusinessOwnerMasterView.jsx"))
-const BusinessOwnerOnboarding = lazy(() => import("@/features/business-owner/pages/BusinessOwnerOnboarding.jsx"))
+const BusinessOwnerOnboarding = lazy(() => import("@/features/business-owner/pages/onboarding/BusinessOwnerOnboarding.jsx"))
 const BusinessOwnerBusinesses = lazy(() => import("@/features/business-owner/pages/businesses/index.jsx"))
 
 // const ClearanceTracker = lazy(() => import("@/features/business-owner/components/clearance/ClearanceTracker.jsx"))
@@ -129,7 +128,6 @@ function App() {
       <Route path="/business-owner" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerDashboard showBrandLogo={true} hideProfileSettings={true} /></ProtectedRoute>} />
       <Route path="/business-owner/applications" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerDashboard showBrandLogo={true} hideProfileSettings={true} /></ProtectedRoute>} />
       <Route path="/business-owner/businesses" element={<ProtectedRoute allowedRoles={['business_owner']}><BusinessOwnerBusinesses /></ProtectedRoute>} />
-      <Route path="/owner/notifications" element={<Navigate to="/notifications" replace />} />
       
       <Route path="/application/new" element={<ProtectedRoute allowedRoles={['business_owner']}><Navigate to="/business-owner/applications" replace /></ProtectedRoute>} />
       <Route path="/applications" element={<ProtectedRoute allowedRoles={['business_owner']}><Navigate to="/owner" replace /></ProtectedRoute>} />
@@ -151,7 +149,6 @@ function App() {
 
       {/* Generic/Public Routes */}
       <Route path="/settings-profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><NotificationHistoryPage /></ProtectedRoute>} />
       
       {/* Catch-all for 404 */}
       <Route path="*" element={<PlaceholderPage title="Page Not Found" />} />

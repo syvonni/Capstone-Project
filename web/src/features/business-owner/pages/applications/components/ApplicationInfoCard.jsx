@@ -2,15 +2,15 @@ import { Typography, Card, Divider, Grid, Button, theme, Tag } from 'antd'
 import { FileTextOutlined, UserOutlined } from '@ant-design/icons'
 import { getStatusLabel } from '@/shared/utils/statusUtils'
 import { formatDate } from '../utils/formatters.js'
-import PermitTypesModal from '@/shared/components/PermitTypesModal'
+import ApplicationPermitTypesModal from '@/shared/components/applications/ApplicationPermitTypesModal'
+import ApplicationFieldProgressModal from '@/shared/components/applications/ApplicationFieldProgressModal'
 import { useApplicationInfoCard } from '../hooks/useApplicationInfoCard'
 import ApplicationRequestedChangesModal from './modals/ApplicationRequestedChangesModal'
-import ApplicationIncompleteFieldsModal from './modals/ApplicationIncompleteFieldsModal'
 
 const { Text } = Typography
 
 export default function ApplicationInfoCard({
-  business,
+  application,
   onProgressClick,
   onViewReceipt,
   onViewAppealReceipt,
@@ -25,7 +25,7 @@ export default function ApplicationInfoCard({
   feeData = null,
   loadingFees = false,
   sections = [],
-  refreshKey = 0,
+  formValues = null,
 }) {
   const { token } = theme.useToken()
   const screens = Grid.useBreakpoint()
@@ -41,12 +41,12 @@ export default function ApplicationInfoCard({
     isDraft,
     isRejected,
     formType,
-    businessTypeLabel,
+    permitTypeLabel,
     rejectionReason,
     approvalComment,
     requestChangeFields,
     formProgress,
-  } = useApplicationInfoCard(business, sections, refreshKey)
+  } = useApplicationInfoCard(application, sections, formValues)
 
   return (
     <>
@@ -68,7 +68,7 @@ export default function ApplicationInfoCard({
           <FileTextOutlined style={{ fontSize: 24, color: token.colorTextSecondary, marginBottom: 8 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Typography.Title level={5} style={{ margin: 0 }}>Application Details</Typography.Title>
-            {business?.createdByOfficer && (
+            {application?.createdByOfficer && (
               <Tag icon={<UserOutlined />} color="blue" style={{ fontSize: 11 }}>
                 Created by Officer
               </Tag>
@@ -178,7 +178,7 @@ export default function ApplicationInfoCard({
               <div style={{ marginBottom: 12 }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>Message</Text>
                 <Text style={{ marginTop: 4, display: 'block' }}>
-                  {statusLower === 'draft' && 'Your application is saved as a draft. Complete the required sections and submit when ready. You\'ll need to pay a registration fee when you submit.'}
+                  {statusLower === 'draft' && 'Your application is saved as a draft. Complete the required sections and submit when ready. You\'ll need to pay application fees when you submit.'}
                   {statusLower === 'submitted' && 'Your application has been submitted and will be assigned to a reviewer shortly.'}
                   {statusLower === 'under_review' && 'Your application is now being reviewed. You will be notified once the review is complete.'}
                   {statusLower === 'needs_revision' && 'Your application needs changes. Please review the requested updates below and resubmit.'}
@@ -206,7 +206,7 @@ export default function ApplicationInfoCard({
                   </div>
                 </>
               )}
-              {((statusLower === 'approved' || statusLower === 'under_review' || statusLower === 'returned') && business?.hadAppealGranted && business?.originalRejectionReason) && (
+              {((statusLower === 'approved' || statusLower === 'under_review' || statusLower === 'returned') && application?.hadAppealGranted && application?.originalRejectionReason) && (
                 <>
                   <Divider style={{ margin: '12px 0' }} />
                   <div style={{ marginBottom: 12 }}>
@@ -242,17 +242,17 @@ export default function ApplicationInfoCard({
                   </div>
                 </>
               )}
-              {statusLower === 'returned' && requestChangeFields.length === 0 && business.reviewComments && (
+              {statusLower === 'returned' && requestChangeFields.length === 0 && application.reviewComments && (
                 <div style={{ marginTop: 8 }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>Officer Comments</Text>
                   <div style={{ marginTop: 4 }}>
-                    <Text>{business.reviewComments}</Text>
+                    <Text>{application.reviewComments}</Text>
                   </div>
                 </div>
               )}
             </>
           )}
-          {isRejected && !(business?.hasActiveAppeal || statusLower === 'appeal_pending' || statusLower === 'appeal_rejected') && (
+          {isRejected && !(application?.hasActiveAppeal || statusLower === 'appeal_pending' || statusLower === 'appeal_rejected') && (
             <div style={{ marginTop: 8 }}>
               <Button
                 type="link"
@@ -346,11 +346,11 @@ export default function ApplicationInfoCard({
             <>
               <div>
                 <Text type="secondary" style={{ fontSize: 12 }}>Submitted</Text>
-                <div><Text strong>{formatDate(business.submittedAt)}</Text></div>
+                <div><Text strong>{formatDate(application.submittedAt)}</Text></div>
               </div>
               <div>
                 <Text type="secondary" style={{ fontSize: 12 }}>Last Reviewed</Text>
-                <div><Text strong>{business.reviewedAt ? formatDate(business.reviewedAt) : 'Not yet reviewed'}</Text></div>
+                <div><Text strong>{application.reviewedAt ? formatDate(application.reviewedAt) : 'Not yet reviewed'}</Text></div>
               </div>
             </>
           )}
@@ -363,14 +363,14 @@ export default function ApplicationInfoCard({
                 onClick={() => setPermitModalOpen(true)}
                 style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
               >
-                {businessTypeLabel}
+                {permitTypeLabel}
               </Button>
             </div>
           </div>
           {!isDraft && (
             <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Reference Number</Text>
-              <div><Text strong>{business.applicationReferenceNumber || 'Pending'}</Text></div>
+              <div><Text strong>{application.applicationReferenceNumber || 'Pending'}</Text></div>
             </div>
           )}
           {isDraft && formProgress.total > 0 && (
@@ -400,12 +400,12 @@ export default function ApplicationInfoCard({
                   style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
                 >
                   <span>
-                    {loadingFees ? 'Loading...' : feeData?.success ? `₱${(feeData.total || 0).toFixed(2)}` : 'View Fees'}
+                    {loadingFees ? 'Loading...' : feeData?.fees ? `₱${(feeData.total || 0).toFixed(2)}` : 'View Fees'}
                   </span>
                 </Button>
               </div>
             </div>
-          ) : !isDraft && business.submittedAt && (
+          ) : !isDraft && application.submittedAt && (
             <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Application Payment Receipt</Text>
               <div>
@@ -423,7 +423,7 @@ export default function ApplicationInfoCard({
               </div>
             </div>
           )}
-          {(business?.hasActiveAppeal || statusLower === 'appeal_pending' || ((statusLower === 'approved' || statusLower === 'under_review') && business?.hadAppealGranted)) && (
+          {(application?.hasActiveAppeal || statusLower === 'appeal_pending' || ((statusLower === 'approved' || statusLower === 'under_review') && application?.hadAppealGranted)) && (
             <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Appeal Payment Receipt</Text>
               <div>
@@ -439,7 +439,7 @@ export default function ApplicationInfoCard({
               </div>
             </div>
           )}
-          {(business?.hasActiveAppeal || statusLower === 'appeal_pending' || ((statusLower === 'approved' || statusLower === 'under_review') && business?.hadAppealGranted)) && (
+          {(application?.hasActiveAppeal || statusLower === 'appeal_pending' || ((statusLower === 'approved' || statusLower === 'under_review') && application?.hadAppealGranted)) && (
             <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Submitted Appeal</Text>
               <div>
@@ -460,7 +460,7 @@ export default function ApplicationInfoCard({
       </div>
     </Card>
 
-    <PermitTypesModal
+    <ApplicationPermitTypesModal
       open={permitModalOpen}
       onCancel={() => setPermitModalOpen(false)}
       selectedPermitType={formType || 'unified-business-permit'}
@@ -472,10 +472,12 @@ export default function ApplicationInfoCard({
       requestChangeFields={requestChangeFields}
     />
 
-    <ApplicationIncompleteFieldsModal
+    <ApplicationFieldProgressModal
       open={progressModalOpen}
-      onClose={() => setProgressModalOpen(false)}
-      incompleteFields={formProgress.incompleteFields}
+      onCancel={() => setProgressModalOpen(false)}
+      title="Incomplete Fields"
+      fields={formProgress.incompleteFields}
+      emptyMessage="All fields are completed"
     />
     </>
   )

@@ -159,9 +159,16 @@ async function sendEmailViaAPI({
           apiKey,
           apiUrl,
         });
+      case "mock":
+        return await createMockEmailSender()({
+          to: actualTo,
+          subject,
+          text,
+          html,
+        });
       default:
         throw new Error(
-          `Unsupported email provider: ${provider}. Supported: sendgrid, mailgun, ses, resend, postmark`,
+          `Unsupported email provider: ${provider}. Supported: sendgrid, mailgun, ses, resend, postmark, mock`,
         );
     }
   } catch (err) {
@@ -1724,13 +1731,21 @@ async function sendApplicationSubmittedEmail({
   try {
     const fromAddress =
       from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
-    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+    const result = await sendEmailViaAPI({
+      to,
+      from: fromAddress,
+      subject,
+      text,
+      html,
+    });
+    return result;
   } catch (err) {
     console.log("--------------------------------------------------");
     console.log("⚠️  EMAIL API FAILED (Application Submitted) ⚠️");
     console.log("To:", to);
     console.log("Error:", err.message);
     console.log("--------------------------------------------------");
+    throw err;
   }
 }
 
@@ -1800,13 +1815,21 @@ async function sendApplicationResubmittedEmail({
   try {
     const fromAddress =
       from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
-    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+    const result = await sendEmailViaAPI({
+      to,
+      from: fromAddress,
+      subject,
+      text,
+      html,
+    });
+    return result;
   } catch (err) {
     console.log("--------------------------------------------------");
     console.log("⚠️  EMAIL API FAILED (Application Resubmitted) ⚠️");
     console.log("To:", to);
     console.log("Error:", err.message);
     console.log("--------------------------------------------------");
+    throw err;
   }
 }
 
@@ -1874,13 +1897,21 @@ async function sendApplicationApprovedEmail({
   try {
     const fromAddress =
       from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
-    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+    const result = await sendEmailViaAPI({
+      to,
+      from: fromAddress,
+      subject,
+      text,
+      html,
+    });
+    return result;
   } catch (err) {
     console.log("--------------------------------------------------");
     console.log("⚠️  EMAIL API FAILED (Application Approved) ⚠️");
     console.log("To:", to);
     console.log("Error:", err.message);
     console.log("--------------------------------------------------");
+    throw err;
   }
 }
 
@@ -1953,13 +1984,21 @@ async function sendApplicationRejectedEmail({
   try {
     const fromAddress =
       from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
-    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+    const result = await sendEmailViaAPI({
+      to,
+      from: fromAddress,
+      subject,
+      text,
+      html,
+    });
+    return result;
   } catch (err) {
     console.log("--------------------------------------------------");
     console.log("⚠️  EMAIL API FAILED (Application Rejected) ⚠️");
     console.log("To:", to);
     console.log("Error:", err.message);
     console.log("--------------------------------------------------");
+    throw err;
   }
 }
 
@@ -2032,13 +2071,21 @@ async function sendApplicationReturnedEmail({
   try {
     const fromAddress =
       from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
-    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+    const result = await sendEmailViaAPI({
+      to,
+      from: fromAddress,
+      subject,
+      text,
+      html,
+    });
+    return result;
   } catch (err) {
     console.log("--------------------------------------------------");
     console.log("⚠️  EMAIL API FAILED (Application Returned) ⚠️");
     console.log("To:", to);
     console.log("Error:", err.message);
     console.log("--------------------------------------------------");
+    throw err;
   }
 }
 
@@ -2102,13 +2149,21 @@ async function sendAppealDeniedEmail({
   try {
     const fromAddress =
       from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
-    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+    const result = await sendEmailViaAPI({
+      to,
+      from: fromAddress,
+      subject,
+      text,
+      html,
+    });
+    return result;
   } catch (err) {
     console.log("--------------------------------------------------");
     console.log("⚠️  EMAIL API FAILED (Appeal Denied) ⚠️");
     console.log("To:", to);
     console.log("Error:", err.message);
     console.log("--------------------------------------------------");
+    throw err;
   }
 }
 
@@ -2169,13 +2224,21 @@ async function sendAppealSubmittedEmail({
   try {
     const fromAddress =
       from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
-    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+    const result = await sendEmailViaAPI({
+      to,
+      from: fromAddress,
+      subject,
+      text,
+      html,
+    });
+    return result;
   } catch (err) {
     console.log("--------------------------------------------------");
     console.log("⚠️  EMAIL API FAILED (Appeal Submitted) ⚠️");
     console.log("To:", to);
     console.log("Error:", err.message);
     console.log("--------------------------------------------------");
+    throw err;
   }
 }
 
@@ -2236,13 +2299,21 @@ async function sendAppealApprovedEmail({
   try {
     const fromAddress =
       from || process.env.DEFAULT_FROM_EMAIL || "noreply@example.com";
-    await sendEmailViaAPI({ to, from: fromAddress, subject, text, html });
+    const result = await sendEmailViaAPI({
+      to,
+      from: fromAddress,
+      subject,
+      text,
+      html,
+    });
+    return result;
   } catch (err) {
     console.log("--------------------------------------------------");
     console.log("⚠️  EMAIL API FAILED (Appeal Approved) ⚠️");
     console.log("To:", to);
     console.log("Error:", err.message);
     console.log("--------------------------------------------------");
+    throw err;
   }
 }
 

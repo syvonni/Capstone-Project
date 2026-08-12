@@ -135,7 +135,7 @@ export default function PostRequirementsStatsPanel() {
       {
         count: disabledPostRequirements,
         text: 'Disabled',
-        linkColor: disabledPostRequirements > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledPostRequirements > 0 ? {
           title: 'Disabled Post Requirements',
           items: postRequirements.filter(p => !p.isActive).map(p => ({

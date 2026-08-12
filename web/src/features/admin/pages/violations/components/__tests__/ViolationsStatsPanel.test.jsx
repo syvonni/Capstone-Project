@@ -17,7 +17,7 @@ vi.mock('@/shared/monitoring/components/PerformanceStatsPanel', () => ({
 }))
 
 vi.mock('@/shared/audit/components/AuditHistoryModal', () => ({
-  default: ({ inline, auditLogs, eventDescriptions, loading, onRefresh, search, onSearchChange, DetailPanelComponent, subtitle, hideHeader, hideBorder }) => (
+  default: ({ auditLogs, loading, search, _inline, _eventDescriptions, _onRefresh, _onSearchChange, _DetailPanelComponent, _subtitle, _hideHeader, _hideBorder }) => (
     <div data-testid="audit-history-modal">
       <div data-testid="audit-logs-count">{auditLogs?.length || 0}</div>
       <div data-testid="audit-loading">{loading ? 'loading' : 'not-loading'}</div>
@@ -31,7 +31,7 @@ vi.mock('@/shared/audit/components/AuditEventDetails', () => ({
 }))
 
 vi.mock('@/shared/components/SplitCard', () => ({
-  default: ({ title, icon, links, loading, extraText, children, noRightPanelPadding }) => (
+  default: ({ title, links, loading, extraText, children, _icon, _noRightPanelPadding }) => (
     <div data-testid={`split-card-${title.toLowerCase().replace(/\s+/g, '-')}`}>
       <div data-testid="card-title">{title}</div>
       <div data-testid="card-loading">{loading ? 'loading' : 'not-loading'}</div>

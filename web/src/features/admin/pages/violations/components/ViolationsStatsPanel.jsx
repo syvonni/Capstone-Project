@@ -133,7 +133,7 @@ export default function ViolationsStatsPanel() {
       {
         count: disabledViolations,
         text: 'Disabled',
-        linkColor: disabledViolations > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledViolations > 0 ? {
           title: 'Disabled Violations',
           items: violations.filter(v => !v.isActive).map(v => ({

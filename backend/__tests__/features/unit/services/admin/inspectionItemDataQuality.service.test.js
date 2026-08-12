@@ -1,11 +1,11 @@
-const InspectionItemDataQualityService = require("../../../../services/business-service/src/services/admin/inspectionItemDataQuality.service");
+const InspectionItemDataQualityService = require("../../../../../services/business-service/src/services/admin/inspectionItemDataQuality.service");
 
 // Mock the dependencies
 jest.mock(
-  "../../../../services/business-service/src/lib/dataQualityHelpers/inspectionItemDataQualityHelper",
+  "../../../../../services/business-service/src/lib/dataQualityHelpers/inspectionItemDataQualityHelper",
 );
 
-const InspectionItemDataQualityHelper = require("../../../../services/business-service/src/lib/dataQualityHelpers/inspectionItemDataQualityHelper");
+const InspectionItemDataQualityHelper = require("../../../../../services/business-service/src/lib/dataQualityHelpers/inspectionItemDataQualityHelper");
 
 describe("InspectionItemDataQualityService", () => {
   beforeEach(() => {

@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/utils/renderWithProviders'
-import { http, HttpResponse } from 'msw'
-import { setupServer } from 'msw/node'
 
 // Mock the services
 vi.mock('@/features/admin/services/violationService', () => ({

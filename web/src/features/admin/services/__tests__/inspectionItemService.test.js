@@ -35,7 +35,7 @@ describe('inspectionItemService', () => {
 
   describe('getInspectionItems', () => {
     it('calls get with correct URL when no parameters provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getInspectionItems()
       
@@ -43,7 +43,7 @@ describe('inspectionItemService', () => {
     })
 
     it('includes isActive parameter in URL when provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getInspectionItems({ isActive: true })
       
@@ -51,7 +51,7 @@ describe('inspectionItemService', () => {
     })
 
     it('includes violationId parameter in URL when provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getInspectionItems({ violationId: 'violation1' })
       
@@ -59,7 +59,7 @@ describe('inspectionItemService', () => {
     })
 
     it('includes both parameters when provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getInspectionItems({ isActive: false, violationId: 'violation1' })
       
@@ -68,7 +68,7 @@ describe('inspectionItemService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', name: 'Item 1' }]
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getInspectionItems()
       
@@ -77,7 +77,7 @@ describe('inspectionItemService', () => {
 
     it('handles response with direct data property', async () => {
       const mockData = [{ _id: '1', name: 'Item 1' }]
-      get.mockResolvedValue({ data: mockData })
+      get.mockResolvedValue(mockData)
       
       const result = await getInspectionItems()
       
@@ -87,7 +87,7 @@ describe('inspectionItemService', () => {
 
   describe('getInspectionItemsByViolation', () => {
     it('calls get with correct URL', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getInspectionItemsByViolation('violation1')
       
@@ -96,7 +96,7 @@ describe('inspectionItemService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', name: 'Item 1' }]
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getInspectionItemsByViolation('violation1')
       
@@ -106,7 +106,7 @@ describe('inspectionItemService', () => {
 
   describe('getInspectionItem', () => {
     it('calls get with correct URL', async () => {
-      get.mockResolvedValue({ data: { data: null } })
+      get.mockResolvedValue(null)
       
       await getInspectionItem('1')
       
@@ -115,7 +115,7 @@ describe('inspectionItemService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'Item 1' }
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getInspectionItem('1')
       
@@ -123,7 +123,7 @@ describe('inspectionItemService', () => {
     })
 
     it('handles response with null data property', async () => {
-      get.mockResolvedValue({ data: null })
+      get.mockResolvedValue(null)
       
       const result = await getInspectionItem('1')
       
@@ -135,13 +135,13 @@ describe('inspectionItemService', () => {
       
       const result = await getInspectionItem('1')
       
-      expect(result).toBeUndefined()
+      expect(result).toBeNull()
     })
   })
 
   describe('createInspectionItem', () => {
     it('calls fetchJsonWithFallback with correct parameters', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'New Item', question: 'Test question' }
       await createInspectionItem(data)
@@ -156,7 +156,7 @@ describe('inspectionItemService', () => {
     })
 
     it('includes step-up token in headers when provided', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'New Item', question: 'Test question' }
       await createInspectionItem(data, { stepUpToken: 'token123' })
@@ -172,7 +172,7 @@ describe('inspectionItemService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'New Item' }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await createInspectionItem({ name: 'New Item' })
       
@@ -182,7 +182,7 @@ describe('inspectionItemService', () => {
 
   describe('updateInspectionItem', () => {
     it('calls fetchJsonWithFallback with correct parameters', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'Updated Item' }
       await updateInspectionItem('1', data)
@@ -198,7 +198,7 @@ describe('inspectionItemService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'Updated Item' }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await updateInspectionItem('1', { name: 'Updated Item' })
       
@@ -208,7 +208,7 @@ describe('inspectionItemService', () => {
 
   describe('disableInspectionItem', () => {
     it('calls fetchJsonWithFallback with DELETE method', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       await disableInspectionItem('1')
       
@@ -222,7 +222,7 @@ describe('inspectionItemService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', isActive: false }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await disableInspectionItem('1')
       
@@ -259,7 +259,7 @@ describe('inspectionItemService', () => {
 
   describe('getInspectionItemDataQuality', () => {
     it('calls get with correct URL', async () => {
-      get.mockResolvedValue({ data: { issues: [] } })
+      get.mockResolvedValue([])
       
       await getInspectionItemDataQuality()
       
@@ -268,7 +268,7 @@ describe('inspectionItemService', () => {
 
     it('returns data from response', async () => {
       const mockData = { issues: [] }
-      get.mockResolvedValue({ data: mockData })
+      get.mockResolvedValue(mockData)
       
       const result = await getInspectionItemDataQuality()
       
@@ -278,7 +278,7 @@ describe('inspectionItemService', () => {
 
   describe('getAllInspectionItemAudits', () => {
     it('calls get with correct URL and default pagination', async () => {
-      get.mockResolvedValue({ data: [] })
+      get.mockResolvedValue([])
       
       await getAllInspectionItemAudits()
       
@@ -286,7 +286,7 @@ describe('inspectionItemService', () => {
     })
 
     it('includes custom pagination parameters', async () => {
-      get.mockResolvedValue({ data: [] })
+      get.mockResolvedValue([])
       
       await getAllInspectionItemAudits({ page: 2, limit: 50 })
       
@@ -295,7 +295,7 @@ describe('inspectionItemService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', eventType: 'create' }]
-      get.mockResolvedValue({ data: mockData })
+      get.mockResolvedValue(mockData)
       
       const result = await getAllInspectionItemAudits()
       

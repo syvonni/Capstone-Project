@@ -3,7 +3,7 @@
  * Displays authentication status for cross-device flow
  */
 import { Typography, Space, Alert, Button, theme } from 'antd'
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography

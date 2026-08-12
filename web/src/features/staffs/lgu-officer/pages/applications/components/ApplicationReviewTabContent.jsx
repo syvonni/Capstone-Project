@@ -1,5 +1,5 @@
 import { Typography, Alert } from 'antd'
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
 import ApplicationInfoCard from './ApplicationInfoCard'
 
 const { Text } = Typography

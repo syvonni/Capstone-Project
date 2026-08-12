@@ -246,20 +246,6 @@ export const SystemAlert = {
   },
 }
 
-// Tamper Incident
-export const TamperIncident = {
-  args: {
-    subject: 'Audit tamper incident (high) - BizClear',
-    greeting: 'Hello',
-    intro: 'An audit tamper or integrity issue was detected.',
-    severity: 'high',
-    verificationStatus: 'tamper_detected',
-    message: 'Unexpected modification detected in audit log entry AR-12345',
-    detectedAt: new Date().toISOString(),
-    appUrl: 'http://localhost:5173/admin/security',
-  },
-}
-
 // Admin Alert - Restricted Field Attempt
 export const AdminAlertRestrictedField = {
   args: {

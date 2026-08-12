@@ -62,7 +62,12 @@ export function useApplicationData(initialApplication, form) {
           res = await getPublicPermitFormByFormId(formType)
         }
         if (cancelled) return
-        if (res?.success && res?.form) {
+        // Handle both response structures: { success: true, form: ... } or direct form object
+        if (res?.formId || res?.sections) {
+          // Direct form object response (REST standard)
+          setFormDefinition(res)
+        } else if (res?.success && res?.form) {
+          // Envelope response (legacy)
           setFormDefinition(res.form)
         }
       } catch (e) {

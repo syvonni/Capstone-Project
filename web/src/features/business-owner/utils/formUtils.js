@@ -12,6 +12,44 @@ export function filterSectionsByFormValues(sections, formValues) {
   })
 }
 
+/**
+ * Find the field marked as the business name in a form definition.
+ * @param {object} formDefinition - Form definition with sections/items
+ * @returns {object|null} The business name field, or null
+ */
+export function findBusinessNameField(formDefinition) {
+  if (!formDefinition?.sections) return null
+  const allFields = formDefinition.sections.flatMap(s => s.items || [])
+  return allFields.find(f => f.isBusinessName) || null
+}
+
+/**
+ * Extract a business name value from form data using the form definition.
+ * Falls back to common hardcoded formData keys if no field is marked.
+ * @param {object} formDefinition - Form definition with sections/items
+ * @param {object} formData - Current form values
+ * @returns {string|null} Business name value or null
+ */
+export function getBusinessNameFromFormDefinition(formDefinition, formData) {
+  if (!formData || typeof formData !== 'object') return null
+
+  const businessNameField = findBusinessNameField(formDefinition)
+  if (businessNameField?.key) {
+    const value = formData[businessNameField.key]
+    if (value && typeof value === 'string' && value.trim()) {
+      return value.trim()
+    }
+  }
+
+  // Legacy fallback for forms without isBusinessName
+  return formData.businessName ||
+         formData.registeredBusinessName ||
+         formData['Business / trade name'] ||
+         formData.businessTradeName ||
+         formData.activityName ||
+         null
+}
+
 const FILE_ICON_MAP = {
   pdf: FilePdfOutlined,
   doc: FileWordOutlined,
@@ -172,7 +210,7 @@ export function detectFileType(url, fileName, acceptedFileTypes) {
 }
 
 /**
- * Utility functions for PermitApplicationForm
+ * Utility functions for ApplicationForm
  */
 
 export function calculateRevisionFieldKeys(fieldReviewDecisions) {

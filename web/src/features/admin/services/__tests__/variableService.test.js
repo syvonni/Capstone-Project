@@ -37,7 +37,7 @@ describe('variableService', () => {
 
   describe('getVariables', () => {
     it('calls get with correct URL when no filters provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getVariables()
       
@@ -45,7 +45,7 @@ describe('variableService', () => {
     })
 
     it('includes category filter in URL when provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getVariables({ category: 'test' })
       
@@ -53,7 +53,7 @@ describe('variableService', () => {
     })
 
     it('includes multiple filters when provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getVariables({ category: 'test', isActive: true })
       
@@ -62,7 +62,7 @@ describe('variableService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', name: 'Variable 1' }]
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getVariables()
       
@@ -71,7 +71,7 @@ describe('variableService', () => {
 
     it('handles response with direct data property', async () => {
       const mockData = [{ _id: '1', name: 'Variable 1' }]
-      get.mockResolvedValue({ data: mockData })
+      get.mockResolvedValue(mockData)
       
       const result = await getVariables()
       
@@ -79,7 +79,7 @@ describe('variableService', () => {
     })
 
     it('handles empty response', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       const result = await getVariables()
       
@@ -89,7 +89,7 @@ describe('variableService', () => {
 
   describe('getVariable', () => {
     it('calls get with correct URL', async () => {
-      get.mockResolvedValue({ data: { data: null } })
+      get.mockResolvedValue(null)
       
       await getVariable('1')
       
@@ -98,7 +98,7 @@ describe('variableService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'Variable 1' }
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getVariable('1')
       
@@ -106,16 +106,15 @@ describe('variableService', () => {
     })
 
     it('handles null nested data response', async () => {
-      get.mockResolvedValue({ data: { data: null } })
+      get.mockResolvedValue(null)
       
       const result = await getVariable('1')
       
-      // The service now returns res directly
-      expect(result).toEqual({ data: null })
+      expect(result).toBeNull()
     })
 
     it('handles response with null data property', async () => {
-      get.mockResolvedValue({ data: null })
+      get.mockResolvedValue(null)
       
       const result = await getVariable('1')
       
@@ -125,7 +124,7 @@ describe('variableService', () => {
 
   describe('createVariable', () => {
     it('calls fetchJsonWithFallback with correct parameters', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'New Variable', description: 'Test description' }
       await createVariable(data)
@@ -140,7 +139,7 @@ describe('variableService', () => {
     })
 
     it('includes step-up token in headers when provided', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'New Variable' }
       await createVariable(data, { stepUpToken: 'token123' })
@@ -156,7 +155,7 @@ describe('variableService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'New Variable' }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await createVariable({ name: 'New Variable' })
       
@@ -166,7 +165,7 @@ describe('variableService', () => {
 
   describe('updateVariable', () => {
     it('calls fetchJsonWithFallback with correct parameters', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'Updated Variable' }
       await updateVariable('1', data)
@@ -182,7 +181,7 @@ describe('variableService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'Updated Variable' }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await updateVariable('1', { name: 'Updated Variable' })
       
@@ -192,7 +191,7 @@ describe('variableService', () => {
 
   describe('deleteVariable', () => {
     it('calls fetchJsonWithFallback with DELETE method', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       await deleteVariable('1')
       
@@ -206,7 +205,7 @@ describe('variableService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', isActive: false }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await deleteVariable('1')
       
@@ -216,7 +215,7 @@ describe('variableService', () => {
 
   describe('getVariableAudit', () => {
     it('calls get with correct URL', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getVariableAudit('1')
       
@@ -225,7 +224,7 @@ describe('variableService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', eventType: 'update' }]
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getVariableAudit('1')
       
@@ -235,7 +234,7 @@ describe('variableService', () => {
 
   describe('getVariablesByFeeId', () => {
     it('calls get with correct URL structure', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getVariablesByFeeId('fee1')
       
@@ -244,7 +243,7 @@ describe('variableService', () => {
     })
 
     it('includes timestamp in URL', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getVariablesByFeeId('fee1')
       
@@ -254,7 +253,7 @@ describe('variableService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', name: 'Variable 1' }]
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getVariablesByFeeId('fee1')
       
@@ -264,7 +263,7 @@ describe('variableService', () => {
 
   describe('getVariablesByVariableFeeRuleId', () => {
     it('calls get with correct URL structure', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getVariablesByVariableFeeRuleId('rule1')
       
@@ -273,7 +272,7 @@ describe('variableService', () => {
     })
 
     it('includes timestamp in URL', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getVariablesByVariableFeeRuleId('rule1')
       
@@ -283,7 +282,7 @@ describe('variableService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', name: 'Variable 1' }]
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getVariablesByVariableFeeRuleId('rule1')
       
@@ -293,7 +292,7 @@ describe('variableService', () => {
 
   describe('updateVariableCalculation', () => {
     it('calls fetchJsonWithFallback with correct URL', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { calculation: 'new calculation' }
       await updateVariableCalculation('1', data)
@@ -309,7 +308,7 @@ describe('variableService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', calculation: 'new calculation' }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await updateVariableCalculation('1', { calculation: 'new calculation' })
       
@@ -354,7 +353,7 @@ describe('variableService', () => {
 
     it('returns data from response when logs not present', async () => {
       const mockData = { logs: [{ _id: '1', eventType: 'create' }] }
-      get.mockResolvedValue({ data: mockData })
+      get.mockResolvedValue(mockData)
       
       const result = await getAllVariableAudits()
       

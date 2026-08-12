@@ -1,5 +1,5 @@
-const ownerProfileService = require("../../ownerProfile.service");
-const businessOwnerService = require("../../businessOwner.service");
+const ownerProfileService = require("../ownerProfile.service");
+const businessOwnerService = require("../businessOwner.service");
 const fileUploadService = require("./fileUpload.service");
 const logger = require("../../lib/logger");
 

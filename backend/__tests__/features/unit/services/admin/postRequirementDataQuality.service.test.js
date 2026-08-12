@@ -1,11 +1,11 @@
-const PostRequirementDataQualityService = require("../../../../services/business-service/src/services/admin/postRequirementDataQuality.service");
+const PostRequirementDataQualityService = require("../../../../../services/business-service/src/services/admin/postRequirementDataQuality.service");
 
 // Mock the dependencies
 jest.mock(
-  "../../../../services/business-service/src/lib/dataQualityHelpers/postRequirementDataQualityHelper",
+  "../../../../../services/business-service/src/lib/dataQualityHelpers/postRequirementDataQualityHelper",
 );
 
-const PostRequirementDataQualityHelper = require("../../../../services/business-service/src/lib/dataQualityHelpers/postRequirementDataQualityHelper");
+const PostRequirementDataQualityHelper = require("../../../../../services/business-service/src/lib/dataQualityHelpers/postRequirementDataQualityHelper");
 
 describe("PostRequirementDataQualityService", () => {
   beforeEach(() => {

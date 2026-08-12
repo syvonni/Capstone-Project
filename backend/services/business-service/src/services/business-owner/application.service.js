@@ -4,86 +4,36 @@ const BusinessProfile = require("../../models/BusinessProfile");
 const User = require("../../models/User");
 const PermitForm = require("../../../../../shared/models/PermitForm");
 const { logAuditEvent } = require("../../lib/auditClient");
+const applicationEmailService = require("../lgu-officer/applicationEmail.service");
 
 class ApplicationService {
   /**
    * Helper to send application email (fire and forget, doesn't block status change)
    */
   async sendApplicationEmail(application, emailType, metadata = {}) {
-    try {
-      const user = await User.findById(application.userId).select(
-        "firstName lastName email",
-      );
-      if (!user || !user.email) {
-        console.warn(
-          `User or email not found for application ${application.applicationId}`,
-        );
-        return;
-      }
+    return applicationEmailService.sendApplicationEmail(
+      application,
+      emailType,
+      metadata,
+    );
+  }
 
-      const emailData = {
-        to: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        businessName: application.businessName || "Unnamed Business",
-        applicationId: application.applicationId,
-        applicationReferenceNumber: application.applicationReferenceNumber,
-        ...metadata,
-      };
-
-      // Import mailer from auth-service lib
-      const mailer = require("../../../../services/auth-service/src/lib/mailer");
-
-      switch (emailType) {
-        case "submitted":
-          await mailer.sendApplicationSubmittedEmail(emailData);
-          break;
-        case "approved":
-          await mailer.sendApplicationApprovedEmail(emailData);
-          break;
-        case "rejected":
-          await mailer.sendApplicationRejectedEmail({
-            ...emailData,
-            rejectionReason: metadata.rejectionReason,
-          });
-          break;
-        case "returned":
-          await mailer.sendApplicationReturnedEmail({
-            ...emailData,
-            reviewComments: metadata.reviewComments,
-          });
-          break;
-        default:
-          console.warn(`Unknown email type: ${emailType}`);
-          return;
-      }
-
-      // Update emailSendStatus to sent
-      application.emailSendStatus = application.emailSendStatus || {};
-      application.emailSendStatus[emailType] = {
-        status: "sent",
-        retryCount: 0,
-        lastAttempt: new Date(),
-        lockUntil: null,
-      };
-      await application.save();
-    } catch (err) {
-      console.error(
-        `Failed to send ${emailType} email for application ${application.applicationId}:`,
-        err.message,
-      );
-      // Update emailSendStatus to failed
-      application.emailSendStatus = application.emailSendStatus || {};
-      const currentRetry =
-        (application.emailSendStatus[emailType]?.retryCount || 0) + 1;
-      application.emailSendStatus[emailType] = {
-        status: "failed",
-        retryCount: currentRetry,
-        lastAttempt: new Date(),
-        lockUntil: null,
-      };
-      await application.save();
-    }
+  /**
+   * Extract the best available business name from form data.
+   * Tries the same field keys used when approving/creating a Business record.
+   */
+  getBusinessNameFromFormData(formData) {
+    if (!formData || typeof formData !== "object") return null;
+    return (
+      formData.businessName ||
+      formData.registeredBusinessName ||
+      formData.activityName ||
+      formData["Business / trade name"] ||
+      formData.businessTradeName ||
+      formData.tradeName ||
+      formData["Trade / Business Name"] ||
+      null
+    );
   }
 
   /**
@@ -132,19 +82,14 @@ class ApplicationService {
       ...applicationData,
     });
 
-    // Log audit event
+    // Log a draft/created audit event, not a submission audit.
     await logAuditEvent(
-      "application_submitted",
+      "application_created",
       userId,
       "application",
       application.applicationId,
       { applicationId: application.applicationId, userId },
     ).catch((err) => console.error("Failed to log audit event:", err));
-
-    // Send submission email (fire and forget)
-    this.sendApplicationEmail(application, "submitted").catch((err) => {
-      console.error("Failed to send submission email:", err);
-    });
 
     return { application };
   }
@@ -435,6 +380,12 @@ class ApplicationService {
     application.submittedToLguOfficer = true;
     application.isSubmitted = true;
 
+    // Use the real business name from form data if the stored name is just a placeholder
+    const realBusinessName = this.getBusinessNameFromFormData(application.formData);
+    if (realBusinessName) {
+      application.businessName = realBusinessName;
+    }
+
     // Generate reference number if missing
     if (
       !application.applicationReferenceNumber ||
@@ -461,7 +412,20 @@ class ApplicationService {
       },
     ).catch((err) => console.error("Failed to log audit event:", err));
 
-    return { application };
+    // Send submission/resubmission email (fire and forget, but capture result for warning)
+    const emailType = currentStatus === "returned" ? "resubmitted" : "submitted";
+    const emailResult = await this.sendApplicationEmail(
+      application,
+      emailType,
+    );
+
+    return {
+      application,
+      warnings:
+        emailResult?.success === false
+          ? [`Failed to send ${emailType} email: ${emailResult.error}`]
+          : undefined,
+    };
   }
 
   /**
@@ -602,12 +566,17 @@ class ApplicationService {
       },
     ).catch((err) => console.error("Failed to log audit event:", err));
 
-    // Send approval email (fire and forget)
-    this.sendApplicationEmail(application, "approved").catch((err) => {
-      console.error("Failed to send approval email:", err);
-    });
+    // Send approval email (fire and forget, but capture result for warning)
+    const emailResult = await this.sendApplicationEmail(application, "approved");
 
-    return { application, business };
+    return {
+      application,
+      business,
+      warnings:
+        emailResult?.success === false
+          ? [`Failed to send approval email: ${emailResult.error}`]
+          : undefined,
+    };
   }
 
   /**
@@ -649,14 +618,20 @@ class ApplicationService {
       { applicationId: application.applicationId, rejectionReason },
     ).catch((err) => console.error("Failed to log audit event:", err));
 
-    // Send rejection email (fire and forget)
-    this.sendApplicationEmail(application, "rejected", {
-      rejectionReason,
-    }).catch((err) => {
-      console.error("Failed to send rejection email:", err);
-    });
+    // Send rejection email (fire and forget, but capture result for warning)
+    const emailResult = await this.sendApplicationEmail(
+      application,
+      "rejected",
+      { rejectionReason },
+    );
 
-    return { application };
+    return {
+      application,
+      warnings:
+        emailResult?.success === false
+          ? [`Failed to send rejection email: ${emailResult.error}`]
+          : undefined,
+    };
   }
 
   /**
@@ -707,14 +682,20 @@ class ApplicationService {
       { applicationId: application.applicationId, reviewComments },
     ).catch((err) => console.error("Failed to log audit event:", err));
 
-    // Send returned email (fire and forget)
-    this.sendApplicationEmail(application, "returned", {
-      reviewComments,
-    }).catch((err) => {
-      console.error("Failed to send returned email:", err);
-    });
+    // Send returned email (fire and forget, but capture result for warning)
+    const emailResult = await this.sendApplicationEmail(
+      application,
+      "returned",
+      { reviewComments },
+    );
 
-    return { application };
+    return {
+      application,
+      warnings:
+        emailResult?.success === false
+          ? [`Failed to send returned email: ${emailResult.error}`]
+          : undefined,
+    };
   }
 
   /**
@@ -725,6 +706,7 @@ class ApplicationService {
       !emailType ||
       ![
         "submitted",
+        "resubmitted",
         "approved",
         "rejected",
         "returned",
@@ -773,7 +755,14 @@ class ApplicationService {
     }
 
     // Send email
-    await this.sendApplicationEmail(application, emailType);
+    const emailResult = await this.sendApplicationEmail(application, emailType);
+
+    if (emailResult?.success === false) {
+      const error = new Error(emailResult.error || "Failed to resend email");
+      error.code = "EMAIL_SEND_FAILED";
+      error.status = 500;
+      throw error;
+    }
 
     // Log audit event
     await logAuditEvent(

@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const Violation = require("../models/Violation");
-const Fee = require("../models/Fee");
+const Fee = require("../../../../shared/models/Fee");
 
 /**
  * Post Requirement Violations Seeder

@@ -35,7 +35,7 @@
 const { trackChanges } = require("../changeTracker");
 const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
 const { logAuditEvent } = require("../auditClient");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const Checklist = require("../../models/Checklist");
 
 /**

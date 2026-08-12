@@ -35,7 +35,7 @@ describe('violationService', () => {
 
   describe('getViolations', () => {
     it('calls get with correct URL when no parameters provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getViolations()
       
@@ -43,7 +43,7 @@ describe('violationService', () => {
     })
 
     it('includes category parameter in URL when provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getViolations({ category: 'health' })
       
@@ -51,7 +51,7 @@ describe('violationService', () => {
     })
 
     it('includes severity parameter in URL when provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getViolations({ severity: 'major' })
       
@@ -59,7 +59,7 @@ describe('violationService', () => {
     })
 
     it('includes isActive parameter in URL when provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getViolations({ isActive: true })
       
@@ -67,7 +67,7 @@ describe('violationService', () => {
     })
 
     it('includes multiple parameters when provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getViolations({ category: 'health', severity: 'major', isActive: false })
       
@@ -76,7 +76,7 @@ describe('violationService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', name: 'Violation 1' }]
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getViolations()
       
@@ -85,7 +85,7 @@ describe('violationService', () => {
 
     it('handles response with direct data property', async () => {
       const mockData = [{ _id: '1', name: 'Violation 1' }]
-      get.mockResolvedValue({ data: mockData })
+      get.mockResolvedValue(mockData)
       
       const result = await getViolations()
       
@@ -93,7 +93,7 @@ describe('violationService', () => {
     })
 
     it('handles empty response', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       const result = await getViolations()
       
@@ -103,7 +103,7 @@ describe('violationService', () => {
 
   describe('getViolation', () => {
     it('calls get with correct URL', async () => {
-      get.mockResolvedValue({ data: { data: null } })
+      get.mockResolvedValue(null)
       
       await getViolation('1')
       
@@ -112,7 +112,7 @@ describe('violationService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'Violation 1' }
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getViolation('1')
       
@@ -120,16 +120,15 @@ describe('violationService', () => {
     })
 
     it('handles null nested data response', async () => {
-      get.mockResolvedValue({ data: { data: null } })
+      get.mockResolvedValue(null)
       
       const result = await getViolation('1')
       
-      // The service now returns res directly
-      expect(result).toEqual({ data: null })
+      expect(result).toBeNull()
     })
 
     it('handles response with null data property', async () => {
-      get.mockResolvedValue({ data: null })
+      get.mockResolvedValue(null)
       
       const result = await getViolation('1')
       
@@ -139,7 +138,7 @@ describe('violationService', () => {
 
   describe('createViolation', () => {
     it('calls fetchJsonWithFallback with correct parameters', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'New Violation', description: 'Test description' }
       await createViolation(data)
@@ -154,7 +153,7 @@ describe('violationService', () => {
     })
 
     it('includes step-up token in headers when provided', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'New Violation' }
       await createViolation(data, { stepUpToken: 'token123' })
@@ -170,7 +169,7 @@ describe('violationService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'New Violation' }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await createViolation({ name: 'New Violation' })
       
@@ -180,7 +179,7 @@ describe('violationService', () => {
 
   describe('updateViolation', () => {
     it('calls fetchJsonWithFallback with correct parameters', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'Updated Violation' }
       await updateViolation('1', data)
@@ -196,7 +195,7 @@ describe('violationService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'Updated Violation' }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await updateViolation('1', { name: 'Updated Violation' })
       
@@ -206,7 +205,7 @@ describe('violationService', () => {
 
   describe('disableViolation', () => {
     it('calls fetchJsonWithFallback with DELETE method', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       await disableViolation('1')
       
@@ -220,7 +219,7 @@ describe('violationService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', isActive: false }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await disableViolation('1')
       
@@ -257,7 +256,7 @@ describe('violationService', () => {
 
   describe('getViolationsByFee', () => {
     it('calls get with correct URL', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getViolationsByFee('fee1')
       
@@ -266,7 +265,7 @@ describe('violationService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', name: 'Violation 1' }]
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getViolationsByFee('fee1')
       
@@ -311,7 +310,7 @@ describe('violationService', () => {
 
     it('returns data from response when logs not present', async () => {
       const mockData = { logs: [{ _id: '1', eventType: 'create' }] }
-      get.mockResolvedValue({ data: mockData })
+      get.mockResolvedValue(mockData)
       
       const result = await getAllViolationAudits()
       

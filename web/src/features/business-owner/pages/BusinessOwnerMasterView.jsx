@@ -1,29 +1,27 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Button, theme, App, Grid } from 'antd'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { Button, theme, App, Grid, Tag } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import LayoutPageHeader from '@/shared/components/LayoutPageHeader'
 import ResponsiveSplitLayout from '@/shared/components/ResponsiveSplitLayout'
-import AnnouncementsCard from '@/shared/components/AnnouncementsCard'
+import AnnouncementsCard from '@/shared/components/cms/AnnouncementsCard'
 import ApplicationsList from './applications/components/ApplicationsList'
 import ApplicationDetailPanel from './applications/components/ApplicationDetailPanel'
-import ApplicationTypeSelector from '../components/onboarding/ApplicationTypeSelector'
-import PermitApplicationForm from './applications/components/ApplicationPermitForm'
+import ApplicationTypeSelectorModal from './applications/components/modals/ApplicationTypeSelectorModal'
+import ApplicationForm from './applications/components/ApplicationForm'
 import UserSettingsView from '@/features/user/components/layout/UserSettingsView'
-import WelcomeInline from '../components/onboarding/WelcomeModal'
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import WelcomeInline from './onboarding/WelcomeModal'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
 import { useAnnouncements } from '@/shared/hooks/useAnnouncements'
 import { useApplicationsState } from './applications/hooks/useApplicationsState'
-import { useBusinessActions } from './applications/hooks/useBusinessActions'
-import { getBusinessDisplayName } from './applications/utils/statusUtils'
+import { useApplicationActions } from './applications/hooks/useApplicationActions'
+import { getApplicationDisplayName, getSaveStatus } from './applications/utils/statusUtils'
+import { useApplicationStatus } from './applications/hooks/useApplicationStatus'
 import { useAuthSession } from '@/features/authentication'
-import { getCurrentUser } from '@/features/authentication/lib/authEvents'
-import { authHeaders } from '@/lib/authHeaders'
-import { fetchJsonWithFallback } from '@/lib/http'
+import { markWelcomeComplete } from '@/features/authentication/services/authService'
 
 const { useBreakpoint } = Grid
 
 export default function BusinessOwnerMasterView({
-  children,
   pageTitle,
   pageIcon,
   showPageHeader = true,
@@ -48,15 +46,16 @@ export default function BusinessOwnerMasterView({
   const dashboardState = useApplicationsState()
 
   const {
-    businesses,
+    applications,
     loading: appsLoading,
-    selectedBusinessId,
+    selectedApplicationId,
     showAddForm,
-    showBusinessTypeSelector,
+    showApplicationTypeSelector,
+    setShowApplicationTypeSelector,
     editingApplication,
     setEditingApplication,
     readAnnouncements,
-    fetchBusinesses,
+    fetchApplications,
     showWelcomeState,
     openApplicationForm,
     fromWelcomeModal,
@@ -75,7 +74,7 @@ export default function BusinessOwnerMasterView({
 
   const handleWelcomeSelect = useCallback(async (registrationType) => {
     // Count draft, pending, and submitted applications
-    const draftOrPendingCount = businesses.filter(
+    const draftOrPendingCount = applications.filter(
       b => b.applicationStatus === 'draft' || b.applicationStatus === 'pending' || b.applicationStatus === 'submitted'
     ).length
 
@@ -90,7 +89,7 @@ export default function BusinessOwnerMasterView({
     // Don't mark welcome as completed via API yet - only mark it when user actually submits the application
     openApplicationForm({ registrationType, fromWelcome: true })
     dashboardState.setShowWelcomeState(false)
-  }, [openApplicationForm, dashboardState, businesses, message])
+  }, [openApplicationForm, dashboardState, applications, message])
 
   const handleLinkExisting = useCallback(async () => {
     // Mark welcome as dismissed so useEffect doesn't re-enable it
@@ -98,12 +97,7 @@ export default function BusinessOwnerMasterView({
 
     // Mark welcome as completed via API
     try {
-      const current = getCurrentUser()
-      const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })
-      await fetchJsonWithFallback('/api/auth/welcome-complete', {
-        method: 'PATCH',
-        headers,
-      })
+      await markWelcomeComplete()
     } catch (err) {
       console.error('Failed to mark welcome as completed:', err)
       // Continue anyway - don't block the user
@@ -115,46 +109,114 @@ export default function BusinessOwnerMasterView({
 
   // Business actions
   const {
-    handleBusinessSelect,
-    handleAddBusiness,
-    handleBusinessTypeSelect,
+    handleApplicationSelect,
+    handleAddApplication,
+    handleApplicationTypeSelect,
     draftLimitReached,
-  } = useBusinessActions({
-    businesses,
+  } = useApplicationActions({
+    applications,
     dashboardState,
     setEditingApplication,
-    fetchBusinesses,
-    selectedBusinessId,
+    fetchApplications,
   })
 
   // Settings state
   const [showSettings, setShowSettings] = useState(false)
 
+  // Track autosave status for the mobile drawer title
+  const [drawerSaveStatus, setDrawerSaveStatus] = useState(null)
+
   const handleSettingsClick = () => {
-    dashboardState.setSelectedBusinessId(null)
+    dashboardState.setSelectedApplicationId(null)
     dashboardState.setShowAddForm(false)
-    dashboardState.setShowBusinessTypeSelector(false)
+    dashboardState.setShowApplicationTypeSelector(false)
     setShowSettings(true)
   }
 
-  // Update business actions to reset settings when interacting with applications
-  const handleBusinessSelectWrapper = (applicationId) => {
+  const handleApplicationSubmitted = useCallback((response) => {
+    const submittedApplication =
+      response?.applicationes?.[0] ||
+      response?.application ||
+      response?.data?.application
+
+    if (submittedApplication) {
+      const appId = submittedApplication.applicationId || submittedApplication._id
+
+      // Merge formData and documents so the response doesn’t wipe out values
+      // the backend didn’t echo back (e.g., category upload selections).
+      const mergedApplication = {
+        ...editingApplication,
+        ...submittedApplication,
+        formData: {
+          ...(editingApplication?.formData || {}),
+          ...(submittedApplication?.formData || {}),
+        },
+        lguDocuments: {
+          ...(editingApplication?.lguDocuments || {}),
+          ...(submittedApplication?.lguDocuments || submittedApplication?.documents || {}),
+        },
+      }
+
+      dashboardState.setApplications((prev) =>
+        prev.map((app) =>
+          (app.applicationId || app._id) === appId ? { ...app, ...mergedApplication } : app
+        )
+      )
+    }
+
+    // Always close the full-screen create form and refresh the list
+    dashboardState.setShowAddForm(false)
+    dashboardState.setEditingApplication(null)
+    if (submittedApplication) {
+      dashboardState.setSelectedApplicationId(submittedApplication.applicationId || submittedApplication._id)
+    }
+    fetchApplications()
+  }, [dashboardState, editingApplication, fetchApplications])
+
+  // Update application actions to reset settings when interacting with applications
+  const handleApplicationSelectWrapper = (applicationId) => {
     setShowSettings(false)
-    handleBusinessSelect(applicationId)
+    handleApplicationSelect(applicationId)
   }
 
-  const handleAddBusinessWrapper = () => {
+  const handleAddApplicationWrapper = () => {
     setShowSettings(false)
-    handleAddBusiness()
+    handleAddApplication()
   }
 
-  const handleBusinessTypeSelectWrapper = (formId) => {
+  const handleApplicationTypeSelectWrapper = (formId) => {
     setShowSettings(false)
-    handleBusinessTypeSelect(formId)
+    handleApplicationTypeSelect(formId)
   }
 
-  const selectedBusiness = businesses.find(b => (b.businessId || b._id) === selectedBusinessId)
-  const displayName = getBusinessDisplayName(selectedBusiness)
+  const selectedApplication = applications.find(app => (app.applicationId || app._id) === selectedApplicationId)
+  const activeApplication = selectedApplication || editingApplication
+  const activeDisplayName = getApplicationDisplayName(activeApplication)
+  const { isDraft } = useApplicationStatus(activeApplication)
+
+  const drawerTitle = useMemo(() => {
+    if (showSettings) return 'Settings'
+    if (showApplicationTypeSelector) return 'Select Permit Type'
+    if (showAddForm && !editingApplication) return 'New Application'
+    if (!activeApplication) return activeDisplayName || 'Details'
+
+    let saveTag = null
+    if (isDraft && drawerSaveStatus) {
+      const { text, color } = getSaveStatus(drawerSaveStatus)
+      saveTag = (
+        <Tag color={color} style={{ fontWeight: 'normal' }}>
+          {text}
+        </Tag>
+      )
+    }
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span>{activeDisplayName || 'Details'}</span>
+        {saveTag}
+      </div>
+    )
+  }, [showSettings, showApplicationTypeSelector, showAddForm, editingApplication, activeApplication, isDraft, drawerSaveStatus, activeDisplayName])
 
   // Auth loading state
   if (authLoading) {
@@ -180,7 +242,6 @@ export default function BusinessOwnerMasterView({
         <LayoutPageHeader
           pageTitle={pageTitle}
           pageIcon={pageIcon}
-          viewNotificationsPath="/notifications"
           showPageHeader={showPageHeader}
           onRefresh={onRefresh}
           lastUpdated={lastUpdated}
@@ -204,26 +265,19 @@ export default function BusinessOwnerMasterView({
   if (showAddForm && !editingApplication && fromWelcomeModal) {
     return (
       <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-        <PermitApplicationForm
+        <ApplicationForm
           editingApplication={editingApplication}
-          onDraftCreated={async (newBusiness) => {
-            const businessId = newBusiness.businessId || newBusiness._id
-            await fetchBusinesses()
-            dashboardState.setSelectedBusinessId(businessId)
+          onSubmitted={handleApplicationSubmitted}
+          onDraftCreated={async (newApplication) => {
+            const applicationId = newApplication.applicationId || newApplication._id
+            await fetchApplications()
+            dashboardState.setSelectedApplicationId(applicationId)
             dashboardState.setShowAddForm(false)
 
             // Mark welcome as completed if this draft was created from the welcome modal
             if (fromWelcomeModal) {
               try {
-                const { getCurrentUser } = await import('@/features/authentication/lib/authEvents')
-                const { authHeaders } = await import('@/lib/authHeaders')
-                const { fetchJsonWithFallback } = await import('@/lib/http')
-                const current = getCurrentUser()
-                const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })
-                await fetchJsonWithFallback('/api/auth/welcome-complete', {
-                  method: 'PATCH',
-                  headers,
-                })
+                await markWelcomeComplete()
               } catch (err) {
                 console.error('Failed to mark welcome as completed:', err)
               }
@@ -236,8 +290,8 @@ export default function BusinessOwnerMasterView({
               dashboardState.setShowWelcomeState(true)
               dashboardState.setFromWelcomeModal(false)
             } else {
-              // When not coming from welcome, show business type selector in right panel
-              dashboardState.setShowBusinessTypeSelector(true)
+              // When not coming from welcome, show application type selector in right panel
+              dashboardState.setShowApplicationTypeSelector(true)
             }
           }}
           initialRegistrationType={permitType}
@@ -265,22 +319,23 @@ export default function BusinessOwnerMasterView({
 
       {/* Applications List */}
       <ApplicationsList
-        businesses={businesses}
+        applications={applications}
         loading={appsLoading}
-        selectedBusinessId={selectedBusinessId}
-        onBusinessSelect={handleBusinessSelectWrapper}
-        onAddBusiness={handleAddBusinessWrapper}
-        isSelectingType={showBusinessTypeSelector}
+        selectedApplicationId={selectedApplicationId}
+        onApplicationSelect={handleApplicationSelectWrapper}
+        onAddApplication={handleAddApplicationWrapper}
+        isSelectingType={showApplicationTypeSelector}
         draftLimitReached={draftLimitReached}
       />
 
       {/* Settings Button */}
       <Button
         icon={<SettingOutlined />}
-        style={{ width: '100%', marginTop: 12, textAlign: 'left', justifyContent: 'flex-start' }}
+        block
+        style={{ width: '100%', marginTop: 12, textAlign: 'left', justifyContent: 'flex-start', height: 46 }}
         onClick={handleSettingsClick}
       >
-        Settings
+        <span style={{ marginLeft: 4 }}>Settings</span>
       </Button>
     </div>
   )
@@ -290,47 +345,42 @@ export default function BusinessOwnerMasterView({
     <div style={{ flex: 1, overflow: 'auto', height: '100%' }}>
       <UserSettingsView />
     </div>
-  ) : showBusinessTypeSelector ? (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto' }}>
-      <ApplicationTypeSelector
-        onSelect={handleBusinessTypeSelectWrapper}
-      />
-    </div>
+  ) : showApplicationTypeSelector ? (
+    <ApplicationTypeSelectorModal
+      open={showApplicationTypeSelector}
+      onCancel={() => setShowApplicationTypeSelector(false)}
+      onSelect={handleApplicationTypeSelectWrapper}
+      onLinkExisting={handleLinkExisting}
+    />
   ) : showAddForm && editingApplication ? (
     // Editing a draft application - use ApplicationDetailPanel for consistent navigation
     <ApplicationDetailPanel
-      business={editingApplication}
+      application={editingApplication}
       token={token}
       dashboardState={dashboardState}
+      onSaveStatusChange={setDrawerSaveStatus}
     />
   ) : showAddForm ? (
     // Creating a new application - show form without header
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', alignItems: 'center' }}>
-      <PermitApplicationForm
+      <ApplicationForm
         editingApplication={editingApplication}
-        onDraftCreated={async (newBusiness) => {
-          console.log('onDraftCreated called with newBusiness:', newBusiness)
-          const businessId = newBusiness.businessId || newBusiness._id
-          console.log('Extracted businessId:', businessId)
-          // Refetch businesses to get the updated list
-          console.log('About to fetch businesses')
-          await fetchBusinesses()
-          console.log('Businesses fetched, setting selectedBusinessId:', businessId)
-          dashboardState.setSelectedBusinessId(businessId)
+        onSubmitted={handleApplicationSubmitted}
+        onDraftCreated={async (newApplication) => {
+          console.log('onDraftCreated called with newApplication:', newApplication)
+          const applicationId = newApplication.applicationId || newApplication._id
+          console.log('Extracted applicationId:', applicationId)
+          // Refetch applications to get the updated list
+          console.log('About to fetch applications')
+          await fetchApplications()
+          console.log('Applications fetched, setting selectedApplicationId:', applicationId)
+          dashboardState.setSelectedApplicationId(applicationId)
           dashboardState.setShowAddForm(false)
 
           // Mark welcome as completed if this draft was created from the welcome modal
           if (fromWelcomeModal) {
             try {
-              const { getCurrentUser } = await import('@/features/authentication/lib/authEvents')
-              const { authHeaders } = await import('@/lib/authHeaders')
-              const { fetchJsonWithFallback } = await import('@/lib/http')
-              const current = getCurrentUser()
-              const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })
-              await fetchJsonWithFallback('/api/auth/welcome-complete', {
-                method: 'PATCH',
-                headers,
-              })
+              await markWelcomeComplete()
             } catch (err) {
               console.error('Failed to mark welcome as completed:', err)
             }
@@ -343,26 +393,28 @@ export default function BusinessOwnerMasterView({
             dashboardState.setShowWelcomeState(true)
             dashboardState.setFromWelcomeModal(false)
           } else {
-            // When not coming from welcome, show business type selector in right panel
-            dashboardState.setShowBusinessTypeSelector(true)
+            // When not coming from welcome, show application type selector in right panel
+            dashboardState.setShowApplicationTypeSelector(true)
           }
         }}
         initialRegistrationType={permitType}
       />
     </div>
-  ) : selectedBusiness ? (
+  ) : selectedApplication ? (
     <ApplicationDetailPanel
-      business={selectedBusiness}
+      application={selectedApplication}
       token={token}
       dashboardState={dashboardState}
+      onSaveStatusChange={setDrawerSaveStatus}
     />
   ) : null
 
   const handleDrawerClose = () => {
-    dashboardState.setSelectedBusinessId(null)
+    dashboardState.setSelectedApplicationId(null)
     dashboardState.setShowAddForm(false)
-    dashboardState.setShowBusinessTypeSelector(false)
+    dashboardState.setShowApplicationTypeSelector(false)
     setShowSettings(false)
+    setDrawerSaveStatus(null)
   }
 
   return (
@@ -370,7 +422,6 @@ export default function BusinessOwnerMasterView({
       <LayoutPageHeader
         pageTitle={pageTitle}
         pageIcon={pageIcon}
-        viewNotificationsPath="/notifications"
         showPageHeader={showPageHeader}
         onRefresh={onRefresh}
         lastUpdated={lastUpdated}
@@ -384,9 +435,9 @@ export default function BusinessOwnerMasterView({
         <ResponsiveSplitLayout
           listContent={listContent}
           detailContent={detailContent}
-          drawerTitle={showSettings ? 'Settings' : showAddForm ? 'New Application' : showBusinessTypeSelector ? 'Select Permit Type' : displayName || 'Details'}
+          drawerTitle={drawerTitle}
           onDrawerClose={handleDrawerClose}
-          drawerOpen={!!selectedBusiness || showSettings || showAddForm || showBusinessTypeSelector}
+          drawerOpen={!!selectedApplication || showSettings || showAddForm || showApplicationTypeSelector}
           mobileDrawerPlacement="bottom"
           listDefaultSize="350px"
         />

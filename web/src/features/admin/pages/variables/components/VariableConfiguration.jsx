@@ -2,12 +2,11 @@ import { Form, Input, Typography, Button, Select } from 'antd'
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
 import { getChecklists } from '@/features/admin/services/checklistService'
-import { UNIT_PRESETS, UNIT_SINGULAR_PRESETS, UNIT_PLURAL_PRESETS, UNIT_CONTEXT_SINGULAR_PRESETS, UNIT_CONTEXT_PLURAL_PRESETS } from '@/shared/constants/units.constants'
 
 const { Text } = Typography
 const { TextArea } = Input
 
-export default function VariableConfiguration({ form, handleFormValuesChange, token }) {
+export default function VariableConfiguration({ form, handleFormValuesChange, onFormattersChange, token }) {
   const [checklists, setChecklists] = useState([])
   const [loadingChecklists, setLoadingChecklists] = useState(false)
 
@@ -17,6 +16,19 @@ export default function VariableConfiguration({ form, handleFormValuesChange, to
       try {
         const items = await getChecklists({ isActive: true })
         setChecklists(items || [])
+
+        if (onFormattersChange) {
+          onFormattersChange({
+            formatters: {
+              checklistId: (value) => {
+                if (!value) return '(empty)';
+                const match = items?.find((c) => c._id === value || String(c._id) === String(value));
+                return match?.name || String(value);
+              },
+            },
+            fieldLabels: { checklistId: 'Checklist' },
+          });
+        }
       } catch (error) {
         console.error('Failed to fetch checklists:', error)
       } finally {
@@ -24,7 +36,7 @@ export default function VariableConfiguration({ form, handleFormValuesChange, to
       }
     }
     fetchChecklists()
-  }, [])
+  }, [onFormattersChange])
   return (
     <Form 
       form={form} 
@@ -68,14 +80,9 @@ export default function VariableConfiguration({ form, handleFormValuesChange, to
         name="unit"
         rules={[{ required: true, message: 'Unit is required' }]}
       >
-        <Select
-          placeholder="Select or type a unit"
-          options={UNIT_PRESETS}
+        <Input
+          placeholder="e.g., sqm"
           allowClear
-          showSearch
-          filterOption={(input, option) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
         />
       </Form.Item>
 
@@ -84,14 +91,9 @@ export default function VariableConfiguration({ form, handleFormValuesChange, to
         name="unitSingular"
         rules={[{ required: true, message: 'Unit singular form is required' }]}
       >
-        <Select
-          placeholder="Select or type a unit"
-          options={UNIT_SINGULAR_PRESETS}
+        <Input
+          placeholder="e.g., square meter"
           allowClear
-          showSearch
-          filterOption={(input, option) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
         />
       </Form.Item>
 
@@ -100,14 +102,9 @@ export default function VariableConfiguration({ form, handleFormValuesChange, to
         name="unitPlural"
         rules={[{ required: true, message: 'Unit plural form is required' }]}
       >
-        <Select
-          placeholder="Select or type a unit"
-          options={UNIT_PLURAL_PRESETS}
+        <Input
+          placeholder="e.g., square meters"
           allowClear
-          showSearch
-          filterOption={(input, option) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
         />
       </Form.Item>
 
@@ -116,14 +113,9 @@ export default function VariableConfiguration({ form, handleFormValuesChange, to
         name="unitContextSingular"
         rules={[{ required: true, message: 'Context-specific unit (singular) is required' }]}
       >
-        <Select
-          placeholder="Select or type a unit"
-          options={UNIT_CONTEXT_SINGULAR_PRESETS}
+        <Input
+          placeholder="e.g., per square meter"
           allowClear
-          showSearch
-          filterOption={(input, option) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
         />
       </Form.Item>
 
@@ -132,14 +124,9 @@ export default function VariableConfiguration({ form, handleFormValuesChange, to
         name="unitContextPlural"
         rules={[{ required: true, message: 'Context-specific unit (plural) is required' }]}
       >
-        <Select
-          placeholder="Select or type a unit"
-          options={UNIT_CONTEXT_PLURAL_PRESETS}
+        <Input
+          placeholder="e.g., per square meters"
           allowClear
-          showSearch
-          filterOption={(input, option) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
         />
       </Form.Item>
 
@@ -187,6 +174,7 @@ export default function VariableConfiguration({ form, handleFormValuesChange, to
                     name={[field.name, 'title']}
                     label={<span>Title<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
                     rules={[{ required: true, message: 'Title is required' }]}
+                    initialValue=""
                     style={{ marginBottom: 0 }}
                   >
                     <Input placeholder="e.g., RA 1234 - Law Name" />
@@ -194,6 +182,7 @@ export default function VariableConfiguration({ form, handleFormValuesChange, to
                   <Form.Item
                     name={[field.name, 'description']}
                     label="Description"
+                    initialValue=""
                     style={{ marginBottom: 0 }}
                   >
                     <TextArea rows={2} placeholder="Brief description of the legal reference" />

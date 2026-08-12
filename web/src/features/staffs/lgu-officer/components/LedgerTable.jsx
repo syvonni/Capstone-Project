@@ -16,7 +16,6 @@ const PAYMENT_STATUS_CONFIG = {
 
 const PAYMENT_TYPE_CONFIG = {
   permit_fee: { color: 'blue', label: 'Permit Fee' },
-  renewal_fee: { color: 'cyan', label: 'Renewal Fee' },
   cessation_tax: { color: 'orange', label: 'Cessation Tax' },
   inspection_fee: { color: 'purple', label: 'Inspection Fee' },
   penalty: { color: 'red', label: 'Penalty' },

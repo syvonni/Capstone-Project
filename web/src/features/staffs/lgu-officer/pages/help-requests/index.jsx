@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
+import { Empty } from 'antd'
 import HelpRequestsPanel from './components/HelpRequestsPanel'
 import HelpRequestDetailPanel from './components/HelpRequestDetailPanel'
-import SplitLayout from '@/shared/components/SplitLayout'
+import ResponsiveSplitLayout from '@/shared/components/ResponsiveSplitLayout'
 import useOfficerData from '../../hooks/useOfficerData'
 import { useOfficerDataContext } from '../../contexts/OfficerDataContext'
 import BookmarkService from '../../services/bookmarkService'
@@ -87,14 +88,20 @@ export default function OfficerHelpRequests() {
 
   const detailContent = selectedItem ? (
     <HelpRequestDetailPanel request={selectedItem} onReviewComplete={handleReviewComplete} onBookmarkToggle={handleBookmarkToggle} />
-  ) : null
+  ) : (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+      <Empty description="Select a help request to view details" />
+    </div>
+  )
 
   return (
-    <SplitLayout
+    <ResponsiveSplitLayout
       listContent={listContent}
       detailContent={detailContent}
       drawerTitle="Request details"
       onDrawerClose={handleDrawerClose}
+      drawerOpen={!!selectedItem}
+      mobileDrawerPlacement="bottom"
     />
   )
 }

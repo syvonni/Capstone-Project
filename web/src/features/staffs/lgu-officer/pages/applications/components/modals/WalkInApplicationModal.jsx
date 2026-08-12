@@ -1,15 +1,15 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { Modal, Select, Button, Typography, message, Grid, Drawer, theme } from 'antd'
+import { Select, Button, Typography, message, theme } from 'antd'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import PanelCard from '@/shared/components/PanelCard'
 import InfoGrid from '@/shared/components/InfoGrid'
 import ListPanel from '@/shared/components/ListPanel'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import BusinessOwnerService from '@/features/staffs/lgu-officer/services/businessOwnerService'
 import { PermitApplicationService } from '@/features/staffs/lgu-officer/services/permitApplicationService'
 import dayjs from 'dayjs'
 
 const { Text, Title } = Typography
-const { useBreakpoint } = Grid
 const { useToken } = theme
 
 const { Option } = Select
@@ -31,7 +31,6 @@ const PERMIT_TYPES = [
 ]
 
 export default function WalkInApplicationModal({ open, onClose, onApplicationSelect }) {
-  const screens = useBreakpoint()
   const { token } = useToken()
   const [step, setStep] = useState('select_owner')
   const [loading, setLoading] = useState(false)
@@ -41,7 +40,6 @@ export default function WalkInApplicationModal({ open, onClose, onApplicationSel
   const [permitType, setPermitType] = useState(null)
   const [search, setSearch] = useState('')
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 })
-  const isMobile = !screens.lg
   const { runWithStepUp, stepUpModal } = useStepUp()
 
   const businessOwnerService = useMemo(() => new BusinessOwnerService(), [])
@@ -244,7 +242,7 @@ export default function WalkInApplicationModal({ open, onClose, onApplicationSel
   // Step 1: Select Business Owner
   const step1Content = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div style={{ flex: 1, overflow: 'auto', padding: 16, minHeight: 0 }}>
+      <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
         {/* Step Indicator */}
         <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
           Step 1 of 2
@@ -283,7 +281,7 @@ export default function WalkInApplicationModal({ open, onClose, onApplicationSel
 
   // Step 2: Confirm & Create
   const step2Content = (
-    <div style={{ padding: 16 }}>
+    <div>
       {/* Step Indicator */}
       <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
         Step 2 of 2
@@ -317,73 +315,33 @@ export default function WalkInApplicationModal({ open, onClose, onApplicationSel
 
   const content = step === 'select_owner' ? step1Content : step2Content
 
-  const footerContent = (
-    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-      {step === 'confirm_create' && (
-        <Button onClick={handleBack}>
-          Back
-        </Button>
-      )}
-      {step === 'confirm_create' && (
-        <Button 
-          type="primary" 
-          onClick={handleCreateApplication} 
-          loading={loading}
-          disabled={!permitType}
-        >
-          Create Application
-        </Button>
-      )}
-    </div>
-  )
-
-  if (isMobile) {
-    return (
-      <>
-        <Drawer
-          open={open}
-          onClose={handleModalClose}
-          title="Walk-In Application"
-          placement="bottom"
-          styles={{ body: { padding: 0 } }}
-          destroyOnHidden
-        >
-          {content}
-          <div style={{ padding: 16, borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            {step === 'confirm_create' && (
-              <Button onClick={handleBack}>
-                Back
-              </Button>
-            )}
-            {step === 'confirm_create' && (
-              <Button 
-                type="primary" 
-                onClick={handleCreateApplication} 
-                loading={loading}
-                disabled={!permitType}
-              >
-                Create Application
-              </Button>
-            )}
-          </div>
-        </Drawer>
-        {stepUpModal}
-      </>
-    )
-  }
+  const footer = step === 'confirm_create' ? [
+    <Button key="back" onClick={handleBack}>
+      Back
+    </Button>,
+    <Button
+      key="create"
+      type="primary"
+      onClick={handleCreateApplication}
+      loading={loading}
+      disabled={!permitType}
+    >
+      Create Application
+    </Button>,
+  ] : null
 
   return (
     <>
-      <Modal
+      <ResponsiveModal
         open={open}
         onCancel={handleModalClose}
         title="Walk-In Application"
-        footer={footerContent}
+        footer={footer}
         width={600}
         destroyOnHidden
       >
         {content}
-      </Modal>
+      </ResponsiveModal>
       {stepUpModal}
     </>
   )

@@ -11,7 +11,6 @@ export const STATUS_LABELS = {
   officer_draft: 'Officer Draft',
   submitted: 'Pending Review',
   under_review: 'Under Review',
-  pending_renewal: 'For Renewal',
   approved: 'Active',
   active: 'Active',
   needs_revision: 'Action Required',
@@ -33,7 +32,6 @@ export const STATUS_COLORS = {
   officer_draft: 'cyan',
   submitted: 'blue',
   under_review: 'gold',
-  pending_renewal: 'gold',
   approved: 'green',
   active: 'green',
   needs_revision: 'volcano',
@@ -193,43 +191,43 @@ export function isPendingStatus(status) {
 }
 
 /**
- * Get business display name from various possible fields
- * @param {object} business - Business object
+ * Get application display name from various possible fields
+ * @param {object} application - Application object
  * @returns {string} Display name
  */
-export function getBusinessDisplayName(business) {
-  if (!business) return 'Unnamed Business'
-  return business.businessName ||
-         business.tradeName ||
-         business.registeredBusinessName ||
-         business.formData?.businessName ||
-         business.formData?.['Business / trade name'] ||
-         business.formData?.['Business Name'] ||
-         business.formData?.['Trade Name'] ||
-         business.formData?.tradeName ||
-         'Unnamed Business'
+export function getApplicationDisplayName(application) {
+  if (!application) return 'Unnamed Application'
+  return application.businessName ||
+         application.tradeName ||
+         application.registeredBusinessName ||
+         application.formData?.businessName ||
+         application.formData?.['Business / trade name'] ||
+         application.formData?.['Business Name'] ||
+         application.formData?.['Trade Name'] ||
+         application.formData?.tradeName ||
+         'Unnamed Application'
 }
 
 /**
- * Get business reference number
- * @param {object} business - Business object
+ * Get application reference number
+ * @param {object} application - Application object
  * @returns {string|null} Reference number or null
  */
-export function getBusinessReferenceNumber(business) {
-  if (!business) return null
-  return business.applicationReferenceNumber ||
-         business.registrationNumber ||
+export function getApplicationReferenceNumber(application) {
+  if (!application) return null
+  return application.applicationReferenceNumber ||
+         application.registrationNumber ||
          null
 }
 
 /**
- * Get business ID (handles both businessId and _id)
- * @param {object} business - Business object
- * @returns {string|null} Business ID or null
+ * Get application ID (handles both applicationId and _id)
+ * @param {object} application - Application object
+ * @returns {string|null} Application ID or null
  */
-export function getBusinessId(business) {
-  if (!business) return null
-  return business.businessId || business._id || null
+export function getApplicationId(application) {
+  if (!application) return null
+  return application.applicationId || application._id || null
 }
 
 /**

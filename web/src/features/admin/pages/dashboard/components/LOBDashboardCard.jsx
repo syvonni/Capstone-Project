@@ -104,7 +104,7 @@ export default function LOBDashboardCard() {
       {
         count: disabledLobs,
         text: 'Disabled',
-        linkColor: disabledLobs > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledLobs > 0 ? {
           title: 'Disabled LOBs',
           items: lobs.filter(l => !l.isActive).map(l => ({
@@ -225,7 +225,7 @@ export default function LOBDashboardCard() {
       links.push(performanceLink)
     }
     return links
-  }, [statusLinks, issuesLink, performanceLink, lastActivity])
+  }, [statusLinks, issuesLink, performanceLink])
 
   useEffect(() => {
     fetchAllData()

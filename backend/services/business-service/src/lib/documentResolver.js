@@ -112,14 +112,14 @@ function escapeHtml(text) {
  *
  * @param {Array} templateTexts - Array of text attribute bindings from ClaimableDocument
  * @param {Object} application - Application document with formData
- * @param {Object} businessProfile - BusinessProfile document
+ * @param {Object} business - Business document
  * @param {Object} permitForm - PermitForm document with sections/fields
  * @returns {Object} - Map of attributeName -> resolved value, plus unresolved tracking
  */
 function resolveTemplateTexts(
   templateTexts,
   application,
-  businessProfile,
+  business,
   permitForm,
 ) {
   const resolved = {};
@@ -153,7 +153,7 @@ function resolveTemplateTexts(
           value = resolveSystemField(sourceKey, application);
           break;
         case "business_profile":
-          value = resolveBusinessProfileField(sourceKey, businessProfile);
+          value = resolveBusinessProfileField(sourceKey, business);
           break;
         case "static":
           value = staticValue || "";
@@ -234,35 +234,25 @@ function resolveSystemField(sourceKey, application) {
 }
 
 /**
- * Resolve business_profile field from BusinessProfile
+ * Resolve business_profile field from Business
  */
-function resolveBusinessProfileField(sourceKey, businessProfile) {
-  if (!sourceKey || !businessProfile) return "";
-
-  // Get the primary business from the businesses array
-  const businesses = businessProfile.businesses || [];
-  const primaryBusiness = businesses.find((b) => b.isPrimary) || businesses[0];
-
-  if (!primaryBusiness) return "";
+function resolveBusinessProfileField(sourceKey, business) {
+  if (!sourceKey || !business) return "";
 
   switch (sourceKey) {
     case "registeredBusinessName":
-      return primaryBusiness.registeredBusinessName || "";
+      return business.registeredBusinessName || "";
     case "businessTradeName":
-      return (
-        primaryBusiness.businessTradeName || primaryBusiness.businessName || ""
-      );
+      return business.businessTradeName || business.businessName || "";
     case "businessAddress":
-      return formatAddress(
-        primaryBusiness.location || primaryBusiness.businessAddress || {},
-      );
+      return formatAddress(business.location || business.businessAddress || {});
     case "businessType":
-      return primaryBusiness.businessType || "";
+      return business.businessType || "";
     case "primaryLineOfBusiness":
-      return primaryBusiness.primaryLineOfBusiness || "";
+      return business.primaryLineOfBusiness || "";
     default:
-      // Try direct lookup on primary business
-      return primaryBusiness[sourceKey] || "";
+      // Try direct lookup on business
+      return business[sourceKey] || "";
   }
 }
 

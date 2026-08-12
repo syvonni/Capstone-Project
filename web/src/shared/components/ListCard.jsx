@@ -106,7 +106,7 @@ export default function ListCard({
       ) : displayItems.length === 0 ? (
         <Empty description={emptyText} image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ margin: '20px 0' }} />
       ) : (
-        <Space.Compact direction="vertical" style={{ width: '100%' }}>
+        <Space.Compact orientation="vertical" style={{ width: '100%' }}>
           {displayItems.slice(0, 3).map((item, index) => (
             <Button
               key={index}

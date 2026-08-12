@@ -87,19 +87,6 @@ function startJobs() {
     "sendDeletionReminders",
   );
 
-  // Notify admins of new tamper incidents (every 10 minutes)
-  scheduleJob(
-    "*/10 * * * *",
-    async () => {
-      try {
-        await notifyTamperIncidents();
-      } catch (error) {
-        logger.error("Error in notifyTamperIncidents job", { error });
-      }
-    },
-    "notifyTamperIncidents",
-  );
-
   // Expire pending maintenance approvals after 48 hours (run hourly)
   scheduleJob(
     "0 * * * *",

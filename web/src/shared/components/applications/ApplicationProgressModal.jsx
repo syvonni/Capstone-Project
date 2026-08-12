@@ -1,12 +1,12 @@
 import { Steps } from 'antd'
-import ResponsiveModal from './ResponsiveModal'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { formatDate } from '@/features/business-owner/pages/applications/utils/formatters.js'
 import { isApprovedStatus, isRejectedStatus } from '@/features/business-owner/pages/applications/utils/statusUtils'
 import { useState, useEffect } from 'react'
 import { getAppealById } from '@/features/business-owner/services/appealsService.js'
 import { getAppealsByBusiness } from '@/features/staffs/lgu-officer/services/appealsService.js'
 
-export default function ApplicationProgressModal({ open, onClose, application, status, statusLower, latestAppeal: propLatestAppeal }) {
+export default function ApplicationProgressModal({ open, onClose, application, statusLower, latestAppeal: propLatestAppeal }) {
   const [fetchedAppeal, setFetchedAppeal] = useState(null)
   const [loadingAppeal, setLoadingAppeal] = useState(false)
 
@@ -52,24 +52,24 @@ export default function ApplicationProgressModal({ open, onClose, application, s
   if (isOfficerDraft) {
     steps.push({
       title: 'Created by Officer',
-      description: application.createdAt ? `Created on: ${formatDate(application.createdAt)}` : 'Unknown',
+      content: application.createdAt ? `Created on: ${formatDate(application.createdAt)}` : 'Unknown',
       status: 'finish'
     })
     steps.push({
       title: 'Draft in Progress',
-      description: 'Officer is completing the application',
+      content: 'Officer is completing the application',
       status: isApproved ? 'finish' : 'process'
     })
     if (isApproved) {
       steps.push({
         title: 'Approved',
-        description: application.reviewedAt ? `Finished on: ${formatDate(application.reviewedAt)}` : 'Pending',
+        content: application.reviewedAt ? `Finished on: ${formatDate(application.reviewedAt)}` : 'Pending',
         status: 'finish'
       })
     } else {
       steps.push({
         title: 'Pending Approval',
-        description: 'Waiting for officer to finish and approve',
+        content: 'Waiting for officer to finish and approve',
         status: 'wait'
       })
     }
@@ -78,20 +78,20 @@ export default function ApplicationProgressModal({ open, onClose, application, s
     if (createdByOfficer) {
       steps.push({
         title: 'Created by Officer',
-        description: application.createdAt ? `Created on: ${formatDate(application.createdAt)}` : 'Unknown',
+        content: application.createdAt ? `Created on: ${formatDate(application.createdAt)}` : 'Unknown',
         status: 'finish'
       })
     }
 
     steps.push({
       title: 'Draft in Progress',
-      description: statusLower === 'draft' ? 'In progress' : (application.createdAt ? `Finished on: ${formatDate(application.createdAt)}` : 'Not started'),
+      content: statusLower === 'draft' ? 'In progress' : (application.createdAt ? `Finished on: ${formatDate(application.createdAt)}` : 'Not started'),
       status: statusLower === 'draft' ? 'process' : 'finish'
     })
 
     steps.push({
       title: 'Submitted',
-      description: application.submittedAt ? `Finished on: ${formatDate(application.submittedAt)}` : 'Not submitted',
+      content: application.submittedAt ? `Finished on: ${formatDate(application.submittedAt)}` : 'Not submitted',
       status: ['submitted', 'under_review', 'needs_revision', 'returned', 'resubmit', 'approved', 'rejected', 'appeal_pending', 'appeal_rejected'].includes(statusLower) ? 'finish' : 'wait'
     })
   }
@@ -100,7 +100,7 @@ export default function ApplicationProgressModal({ open, onClose, application, s
   if (!isOfficerDraft) {
     steps.push({
       title: isReturned ? 'Review Completed' : 'Under Review',
-      description: statusLower === 'submitted' ? 'Expected within 24 hours'
+      content: statusLower === 'submitted' ? 'Expected within 24 hours'
                   : statusLower === 'under_review' ? (application.reviewedAt
                       ? `Started on: ${formatDate(application.reviewedAt)}`
                       : 'In Review')
@@ -118,7 +118,7 @@ export default function ApplicationProgressModal({ open, onClose, application, s
            : (isRejected || isAppealPending || isAppealRejected) ? 'Rejected'
            : isApproved ? 'Approved'
            : 'Decision Pending',
-      description: isReturned ? (application.updatedAt ? `Returned on: ${formatDate(application.updatedAt)}` : 'Pending')
+      content: isReturned ? (application.updatedAt ? `Returned on: ${formatDate(application.updatedAt)}` : 'Pending')
                   : statusLower === 'approved' ? `Finished on: ${formatDate(application.reviewedAt)}`
                   : (statusLower === 'rejected' || isAppealPending || isAppealRejected) ? `Finished on: ${formatDate(application.reviewedAt)}`
                   : 'Pending',
@@ -133,18 +133,18 @@ export default function ApplicationProgressModal({ open, onClose, application, s
   if (isReturned && statusLower === 'resubmit') {
     steps.push({
       title: 'Resubmitted',
-      description: application.updatedAt ? `Resubmitted on: ${formatDate(application.updatedAt)}` : 'Pending',
+      content: application.updatedAt ? `Resubmitted on: ${formatDate(application.updatedAt)}` : 'Pending',
       status: 'finish'
     })
     steps.push({
       title: 'Waiting for Review',
-      description: 'Application is under review',
+      content: 'Application is under review',
       status: 'process'
     })
   } else if (isReturned) {
     steps.push({
       title: 'Resubmit to Review',
-      description: 'Waiting for business owner to resubmit',
+      content: 'Waiting for business owner to resubmit',
       status: 'process'
     })
   }
@@ -160,22 +160,22 @@ export default function ApplicationProgressModal({ open, onClose, application, s
     // Add the complete resubmit flow
     steps.push({
       title: 'Returned for Revision',
-      description: application.updatedAt ? formatDate(application.updatedAt) : 'Unknown',
+      content: application.updatedAt ? formatDate(application.updatedAt) : 'Unknown',
       status: 'error'
     })
     steps.push({
       title: 'Resubmitted',
-      description: application.updatedAt ? formatDate(application.updatedAt) : 'Unknown',
+      content: application.updatedAt ? formatDate(application.updatedAt) : 'Unknown',
       status: 'finish'
     })
     steps.push({
       title: 'Re-review Completed',
-      description: application.reviewedAt ? formatDate(application.reviewedAt) : 'Unknown',
+      content: application.reviewedAt ? formatDate(application.reviewedAt) : 'Unknown',
       status: 'finish'
     })
     steps.push({
       title: 'Approved',
-      description: application.reviewedAt ? formatDate(application.reviewedAt) : 'Unknown',
+      content: application.reviewedAt ? formatDate(application.reviewedAt) : 'Unknown',
       status: 'finish'
     })
   }
@@ -191,22 +191,22 @@ export default function ApplicationProgressModal({ open, onClose, application, s
     // Add the complete resubmit flow
     steps.push({
       title: 'Returned for Revision',
-      description: application.updatedAt ? formatDate(application.updatedAt) : 'Unknown',
+      content: application.updatedAt ? formatDate(application.updatedAt) : 'Unknown',
       status: 'error'
     })
     steps.push({
       title: 'Resubmitted',
-      description: application.updatedAt ? formatDate(application.updatedAt) : 'Unknown',
+      content: application.updatedAt ? formatDate(application.updatedAt) : 'Unknown',
       status: 'finish'
     })
     steps.push({
       title: 'Re-review Completed',
-      description: application.reviewedAt ? formatDate(application.reviewedAt) : 'Unknown',
+      content: application.reviewedAt ? formatDate(application.reviewedAt) : 'Unknown',
       status: 'finish'
     })
     steps.push({
       title: 'Rejected',
-      description: application.reviewedAt ? formatDate(application.reviewedAt) : 'Unknown',
+      content: application.reviewedAt ? formatDate(application.reviewedAt) : 'Unknown',
       status: 'error'
     })
   }
@@ -223,34 +223,34 @@ export default function ApplicationProgressModal({ open, onClose, application, s
     if (latestAppeal) {
       steps.push({
         title: 'Appeal Filed',
-        description: latestAppeal.createdAt ? formatDate(latestAppeal.createdAt) : 'Unknown',
+        content: latestAppeal.createdAt ? formatDate(latestAppeal.createdAt) : 'Unknown',
         status: 'finish'
       })
 
       if (isAppealPending) {
         steps.push({
           title: 'Appeal Under Review',
-          description: 'Appeal is being reviewed',
+          content: 'Appeal is being reviewed',
           status: 'process'
         })
       } else if (isAppealRejected) {
         steps.push({
           title: 'Appeal Rejected',
-          description: latestAppeal.updatedAt ? formatDate(latestAppeal.updatedAt) : 'Unknown',
+          content: latestAppeal.updatedAt ? formatDate(latestAppeal.updatedAt) : 'Unknown',
           status: 'error'
         })
       } else if (application?.hadAppealGranted) {
         // Appeal was granted - show the original rejection and then approval
         steps.push({
           title: 'Appeal Granted',
-          description: latestAppeal.updatedAt ? formatDate(latestAppeal.updatedAt) : 'Unknown',
+          content: latestAppeal.updatedAt ? formatDate(latestAppeal.updatedAt) : 'Unknown',
           status: 'finish'
         })
 
         if (isApproved) {
           steps.push({
             title: 'Approved After Appeal',
-            description: application.reviewedAt ? formatDate(application.reviewedAt) : 'Unknown',
+            content: application.reviewedAt ? formatDate(application.reviewedAt) : 'Unknown',
             status: 'finish'
           })
         }
@@ -258,7 +258,7 @@ export default function ApplicationProgressModal({ open, onClose, application, s
     } else if (appealExhausted) {
       steps.push({
         title: 'Appeal Exhausted',
-        description: 'No more appeals available',
+        content: 'No more appeals available',
         status: 'error'
       })
     }
@@ -269,13 +269,15 @@ export default function ApplicationProgressModal({ open, onClose, application, s
       title="Application Progress"
       open={open}
       onCancel={onClose}
+      footer={null}
       width={600}
     >
       <div style={{ padding: 24 }}>
         <Steps
-          direction="vertical"
+          orientation="vertical"
           current={steps.findIndex(s => s.status === 'process')}
           items={steps}
+          size="small"
         />
       </div>
     </ResponsiveModal>

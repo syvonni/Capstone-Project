@@ -12,7 +12,7 @@ import { currencyFormatter, currencyParser } from '@/shared/utils/currency.utils
 import { getVariableFeeRules } from '@/features/admin/services/feeService'
 import { getLobs } from '@/shared/services/lobService'
 import { getLobsByCategory, getTaxCodeOptions, mapTaxCodeToCategory } from '@/shared/utils/lobApiUtils'
-import { LINE_OF_BUSINESS_BY_TAX_CODE } from '@/shared/constants/lineOfBusiness'
+import { INDUSTRY_CATEGORIES_BY_TAX_CODE } from '@/shared/constants/industryCategories'
 
 import {
   ShopOutlined,
@@ -321,7 +321,7 @@ export default function LobSection() {
               const category = mapTaxCodeToCategory(lobs, taxCode)
               const detailedLines = getLobsByCategory(lobs, category)
               const autoClassification = getAutoClassification(taxCode)
-              const categoryMapping = LINE_OF_BUSINESS_BY_TAX_CODE[taxCode]
+              const categoryMapping = INDUSTRY_CATEGORIES_BY_TAX_CODE[taxCode]
               const categoryLabel = categoryMapping?.name || taxCode
               const categoryDescription = categoryMapping?.description || ''
 
@@ -776,7 +776,7 @@ export default function LobSection() {
                   setVariableInputs({})
                 }}
                 options={getTaxCodeOptions(lobs).filter(lob => !selectedIndustryTaxCodes.includes(lob.value)).map(lob => {
-                  const categoryMapping = LINE_OF_BUSINESS_BY_TAX_CODE[lob.value]
+                  const categoryMapping = INDUSTRY_CATEGORIES_BY_TAX_CODE[lob.value]
                   const categoryLabel = categoryMapping?.name || lob.label
                   const categoryDescription = categoryMapping?.description || ''
                   return {
@@ -958,7 +958,7 @@ export default function LobSection() {
                   setVariableInputs({})
                 }}
                 options={getTaxCodeOptions(lobs).filter(lob => !selectedIndustryTaxCodes.includes(lob.value)).map(lob => {
-                  const categoryMapping = LINE_OF_BUSINESS_BY_TAX_CODE[lob.value]
+                  const categoryMapping = INDUSTRY_CATEGORIES_BY_TAX_CODE[lob.value]
                   const categoryLabel = categoryMapping?.name || lob.label
                   const categoryDescription = categoryMapping?.description || ''
                   return {

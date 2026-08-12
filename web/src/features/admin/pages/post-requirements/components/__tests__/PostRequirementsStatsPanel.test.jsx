@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test/utils/renderWithProviders'
 import PostRequirementsStatsPanel from '../PostRequirementsStatsPanel'
 
@@ -32,39 +32,47 @@ describe('PostRequirementsStatsPanel', () => {
     expect(container).toBeInTheDocument()
   })
 
-  it('displays overview statistics', () => {
+  it('displays overview statistics', async () => {
     renderWithProviders(
       <PostRequirementsStatsPanel />
     )
 
-    // Should display overview section
-    expect(screen.getByText(/Status/i)).toBeInTheDocument()
+    // Should display overview section after loading finishes
+    await waitFor(() => {
+      expect(screen.getByText(/Status/i)).toBeInTheDocument()
+    })
   })
 
-  it('displays data quality section', () => {
+  it('displays data quality section', async () => {
     renderWithProviders(
       <PostRequirementsStatsPanel />
     )
 
-    // Should display data quality section
-    expect(screen.getByText(/Issues/i)).toBeInTheDocument()
+    // Should display data quality section after loading finishes
+    await waitFor(() => {
+      expect(screen.getByText(/Issues/i)).toBeInTheDocument()
+    })
   })
 
-  it('displays performance metrics section', () => {
+  it('displays performance metrics section', async () => {
     renderWithProviders(
       <PostRequirementsStatsPanel />
     )
 
-    // Should display performance metrics section
-    expect(screen.getByText(/Performance/i)).toBeInTheDocument()
+    // Should display performance metrics section after loading finishes
+    await waitFor(() => {
+      expect(screen.getByText(/Performance/i)).toBeInTheDocument()
+    })
   })
 
-  it('displays global history section', () => {
+  it('displays global history section', async () => {
     renderWithProviders(
       <PostRequirementsStatsPanel />
     )
 
-    // Should display global history section
-    expect(screen.getByText(/History/i)).toBeInTheDocument()
+    // Should display global history section after loading finishes
+    await waitFor(() => {
+      expect(screen.getByText(/History/i)).toBeInTheDocument()
+    })
   })
 })

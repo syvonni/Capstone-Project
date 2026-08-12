@@ -1,118 +1,141 @@
-import { useState, useEffect, useMemo } from 'react'
-import { App, theme } from 'antd'
-import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
-import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
-import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
-import FeeOverview from './FeeOverview'
-import FeeConfiguration from './FeeConfiguration'
-import { createFee, updateFee, disableFee } from '@/features/admin/services/feeService'
-import { getViolationsByFee } from '@/features/admin/services/violationService'
-import { getPermitFormByFeeId } from '@/features/admin/services/permitFormService'
-import { get } from '@/lib/http.js'
-import { useFeeForm } from '../hooks/useFeeForm'
-import { useStepUp } from '@/shared/hooks/useStepUp'
-import { useAudit } from '@/shared/audit/hooks/useAudit'
-import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { App, theme } from 'antd';
+import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons';
+import DetailHeader from '@/shared/components/DetailHeader';
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal';
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails';
+import FeeOverview from './FeeOverview';
+import FeeConfiguration from './FeeConfiguration';
+import { createFee, updateFee, disableFee } from '@/features/admin/services/feeService';
+import { getViolationsByFee } from '@/features/admin/services/violationService';
+import { getPermitFormByFeeId } from '@/features/admin/services/permitFormService';
+import { get } from '@/lib/http.js';
+import { useFeeForm } from '../hooks/useFeeForm';
+import { useStepUpSummary } from '@/shared/hooks/useStepUpSummary';
+import { useAudit } from '@/shared/audit/hooks/useAudit';
+import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes';
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
   { value: 'disabled', label: 'Disabled' },
-]
+];
 
-export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile = false, hideStatusToggle = false, allowCreation = true }) {
-  const { modal, message } = App.useApp()
-  const { token } = theme.useToken()
-  const [updatingStatus, setUpdatingStatus] = useState(false)
-  const [historyModalOpen, setHistoryModalOpen] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [violations, setViolations] = useState([])
-  const [loadingViolations, setLoadingViolations] = useState(false)
-  const [loadingClaimableDocument, setLoadingClaimableDocument] = useState(false)
-  const [loadingPermitForm, setLoadingPermitForm] = useState(false)
-  const [claimableDocument, setClaimableDocument] = useState(null)
-  const [permitForm, setPermitForm] = useState(null)
+export default function FeeDetailPanel({
+  feeId,
+  fee,
+  onSave,
+  isMobile: _isMobile = false,
+  hideStatusToggle = false,
+  allowCreation = true,
+}) {
+  const { modal, message } = App.useApp();
+  const { token } = theme.useToken();
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [violations, setViolations] = useState([]);
+  const [loadingViolations, setLoadingViolations] = useState(false);
+  const [loadingClaimableDocument, setLoadingClaimableDocument] = useState(false);
+  const [loadingPermitForm, setLoadingPermitForm] = useState(false);
+  const [claimableDocument, setClaimableDocument] = useState(null);
+  const [permitForm, setPermitForm] = useState(null);
 
-  const isNew = allowCreation && feeId === 'new'
-  const isPenaltyFee = fee?.category === 'penalty'
-  const isClaimableDocumentFee = fee?.category === 'claimable_document'
-  const isApplicationFee = fee?.category === 'application_fee'
+  const isNew = allowCreation && feeId === 'new';
+  const isPenaltyFee = fee?.category === 'penalty';
+  const isClaimableDocumentFee = fee?.category === 'claimable_document';
+  const isApplicationFee = fee?.category === 'application_fee';
 
-  const { runWithStepUp, stepUpModal } = useStepUp()
-
-  const { auditLogs, auditLoading, refresh } = useAudit('fee', feeId)
+  const { auditLogs, auditLoading, refresh } = useAudit('fee', feeId);
 
   // Fetch violations by fee ID when viewing a penalty fee
   useEffect(() => {
     const fetchViolations = async () => {
       if (!feeId || feeId === 'new') {
-        setViolations([])
-        return
+        setViolations([]);
+        return;
       }
       try {
-        setLoadingViolations(true)
-        const data = await getViolationsByFee(feeId)
-        setViolations(data || [])
+        setLoadingViolations(true);
+        const data = await getViolationsByFee(feeId);
+        setViolations(data || []);
       } catch (error) {
-        console.error('Failed to fetch violations:', error)
-        setViolations([])
+        console.error('Failed to fetch violations:', error);
+        setViolations([]);
       } finally {
-        setLoadingViolations(false)
+        setLoadingViolations(false);
       }
-    }
+    };
 
-    fetchViolations()
-  }, [feeId])
+    fetchViolations();
+  }, [feeId]);
 
   // Fetch claimable document by fee ID when viewing a claimable_document fee
   useEffect(() => {
     const fetchClaimableDocument = async () => {
       if (!feeId || feeId === 'new' || !isClaimableDocumentFee) {
-        setClaimableDocument(null)
-        return
+        setClaimableDocument(null);
+        return;
       }
       try {
-        setLoadingClaimableDocument(true)
-        const res = await get(`/api/business/admin/documents?feeId=${feeId}`)
-        setClaimableDocument(res?.[0] || null)
+        setLoadingClaimableDocument(true);
+        const res = await get(`/api/business/admin/documents?feeId=${feeId}`);
+        setClaimableDocument(res?.[0] || null);
       } catch (error) {
-        console.error('Failed to fetch claimable document:', error)
-        setClaimableDocument(null)
+        console.error('Failed to fetch claimable document:', error);
+        setClaimableDocument(null);
       } finally {
-        setLoadingClaimableDocument(false)
+        setLoadingClaimableDocument(false);
       }
-    }
+    };
 
-    fetchClaimableDocument()
-  }, [feeId, isClaimableDocumentFee])
+    fetchClaimableDocument();
+  }, [feeId, isClaimableDocumentFee]);
 
   // Fetch permit form by fee ID when viewing application_fee
   useEffect(() => {
     const fetchPermitForm = async () => {
       if (!feeId || feeId === 'new' || !isApplicationFee) {
-        setPermitForm(null)
-        return
+        setPermitForm(null);
+        return;
       }
       try {
-        setLoadingPermitForm(true)
-        const data = await getPermitFormByFeeId(feeId)
-        setPermitForm(data)
+        setLoadingPermitForm(true);
+        const data = await getPermitFormByFeeId(feeId);
+        setPermitForm(data);
       } catch (error) {
-        console.error('Failed to fetch permit form:', error)
-        setPermitForm(null)
+        console.error('Failed to fetch permit form:', error);
+        setPermitForm(null);
       } finally {
-        setLoadingPermitForm(false)
+        setLoadingPermitForm(false);
       }
-    }
+    };
 
-    fetchPermitForm()
-  }, [feeId, isApplicationFee])
+    fetchPermitForm();
+  }, [feeId, isApplicationFee]);
 
-  const initialValues = useMemo(() => ({
-    name: fee?.name || '',
-    notes: fee?.notes || '',
-    amount: fee?.amount || 0,
-  }), [fee?.name, fee?.notes, fee?.amount])
+  const initialValues = useMemo(
+    () => ({
+      name: fee?.name || '',
+      notes: fee?.notes || '',
+      amount: fee?.amount || 0,
+    }),
+    [fee?.name, fee?.notes, fee?.amount]
+  );
+
+  const {
+    resetChangeTracking: resetSummaryTracking,
+    handleValuesChange: summaryHandleValuesChange,
+    openSummary,
+    confirmWithStepUp,
+    runWithStepUp,
+    stepUpModal,
+    ChangesSummary,
+  } = useStepUpSummary({
+    initialValues,
+    title: 'Confirm Changes',
+    confirmText: 'Use Passkey To Confirm',
+    cancelText: 'Cancel',
+  });
 
   const {
     form,
@@ -129,71 +152,113 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
     handleFormValuesChange,
     canUndo,
     canRedo,
-  } = useFeeForm(initialValues)
+  } = useFeeForm(initialValues);
 
-  const loading = saving || loadingViolations || loadingClaimableDocument || loadingPermitForm
+  const loading = saving || loadingViolations || loadingClaimableDocument || loadingPermitForm;
 
+  const saveOperation = useCallback(
+    async (stepUpToken) => {
+      setSaving(true);
+      try {
+        const values = await form.validateFields();
+        if (isNew) {
+          await createFee(values, { stepUpToken });
+          message.success('Fee created successfully');
+        } else {
+          await updateFee(feeId, values, { stepUpToken });
+          message.success('Fee updated successfully');
+        }
+        resetChangeTracking(initialValues);
+        resetSummaryTracking(initialValues);
+        onSave();
+      } catch (error) {
+        if (error?.message !== 'Step-up cancelled') {
+          console.error('Failed to save fee:', error);
+          message.error(error.message || 'Failed to save fee');
+        }
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      form,
+      isNew,
+      feeId,
+      initialValues,
+      resetChangeTracking,
+      resetSummaryTracking,
+      onSave,
+      setSaving,
+      message,
+    ]
+  );
 
   const handleSave = async () => {
     try {
-      setSaving(true)
-      await form.validateFields()
-      const values = form.getFieldsValue()
-
+      const currentValues = form.getFieldsValue();
+      summaryHandleValuesChange(currentValues, currentValues);
       if (isNew) {
-        await runWithStepUp(async (stepUpToken) => {
-          await createFee(values, { stepUpToken })
-        })
-        message.success('Fee created successfully')
+        await runWithStepUp(saveOperation);
       } else {
-        await runWithStepUp(async (stepUpToken) => {
-          await updateFee(feeId, values, { stepUpToken })
-        })
-        message.success('Fee updated successfully')
+        openSummary();
       }
-      resetChangeTracking(initialValues)
-      onSave()
     } catch (error) {
       if (error?.message !== 'Step-up cancelled') {
-        console.error('Failed to save fee:', error)
-        message.error(error.message || 'Failed to save fee')
+        console.error('Failed to save fee:', error);
+        message.error(error.message || 'Failed to save fee');
       }
-    } finally {
-      setSaving(false)
     }
-  }
+  };
+
+  const handleConfirm = useCallback(async () => {
+    try {
+      await confirmWithStepUp(saveOperation);
+    } catch (error) {
+      if (
+        error?.name === 'NotAllowedError' ||
+        error?.name === 'AbortError' ||
+        error?.message === 'Step-up cancelled'
+      ) {
+        return;
+      }
+      console.error('Failed to confirm fee changes:', error);
+      message.error(error.message || 'Failed to confirm fee changes');
+    }
+  }, [confirmWithStepUp, saveOperation, message]);
 
   const handleEnterEditMode = () => {
-    setIsEditMode(true)
-  }
+    setIsEditMode(true);
+  };
 
   const handleExitEditMode = () => {
-    setIsEditMode(false)
-    form.setFieldsValue(initialValues)
-    resetChangeTracking(initialValues)
-  }
+    setIsEditMode(false);
+    form.setFieldsValue(initialValues);
+    resetChangeTracking(initialValues);
+    resetSummaryTracking(initialValues);
+  };
 
   // Reset form when fee changes
   useEffect(() => {
     if (fee && !isNew) {
-      form.setFieldsValue(initialValues)
-      resetChangeTracking(initialValues)
+      form.setFieldsValue(initialValues);
+      resetChangeTracking(initialValues);
+      resetSummaryTracking(initialValues);
     }
-  }, [feeId, fee, initialValues, form, resetChangeTracking, isNew])
+  }, [feeId, fee, initialValues, form, resetChangeTracking, resetSummaryTracking, isNew]);
 
   const handleStatusChange = async (status) => {
-    const newStatusLabel = status === 'active' ? 'Active' : 'Disabled'
+    const newStatusLabel = status === 'active' ? 'Active' : 'Disabled';
 
     const getStatusMessage = (newStatus) => {
       switch (newStatus) {
         case 'active':
-          return 'This will activate the fee and make it available for use in business permits.'
+          return 'This will activate the fee and make it available for use in business permits.';
         case 'disabled':
-          return 'This will disable the fee. It will no longer be available for new business permits.'
+          return 'This will disable the fee. It will no longer be available for new business permits.';
         default:
-          return `Are you sure you want to change the status to ${newStatusLabel}?`
+          return `Are you sure you want to change the status to ${newStatusLabel}?`;
       }
-    }
+    };
 
     modal.confirm({
       title: 'Change Status',
@@ -201,31 +266,30 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
       okText: 'Change',
       cancelText: 'Cancel',
       onOk: async () => {
-        setUpdatingStatus(true)
+        setUpdatingStatus(true);
         try {
           await runWithStepUp(async (stepUpToken) => {
             if (status === 'disabled') {
-              await disableFee(feeId, { stepUpToken })
-              message.success('Fee disabled successfully')
-              if (onSave) onSave()
+              await disableFee(feeId, { stepUpToken });
+              message.success('Fee disabled successfully');
+              if (onSave) onSave();
             } else {
-              await updateFee(feeId, { isActive: true }, { stepUpToken })
-              message.success('Fee activated successfully')
-              if (onSave) onSave()
+              await updateFee(feeId, { isActive: true }, { stepUpToken });
+              message.success('Fee activated successfully');
+              if (onSave) onSave();
             }
-          })
+          });
         } catch (error) {
           if (error?.message !== 'Step-up cancelled') {
-            console.error('Failed to update status:', error)
-            message.error(error.message || 'Failed to update status')
+            console.error('Failed to update status:', error);
+            message.error(error.message || 'Failed to update status');
           }
         } finally {
-          setUpdatingStatus(false)
+          setUpdatingStatus(false);
         }
       },
-    })
-  }
-
+    });
+  };
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -243,30 +307,70 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
         onRedo={handleRedo}
         canUndo={canUndo()}
         canRedo={canRedo()}
-        iconButtons={!isNew ? [
-          { icon: <HistoryOutlined />, onClick: () => setHistoryModalOpen(true), title: 'History' },
-        ] : []}
-        actionButtons={isEditMode
-          ? [{ text: 'Exit Edit Mode', icon: <CloseOutlined />, onClick: handleExitEditMode, type: 'default' }]
-          : [{ text: 'Edit', icon: <EditOutlined />, onClick: handleEnterEditMode, type: 'default' }]}
-        selectFields={!isNew && !isPenaltyFee && !hideStatusToggle ? [
-          {
-            label: 'Status',
-            value: fee?.isActive ? 'active' : 'disabled',
-            onChange: handleStatusChange,
-            loading: updatingStatus,
-            width: 120,
-            options: STATUS_OPTIONS,
-          }
-        ] : []}
+        iconButtons={
+          !isNew
+            ? [
+                {
+                  icon: <HistoryOutlined />,
+                  onClick: () => setHistoryModalOpen(true),
+                  title: 'History',
+                },
+              ]
+            : []
+        }
+        actionButtons={
+          isEditMode
+            ? [
+                {
+                  text: 'Exit Edit Mode',
+                  icon: <CloseOutlined />,
+                  onClick: handleExitEditMode,
+                  type: 'default',
+                },
+              ]
+            : [
+                {
+                  text: 'Edit',
+                  icon: <EditOutlined />,
+                  onClick: handleEnterEditMode,
+                  type: 'default',
+                },
+              ]
+        }
+        selectFields={
+          !isNew && !isPenaltyFee && !hideStatusToggle
+            ? [
+                {
+                  label: 'Status',
+                  value: fee?.isActive ? 'active' : 'disabled',
+                  onChange: handleStatusChange,
+                  loading: updatingStatus,
+                  width: 120,
+                  options: STATUS_OPTIONS,
+                },
+              ]
+            : []
+        }
         instructionSlotId="admin-general-application-fees"
       />
 
       <div style={{ flex: 1, overflow: 'auto' }}>
         {isEditMode ? (
-          <FeeConfiguration form={form} handleFormValuesChange={handleFormValuesChange} token={token} initialValues={initialValues} />
+          <FeeConfiguration
+            form={form}
+            handleFormValuesChange={handleFormValuesChange}
+            token={token}
+            initialValues={initialValues}
+          />
         ) : (
-          <FeeOverview fee={fee} token={token} violations={violations} loading={loading} claimableDocument={claimableDocument} permitForm={permitForm} />
+          <FeeOverview
+            fee={fee}
+            token={token}
+            violations={violations}
+            loading={loading}
+            claimableDocument={claimableDocument}
+            permitForm={permitForm}
+          />
         )}
       </div>
 
@@ -277,9 +381,10 @@ export default function FeeDetailPanel({ feeId, fee, onSave, isMobile: _isMobile
         loading={auditLoading}
         onRefresh={refresh}
         DetailPanelComponent={AuditEventDetails}
-        eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('fee_'))}
+        eventDescriptions={AUDIT_EVENT_INFO.filter((e) => e.event.startsWith('fee_'))}
       />
       {stepUpModal}
+      <ChangesSummary onConfirm={handleConfirm} />
     </div>
-  )
+  );
 }

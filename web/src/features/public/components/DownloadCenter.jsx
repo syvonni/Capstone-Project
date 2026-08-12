@@ -24,13 +24,7 @@ const DOWNLOAD_CATEGORIES = [
         cid: 'QmSample1',
         fileName: 'new_business_permit_application.pdf'
       },
-      { 
-        name: 'Business Renewal Application', 
-        type: 'PDF', 
-        size: '198 KB',
-        cid: 'QmSample2',
-        fileName: 'business_renewal_application.pdf'
-      },
+
       { 
         name: 'Business Closure Form', 
         type: 'PDF', 

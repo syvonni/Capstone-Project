@@ -63,12 +63,13 @@ class ApplicationEmailService {
       const mailer = require("../../../../auth-service/src/lib/mailer");
       console.log("[sendApplicationEmail] Mailer imported");
 
+      let result;
       switch (emailType) {
         case "submitted":
           console.log(
             "[sendApplicationEmail] Calling sendApplicationSubmittedEmail",
           );
-          await mailer.sendApplicationSubmittedEmail(emailData);
+          result = await mailer.sendApplicationSubmittedEmail(emailData);
           console.log(
             "[sendApplicationEmail] sendApplicationSubmittedEmail completed",
           );
@@ -77,29 +78,33 @@ class ApplicationEmailService {
           console.log(
             "[sendApplicationEmail] Calling sendApplicationResubmittedEmail",
           );
-          await mailer.sendApplicationResubmittedEmail(emailData);
+          result = await mailer.sendApplicationResubmittedEmail(emailData);
           console.log(
             "[sendApplicationEmail] sendApplicationResubmittedEmail completed",
           );
           break;
         case "approved":
-          await mailer.sendApplicationApprovedEmail(emailData);
+          result = await mailer.sendApplicationApprovedEmail(emailData);
           break;
         case "rejected":
-          await mailer.sendApplicationRejectedEmail({
+          result = await mailer.sendApplicationRejectedEmail({
             ...emailData,
             rejectionReason: metadata.rejectionReason,
           });
           break;
         case "returned":
-          await mailer.sendApplicationReturnedEmail({
+          result = await mailer.sendApplicationReturnedEmail({
             ...emailData,
             reviewComments: metadata.reviewComments,
           });
           break;
         default:
           console.warn(`Unknown email type: ${emailType}`);
-          return;
+          return { success: false, error: `Unknown email type: ${emailType}` };
+      }
+
+      if (!result || result.success === false) {
+        throw new Error(result?.error || "Provider did not confirm send");
       }
 
       // Update emailSendStatus to sent using direct updateOne to avoid document instance issues
@@ -118,6 +123,8 @@ class ApplicationEmailService {
               retryCount: 0,
               lastAttempt: new Date(),
               lockUntil: null,
+              to: emailData.to,
+              provider: process.env.EMAIL_API_PROVIDER || "resend",
             },
           },
         },
@@ -129,6 +136,7 @@ class ApplicationEmailService {
       console.log(
         "[sendApplicationEmail] SUCCESS - emailSendStatus updated via updateOne",
       );
+      return { success: true };
     } catch (err) {
       console.error(
         `Failed to send ${emailType} email for application ${application.applicationId}:`,
@@ -146,10 +154,14 @@ class ApplicationEmailService {
               retryCount: currentRetry,
               lastAttempt: new Date(),
               lockUntil: null,
+              error: err.message,
+              to: emailData?.to || null,
+              provider: process.env.EMAIL_API_PROVIDER || "resend",
             },
           },
         },
       );
+      return { success: false, error: err.message };
     }
   }
 

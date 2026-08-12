@@ -14,18 +14,17 @@ const {
   cleanupTestData,
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/__tests__/helpers/cleanup");
 const VariableFeeRule = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/VariableFeeRule");
-const Fee = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee");
+const Fee = require("../../../../shared/models/Fee");
 const Lob = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -67,7 +66,7 @@ describe("Variable Fee Rules API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
 
     it("should return list of variable fee rules when variable fee rules exist", async () => {
@@ -86,7 +85,7 @@ describe("Variable Fee Rules API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
 
     it("should filter by isActive", async () => {
@@ -114,7 +113,7 @@ describe("Variable Fee Rules API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data.every((rule) => rule.isActive === true)).toBe(
+      expect(response.body.every((rule) => rule.isActive === true)).toBe(
         true,
       );
     });
@@ -148,7 +147,7 @@ describe("Variable Fee Rules API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data._id).toBe(testVariableFeeRule._id.toString());
+      expect(response.body._id).toBe(testVariableFeeRule._id.toString());
     });
   });
 
@@ -173,7 +172,7 @@ describe("Variable Fee Rules API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toEqual([]);
+      expect(response.body).toEqual([]);
     });
   });
 
@@ -408,7 +407,7 @@ describe("Variable Fee Rules API Integration Tests", () => {
         .expect(201);
 
       expectStandardResponse(response);
-      expect(response.body.data.name).toContain("Test Variable Fee");
+      expect(response.body.name).toContain("Test Variable Fee");
     });
   });
 
@@ -453,7 +452,7 @@ describe("Variable Fee Rules API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data.calculationMethod).toBe("floor_area");
+      expect(response.body.calculationMethod).toBe("floor_area");
     });
 
     it("should increment version on update", async () => {
@@ -476,7 +475,7 @@ describe("Variable Fee Rules API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data.version).toBe(2);
+      expect(response.body.version).toBe(2);
     });
   });
 

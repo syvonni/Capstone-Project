@@ -12,16 +12,18 @@ const {
 const {
   cleanupTestData,
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/__tests__/helpers/cleanup");
+const Business = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Business");
+const BusinessProfile = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/BusinessProfile");
+const mongoose = require("mongoose");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -30,6 +32,7 @@ function expectErrorResponse(response) {
 describe("Payments API Smoke Tests", () => {
   let app;
   let businessOwnerToken;
+  let businessOwnerId;
 
   beforeAll(async () => {
     setupTestEnvironment();
@@ -39,6 +42,18 @@ describe("Payments API Smoke Tests", () => {
     const users = await createTestUsers();
     const tokens = getTestTokens(users);
     businessOwnerToken = tokens.businessOwnerToken;
+    businessOwnerId = users.businessOwner._id;
+
+    await BusinessProfile.deleteMany({});
+    await Business.deleteMany({});
+    const profile = await BusinessProfile.create({ userId: businessOwnerId });
+    await Business.create({
+      businessId: "TEST-BUSINESS-001",
+      userId: businessOwnerId,
+      ownerProfileId: profile._id,
+      businessName: "Test Business",
+      businessRegistrationNumber: "BRN-001",
+    });
   });
 
   afterAll(async () => {
@@ -54,8 +69,8 @@ describe("Payments API Smoke Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body).toBeDefined();
+      expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
@@ -84,12 +99,9 @@ describe("Payments API Smoke Tests", () => {
           ).toISOString(),
         });
 
-      // Accept 200 or 404 (if business doesn't exist)
-      expect([200, 404]).toContain(response.status);
-      if (response.status === 200) {
-        expectStandardResponse(response);
-        expect(response.body.data).toBeDefined();
-      }
+      expect(response.status).toBe(201);
+      expectStandardResponse(response);
+      expect(response.body).toBeDefined();
     });
   });
 });

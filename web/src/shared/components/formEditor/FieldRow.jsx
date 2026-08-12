@@ -14,7 +14,10 @@ import { generateUniqueKey } from './utils'
 
 const { Text } = Typography
 
-export default function FieldRow({ field, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast, token, isMobile, definitionId, readOnly, _allFields = [] }) {
+const BUSINESS_NAME_FIELD_TYPES = ['text', 'textarea', 'email', 'phone', 'select', 'radio']
+
+export default function FieldRow({ field, onUpdate, onBusinessNameChange, onDelete, onMoveUp, onMoveDown, isFirst, isLast, token, isMobile, definitionId, readOnly, _allFields = [] }) {
+  const canBeBusinessName = BUSINESS_NAME_FIELD_TYPES.includes(field.type)
   const [expanded, setExpanded] = useState(false)
   const [_uploading, setUploading] = useState(false)
   const isDropdown = field.type === 'select' || field.type === 'multiselect'
@@ -146,6 +149,26 @@ export default function FieldRow({ field, onUpdate, onDelete, onMoveUp, onMoveDo
                 ]}
               />
             </div>
+            {canBeBusinessName && (
+              <div style={{ flex: 1 }}>
+                <SelectWithAddon
+                  addonBefore="Business Name"
+                  value={field.isBusinessName ? 'yes' : 'no'}
+                  onChange={(value) => {
+                    if (onBusinessNameChange) {
+                      onBusinessNameChange(value === 'yes')
+                    } else {
+                      onUpdate({ ...field, isBusinessName: value === 'yes' })
+                    }
+                  }}
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'yes', label: 'Yes' },
+                    { value: 'no', label: 'No' },
+                  ]}
+                />
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 8 }}>

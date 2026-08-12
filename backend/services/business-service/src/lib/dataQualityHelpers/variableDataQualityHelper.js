@@ -15,7 +15,7 @@ const {
   validateEntities,
 } = require("../../../../../shared/lib/dataQualityValidator");
 const Variable = require("../../models/Variable");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const Checklist = require("../../models/Checklist");
 const Lob = require("../../models/Lob");
 

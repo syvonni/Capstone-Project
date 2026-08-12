@@ -39,7 +39,6 @@ export default function BusinessProfile({ business, onReport, onBack, token, scr
         <div style={{ marginBottom: 24 }}>
           <Tag color={
             business?.verificationBadge === 'Active' ? 'success' :
-            business?.verificationBadge === 'For Renewal' ? 'warning' :
             business?.verificationBadge === 'Expired' ? 'error' :
             business?.verificationBadge === 'Suspended' ? 'error' :
             business?.verificationBadge === 'Retired' ? 'default' :

@@ -1,54 +1,25 @@
 import { Typography, Button, Tooltip, Collapse, theme, Skeleton, Tag, App } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import ApplicationPanelCard from './ApplicationPanelCard'
-import BlurFade from '@/shared/components/BlurFade.jsx'
-import { getStatusLabel, getBusinessDisplayName, getBusinessReferenceNumber, getBusinessId } from '../utils/statusUtils'
+import BlurFade from '@/shared/components/animations/BlurFade.jsx'
+import { getStatusLabel, getApplicationDisplayName, getApplicationReferenceNumber, getApplicationId } from '../utils/statusUtils'
+import { useApplicationListActions } from '../hooks/useApplicationListActions'
 
 const { Title } = Typography
 const { Panel } = Collapse
 
 function ApplicationsList({
-  businesses,
+  applications,
   loading,
-  selectedBusinessId,
-  onBusinessSelect,
-  onAddBusiness,
+  selectedApplicationId,
+  onApplicationSelect,
+  onAddApplication,
   isSelectingType,
   draftLimitReached = false
 }) {
   const { token } = theme.useToken()
   const { message, modal } = App.useApp()
-
-  const handleClearApplications = async () => {
-    modal.confirm({
-      title: 'Clear All Applications?',
-      content: 'This will delete all your applications and reset the welcome state. This action cannot be undone.',
-      okText: 'Clear',
-      okType: 'danger',
-      cancelText: 'Cancel',
-      onOk: async () => {
-        try {
-          const { fetchJsonWithFallback } = await import('@/lib/http')
-          const { getCurrentUser } = await import('@/features/authentication/lib/authEvents')
-          const { authHeaders } = await import('@/lib/authHeaders')
-          
-          const current = getCurrentUser()
-          const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })
-          
-          await fetchJsonWithFallback('/api/business/debug/clear-applications', {
-            method: 'POST',
-            headers,
-          })
-          
-          message.success('Applications cleared successfully')
-          window.location.reload()
-        } catch (err) {
-          console.error('Failed to clear applications:', err)
-          message.error('Failed to clear applications')
-        }
-      },
-    })
-  }
+  const { handleClearApplications } = useApplicationListActions({ message, modal })
 
   const collapseItems = [
     {
@@ -56,7 +27,7 @@ function ApplicationsList({
       label: (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <span>My Applications</span>
-          <Tag>{businesses.length}</Tag>
+          <Tag>{applications.length}</Tag>
         </div>
       ),
       children: (
@@ -66,7 +37,7 @@ function ApplicationsList({
               type="dashed"
               icon={<PlusOutlined />}
               style={{ width: '100%', marginBottom: 8 }}
-              onClick={onAddBusiness}
+              onClick={onAddApplication}
               disabled={isSelectingType || draftLimitReached}
             >
               Apply
@@ -80,33 +51,33 @@ function ApplicationsList({
             Clear ALL applications (DEBUG)
           </Button>
           <div style={{ width: '100%' }}>
-            {businesses.map((business, index) => {
-              const businessId = getBusinessId(business)
-              const isSelected = businessId === selectedBusinessId
-              const isLast = index === businesses.length - 1
+            {applications.map((application, index) => {
+              const applicationId = getApplicationId(application)
+              const isSelected = applicationId === selectedApplicationId
+              const isLast = index === applications.length - 1
 
               // Warn if both status fields exist with different values
-              if (business.applicationStatus && business.permitStatus &&
-                  business.applicationStatus !== business.permitStatus) {
-                console.warn(`[ApplicationsList] Status mismatch for ${businessId}: applicationStatus="${business.applicationStatus}" vs permitStatus="${business.permitStatus}"`)
+              if (application.applicationStatus && application.permitStatus &&
+                  application.applicationStatus !== application.permitStatus) {
+                console.warn(`[ApplicationsList] Status mismatch for ${applicationId}: applicationStatus="${application.applicationStatus}" vs permitStatus="${application.permitStatus}"`)
               }
 
               return (
-                <div key={businessId} style={{ marginBottom: isLast ? 0 : 8 }}>
+                <div key={applicationId} style={{ marginBottom: isLast ? 0 : 8 }}>
                   <ApplicationPanelCard
-                    business={{
-                      id: businessId,
-                      name: getBusinessDisplayName(business),
-                      referenceNumber: getBusinessReferenceNumber(business),
-                      updatedAt: business.updatedAt,
-                      createdAt: business.createdAt,
-                      permitStatus: getStatusLabel(business.applicationStatus || business.permitStatus),
-                      rawStatus: business.applicationStatus || business.permitStatus,
-                      permitType: business.formType || 'N/A',
+                    application={{
+                      id: applicationId,
+                      name: getApplicationDisplayName(application),
+                      referenceNumber: getApplicationReferenceNumber(application),
+                      updatedAt: application.updatedAt,
+                      createdAt: application.createdAt,
+                      permitStatus: getStatusLabel(application.applicationStatus || application.permitStatus),
+                      rawStatus: application.applicationStatus || application.permitStatus,
+                      permitType: application.formType || 'N/A',
                     }}
                     isSelected={isSelected}
                     onClick={() => {
-                      onBusinessSelect(businessId)
+                      onApplicationSelect(applicationId)
                     }}
                   />
                 </div>
@@ -145,13 +116,13 @@ function ApplicationsList({
               </div>
             ))}
           </div>
-        ) : businesses.length === 0 ? (
+        ) : applications.length === 0 ? (
           // No applications - show standalone Apply button
           <Tooltip title={draftLimitReached ? 'You can only have up to 2 draft, pending, or submitted applications at a time. Please complete or delete existing applications before creating a new one.' : ''}>
             <Button
               icon={<PlusOutlined />}
               style={{ width: '100%' }}
-              onClick={onAddBusiness}
+              onClick={onAddApplication}
               disabled={isSelectingType || draftLimitReached}
             >
               Apply

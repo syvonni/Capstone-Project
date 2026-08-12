@@ -15,6 +15,7 @@ const User = require("../../services/auth-service/src/models/User");
 const Role = require("../../services/auth-service/src/models/Role");
 const LoginRequest = require("../../services/auth-service/src/models/LoginRequest");
 const Session = require("../../services/auth-service/src/models/Session");
+const { resetAuthLoginRateLimitFor } = require("../helpers/rateLimit");
 
 describe("Login Routes - Core Functionality", () => {
   let mongo;
@@ -44,6 +45,10 @@ describe("Login Routes - Core Functionality", () => {
     // Clean up login requests and sessions before each test
     await LoginRequest.deleteMany({});
     await Session.deleteMany({});
+
+    // Reset per-email rate limiters for the shared test users.
+    if (testUser) await resetAuthLoginRateLimitFor(testUser.email);
+    if (adminUser) await resetAuthLoginRateLimitFor(adminUser.email);
   });
 
   describe("POST /api/auth/login/start", () => {
@@ -54,13 +59,9 @@ describe("Login Routes - Core Functionality", () => {
       });
 
       expect(response.status).toBe(200);
-      // Handle both development and production response formats
-      if (response.body.ok) {
-        expect(response.body).toHaveProperty("ok", true);
-      } else {
-        expect(response.body).toHaveProperty("devCode");
-        expect(response.body).toHaveProperty("sent", true);
-      }
+      expect(response.body).toHaveProperty("sent", true);
+      expect(response.body).toHaveProperty("loginEmail", testUser.email);
+      expect(response.body.devCode).toMatch(/^\d{6}$/);
     });
 
     it("should reject invalid credentials", async () => {
@@ -70,7 +71,8 @@ describe("Login Routes - Core Functionality", () => {
       });
 
       expect(response.status).toBe(401);
-      expect(response.body).toHaveProperty("ok", false);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe("invalid_credentials");
     });
 
     it("should handle missing required fields", async () => {
@@ -79,7 +81,8 @@ describe("Login Routes - Core Functionality", () => {
       });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty("ok", false);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe("validation_error");
     });
 
     it("should create login request record", async () => {
@@ -99,25 +102,20 @@ describe("Login Routes - Core Functionality", () => {
 
   describe("POST /api/auth/login/resend", () => {
     beforeEach(async () => {
-      // Create an initial login request
+      // Create an initial login request using a different shared user
       await request(app).post("/api/auth/login/start").send({
-        email: testUser.email,
+        email: adminUser.email,
         password: "Test123!@#",
       });
     });
 
     it("should resend OTP code", async () => {
       const response = await request(app).post("/api/auth/login/resend").send({
-        email: testUser.email,
+        email: adminUser.email,
       });
 
       expect(response.status).toBe(200);
-      if (response.body.ok) {
-        expect(response.body).toHaveProperty("ok", true);
-      } else {
-        // Handle different response structures
-        expect(response.body).toHaveProperty("sent", true);
-      }
+      expect(response.body).toHaveProperty("sent", true);
     });
 
     it("should reject resend for non-existent email", async () => {
@@ -126,7 +124,8 @@ describe("Login Routes - Core Functionality", () => {
       });
 
       expect(response.status).toBe(404);
-      expect(response.body).toHaveProperty("ok", false);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe("request_not_found");
     });
   });
 
@@ -137,17 +136,15 @@ describe("Login Routes - Core Functionality", () => {
       // Clean up any existing requests
       await LoginRequest.deleteMany({});
 
-      // Start login process to get a code
-      const startResponse = await request(app)
-        .post("/api/auth/login/start")
-        .send({
-          email: testUser.email,
-          password: "Test123!@#",
-        });
+      // Start login process to get a code using a different shared user
+      await request(app).post("/api/auth/login/start").send({
+        email: adminUser.email,
+        password: "Test123!@#",
+      });
 
       // Get the code from the database
       const loginRequest = await LoginRequest.findOne({
-        email: testUser.email.toLowerCase(),
+        email: adminUser.email.toLowerCase(),
       });
       loginCode = loginRequest ? loginRequest.code : null;
     });
@@ -159,18 +156,17 @@ describe("Login Routes - Core Functionality", () => {
       }
 
       const response = await request(app).post("/api/auth/login/verify").send({
-        email: testUser.email,
+        email: adminUser.email,
         code: loginCode,
       });
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("ok", true);
       expect(response.body).toHaveProperty("token");
-      expect(response.body).toHaveProperty("user");
+      expect(response.body).toHaveProperty("email", adminUser.email);
 
       // Verify session was created
       const session = await Session.findOne({
-        userId: testUser._id,
+        userId: adminUser._id,
         isActive: true,
       });
       expect(session).toBeTruthy();
@@ -179,31 +175,34 @@ describe("Login Routes - Core Functionality", () => {
 
     it("should reject incorrect OTP code", async () => {
       const response = await request(app).post("/api/auth/login/verify").send({
-        email: testUser.email,
+        email: adminUser.email,
         code: "123456",
       });
 
-      expect([400, 401, 404]).toContain(response.status); // Accept various error codes
-      expect(response.body).toHaveProperty("ok", false);
+      expect([401]).toContain(response.status);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe("invalid_code");
     });
 
     it("should handle malformed OTP code", async () => {
       const response = await request(app).post("/api/auth/login/verify").send({
-        email: testUser.email,
+        email: adminUser.email,
         code: "abc123",
       });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty("ok", false);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe("validation_error");
     });
 
     it("should handle missing fields", async () => {
       const response = await request(app).post("/api/auth/login/verify").send({
-        email: testUser.email,
+        email: adminUser.email,
       });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty("ok", false);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe("validation_error");
     });
   });
 
@@ -212,7 +211,8 @@ describe("Login Routes - Core Functionality", () => {
       const response = await request(app).post("/api/auth/google").send({});
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty("ok", false);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe("validation_error");
     });
 
     it("should reject invalid email format", async () => {
@@ -221,7 +221,8 @@ describe("Login Routes - Core Functionality", () => {
       });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty("ok", false);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe("validation_error");
     });
   });
 
@@ -279,7 +280,8 @@ describe("Login Routes - Core Functionality", () => {
       });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty("ok", false);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe("validation_error");
     });
   });
 

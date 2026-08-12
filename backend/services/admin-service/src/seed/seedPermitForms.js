@@ -5,11 +5,134 @@
  * It's designed to be called from the main index.js or from a seed runner.
  */
 
-const PermitForm = require("../models/PermitForm");
-const { createHttpClient } = require("../../../../shared/lib/httpClient");
+const PermitForm = require("../../../../shared/models/PermitForm");
+const Fee = require("../../../../shared/models/Fee");
 const logger = require("../lib/logger");
 
-// Section definitions from frontend formDefinitions.constants.js
+/**
+ * The section definitions below declare fields by label only. `key` is what the
+ * rendered form uses as its Ant Design field name, and PermitFormSchema defaults it
+ * to "" -- so seeding without keys makes every field share the form path "", causing
+ * unrelated fields to read and write each other's values.
+ *
+ * Keys are therefore derived from labels here, using the same slugify + uniqueness
+ * rules as scripts/backfillPermitFormKeys.js so seeded and backfilled forms agree.
+ */
+function slugifyLabelToKey(label) {
+  if (!label || typeof label !== "string") return "";
+  return (
+    label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(" ")
+      .map((w, i) => (i === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+      .join("") || ""
+  );
+}
+
+function uniqueKeyFrom(label, taken) {
+  const baseKey = slugifyLabelToKey(label);
+  if (!baseKey) return `field_${Math.random().toString(36).slice(2, 11)}`;
+
+  let key = baseKey;
+  let counter = 1;
+  while (taken.includes(key)) {
+    key = `${baseKey}${counter}`;
+    counter++;
+  }
+  taken.push(key);
+  return key;
+}
+
+/** Assign keys to metadataFields, unique within their own array. */
+function withMetadataKeys(metadataFields, fallbackLabel) {
+  if (!Array.isArray(metadataFields)) return metadataFields;
+  const taken = metadataFields.filter((m) => m && m.key).map((m) => m.key);
+  return metadataFields.map((metaField) => {
+    if (!metaField || metaField.key) return metaField;
+    return {
+      ...metaField,
+      key: uniqueKeyFrom(metaField.label || `${fallbackLabel} Metadata`, taken),
+    };
+  });
+}
+
+/**
+ * Returns a copy of `sections` with `key` populated on every item, `id` on every
+ * object dropdown option, and `key` on every metadataFields entry.
+ */
+function withGeneratedKeys(sections) {
+  if (!Array.isArray(sections)) return sections;
+
+  return sections.map((section) => {
+    const itemKeys = (section.items || [])
+      .filter((i) => i && i.key)
+      .map((i) => i.key);
+
+    return {
+      ...section,
+      items: (section.items || []).map((item) => {
+        if (!item) return item;
+
+        const next = {
+          ...item,
+          key: item.key || uniqueKeyFrom(item.label, itemKeys),
+        };
+
+        if (Array.isArray(item.metadataFields)) {
+          next.metadataFields = withMetadataKeys(
+            item.metadataFields,
+            item.label,
+          );
+        }
+
+        if (Array.isArray(item.groupFields)) {
+          const groupKeys = item.groupFields
+            .filter((g) => g && g.key)
+            .map((g) => g.key);
+          next.groupFields = item.groupFields.map((groupField) =>
+            !groupField || groupField.key
+              ? groupField
+              : {
+                  ...groupField,
+                  key: uniqueKeyFrom(groupField.label, groupKeys),
+                },
+          );
+        }
+
+        if (Array.isArray(item.dropdownOptions)) {
+          const optionIds = item.dropdownOptions
+            .filter((o) => o && typeof o === "object" && o.id)
+            .map((o) => o.id);
+
+          next.dropdownOptions = item.dropdownOptions.map((option) => {
+            if (!option || typeof option !== "object") return option;
+
+            const nextOption = {
+              ...option,
+              id: option.id || uniqueKeyFrom(option.label, optionIds),
+            };
+
+            if (Array.isArray(option.metadataFields)) {
+              nextOption.metadataFields = withMetadataKeys(
+                option.metadataFields,
+                option.label || item.label,
+              );
+            }
+
+            return nextOption;
+          });
+        }
+
+        return next;
+      }),
+    };
+  });
+}
+
+// Section definitions sourced from the legacy frontend formDefinitions.constants.js
+// (now removed from the frontend; these are the canonical seed definitions).
 const UNIFIED_BUSINESS_PERMIT_SECTIONS = [
   {
     sectionName: "Required Documents",
@@ -505,6 +628,7 @@ const UNIFIED_BUSINESS_PERMIT_SECTIONS = [
       {
         label: "Business / Trade / Doing Business As Name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "As registered with DTI / SEC / CDA",
@@ -737,6 +861,7 @@ const COOPERATIVE_PERMIT_SECTIONS = [
       {
         label: "Business / activity name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "",
@@ -914,6 +1039,7 @@ const ASSOCIATION_FOUNDATION_PERMIT_SECTIONS = [
       {
         label: "Business / activity name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "",
@@ -1078,6 +1204,7 @@ const CHAINSAW_PERMIT_SECTIONS = [
       {
         label: "Business / activity name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "",
@@ -1276,6 +1403,7 @@ const FIRECRACKERS_STALLHOLDERS_PERMIT_SECTIONS = [
       {
         label: "Business / activity name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "",
@@ -1440,6 +1568,7 @@ const BAZAAR_FESTIVAL_VENDORS_PERMIT_SECTIONS = [
       {
         label: "Business / activity name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "",
@@ -1604,6 +1733,7 @@ const PEDDLERS_PERMIT_SECTIONS = [
       {
         label: "Business / activity name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "",
@@ -1710,6 +1840,7 @@ const PROMOTIONS_EXHIBITORS_PERMIT_SECTIONS = [
       {
         label: "Business / activity name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "",
@@ -1859,6 +1990,7 @@ const CEMETERY_STALLHOLDERS_PERMIT_SECTIONS = [
       {
         label: "Business / activity name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "",
@@ -2054,6 +2186,7 @@ const FISH_TRAP_FISH_PEN_PERMIT_SECTIONS = [
       {
         label: "Business / activity name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "",
@@ -2216,6 +2349,7 @@ const FISH_POND_PERMIT_SECTIONS = [
       {
         label: "Business / activity name",
         type: "text",
+        isBusinessName: true,
         required: true,
         notes: "",
         helpText: "",
@@ -2269,7 +2403,8 @@ const FISH_POND_PERMIT_SECTIONS = [
   },
 ];
 
-// Form metadata from frontend (will be synced with formMetadata.constants.js)
+// Form metadata sourced from the legacy frontend formMetadata.constants.js
+// (now removed from the frontend; these are the canonical seed definitions).
 const FORM_METADATA = {
   "unified-business-permit": {
     formId: "unified-business-permit",
@@ -2283,7 +2418,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500, // Default application fee amount
+    applicationFeeAmount: 1000, // Main annual permit, highest fee
     claimableDocumentCustomIds: ["unified-business-permit"],
   },
   "cooperative-permit": {
@@ -2299,7 +2434,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500,
+    applicationFeeAmount: 300, // Non-profit cooperatives, lower fee
     claimableDocumentCustomIds: ["cooperative-permit"],
   },
   "association-foundation-permit": {
@@ -2315,7 +2450,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500,
+    applicationFeeAmount: 300, // Non-profit associations, lower fee
     claimableDocumentCustomIds: [
       "real-property-tax-clearance",
       "account-clearance",
@@ -2335,7 +2470,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500,
+    applicationFeeAmount: 800, // Specialized permit with safety concerns
     claimableDocumentCustomIds: [
       "real-property-tax-clearance",
       "account-clearance",
@@ -2355,7 +2490,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500,
+    applicationFeeAmount: 400, // Temporary, seasonal
     claimableDocumentCustomIds: ["firecrackers-stallholders-permit"],
   },
   "bazaar-festival-vendors-permit": {
@@ -2371,7 +2506,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500,
+    applicationFeeAmount: 400, // Temporary, seasonal
     claimableDocumentCustomIds: ["bazaar-festival-vendors-permit"],
   },
   "peddlers-permit": {
@@ -2387,7 +2522,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500,
+    applicationFeeAmount: 200, // Mobile vendors, lowest fee
     claimableDocumentCustomIds: ["peddlers-permit"],
   },
   "promotions-exhibitors-permit": {
@@ -2403,7 +2538,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500,
+    applicationFeeAmount: 500, // Temporary events
     claimableDocumentCustomIds: ["promotions-exhibitors-permit"],
   },
   "cemetery-stallholders-permit": {
@@ -2419,7 +2554,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500,
+    applicationFeeAmount: 400, // Temporary, seasonal
     claimableDocumentCustomIds: ["cemetery-stallholders-permit"],
   },
   "fish-trap-fish-pen-permit": {
@@ -2435,7 +2570,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500,
+    applicationFeeAmount: 600, // Aquaculture operations
     claimableDocumentCustomIds: [
       "real-property-tax-clearance",
       "account-clearance",
@@ -2455,7 +2590,7 @@ const FORM_METADATA = {
     createdAt: "2024-01-15",
     notes: "",
     isActive: true,
-    applicationFeeAmount: 500,
+    applicationFeeAmount: 600, // Aquaculture operations
     claimableDocumentCustomIds: [
       "real-property-tax-clearance",
       "account-clearance",
@@ -2539,22 +2674,13 @@ async function seedPermitFormsIfEmpty() {
           metadata.applicationFeeAmount > 0
         ) {
           try {
-            const businessClient = createHttpClient("business", {
-              headers: {
-                "x-internal-api-key":
-                  process.env.INTERNAL_API_KEY || "internal-service-secret",
-              },
+            const fee = await Fee.create({
+              name: `${metadata.name} Fee`,
+              amount: metadata.applicationFeeAmount,
+              category: "application_fee",
+              isActive: true,
             });
-            const feeResponse = await businessClient.post(
-              "/api/business/admin/fees/internal",
-              {
-                name: `${metadata.name} Fee`,
-                amount: metadata.applicationFeeAmount,
-                category: "application_fee",
-                isActive: true,
-              },
-            );
-            feeId = feeResponse._id;
+            feeId = fee._id;
             logger.info(
               `Created application fee for ${formId}: ₱${metadata.applicationFeeAmount}`,
             );
@@ -2571,10 +2697,10 @@ async function seedPermitFormsIfEmpty() {
             $set: {
               name: metadata.name,
               description: metadata.description,
-              sections: metadata.sections,
+              sections: withGeneratedKeys(metadata.sections),
               notes: metadata.notes,
               isActive: true, // Force active for now
-              formType: metadata.formType || 'regular',
+              formType: metadata.formType || "regular",
               category: metadata.category || null,
               lastUpdated: new Date(),
               ...(feeId && { feeId }),
@@ -2592,22 +2718,13 @@ async function seedPermitFormsIfEmpty() {
           metadata.applicationFeeAmount > 0
         ) {
           try {
-            const businessClient = createHttpClient("business", {
-              headers: {
-                "x-internal-api-key":
-                  process.env.INTERNAL_API_KEY || "internal-service-secret",
-              },
+            const fee = await Fee.create({
+              name: `${metadata.name} Fee`,
+              amount: metadata.applicationFeeAmount,
+              category: "application_fee",
+              isActive: true,
             });
-            const feeResponse = await businessClient.post(
-              "/api/business/admin/fees/internal",
-              {
-                name: `${metadata.name} Fee`,
-                amount: metadata.applicationFeeAmount,
-                category: "application_fee",
-                isActive: true,
-              },
-            );
-            feeId = feeResponse._id;
+            feeId = fee._id;
             logger.info(
               `Created application fee for ${formId}: ₱${metadata.applicationFeeAmount}`,
             );
@@ -2622,11 +2739,11 @@ async function seedPermitFormsIfEmpty() {
           formId: metadata.formId,
           name: metadata.name,
           description: metadata.description,
-          sections: metadata.sections,
+          sections: withGeneratedKeys(metadata.sections),
           version: metadata.version,
           notes: metadata.notes,
           isActive: true, // Force active for now
-          formType: metadata.formType || 'regular',
+          formType: metadata.formType || "regular",
           category: metadata.category || null,
           createdAt: new Date(metadata.createdAt),
           lastUpdated: new Date(metadata.lastUpdated),

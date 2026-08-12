@@ -5,7 +5,6 @@ import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { createVariable } from '@/features/admin/services/variableService'
 import { getChecklists } from '@/features/admin/services/checklistService'
-import { UNIT_PRESETS, UNIT_SINGULAR_PRESETS, UNIT_PLURAL_PRESETS, UNIT_CONTEXT_SINGULAR_PRESETS, UNIT_CONTEXT_PLURAL_PRESETS } from '@/shared/constants/units.constants'
 import { currencyFormatter, currencyParser } from '@/shared/utils/currency.utils'
 import { useNameValidation } from '@/shared/hooks/useNameValidation'
 
@@ -347,14 +346,9 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
               label={<span>Unit (generic)<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
               rules={[{ required: true, message: 'Unit is required' }]}
             >
-              <Select
-                placeholder="Select or type a unit"
-                options={UNIT_PRESETS}
+              <Input
+                placeholder="e.g., sqm"
                 allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
               />
             </Form.Item>
 
@@ -363,14 +357,9 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
               label={<span>Unit (singular form)<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
               rules={[{ required: true, message: 'Unit singular form is required' }]}
             >
-              <Select
-                placeholder="Select or type a unit"
-                options={UNIT_SINGULAR_PRESETS}
+              <Input
+                placeholder="e.g., square meter"
                 allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
               />
             </Form.Item>
 
@@ -379,14 +368,9 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
               label={<span>Unit (plural form)<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
               rules={[{ required: true, message: 'Unit plural form is required' }]}
             >
-              <Select
-                placeholder="Select or type a unit"
-                options={UNIT_PLURAL_PRESETS}
+              <Input
+                placeholder="e.g., square meters"
                 allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
               />
             </Form.Item>
 
@@ -404,14 +388,9 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
                 }
               ]}
             >
-              <Select
-                placeholder="Select or type a unit"
-                options={UNIT_CONTEXT_SINGULAR_PRESETS}
+              <Input
+                placeholder="e.g., per square meter"
                 allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
               />
             </Form.Item>
 
@@ -429,14 +408,9 @@ export default function AddVariableModal({ open, onClose, onSuccess }) {
                 }
               ]}
             >
-              <Select
-                placeholder="Select or type a unit"
-                options={UNIT_CONTEXT_PLURAL_PRESETS}
+              <Input
+                placeholder="e.g., per square meters"
                 allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
               />
             </Form.Item>
 

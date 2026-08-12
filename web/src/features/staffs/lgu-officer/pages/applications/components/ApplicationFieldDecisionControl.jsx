@@ -1,14 +1,12 @@
 import { useState } from 'react'
-import { Typography, Space, Input, Modal, Drawer, Button, Tooltip, Grid } from 'antd'
+import { Typography, Space, Input, Button, Tooltip } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { CheckOutlined, CloseOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 const { TextArea } = Input
-const { useBreakpoint } = Grid
 
 export default function FieldDecisionControl({ fieldKey, decision, onAccept, onReject, _token, disabled = false, isMobile = false, hideRequest = false, isFinalState = false, isResubmit = false }) {
-  const screens = useBreakpoint()
-  const isMobileMode = !screens.lg
   const [requestOpen, setRequestOpen] = useState(false)
   const [requestReason, setRequestReason] = useState('')
   const [viewReasonOpen, setViewReasonOpen] = useState(false)
@@ -67,7 +65,7 @@ export default function FieldDecisionControl({ fieldKey, decision, onAccept, onR
   }
 
   const requestContent = (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
       <Text>
         Describe why this field needs changes. The applicant will be required to address this feedback.
       </Text>
@@ -158,14 +156,6 @@ export default function FieldDecisionControl({ fieldKey, decision, onAccept, onR
             <Text type="secondary" style={{ fontSize: 11 }}>{authorText}</Text>
           )}
         </div>
-        <Modal
-          title="Request Change Reason"
-          open={viewReasonOpen}
-          onCancel={() => setViewReasonOpen(false)}
-          footer={null}
-        >
-          <Text>{decision?.requestOther || decision?.requestCode || JSON.stringify(decision) || 'No reason provided'}</Text>
-        </Modal>
       </>
     )
   }
@@ -197,51 +187,36 @@ export default function FieldDecisionControl({ fieldKey, decision, onAccept, onR
           </Tooltip>
         )}
       </Space.Compact>
-      {isMobileMode ? (
-        <Drawer
-          title="Request Changes"
-          open={requestOpen}
-          onClose={handleCancelRequest}
-          placement="bottom"
-          height="75%"
-          styles={{ body: { padding: 24 } }}
-          extra={
-            <Button
-              type="primary"
-              onClick={handleConfirmRequest}
-              disabled={!requestReason?.trim()}
-            >
-              Confirm Request
-            </Button>
-          }
-        >
-          {requestContent}
-        </Drawer>
-      ) : (
-        <Modal
-          title="Request Changes"
-          open={requestOpen}
-          onOk={handleConfirmRequest}
-          onCancel={handleCancelRequest}
-          okText="Confirm Request"
-          cancelText="Cancel"
-          okButtonProps={{ disabled: !requestReason?.trim() }}
-        >
-          {requestContent}
-        </Modal>
-      )}
-      <Modal
-        title="Request Change Reason"
-        open={viewReasonOpen}
-        onCancel={() => setViewReasonOpen(false)}
+      <ResponsiveModal
+        open={requestOpen}
+        onCancel={handleCancelRequest}
+        title="Request Changes"
+        width={520}
         footer={[
-          <Button key="close" onClick={() => setViewReasonOpen(false)}>
-            Close
-          </Button>
+          <Button key="cancel" onClick={handleCancelRequest}>
+            Cancel
+          </Button>,
+          <Button
+            key="confirm"
+            type="primary"
+            onClick={handleConfirmRequest}
+            disabled={!requestReason?.trim()}
+          >
+            Confirm Request
+          </Button>,
         ]}
       >
+        {requestContent}
+      </ResponsiveModal>
+      <ResponsiveModal
+        open={viewReasonOpen}
+        onCancel={() => setViewReasonOpen(false)}
+        title="Request Change Reason"
+        width={520}
+        footer={<Button onClick={() => setViewReasonOpen(false)}>Close</Button>}
+      >
         <Text>{decision?.requestOther || decision?.requestCode || 'No reason provided'}</Text>
-      </Modal>
+      </ResponsiveModal>
     </>
   )
 }

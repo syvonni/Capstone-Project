@@ -1,7 +1,8 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { Empty } from 'antd'
 import ListPanel from '@/shared/components/ListPanel'
 import PanelCard from '@/shared/components/PanelCard'
-import SplitLayout from '@/shared/components/SplitLayout'
+import ResponsiveSplitLayout from '@/shared/components/ResponsiveSplitLayout'
 import useOfficerData from '../../hooks/useOfficerData'
 import { useOfficerDataContext } from '../../contexts/OfficerDataContext'
 import { calculatePriorityScore } from '../../hooks/useOfficerData'
@@ -11,6 +12,7 @@ import { CLAIM_STATUS_FILTER_OPTIONS, STATUS_CONFIG, STATUS_FILTER_OPTIONS } fro
 import { HELP_REQUEST_STATUS_CONFIG } from '../help-requests/constants'
 import dayjs from 'dayjs'
 import { getEmailStatusTag } from '../../utils/emailStatusUtils'
+import BookmarkService from '../../services/bookmarkService'
 
 // Stale detection helpers (copied from useOfficerData for use in renderCard)
 const STALE_THRESHOLD_HOURS = 48
@@ -24,7 +26,7 @@ const isStale = (item) => {
   const itemType = item._itemType
   const status = String(item.status || item.applicationStatus || '').toLowerCase()
 
-  if (itemType === 'application' || itemType === 'renewals' || item.applicationId) {
+  if (itemType === 'application' || item.applicationId) {
     if (!item.reviewedBy) return false
     if (ACTIVE_APPLICATION_STATUSES.has(status) || !TERMINAL_APPLICATION_STATUSES.has(status)) {
       const reviewedAt = item.reviewedAt
@@ -67,8 +69,30 @@ const getStaleDuration = (item) => {
 export default function OfficerToReview() {
   const [selectedItem, setSelectedItem] = useState(null)
   const [activeFilters, setActiveFilters] = useState({ itemType: null, secondaryFilter: 'needs_attention' })
+  const [bookmarkedIds, setBookmarkedIds] = useState(new Set())
   const { refreshTrigger, currentUser } = useOfficerDataContext()
   const officerData = useOfficerData('toReview', refreshTrigger)
+  const { refresh: refreshToReview } = officerData
+  const bookmarkService = useMemo(() => new BookmarkService(), [])
+
+  const refreshBookmarkStatus = useCallback(async () => {
+    try {
+      const response = await bookmarkService.getBookmarks()
+      const bookmarksData = Array.isArray(response) ? response : []
+      const bookmarked = new Set(
+        bookmarksData
+          .filter((b) => b.itemType === 'application' || b.itemType === 'help_request')
+          .map((b) => b.itemId)
+      )
+      setBookmarkedIds(bookmarked)
+    } catch {
+      setBookmarkedIds(new Set())
+    }
+  }, [bookmarkService])
+
+  useEffect(() => {
+    refreshBookmarkStatus()
+  }, [refreshBookmarkStatus, refreshTrigger])
 
   const handleSelectBusiness = useCallback((businessCard) => {
     setSelectedItem(businessCard)
@@ -77,6 +101,15 @@ export default function OfficerToReview() {
   const handleDrawerClose = useCallback(() => {
     setSelectedItem(null)
   }, [])
+
+  const handleReviewComplete = useCallback(() => {
+    setSelectedItem(null)
+    refreshToReview()
+  }, [refreshToReview])
+
+  const handleBookmarkToggle = useCallback(() => {
+    refreshBookmarkStatus()
+  }, [refreshBookmarkStatus])
 
   const filteredToReview = useMemo(() => {
     const list = officerData.toReview || []
@@ -193,6 +226,9 @@ export default function OfficerToReview() {
         tags.push({ label: item.applicationReferenceNumber, color: 'default' })
       }
 
+      const appId = item.businessId || item.applicationId || item._id
+      const isBookmarked = bookmarkedIds.has(appId)
+
       return (
         <PanelCard
           key={item._id || item.applicationId}
@@ -206,6 +242,7 @@ export default function OfficerToReview() {
             ...(item.reviewedByName ? [{ label: 'Claimed by', value: item.reviewedByName }] : []),
           ]}
           tags={tags}
+          isBookmarked={isBookmarked}
         />
       )
     }
@@ -224,6 +261,8 @@ export default function OfficerToReview() {
         tags.push({ label: `Stale for ${staleDuration}`, color: 'warning' })
       }
 
+      const isBookmarked = bookmarkedIds.has(item.requestId)
+
       return (
         <PanelCard
           key={item._id || item.requestId}
@@ -236,6 +275,7 @@ export default function OfficerToReview() {
             ...(date ? [{ label: 'Created', value: date }] : []),
             ...(item.claimedByName ? [{ label: 'Claimed by', value: item.claimedByName }] : []),
           ]}
+          isBookmarked={isBookmarked}
           tags={tags}
         />
       )
@@ -247,10 +287,10 @@ export default function OfficerToReview() {
   const renderDetailPanel = (item) => {
     // Route to appropriate detail panel based on _itemType
     if (item._itemType === 'application') {
-      return <ApplicationDetailPanel application={item} onClose={handleDrawerClose} />
+      return <ApplicationDetailPanel application={item} onClose={handleDrawerClose} onReviewComplete={handleReviewComplete} onBookmarkToggle={handleBookmarkToggle} />
     }
     if (item._itemType === 'help_request') {
-      return <HelpRequestDetailPanel helpRequest={item} onClose={handleDrawerClose} />
+      return <HelpRequestDetailPanel request={item} onClose={handleDrawerClose} onReviewComplete={handleReviewComplete} onBookmarkToggle={handleBookmarkToggle} />
     }
     return null
   }
@@ -321,8 +361,20 @@ export default function OfficerToReview() {
     })
   }, [])
 
+  const detailContent = selectedItem ? (
+    renderDetailPanel(selectedItem)
+  ) : (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+      <Empty description="Select an item to view details" />
+    </div>
+  )
+
+  const drawerTitle = selectedItem?._itemType === 'help_request'
+    ? 'Help Request Detail'
+    : 'Application Detail'
+
   return (
-    <SplitLayout
+    <ResponsiveSplitLayout
       listContent={
         <ListPanel
           items={filteredToReview}
@@ -339,8 +391,11 @@ export default function OfficerToReview() {
           showStaleInfo={true}
         />
       }
-      detailContent={selectedItem ? renderDetailPanel(selectedItem) : null}
+      detailContent={detailContent}
       onDrawerClose={handleDrawerClose}
+      drawerOpen={!!selectedItem}
+      drawerTitle={drawerTitle}
+      mobileDrawerPlacement="bottom"
     />
   )
 }

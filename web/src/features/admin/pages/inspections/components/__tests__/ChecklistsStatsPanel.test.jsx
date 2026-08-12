@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { axe, toHaveNoViolations } from 'jest-axe'
+import { render } from '@testing-library/react'
+import { toHaveNoViolations } from 'jest-axe'
 import ChecklistsStatsPanel from '../ChecklistsStatsPanel'
 
 expect.extend(toHaveNoViolations)
@@ -49,14 +49,14 @@ describe('ChecklistsStatsPanel', () => {
 
   describe('Accessibility', () => {
     it('renders with accessible structure', async () => {
-      const { container } = render(<ChecklistsStatsPanel stats={mockStats} onRefresh={mockOnRefresh} />)
+      render(<ChecklistsStatsPanel stats={mockStats} onRefresh={mockOnRefresh} />)
 
       // Should render without errors
       expect(document.body).toBeInTheDocument()
     })
 
     it('renders with accessible structure with loading state', async () => {
-      const { container } = render(
+      render(
         <ChecklistsStatsPanel stats={mockStats} onRefresh={mockOnRefresh} loading={true} />
       )
 
@@ -73,7 +73,7 @@ describe('ChecklistsStatsPanel', () => {
         recentlyUpdated: 0,
       }
 
-      const { container } = render(<ChecklistsStatsPanel stats={minimalStats} onRefresh={mockOnRefresh} />)
+      render(<ChecklistsStatsPanel stats={minimalStats} onRefresh={mockOnRefresh} />)
 
       // Should render without errors
       expect(document.body).toBeInTheDocument()

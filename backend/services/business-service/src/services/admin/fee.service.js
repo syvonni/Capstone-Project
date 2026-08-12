@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const Variable = require("../../models/Variable");
 const PostRequirement = require("../../models/PostRequirement");
 const Violation = require("../../models/Violation");
 const Lob = require("../../models/Lob");
 const Checklist = require("../../models/Checklist");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const InspectionItem = require("../../models/InspectionItem");
 const { getUserInfo } = require("../../../../../shared/lib/getUserInfo");
 const FeeAuditHelper = require("../../lib/auditHelpers/feeAuditHelper");
@@ -64,9 +64,13 @@ class FeeService {
     ];
 
     for (const RelatedModel of relatedCollections) {
-      const existing = await RelatedModel.findOne({ name: String(name).trim() });
+      const existing = await RelatedModel.findOne({
+        name: String(name).trim(),
+      });
       if (existing) {
-        const error = new Error(`Name already exists in ${RelatedModel.modelName}`);
+        const error = new Error(
+          `Name already exists in ${RelatedModel.modelName}`,
+        );
         error.code = "DUPLICATE_NAME";
         error.status = 400;
         throw error;
@@ -127,9 +131,13 @@ class FeeService {
     ];
 
     for (const RelatedModel of relatedCollections) {
-      const existing = await RelatedModel.findOne({ name: String(name).trim() });
+      const existing = await RelatedModel.findOne({
+        name: String(name).trim(),
+      });
       if (existing) {
-        const error = new Error(`Name already exists in ${RelatedModel.modelName}`);
+        const error = new Error(
+          `Name already exists in ${RelatedModel.modelName}`,
+        );
         error.code = "DUPLICATE_NAME";
         error.status = 400;
         throw error;
@@ -215,8 +223,15 @@ class FeeService {
     const oldFee = new Fee(oldValues);
     oldFee._id = fee._id;
 
-    FeeAuditHelper.logUpdated(req, userId, userInfo, oldFee, fee, "admin").catch(
-      (err) => console.error("Failed to log audit event for fee update", err),
+    FeeAuditHelper.logUpdated(
+      req,
+      userId,
+      userInfo,
+      oldFee,
+      fee,
+      "admin",
+    ).catch((err) =>
+      console.error("Failed to log audit event for fee update", err),
     );
 
     return fee;
@@ -309,12 +324,8 @@ class FeeService {
    * Update variable calculation for a fee
    */
   async updateVariableCalculation(id, variableData, userId, req) {
-    const {
-      baseRate,
-      unit,
-      fixedAmount,
-      customCalculationMethod,
-    } = variableData;
+    const { baseRate, unit, fixedAmount, customCalculationMethod } =
+      variableData;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       const error = new Error("Invalid fee ID");

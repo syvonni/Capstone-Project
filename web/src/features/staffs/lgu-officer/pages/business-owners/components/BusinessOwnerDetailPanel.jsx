@@ -388,7 +388,7 @@ export default function BusinessOwnerDetailPanel({
         )
       }
       case 'businesses': {
-        const businesses = businessOwner?.businesses || []
+        const businesses = _businesses || []
         if (businesses.length === 0) {
           return (
             <div style={{ padding: 16 }}>

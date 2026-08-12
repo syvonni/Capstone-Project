@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { Typography, Input, Button, theme, Grid, Layout, Upload, message, Alert } from 'antd'
 import { UploadOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import HomeHeader from '../components/HomeHeader'
-import ZipperReveal from '@/shared/components/MosaicArt.jsx'
-import PanAnimation from '@/shared/components/PanAnimation.jsx'
-import BlurFade from '@/shared/components/BlurFade.jsx'
-import DocumentPreviewModal from '@/shared/components/DocumentPreviewModal'
+import ZipperReveal from '@/shared/components/graphics/MosaicArt.jsx'
+import PanAnimation from '@/shared/components/animations/PanAnimation.jsx'
+import BlurFade from '@/shared/components/animations/BlurFade.jsx'
+import DocumentPreviewModal from '@/shared/components/document/DocumentPreviewModal'
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input

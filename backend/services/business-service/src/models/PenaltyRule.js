@@ -17,7 +17,7 @@ const PenaltyRuleSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["violation", "late_renewal", "other"],
+      enum: ["violation", "other"],
       default: "other",
     },
     isActive: {

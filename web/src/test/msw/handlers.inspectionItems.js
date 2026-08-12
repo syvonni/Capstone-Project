@@ -78,7 +78,7 @@ export const inspectionItemsHandlers = [
         ]
       })
     }
-    return HttpResponse.json({ error: 'Inspection item not found' }, { status: 404 })
+    return HttpResponse.json({ message: 'Inspection item not found', code: 'NOT_FOUND' }, { status: 404 })
   }),
 
   // POST /api/business/admin/inspection-items
@@ -117,7 +117,7 @@ export const inspectionItemsHandlers = [
 
   // GET /api/business/admin/inspection-items/:id/audit
   http.get('/api/business/admin/inspection-items/:id/audit', ({ params }) => {
-    const { id } = params
+    const { id: _id } = params
     return HttpResponse.json({
       logs: [
         {

@@ -15,7 +15,7 @@
 const { AuditMetadataBuilder } = require("../auditMetadataBuilder");
 const { trackChanges } = require("../changeTracker");
 const { logAuditEvent } = require("../auditClient");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 
 /**
  * Helper function to enrich single relationship with name

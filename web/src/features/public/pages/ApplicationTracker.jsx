@@ -3,9 +3,9 @@ import { Typography, Input, Button, theme, Grid, Layout } from 'antd'
 import HomeHeader from '../components/HomeHeader'
 import FaqSection from '../components/FaqSection'
 import HomeFooter from '../components/HomeFooter'
-import ZipperReveal from '@/shared/components/MosaicArt.jsx'
-import PanAnimation from '@/shared/components/PanAnimation.jsx'
-import BlurFade from '@/shared/components/BlurFade.jsx'
+import ZipperReveal from '@/shared/components/graphics/MosaicArt.jsx'
+import PanAnimation from '@/shared/components/animations/PanAnimation.jsx'
+import BlurFade from '@/shared/components/animations/BlurFade.jsx'
 
 const { Title, Text, Paragraph } = Typography
 const { useBreakpoint } = Grid

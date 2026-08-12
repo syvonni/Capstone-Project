@@ -4,11 +4,11 @@ import { getPublicPermitFormByFormId } from '@/shared/services/permitFormService
 /**
  * Hook for loading form definitions
  */
-export function useFormDefinitionLoader() {
+export function useApplicationFormDefinitionLoader() {
   const [loading, setLoading] = useState(false)
   const [localError, setLocalError] = useState(null)
 
-  const fetchFormDefinition = useCallback(async (formId, category = null, isEditing = false, onSetFormDefinition, onSetStep, onSetActiveSectionIndex, onSetFormValues, form) => {
+  const fetchFormDefinition = useCallback(async (formId, category = null, isEditing = false, onSetFormDefinition, onSetStep, onSetActiveSectionIndex, onSetFormValues, _form) => {
     setLoading(true)
     setLocalError(null)
 

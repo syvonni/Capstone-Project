@@ -1,33 +1,24 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAuthSession } from '@/features/authentication'
 import { getAppealsForReview } from '../services/appealsService'
-import { getEditRequests } from '../services/editRequestService'
 import { getHelpRequests } from '../services/helpRequestService'
 import { getMyActions } from '../services/auditService'
 import { searchUsers } from '../services/userService'
 import { getBusinesses } from '../services/businessService'
 import { PermitApplicationService } from '../services/permitApplicationService'
 
-const EDIT_REQUESTS_POLL_INTERVAL_MS = 30 * 1000
+const POLL_INTERVAL_MS = 30 * 1000
 
 const PENDING_APPLICATION_STATUSES = new Set([
   'submitted',
   'under_review',
   'resubmit',
   'pending',
-  'pending_renewal',
-  'renewal_submitted',
   'appeal_pending',
   'officer_draft',
 ])
 
 const PENDING_APPEAL_STATUSES = new Set(['pending', 'submitted'])
-const PENDING_RENEWAL_STATUSES = new Set(['pending_renewal', 'renewal_submitted'])
-
-const normalizeEditRequestStatus = (status) => {
-  if (!status || status === 'submitted') return 'pending'
-  return status
-}
 
 const resolveReviewerId = (reviewedBy) => {
   if (!reviewedBy) return null
@@ -40,19 +31,6 @@ const isClaimedByOfficer = (item, officerId) => {
   return Boolean(reviewerId && officerId && String(reviewerId) === String(officerId))
 }
 
-const resolveApplicationItemType = (application) => {
-  const rawStatus = application?.status || application?.applicationStatus || ''
-  const status = String(rawStatus).toLowerCase()
-  const applicationType = String(application?.applicationType || '').toLowerCase()
-  const permitType = String(application?.permitType || '').toLowerCase()
-
-  if (status.includes('renewal') || applicationType.includes('renewal') || permitType === 'renewal') {
-    return 'renewals'
-  }
-
-  return 'applications'
-}
-
 // Priority scoring helpers for To Review tab
 const getHoursInStatus = (item) => {
   if (!item) return 0
@@ -62,7 +40,7 @@ const getHoursInStatus = (item) => {
   return Math.max(0, hours)
 }
 
-// Stale detection helpers for Part 5
+// Stale detection helpers
 const STALE_THRESHOLD_HOURS = 48
 
 const ACTIVE_APPLICATION_STATUSES = new Set(['submitted', 'under_review', 'resubmit'])
@@ -77,7 +55,7 @@ const isStale = (item) => {
   const status = String(item.status || item.applicationStatus || '').toLowerCase()
 
   // Applications: check if claimed and in active status with stale reviewedAt
-  if (itemType === 'applications' || itemType === 'renewals' || item.applicationId) {
+  if (itemType === 'applications' || item.applicationId) {
     if (!item.reviewedBy) return false
     if (ACTIVE_APPLICATION_STATUSES.has(status) || !TERMINAL_APPLICATION_STATUSES.has(status)) {
       const reviewedAt = item.reviewedAt
@@ -131,8 +109,6 @@ export const calculatePriorityScore = (card) => {
 
   if (itemType === 'help_request' || itemType === 'helpRequests') {
     score += 100
-  } else if (itemType === 'renewals') {
-    score += 20
   } else if (itemType === 'application' || itemType === 'applications') {
     // Status-based priority tier (determines the tier, time determines position within tier)
     const status = String(primaryItem?.status || primaryItem?.applicationStatus || '').toLowerCase()
@@ -175,17 +151,8 @@ export default function useOfficerData(activeTab, refreshTrigger) {
 
   // Data states per tab
   const [toReview, setToReview] = useState([])
-  // Claimed items by type for To Review sub-tabs
-  const [toReviewByType, setToReviewByType] = useState({
-    applications: [],
-    renewals: [],
-    appeals: [],
-    editRequests: [],
-  })
   const [applications, setApplications] = useState([])
   const [appeals, setAppeals] = useState([])
-  const [editRequests, setEditRequests] = useState([])
-  const [renewals, setRenewals] = useState([])
   const [owners, setOwners] = useState([])
   const [drafts, setDrafts] = useState([])
   const [logs, setLogs] = useState([])
@@ -206,8 +173,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
   // ── Fetch functions ──────────────────────────────────────────
 
   /** Resolve a stable businessId from any item shape.
-   *  Prefer _businessSubdocId (subdoc _id) since permit-applications uses that as businessId.
-   *  This ensures edit requests, appeals, cessations group under the same consolidated card. */
+   *  Prefer _businessSubdocId (subdoc _id) since permit-applications uses that as businessId. */
   const resolveBusinessId = (item) => {
     return item?._businessSubdocId || item?.businessId || item?.applicationId || item?._id || ''
   }
@@ -219,12 +185,11 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     try {
       const permitApplicationService = new PermitApplicationService()
 
-      const [applicationsRes, editRequestsRes, appealsRes] = await Promise.allSettled([
+      const [applicationsRes, appealsRes] = await Promise.allSettled([
         permitApplicationService.getApplications({
           filters: { reviewedBy: officerId },
           pagination: { limit: 200 }
         }),
-        getEditRequests({ role: 'staff', limit: 200 }),
         getAppealsForReview({ limit: 200 }),
       ])
 
@@ -232,24 +197,9 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         ? (applicationsRes.value?.applications || applicationsRes.value?.applications || [])
           .map((application) => ({
             ...application,
-            _itemType: resolveApplicationItemType(application),
+            _itemType: 'applications',
           }))
         : []
-
-      const allEditRequestsRaw = editRequestsRes.status === 'fulfilled'
-        ? (Array.isArray(editRequestsRes.value) ? editRequestsRes.value : [])
-          .map((request) => ({
-            ...request,
-            status: normalizeEditRequestStatus(request?.status),
-            _itemType: 'editRequests',
-          }))
-        : []
-      // Include ALL edit requests for claimed businesses (pending + approved + rejected) for history
-      const claimedEditRequests = allEditRequestsRaw
-        .filter((request) => isClaimedByOfficer(request, officerId))
-      // Keep unclaimed pending edit requests to merge later if their business is already claimed
-      const unclaimedEditRequests = allEditRequestsRaw
-        .filter((request) => !isClaimedByOfficer(request, officerId) && request.status === 'pending')
 
       const ACTIVE_APPEAL_STATUSES = ['submitted', 'pending', 'under_review']
       const allAppealsRaw = appealsRes.status === 'fulfilled'
@@ -263,8 +213,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
       const unclaimedAppeals = allAppealsRaw
         .filter((appeal) => !isClaimedByOfficer(appeal, officerId) && ACTIVE_APPEAL_STATUSES.includes(appeal.status))
         .map((appeal) => ({ ...appeal, _itemType: 'appeals' }))
-
-      const claimedCessations = []
 
       // Build a businessId alias map from applications so that all items for the same
       // business (which may use different ID formats — subdoc _id vs businessId) resolve
@@ -281,8 +229,8 @@ export default function useOfficerData(activeTab, refreshTrigger) {
           bizAliasMap.set(String(app.applicationId), canonicalId)
         }
       }
-      // Also learn aliases from appeals/edit-requests/cessations that carry _businessSubdocId
-      const allItemsForAlias = [...claimedAppeals, ...unclaimedAppeals, ...claimedEditRequests, ...unclaimedEditRequests, ...claimedCessations]
+      // Also learn aliases from appeals that carry _businessSubdocId
+      const allItemsForAlias = [...claimedAppeals, ...unclaimedAppeals]
       for (const item of allItemsForAlias) {
         const subdocId = item._businessSubdocId ? String(item._businessSubdocId) : null
         const rawBizId = item.businessId ? String(item.businessId) : null
@@ -302,21 +250,10 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         return bizAliasMap.get(String(rawId)) || rawId
       }
 
-      // Build claimed-by-type object (will be updated with merged appeals below before calling setToReviewByType)
-      const claimedByType = {
-        applications: claimedApplications.filter(a => a._itemType === 'applications'),
-        renewals: claimedApplications.filter(a => a._itemType === 'renewals'),
-        appeals: claimedAppeals,
-        editRequests: claimedEditRequests,
-        cessation: claimedCessations,
-      }
-
       // Group all claimed items by businessId into consolidated business cards
       const allItems = [
         ...claimedApplications,
-        ...claimedEditRequests,
         ...claimedAppeals,
-        ...claimedCessations,
       ]
 
       const businessMap = new Map()
@@ -328,7 +265,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
             businessId: bizId,
             businessName: item.businessName || item.registeredBusinessName || 'Unknown Business',
             _itemType: 'business',
-            _requests: { application: null, editRequests: [], appeals: [] },
+            _requests: { application: null, appeals: [] },
             createdAt: item.createdAt || item.updatedAt || item.submittedAt || new Date().toISOString(),
           })
         }
@@ -348,11 +285,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         // Sort into categories
         switch (item._itemType) {
           case 'applications':
-          case 'renewals':
             group._requests.application = item
-            break
-          case 'editRequests':
-            group._requests.editRequests.push(item)
             break
           case 'appeals':
             group._requests.appeals.push(item)
@@ -361,7 +294,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
       }
 
       // Merge unclaimed items into business cards that are already claimed via other items.
-      // This handles the case where an appeal/edit request is submitted after the application was already claimed.
+      // This handles the case where an appeal is submitted after the application was already claimed.
       const mergeUnclaimedIntoCards = (unclaimedItems, requestKey) => {
         for (const item of unclaimedItems) {
           const bizId = String(resolveWithAliases(item))
@@ -374,25 +307,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
         }
       }
 
-      mergeUnclaimedIntoCards(unclaimedEditRequests, 'editRequests')
       mergeUnclaimedIntoCards(unclaimedAppeals, 'appeals')
-
-      // Also include unclaimed items in claimedByType for sub-tab rendering
-      const mergeUnclaimedIntoByType = (claimed, unclaimed) => {
-        const merged = [...claimed]
-        for (const item of unclaimed) {
-          const bizId = String(resolveWithAliases(item))
-          if (bizId && businessMap.has(bizId)) {
-            const isDuplicate = merged.some(existing => String(existing._id) === String(item._id))
-            if (!isDuplicate) merged.push(item)
-          }
-        }
-        return merged
-      }
-
-      claimedByType.editRequests = mergeUnclaimedIntoByType(claimedEditRequests, unclaimedEditRequests)
-      claimedByType.appeals = mergeUnclaimedIntoByType(claimedAppeals, unclaimedAppeals)
-      setToReviewByType(claimedByType)
 
       const consolidatedItems = Array.from(businessMap.values())
         .map(card => {
@@ -415,9 +330,9 @@ export default function useOfficerData(activeTab, refreshTrigger) {
 
       setToReview(consolidatedItems)
       setCounts(prev => ({ ...prev, toReview: consolidatedItems.length }))
-    } catch (err) { 
+    } catch (err) {
       console.error('[useOfficerData] fetchToReview error:', err)
-      setToReview([]) 
+      setToReview([])
       setCounts(prev => ({ ...prev, toReview: 0 }))
     }
     finally { setTabLoading('toReview', false) }
@@ -458,47 +373,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
       setCounts(prev => ({ ...prev, appeals: 0 }))
     }
     finally { setTabLoading('appeals', false) }
-  }, [])
-
-  const fetchEditRequests = useCallback(async () => {
-    setTabLoading('editRequests', true)
-    try {
-      const res = await getEditRequests({ role: 'staff', options: { skipAutoLogout: true } })
-      const list = Array.isArray(res) ? res : []
-      const normalized = list.map((request) => {
-        return { ...request, status: normalizeEditRequestStatus(request?.status) }
-      })
-      const pendingCount = normalized.filter(request => request.status === 'pending').length
-
-      setEditRequests(normalized)
-      setCounts(prev => ({ ...prev, editRequests: pendingCount }))
-    } catch {
-      setEditRequests([])
-      setCounts(prev => ({ ...prev, editRequests: 0 }))
-    }
-    finally { setTabLoading('editRequests', false) }
-  }, [])
-
-  const fetchRenewals = useCallback(async () => {
-    setTabLoading('renewals', true)
-    try {
-      const permitApplicationService = new PermitApplicationService()
-      const res = await permitApplicationService.getApplications({
-        filters: { status: 'pending_renewal,renewal_submitted' },
-        pagination: { limit: 100 },
-        options: { skipAutoLogout: true }
-      })
-      const apps = res?.applications || res || []
-      const pendingCount = apps.filter(app =>
-        PENDING_RENEWAL_STATUSES.has(app.status || app.applicationStatus)
-      ).length
-      setRenewals(apps)
-      setCounts(prev => ({ ...prev, renewals: pendingCount }))
-    } catch {
-      setRenewals([])
-      setCounts(prev => ({ ...prev, renewals: 0 }))
-    }
-    finally { setTabLoading('renewals', false) }
   }, [])
 
   const fetchOwners = useCallback(async (q = '') => {
@@ -578,55 +452,42 @@ export default function useOfficerData(activeTab, refreshTrigger) {
       case 'toReview': return fetchToReview()
       case 'applications': return fetchApplications()
       case 'appeals': return fetchAppeals()
-      case 'editRequests': return fetchEditRequests()
-      case 'renewals': return fetchRenewals()
       case 'owners': return fetchOwners(ownerSearch)
       case 'drafts': return fetchDrafts()
       case 'logs': return fetchLogs()
       case 'businesses': return fetchBusinesses()
       case 'helpRequests': return fetchHelpRequests()
     }
-  }, [activeTab, fetchToReview, fetchApplications, fetchAppeals, fetchEditRequests, fetchRenewals, fetchOwners, fetchDrafts, fetchLogs, fetchBusinesses, fetchHelpRequests, ownerSearch])
+  }, [activeTab, fetchToReview, fetchApplications, fetchAppeals, fetchOwners, fetchDrafts, fetchLogs, fetchBusinesses, fetchHelpRequests, ownerSearch])
 
 
   // Fetch on tab change
   useEffect(() => {
     fetchActiveTabData()
-  }, [activeTab, refreshTrigger])
+  }, [activeTab, refreshTrigger, fetchActiveTabData])
 
   // Fetch all counts on mount and when currentUser becomes available
   useEffect(() => {
     fetchToReview()
     fetchApplications()
     fetchAppeals()
-    fetchEditRequests()
-    fetchRenewals()
     fetchDrafts()
     fetchBusinesses()
-  }, [currentUser?.id])
+  }, [currentUser?.id, fetchToReview, fetchApplications, fetchAppeals, fetchDrafts, fetchBusinesses])
 
   // Owner search with debounce
   useEffect(() => {
     if (activeTab !== 'owners') return
     const t = setTimeout(() => fetchOwners(ownerSearch), 300)
     return () => clearTimeout(t)
-  }, [ownerSearch, activeTab])
-
-  // Poll edit requests while edits tab is active so officer list stays fresh
-  useEffect(() => {
-    if (activeTab !== 'editRequests') return
-    const intervalId = setInterval(() => {
-      fetchEditRequests()
-    }, EDIT_REQUESTS_POLL_INTERVAL_MS)
-    return () => clearInterval(intervalId)
-  }, [activeTab, fetchEditRequests])
+  }, [ownerSearch, activeTab, fetchOwners])
 
   // Poll toReview while tab is active so officer list stays fresh
   useEffect(() => {
     if (activeTab !== 'toReview') return
     const intervalId = setInterval(() => {
       fetchToReview()
-    }, EDIT_REQUESTS_POLL_INTERVAL_MS)
+    }, POLL_INTERVAL_MS)
     return () => clearInterval(intervalId)
   }, [activeTab, fetchToReview])
 
@@ -636,8 +497,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
       toReview,
       applications,
       appeals,
-      editRequests,
-      renewals,
       owners,
       drafts,
       logs,
@@ -645,7 +504,7 @@ export default function useOfficerData(activeTab, refreshTrigger) {
       helpRequests,
     }
     return lists[activeTab] || []
-  }, [activeTab, toReview, applications, appeals, editRequests, renewals, owners, drafts, logs, businesses, helpRequests])
+  }, [activeTab, toReview, applications, appeals, owners, drafts, logs, businesses, helpRequests])
 
   // Refresh all application-related tabs (for claim/release/transfer)
   const refreshApplicationTabs = useCallback(() => {
@@ -656,11 +515,8 @@ export default function useOfficerData(activeTab, refreshTrigger) {
   return {
     // Data
     toReview,
-    toReviewByType,
     applications,
     appeals,
-    editRequests,
-    renewals,
     owners,
     drafts,
     logs,
@@ -679,7 +535,6 @@ export default function useOfficerData(activeTab, refreshTrigger) {
     refresh: fetchActiveTabData,
     refreshToReview: fetchToReview,
     refreshApplicationTabs,
-    refreshEditRequests: fetchEditRequests,
     refreshHelpRequests: fetchHelpRequests,
   }
 }

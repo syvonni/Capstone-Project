@@ -1,11 +1,15 @@
 import { useState } from 'react'
+import { App } from 'antd'
+import { buildReceiptInfo } from '../utils/paymentUtils'
 
 /**
  * Manages all modal states for business owner applications
  * Centralizes modal open/close logic to reduce component complexity
  * Follows LGU officer pattern
  */
-export function useApplicationModals(registrationType = null, generalPermitCategory = null) {
+export function useBusinessOwnerApplicationModals({ application, onPaymentSuccess, feeData } = {}) {
+  const { message } = App.useApp()
+
   // Document modals
   const [documentModal, setDocumentModal] = useState({ open: false, url: null, label: '', type: 'other' })
   const [documentPreview, setDocumentPreview] = useState({ open: false, url: null, label: '', type: 'other' })
@@ -21,9 +25,9 @@ export function useApplicationModals(registrationType = null, generalPermitCateg
 
   // Payment modals
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [showResubmitModal, setShowResubmitModal] = useState(false)
   const [showReceiptModal, setShowReceiptModal] = useState(false)
   const [showAppealPaymentModal, setShowAppealPaymentModal] = useState(false)
-  const [feeData, setFeeData] = useState(null)
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false)
 
   // Appeal modals
@@ -46,6 +50,44 @@ export function useApplicationModals(registrationType = null, generalPermitCateg
 
   // UI state
   const [hoveredCard, setHoveredCard] = useState(null)
+
+  // Payment/resubmit handlers
+  const handleSubmitAndPay = (isReturned) => {
+    if (isReturned) {
+      setShowResubmitModal(true)
+    } else {
+      setShowPaymentModal(true)
+    }
+  }
+
+  const handleResubmitConfirm = () => {
+    setShowResubmitModal(false)
+    if (!application || !onPaymentSuccess) return
+    const receiptInfo = buildReceiptInfo({
+      receiptId: 'RESUBMIT-' + Date.now(),
+      application,
+      feeData,
+      transactionName: 'Application Resubmission',
+    })
+    onPaymentSuccess(receiptInfo)
+  }
+
+  const handlePaymentSuccess = (receiptId) => {
+    setShowPaymentModal(false)
+    if (!application || !onPaymentSuccess) return
+    const receiptInfo = buildReceiptInfo({
+      receiptId,
+      application,
+      feeData,
+      transactionName: 'Business Permit Application',
+    })
+    onPaymentSuccess(receiptInfo)
+  }
+
+  const handlePaymentFail = () => {
+    setShowPaymentModal(false)
+    message.error('Payment cancelled. Application was not submitted.')
+  }
 
   return {
     // Document modals
@@ -71,14 +113,21 @@ export function useApplicationModals(registrationType = null, generalPermitCateg
     // Payment modals
     showPaymentModal,
     setShowPaymentModal,
+    showResubmitModal,
+    setShowResubmitModal,
     showReceiptModal,
     setShowReceiptModal,
     showAppealPaymentModal,
     setShowAppealPaymentModal,
     feeData,
-    setFeeData,
     isSubmittingPayment,
     setIsSubmittingPayment,
+
+    // Payment handlers
+    handleSubmitAndPay,
+    handleResubmitConfirm,
+    handlePaymentSuccess,
+    handlePaymentFail,
 
     // Appeal modals
     appealModalOpen,

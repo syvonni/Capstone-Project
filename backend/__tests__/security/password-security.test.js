@@ -187,7 +187,7 @@ describe("Password Security Tests", () => {
       expect(tokenResponse.body.error.code).toBe("token_invalidated");
     });
 
-    it("should require MFA re-enrollment after password change", async () => {
+    it("should preserve MFA enrollment after password change", async () => {
       // Setup MFA first
       await User.findByIdAndUpdate(testUser._id, {
         mfaEnabled: true,
@@ -205,8 +205,9 @@ describe("Password Security Tests", () => {
       expect(response.status).toBe(200);
 
       const updatedUser = await User.findById(testUser._id);
-      expect(updatedUser.mfaReEnrollmentRequired).toBe(true);
-      expect(updatedUser.mfaEnabled).toBe(false);
+      expect(updatedUser.mfaEnabled).toBe(true);
+      expect(updatedUser.mfaReEnrollmentRequired).toBe(false);
+      expect(updatedUser.mfaSecret).toBeTruthy();
     });
   });
 });

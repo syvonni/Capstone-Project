@@ -1,10 +1,11 @@
 import { Typography, Card, Divider, Grid, Button, Modal, Descriptions, theme } from 'antd'
 import { useState, useEffect, useMemo } from 'react'
-import { formatDate } from '../utils/formatters'
+import { formatDateTime } from '../utils/formatters'
 import { getStatusLabel } from '@/shared/utils/statusUtils'
-import PermitTypesModal from '@/shared/components/PermitTypesModal'
-import DocumentPreviewModal from '@/shared/components/DocumentPreviewModal'
-import ApplicationProgressModal from '@/shared/components/ApplicationProgressModal'
+import ApplicationPermitTypesModal from '@/shared/components/applications/ApplicationPermitTypesModal'
+import DocumentPreviewModal from '@/shared/components/document/DocumentPreviewModal'
+import ApplicationProgressModal from '@/shared/components/applications/ApplicationProgressModal'
+import ApplicationFieldProgressModal from '@/shared/components/applications/ApplicationFieldProgressModal'
 import OwnerDetailsModal from './modals/ApplicationOwnerDetailsModal'
 
 import { getAppealsByBusiness } from '../../../services/appealsService'
@@ -110,7 +111,7 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
     const section = sections[sectionIdx]
     if (!section) return fieldKey
 
-    const sectionName = section?.label || section?.title || `Section ${sectionIdx + 1}`
+    const sectionName = section?.sectionName || section?.label || section?.title || section?.category || `Section ${sectionIdx + 1}`
 
     // Find the field in the section items
     const item = section?.items?.find((item) => item.key === fieldKeyPart || item.label === fieldKeyPart)
@@ -455,28 +456,28 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
           </div>
           <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
             <Text type="secondary" style={{ fontSize: 12 }}>{createdByOfficer ? 'Created On' : 'Submitted On'}</Text>
-            <div><Text strong>{formatDate(createdByOfficer ? application?.createdAt : application?.submittedAt)}</Text></div>
+            <div><Text strong>{formatDateTime(createdByOfficer ? application?.createdAt : application?.submittedAt)}</Text></div>
           </div>
           {createdByOfficer && isApproved && application?.submittedAt && (
             <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
               <Text type="secondary" style={{ fontSize: 12 }}>Submitted On</Text>
-              <div><Text strong>{formatDate(application?.submittedAt)}</Text></div>
+              <div><Text strong>{formatDateTime(application?.submittedAt)}</Text></div>
             </div>
           )}
           <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
             <Text type="secondary" style={{ fontSize: 12 }}>Last Reviewed</Text>
-            <div><Text strong>{application?.reviewedAt ? formatDate(application.reviewedAt) : 'Not yet reviewed'}</Text></div>
+            <div><Text strong>{application?.reviewedAt ? formatDateTime(application.reviewedAt) : 'Not yet reviewed'}</Text></div>
           </div>
           {latestAppeal && (isAppealPending || isAppealRejected) && (
             <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
               <Text type="secondary" style={{ fontSize: 12 }}>Appeal Submitted On</Text>
-              <div><Text strong>{latestAppeal.createdAt ? formatDate(latestAppeal.createdAt) : 'Unknown'}</Text></div>
+              <div><Text strong>{latestAppeal.createdAt ? formatDateTime(latestAppeal.createdAt) : 'Unknown'}</Text></div>
             </div>
           )}
           {isApproved && application?.hadAppealGranted && latestAppeal && (
             <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
               <Text type="secondary" style={{ fontSize: 12 }}>Appeal Submitted On</Text>
-              <div><Text strong>{latestAppeal.createdAt ? formatDate(latestAppeal.createdAt) : 'Unknown'}</Text></div>
+              <div><Text strong>{latestAppeal.createdAt ? formatDateTime(latestAppeal.createdAt) : 'Unknown'}</Text></div>
             </div>
           )}
           {!isApproved && (
@@ -535,7 +536,6 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
       open={progressModalOpen}
       onClose={() => setProgressModalOpen(false)}
       application={application}
-      status={application?.status}
       statusLower={statusLower}
       latestAppeal={application?.latestAppeal}
     />
@@ -593,7 +593,7 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
                     <Text style={{ display: 'block', marginBottom: 12 }}>{sectionName}</Text>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {fields.map((field) => (
-                        <Descriptions key={field.fieldKey} column={1} bordered size="small" labelStyle={{ width: '120px' }}>
+                        <Descriptions key={field.fieldKey} column={1} bordered size="small" styles={{ label: { width: '120px' } }}>
                           <Descriptions.Item label="Field Name">{field.fieldName}</Descriptions.Item>
                           <Descriptions.Item label="Reason">{field.reason}</Descriptions.Item>
                         </Descriptions>
@@ -610,50 +610,15 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
       </div>
     </Modal>
 
-    <Modal
-      title={`Pending Review Fields (${pendingFields.length})`}
+    <ApplicationFieldProgressModal
       open={pendingFieldsModalOpen}
       onCancel={() => setPendingFieldsModalOpen(false)}
-      footer={null}
-      width={600}
-    >
-      {pendingFields.length > 0 ? (
-        (() => {
-          // Group fields by section
-          const groupedBySection = pendingFields.reduce((acc, item) => {
-            const sectionMatch = item.displayName.match(/^Section \d+ - /)
-            const sectionName = sectionMatch ? item.displayName.split(' - ')[0] : 'Other'
-            const fieldName = sectionMatch ? item.displayName.replace(sectionMatch[0], '') : item.displayName
-            if (!acc[sectionName]) {
-              acc[sectionName] = []
-            }
-            acc[sectionName].push(fieldName)
-            return acc
-          }, {})
+      title="Pending Review Fields"
+      fields={pendingFields}
+      emptyMessage="No pending fields"
+    />
 
-          return (
-            <Descriptions column={1} bordered size="small" labelStyle={{ width: '150px' }}>
-              {Object.entries(groupedBySection)
-                .sort(([a], [b]) => {
-                  // Sort "Other" to the end
-                  if (a === 'Other') return 1
-                  if (b === 'Other') return -1
-                  return a.localeCompare(b)
-                })
-                .map(([sectionName, fields]) => (
-                <Descriptions.Item key={sectionName} label={sectionName}>
-                  {fields.join(', ')}
-                </Descriptions.Item>
-              ))}
-            </Descriptions>
-          )
-        })()
-      ) : (
-        <Text type="secondary">No pending fields</Text>
-      )}
-    </Modal>
-
-    <PermitTypesModal 
+    <ApplicationPermitTypesModal 
       open={permitModalOpen} 
       onCancel={() => setPermitModalOpen(false)}
       selectedPermitType={formType || 'unified-business-permit'}

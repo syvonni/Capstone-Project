@@ -1,6 +1,6 @@
-import { Modal, Typography } from 'antd'
-import { theme } from 'antd'
-import DocumentViewer from '@/shared/components/DocumentViewer'
+import { Typography, theme } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
+import DocumentViewer from '@/shared/components/document/DocumentViewer'
 
 const { Text } = Typography
 const { useToken } = theme
@@ -10,7 +10,7 @@ export default function AppealDetailsModal({ open, onCancel, appealDetails }) {
   
   if (!appealDetails) {
     return (
-      <Modal
+      <ResponsiveModal
         title="Appeal Details"
         open={open}
         onCancel={onCancel}
@@ -20,7 +20,7 @@ export default function AppealDetailsModal({ open, onCancel, appealDetails }) {
         <div style={{ textAlign: 'center', padding: 24 }}>
           <Text type="secondary">No appeal details available.</Text>
         </div>
-      </Modal>
+      </ResponsiveModal>
     )
   }
 
@@ -34,7 +34,7 @@ export default function AppealDetailsModal({ open, onCancel, appealDetails }) {
   }
 
   return (
-    <Modal
+    <ResponsiveModal
       title="Appeal Details"
       open={open}
       onCancel={onCancel}
@@ -74,6 +74,6 @@ export default function AppealDetailsModal({ open, onCancel, appealDetails }) {
           </div>
         )}
       </div>
-    </Modal>
+    </ResponsiveModal>
   )
 }

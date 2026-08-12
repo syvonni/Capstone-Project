@@ -45,9 +45,7 @@ function getEnvDefaults() {
 
 function buildHeader(appUrl) {
   const url = appUrl || getEnvDefaults().appUrl;
-  let logoUrl =
-    process.env.EMAIL_LOGO_URL ||
-    process.env.EMAIL_LOGO_RAW_URL;
+  let logoUrl = process.env.EMAIL_LOGO_URL || process.env.EMAIL_LOGO_RAW_URL;
 
   if (!logoUrl) {
     let localLogoUrl;

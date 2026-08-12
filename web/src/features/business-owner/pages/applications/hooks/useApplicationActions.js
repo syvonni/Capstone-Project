@@ -1,27 +1,27 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { App } from 'antd'
-import { deleteApplication, createApplication } from '../../../services/applicationService'
+import { createApplication } from '../../../services/applicationService'
 import { isDraftStatus } from '../utils/statusUtils'
 
-export function useBusinessActions({
-  businesses,
+export function useApplicationActions({
+  applications,
   dashboardState,
   setEditingApplication,
-  fetchBusinesses,
-  selectedBusinessId,
+  fetchApplications,
 }) {
   const { message } = App.useApp()
+  const creatingRef = useRef(false)
 
-  const handleBusinessSelect = useCallback((applicationId) => {
-    const application = businesses.find(b => {
-      return b.applicationId === applicationId || b._id === applicationId
+  const handleApplicationSelect = useCallback((applicationId) => {
+    const application = applications.find(app => {
+      return app.applicationId === applicationId || app._id === applicationId
     })
 
     if (application) {
       const appStatus = application.applicationStatus || application.permitStatus || ''
       if (isDraftStatus(appStatus)) {
-        // Clear selected business ID when opening draft for editing
-        dashboardState.setSelectedBusinessId(null)
+        // Clear selected application ID when opening draft for editing
+        dashboardState.setSelectedApplicationId(null)
         dashboardState.setShowSettings(false)
         dashboardState.openEditApplicationForm(application)
       } else {
@@ -29,15 +29,15 @@ export function useBusinessActions({
         dashboardState.setShowAddForm(false)
         dashboardState.setEditingApplication(null)
         dashboardState.setShowSettings(false)
-        dashboardState.selectBusiness(applicationId)
+        dashboardState.selectApplication(applicationId)
       }
     }
-  }, [businesses, dashboardState])
+  }, [applications, dashboardState])
 
-  const handleAddBusiness = useCallback(() => {
+  const handleAddApplication = useCallback(() => {
     // Count draft, pending, and submitted applications
-    const draftOrPendingCount = businesses.filter(
-      b => b.applicationStatus === 'draft' || b.applicationStatus === 'pending' || b.applicationStatus === 'submitted'
+    const draftOrPendingCount = applications.filter(
+      app => app.applicationStatus === 'draft' || app.applicationStatus === 'pending' || app.applicationStatus === 'submitted'
     ).length
 
     if (draftOrPendingCount >= 2) {
@@ -45,23 +45,27 @@ export function useBusinessActions({
       return
     }
 
-    dashboardState.setShowBusinessTypeSelector(true)
-    dashboardState.setSelectedBusinessId(null)
+    dashboardState.setShowApplicationTypeSelector(true)
+    dashboardState.setSelectedApplicationId(null)
     dashboardState.setShowAddForm(false)
     setEditingApplication(null)
-  }, [dashboardState, setEditingApplication, businesses, message])
+  }, [dashboardState, setEditingApplication, applications, message])
 
   // Calculate draft limit status for UI
-  const draftLimitReached = businesses.filter(
-    b => b.applicationStatus === 'draft' || b.applicationStatus === 'pending' || b.applicationStatus === 'submitted'
+  const draftLimitReached = applications.filter(
+    app => app.applicationStatus === 'draft' || app.applicationStatus === 'pending' || app.applicationStatus === 'submitted'
   ).length >= 2
 
-  const handleBusinessTypeSelect = useCallback(async (formId) => {
+  const handleApplicationTypeSelect = useCallback(async (formId) => {
+    if (creatingRef.current) return
+    creatingRef.current = true
+
     // formId can be either a specific form ID (e.g., 'unified-business-permit') or 'temporary-permit' parent
     // For temporary permit parent, we'll let the form loader handle the category selection
     if (formId === 'temporary-permit') {
       dashboardState.openApplicationForm({ formId, fromWelcome: false })
-      dashboardState.setShowBusinessTypeSelector(false)
+      dashboardState.setShowApplicationTypeSelector(false)
+      creatingRef.current = false
       return
     }
 
@@ -91,54 +95,23 @@ export function useBusinessActions({
       }
 
       // Fetch applications to update the list
-      await fetchBusinesses()
+      await fetchApplications()
 
-      dashboardState.setSelectedBusinessId(applicationId)
+      dashboardState.setSelectedApplicationId(applicationId)
       dashboardState.openEditApplicationForm(newApplication)
-      dashboardState.setShowBusinessTypeSelector(false)
+      dashboardState.setShowApplicationTypeSelector(false)
     } catch (err) {
       console.error('Failed to create application:', err)
       message.error(err.message || 'Failed to create application.')
+    } finally {
+      creatingRef.current = false
     }
-  }, [dashboardState, fetchBusinesses, message])
-
-  const handleDeleteApplication = useCallback(async (application) => {
-    const applicationId = application.applicationId || application._id
-    try {
-      await deleteApplication(applicationId)
-      message.success('Application deleted.')
-      localStorage.removeItem('addBusinessFormDraft')
-      if (selectedBusinessId === applicationId) {
-        dashboardState.setSelectedBusinessId(null)
-        dashboardState.setShowAddForm(false)
-        setEditingApplication(null)
-      }
-      fetchBusinesses()
-    } catch (err) {
-      console.error('Failed to delete application:', err)
-      message.error(err?.message || 'Failed to delete application')
-    }
-  }, [selectedBusinessId, dashboardState, setEditingApplication, fetchBusinesses, message])
-
-  const handleDeleteDraftClick = useCallback(() => {
-    const selectedApplication = businesses.find(b => (b.applicationId || b._id) === selectedBusinessId)
-    if (!selectedApplication) return
-    message.confirm({
-      title: 'Delete draft application?',
-      content: 'This will permanently remove this draft. You can add a new business later if needed.',
-      okText: 'Delete',
-      okType: 'danger',
-      cancelText: 'Cancel',
-      onOk: () => handleDeleteApplication(selectedApplication),
-    })
-  }, [businesses, selectedBusinessId, message, handleDeleteApplication])
+  }, [dashboardState, fetchApplications, message])
 
   return {
-    handleBusinessSelect,
-    handleAddBusiness,
-    handleBusinessTypeSelect,
-    handleDeleteApplication,
-    handleDeleteDraftClick,
+    handleApplicationSelect,
+    handleAddApplication,
+    handleApplicationTypeSelect,
     draftLimitReached,
   }
 }

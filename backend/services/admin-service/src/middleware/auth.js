@@ -1,7 +1,10 @@
 const jwt = require("jsonwebtoken");
 
 function signAccessToken(user) {
-  const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is required");
+  }
   const ttlMin = Number(process.env.ACCESS_TOKEN_TTL_MINUTES) || 240; // Default 4 hours (240 minutes)
   const nowSec = Math.floor(Date.now() / 1000);
   const expSec = nowSec + Math.max(1, ttlMin) * 60;
@@ -31,7 +34,10 @@ async function requireJwt(req, res, next) {
           message: "Unauthorized: missing token",
         },
       });
-    const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error("JWT_SECRET environment variable is required");
+    }
     const decoded = jwt.verify(token, secret);
 
     // Skip user lookup in test mode to avoid cross-service model conflicts
@@ -93,7 +99,10 @@ async function optionalJwt(req, res, next) {
       // No token provided, continue as anonymous user
       return next();
     }
-    const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error("JWT_SECRET environment variable is required");
+    }
     const decoded = jwt.verify(token, secret);
 
     // Skip user lookup in test mode to avoid cross-service model conflicts
@@ -188,7 +197,10 @@ function requireAdminStepUp(req, res, next) {
     });
   }
   try {
-    const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error("JWT_SECRET environment variable is required");
+    }
     const decoded = jwt.verify(stepUpToken, secret);
     if (!decoded || decoded.stepUp !== true) {
       return res.status(403).json({

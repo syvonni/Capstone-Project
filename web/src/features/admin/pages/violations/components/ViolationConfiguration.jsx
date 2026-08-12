@@ -5,7 +5,7 @@ import { SEVERITY_LEVELS } from '../constants/violations.constants'
 const { Text } = Typography
 const { TextArea } = Input
 
-export default function ViolationConfiguration({ form, handleFormValuesChange, token, initialValues }) {
+export default function ViolationConfiguration({ form, handleFormValuesChange, token }) {
 
   return (
     <div>
@@ -77,6 +77,7 @@ export default function ViolationConfiguration({ form, handleFormValuesChange, t
                     <Form.Item
                       name={[field.name, 'title']}
                       label="Title"
+                      initialValue=""
                       style={{ marginBottom: 0 }}
                     >
                       <Input placeholder="e.g., RA 1234 - Law Name" />
@@ -84,6 +85,7 @@ export default function ViolationConfiguration({ form, handleFormValuesChange, t
                     <Form.Item
                       name={[field.name, 'description']}
                       label="Description"
+                      initialValue=""
                       style={{ marginBottom: 0 }}
                     >
                       <TextArea rows={2} placeholder="Brief description of the legal reference" />

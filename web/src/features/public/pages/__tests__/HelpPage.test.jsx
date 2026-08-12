@@ -5,15 +5,15 @@ import { BrowserRouter } from 'react-router-dom'
 import HelpPage from '../HelpPage.jsx'
 
 // Mock the dependencies
-vi.mock('@/shared/components/MosaicArt.jsx', () => ({
+vi.mock('@/shared/components/graphics/MosaicArt.jsx', () => ({
   default: () => <div data-testid="mosaic-art">Mosaic Art</div>,
 }))
 
-vi.mock('@/shared/components/PanAnimation.jsx', () => ({
+vi.mock('@/shared/components/animations/PanAnimation.jsx', () => ({
   default: ({ children }) => <div data-testid="pan-animation">{children}</div>,
 }))
 
-vi.mock('@/shared/components/BlurFade.jsx', () => ({
+vi.mock('@/shared/components/animations/BlurFade.jsx', () => ({
   default: ({ children }) => <div data-testid="blur-fade">{children}</div>,
 }))
 

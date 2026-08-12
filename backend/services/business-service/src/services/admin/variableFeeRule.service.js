@@ -2,9 +2,9 @@ const VariableFeeRule = require("../../models/VariableFeeRule");
 const Lob = require("../../models/Lob");
 const PostRequirement = require("../../models/PostRequirement");
 const Violation = require("../../models/Violation");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const Checklist = require("../../models/Checklist");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const InspectionItem = require("../../models/InspectionItem");
 const { auditClient } = require("../../../../../shared/lib/httpClient");
 const { getUserInfo } = require("../../../../../shared/lib/getUserInfo");
@@ -22,7 +22,7 @@ class VariableFeeRuleService {
     const rules = await VariableFeeRule.find(filter)
       .sort({ createdAt: -1 })
       .lean();
-    
+
     return rules;
   }
 
@@ -46,7 +46,7 @@ class VariableFeeRuleService {
    */
   async getById(id) {
     const rule = await VariableFeeRule.findById(id).lean();
-    
+
     if (!rule) {
       const error = new Error("Variable fee rule not found");
       error.code = "NOT_FOUND";
@@ -107,7 +107,9 @@ class VariableFeeRuleService {
     } = data;
 
     if (!name || !question || !calculationMethod || !unit) {
-      const error = new Error("name, question, calculationMethod, and unit are required");
+      const error = new Error(
+        "name, question, calculationMethod, and unit are required",
+      );
       error.code = "VALIDATION_ERROR";
       error.status = 400;
       throw error;
@@ -127,7 +129,9 @@ class VariableFeeRuleService {
     for (const RelatedModel of relatedCollections) {
       const existing = await RelatedModel.findOne({ name });
       if (existing) {
-        const error = new Error(`Name already exists in ${RelatedModel.modelName}`);
+        const error = new Error(
+          `Name already exists in ${RelatedModel.modelName}`,
+        );
         error.code = "DUPLICATE_NAME";
         error.status = 400;
         throw error;
@@ -136,7 +140,7 @@ class VariableFeeRuleService {
 
     if (calculationMethod === "custom" && !customCalculationMethod) {
       const error = new Error(
-        "customCalculationMethod is required when calculationMethod is 'custom'"
+        "customCalculationMethod is required when calculationMethod is 'custom'",
       );
       error.code = "VALIDATION_ERROR";
       error.status = 400;
@@ -148,7 +152,7 @@ class VariableFeeRuleService {
       (!brackets || brackets.length === 0)
     ) {
       const error = new Error(
-        "brackets are required when calculationMethod is 'bracketed'"
+        "brackets are required when calculationMethod is 'bracketed'",
       );
       error.code = "VALIDATION_ERROR";
       error.status = 400;
@@ -160,7 +164,7 @@ class VariableFeeRuleService {
       (!classifications || classifications.length === 0)
     ) {
       const error = new Error(
-        "classifications are required when calculationMethod is 'classification'"
+        "classifications are required when calculationMethod is 'classification'",
       );
       error.code = "VALIDATION_ERROR";
       error.status = 400;
@@ -169,7 +173,7 @@ class VariableFeeRuleService {
 
     if (calculationMethod === "classification" && baseRate != null) {
       const error = new Error(
-        "baseRate should be null when calculationMethod is 'classification'"
+        "baseRate should be null when calculationMethod is 'classification'",
       );
       error.code = "VALIDATION_ERROR";
       error.status = 400;
@@ -181,7 +185,9 @@ class VariableFeeRuleService {
       calculationMethod !== "classification" &&
       baseRate == null
     ) {
-      const error = new Error("baseRate is required for this calculationMethod");
+      const error = new Error(
+        "baseRate is required for this calculationMethod",
+      );
       error.code = "VALIDATION_ERROR";
       error.status = 400;
       throw error;

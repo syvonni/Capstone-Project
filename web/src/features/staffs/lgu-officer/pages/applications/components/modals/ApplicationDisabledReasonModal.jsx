@@ -1,11 +1,11 @@
-import { Modal, Button } from 'antd'
-import { Typography } from 'antd'
+import { Button, Typography } from 'antd'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
 
 const { Text } = Typography
 
 export default function DisabledReasonModal({ open, onClose, message }) {
   return (
-    <Modal
+    <ResponsiveModal
       title="Action Not Available"
       open={open}
       onCancel={onClose}
@@ -15,9 +15,7 @@ export default function DisabledReasonModal({ open, onClose, message }) {
         </Button>,
       ]}
     >
-      <div style={{ padding: 16 }}>
-        <Text>{message}</Text>
-      </div>
-    </Modal>
+      <Text>{message}</Text>
+    </ResponsiveModal>
   )
 }

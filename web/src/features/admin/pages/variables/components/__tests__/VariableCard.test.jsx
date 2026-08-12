@@ -7,8 +7,11 @@ import VariableCard from '../VariableCard'
 vi.mock('@/shared/components/PanelCard', () => ({
   default: function MockPanelCard({ title, description, metaInfo, tags, selected, onClick }) {
     return (
-      <div 
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.(e) }}
         data-selected={selected}
         data-testid="panel-card"
       >
@@ -120,7 +123,7 @@ describe('VariableCard', () => {
   })
 
   it('handles selected state correctly', () => {
-    const { container } = renderWithProviders(
+    renderWithProviders(
       <VariableCard item={mockVariable} selected={true} onClick={mockOnClick} />
     )
 

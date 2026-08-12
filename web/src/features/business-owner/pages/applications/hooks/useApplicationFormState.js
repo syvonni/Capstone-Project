@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react'
 
-export function useFormState() {
+export function useApplicationFormState() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [showProgressView, setShowProgressView] = useState(false)
-  const [showBusinessTypeSelector, setShowBusinessTypeSelector] = useState(false)
+  const [showApplicationTypeSelector, setShowApplicationTypeSelector] = useState(false)
   const [editingApplication, setEditingApplication] = useState(null)
   const [formSubmitting, setFormSubmitting] = useState(false)
   const [permitType, setPermitType] = useState('general')
@@ -30,7 +30,7 @@ export function useFormState() {
     if (!application) return
     setEditingApplication(application)
     setShowAddForm(true)
-    // Note: selectedBusinessId should be cleared by the caller to ensure proper panel rendering
+    // Note: selectedApplicationId should be cleared by the caller to ensure proper panel rendering
   }, [])
 
   return {
@@ -38,8 +38,8 @@ export function useFormState() {
     setShowAddForm,
     showProgressView,
     setShowProgressView,
-    showBusinessTypeSelector,
-    setShowBusinessTypeSelector,
+    showApplicationTypeSelector,
+    setShowApplicationTypeSelector,
     editingApplication,
     setEditingApplication,
     formSubmitting,

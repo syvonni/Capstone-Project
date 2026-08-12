@@ -36,18 +36,8 @@ module.exports = {
   // ============================================
   generalApplicationFees: [
     {
-      name: "Application Fee",
-      amount: 100,
-      isActive: true,
-    },
-    {
       name: "Environmental Protection Fee",
       amount: 200,
-      isActive: true,
-    },
-    {
-      name: "Plate Fee",
-      amount: 50,
       isActive: true,
     },
   ],
@@ -2632,7 +2622,7 @@ module.exports = {
       "Example: 'Small-scale Service - ₱1,500' is a classification fee based on employee count",
     ],
     classificationFeeLogic: [
-      "Classification fees are NOT business types - those are PSIC codes (lineOfBusiness.js)",
+      "Classification fees are NOT business types - those are PSIC codes (industryCategories.js)",
       "Classification fees ARE size/scale tiers within each industry for fee calculation",
       "Each industry category (FDS, RTL, MFG, etc.) has 3-5 size tiers (micro/cottage/small/medium/large)",
       "Size criteria varies by industry: seating (FDS), capitalization (RTL/MFG/FIN), employees (SVC), etc.",

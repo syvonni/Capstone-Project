@@ -14,7 +14,7 @@ const {
   cleanupTestData,
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/__tests__/helpers/cleanup");
 const Variable = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Variable");
-const Fee = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee");
+const Fee = require("../../../../shared/models/Fee");
 
 // Helper function to create valid variable data
 function createValidVariableData(overrides = {}) {
@@ -35,15 +35,14 @@ function createValidVariableData(overrides = {}) {
 
 // Helper function to validate standard response shape
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 // Helper function to validate error response shape
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -95,8 +94,8 @@ describe("Variables API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThanOrEqual(2);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThanOrEqual(2);
     });
 
     it("should return empty array when no variables exist", async () => {
@@ -106,8 +105,8 @@ describe("Variables API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBe(0);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBe(0);
     });
   });
 
@@ -121,8 +120,8 @@ describe("Variables API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toHaveProperty("_id");
-      expect(response.body.data.name).toBe("Test Variable");
+      expect(response.body).toHaveProperty("_id");
+      expect(response.body.name).toBe("Test Variable");
     });
 
     it("should return 404 for non-existent variable", async () => {
@@ -187,7 +186,7 @@ describe("Variables API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data.name).toBe("Updated Name");
+      expect(response.body.name).toBe("Updated Name");
     });
 
     it("should reject without step-up auth", async () => {
@@ -263,8 +262,8 @@ describe("Variables API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toHaveProperty("totalEntities");
-      expect(response.body.data).toHaveProperty("issues");
+      expect(response.body).toHaveProperty("totalEntities");
+      expect(response.body).toHaveProperty("issues");
     });
   });
 
@@ -279,8 +278,8 @@ describe("Variables API Integration Tests", () => {
 
       expectStandardResponse(response);
       // Single entity data quality returns just the issues array, not wrapped in entityId
-      expect(response.body.data).toHaveProperty("issues");
-      expect(Array.isArray(response.body.data.issues)).toBe(true);
+      expect(response.body).toHaveProperty("issues");
+      expect(Array.isArray(response.body.issues)).toBe(true);
     });
   });
 
@@ -293,8 +292,8 @@ describe("Variables API Integration Tests", () => {
 
       expectStandardResponse(response);
       // Performance endpoint returns the performance object directly, not wrapped in metrics
-      expect(response.body.data).toHaveProperty("avgResponseTime");
-      expect(response.body.data).toHaveProperty("requestCount");
+      expect(response.body).toHaveProperty("avgResponseTime");
+      expect(response.body).toHaveProperty("requestCount");
     });
   });
 });

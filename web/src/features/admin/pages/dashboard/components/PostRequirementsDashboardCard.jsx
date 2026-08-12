@@ -103,7 +103,7 @@ export default function PostRequirementsDashboardCard() {
       {
         count: disabledPostRequirements,
         text: 'Disabled',
-        linkColor: disabledPostRequirements > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledPostRequirements > 0 ? {
           title: 'Disabled Post Requirements',
           items: postRequirements.filter(p => !p.isActive).map(p => ({
@@ -224,7 +224,7 @@ export default function PostRequirementsDashboardCard() {
       links.push(performanceLink)
     }
     return links
-  }, [statusLinks, issuesLink, performanceLink, lastActivity])
+  }, [statusLinks, issuesLink, performanceLink])
 
   useEffect(() => {
     fetchAllData()

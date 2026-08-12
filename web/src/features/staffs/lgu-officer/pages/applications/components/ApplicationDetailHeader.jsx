@@ -1,7 +1,6 @@
 import { CheckOutlined, CloseOutlined, HistoryOutlined, StarOutlined, StarFilled, ShopOutlined, MailOutlined } from '@ant-design/icons'
 import { Badge } from 'antd'
 import { useState } from 'react'
-import { Grid } from 'antd'
 import DetailHeader from '@/shared/components/DetailHeader'
 import ApplicationEmailStatusModal from './modals/ApplicationEmailStatusModal'
 
@@ -22,17 +21,14 @@ export default function ApplicationDetailHeader({
   onResendEmail,
   onResendAppealEmail,
   appealId,
-  isOfficerDraft = false,
-  isAutosaving = false,
-  hasUnsavedChanges = false,
+  _isOfficerDraft = false,
+  _isAutosaving = false,
+  _hasUnsavedChanges = false,
   _loadApplicationDetails,
   applicationId,
   businessId,
   permitService,
 }) {
-  const screens = Grid.useBreakpoint()
-  const isMobile = !screens.lg
-
   // Only disable release button when pending action is 'complete_review' (approval pending)
   const isApprovalPending = hasPendingAction?.actionType === 'complete_review';
   const isApproved = applicationStatus === 'approved';
@@ -182,7 +178,6 @@ export default function ApplicationDetailHeader({
         isApproved={isApproved}
         isRejected={isRejected}
         isReturned={isReturned}
-        isMobile={isMobile}
         isClaimed={isClaimedByMe}
         applicationId={applicationId}
         businessId={businessId}

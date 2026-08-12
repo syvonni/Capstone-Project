@@ -39,6 +39,14 @@ export function getReviewableFieldKeys(sections, formData) {
   let lobSectionIndex = null
 
   ;(sections || []).forEach((section, sectionIdx) => {
+    if (section?.type === 'lob_section') {
+      lobSectionIndex = sectionIdx
+      // LOB section uses the new businessActivities array; each line is reviewable
+      const activities = Array.isArray(formData?.businessActivities) ? formData.businessActivities : []
+      activities.forEach((_, i) => keys.push(getLobActivityFieldKey(i)))
+      return
+    }
+
     const items = section?.items || []
     items.forEach((item) => {
       if (item.type === 'download') return

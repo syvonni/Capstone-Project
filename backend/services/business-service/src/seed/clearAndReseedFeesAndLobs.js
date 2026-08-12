@@ -27,7 +27,7 @@ const mongoUri =
 const finalMongoUri = "mongodb://localhost:27017/capstone_project";
 console.log("Using MONGO_URI:", finalMongoUri);
 
-const Fee = require("../models/Fee");
+const Fee = require("../../../../shared/models/Fee");
 const Lob = require("../models/Lob");
 const Variable = require("../models/Variable");
 const TaxBracket = require("../models/TaxBracket");

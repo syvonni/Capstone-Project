@@ -25,11 +25,12 @@ export function useFormDefinition(appIdentifier, formDefId, formType, businessTy
         }
         if (cancelled) return
         // Handle both response structures: { success: true, form: ... } or direct form object
-        if (res?.success && res?.form) {
-          setFormDefinition(res.form)
-        } else if (res?.formId || res?.sections) {
-          // Direct form object response
+        if (res?.formId || res?.sections) {
+          // Direct form object response (REST standard)
           setFormDefinition(res)
+        } else if (res?.success && res?.form) {
+          // Envelope response (legacy)
+          setFormDefinition(res.form)
         } else {
           console.error('Failed to load form definition - no valid response:', res)
         }

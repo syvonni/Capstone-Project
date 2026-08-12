@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const Variable = require("../../models/Variable");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const { getUserInfo } = require("../../../../../shared/lib/getUserInfo");
 const VariableAuditHelper = require("../../lib/auditHelpers/variableAuditHelper");
 const {
@@ -94,10 +94,7 @@ class VariableService {
       filter.categories = { $in: categories.split(",") };
     }
 
-    const variables = await Variable.find(filter)
-      .populate("feeId")
-      .populate("checklistId")
-      .sort({ name: 1 });
+    const variables = await Variable.find(filter).sort({ name: 1 });
 
     return variables;
   }
@@ -113,9 +110,7 @@ class VariableService {
       throw error;
     }
 
-    const variable = await Variable.findById(id)
-      .populate("feeId")
-      .populate("checklistId");
+    const variable = await Variable.findById(id).populate("checklistId");
 
     if (!variable) {
       const error = new Error("Variable not found");
@@ -138,9 +133,7 @@ class VariableService {
       throw error;
     }
 
-    const variables = await Variable.find({ feeId })
-      .populate("feeId")
-      .sort({ name: 1 });
+    const variables = await Variable.find({ feeId }).sort({ name: 1 });
 
     return variables;
   }
@@ -156,9 +149,7 @@ class VariableService {
       throw error;
     }
 
-    const variables = await Variable.find({ variableFeeRuleId })
-      .populate("feeId")
-      .sort({ name: 1 });
+    const variables = await Variable.find({ variableFeeRuleId }).sort({ name: 1 });
 
     return variables;
   }
@@ -257,7 +248,10 @@ class VariableService {
     }
 
     // Validate calculation method
-    const calcMethodValidation = validateCalculationMethod(calculationMethod, variableData);
+    const calcMethodValidation = validateCalculationMethod(
+      calculationMethod,
+      variableData,
+    );
     if (calcMethodValidation && !calcMethodValidation.valid) {
       const error = new Error(calcMethodValidation.error);
       error.code = "VALIDATION_ERROR";
@@ -381,8 +375,14 @@ class VariableService {
 
     const userInfo = await getUserInfo(userId);
 
-    VariableAuditHelper.logCreated(req, userId, userInfo, variable, "admin").catch(
-      (err) => console.error("Failed to log audit event for variable create", err),
+    VariableAuditHelper.logCreated(
+      req,
+      userId,
+      userInfo,
+      variable,
+      "admin",
+    ).catch((err) =>
+      console.error("Failed to log audit event for variable create", err),
     );
 
     return variable;
@@ -445,7 +445,10 @@ class VariableService {
     // Track changes using filtered data
     const changes = {};
     for (const field of ALLOWED_UPDATE_FIELDS) {
-      if (filteredData[field] !== undefined && filteredData[field] !== variable[field]) {
+      if (
+        filteredData[field] !== undefined &&
+        filteredData[field] !== variable[field]
+      ) {
         variable[field] = filteredData[field];
         changes[field] = { from: oldValues[field], to: filteredData[field] };
       }
@@ -463,8 +466,15 @@ class VariableService {
     const oldVariable = new Variable(oldValues);
     oldVariable._id = variable._id;
 
-    VariableAuditHelper.logUpdated(req, userId, userInfo, oldVariable, variable, "admin").catch(
-      (err) => console.error("Failed to log audit event for variable update", err),
+    VariableAuditHelper.logUpdated(
+      req,
+      userId,
+      userInfo,
+      oldVariable,
+      variable,
+      "admin",
+    ).catch((err) =>
+      console.error("Failed to log audit event for variable update", err),
     );
 
     return variable;
@@ -513,8 +523,14 @@ class VariableService {
     oldVariable.notes = variable.notes;
     oldVariable.question = variable.question;
 
-    VariableAuditHelper.logDisabled(req, userId, userInfo, oldVariable, "admin").catch(
-      (err) => console.error("Failed to log audit event for variable disable", err),
+    VariableAuditHelper.logDisabled(
+      req,
+      userId,
+      userInfo,
+      oldVariable,
+      "admin",
+    ).catch((err) =>
+      console.error("Failed to log audit event for variable disable", err),
     );
 
     return { disabled: true };

@@ -211,7 +211,7 @@ describe('useVariables', () => {
       await act(async () => {
         try {
           await result.current.create({ name: 'New Variable' })
-        } catch (e) {
+        } catch {
           // Expected error
         }
       })

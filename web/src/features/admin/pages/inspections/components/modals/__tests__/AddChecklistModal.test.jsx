@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { axe, toHaveNoViolations } from 'jest-axe'
+import { render } from '@testing-library/react'
+import { toHaveNoViolations } from 'jest-axe'
 import { BrowserRouter } from 'react-router-dom'
 import AddChecklistModal from '../AddChecklistModal'
 
@@ -45,7 +45,7 @@ describe('AddChecklistModal', () => {
 
   describe('Accessibility', () => {
     it('renders with accessible structure', async () => {
-      const { container } = renderWithRouter(
+      renderWithRouter(
         <AddChecklistModal visible={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
       )
 
@@ -54,7 +54,7 @@ describe('AddChecklistModal', () => {
     })
 
     it('renders with accessible structure with loading state', async () => {
-      const { container } = renderWithRouter(
+      renderWithRouter(
         <AddChecklistModal visible={true} onClose={mockOnClose} onSuccess={mockOnSuccess} loading={true} />
       )
 

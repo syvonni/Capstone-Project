@@ -1,4 +1,4 @@
-import { Card, Tag, Typography, theme } from 'antd'
+import { Card, Tag, Typography, theme, Badge } from 'antd'
 import { StarFilled } from '@ant-design/icons'
 
 const { Text } = Typography
@@ -15,7 +15,7 @@ export default function PanelCard({
 }) {
   const { token } = theme.useToken()
 
-  return (
+  const card = (
     <Card
       size="small"
       onClick={onClick}
@@ -33,9 +33,8 @@ export default function PanelCard({
       }}
     >
       {title && (
-        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 8, color: token.colorText, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 8, color: token.colorText }}>
           {title}
-          {isBookmarked && <StarFilled style={{ color: token.colorWarning, fontSize: 12 }} />}
         </div>
       )}
       {description && (
@@ -75,5 +74,17 @@ export default function PanelCard({
         </div>
       )}
     </Card>
+  )
+
+  if (!isBookmarked) return card
+
+  return (
+    <Badge.Ribbon
+      text={<StarFilled style={{ color: token.colorText, fontSize: 10 }} />}
+      color="yellow"
+      placement="end"
+    >
+      {card}
+    </Badge.Ribbon>
   )
 }

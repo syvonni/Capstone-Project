@@ -89,10 +89,6 @@ const BusinessSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
-    paymentGenerationStatus: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
     location: {
       street: { type: String, default: "" },
       barangay: { type: String, default: "" },

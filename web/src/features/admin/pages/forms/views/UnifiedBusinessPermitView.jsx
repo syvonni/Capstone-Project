@@ -1,40 +1,45 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Grid } from 'antd'
-import { HistoryOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
-import DetailHeader from '@/shared/components/DetailHeader'
-import FormNavigation from '@/shared/components/FormNavigation'
-import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
-import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
-import { UnifiedBusinessPermitOverview, UnifiedBusinessPermitConfiguration, FormPreviewContent } from '../components'
-import { useAudit } from '@/shared/audit/hooks/useAudit'
-import { usePermitForm } from '../hooks/usePermitForm'
-import { getPermitFormByFormId, getClaimableDocumentsByPermitFormId } from '@/features/admin/services/permitFormService'
-import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
+import { useState, useEffect, useMemo } from 'react';
+import { Grid } from 'antd';
+import { HistoryOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons';
+import DetailHeader from '@/shared/components/DetailHeader';
+import FormNavigation from '@/shared/components/FormNavigation';
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal';
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails';
+import {
+  UnifiedBusinessPermitOverview,
+  UnifiedBusinessPermitConfiguration,
+  FormPreviewContent,
+} from '../components';
+import { useAudit } from '@/shared/audit/hooks/useAudit';
+import { usePermitForm } from '../hooks/usePermitForm';
+import {
+  getPermitFormByFormId,
+  getClaimableDocumentsByPermitFormId,
+} from '@/features/admin/services/permitFormService';
+import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes';
 
-const { useBreakpoint } = Grid
+const { useBreakpoint } = Grid;
 
 const getMainNavItems = (isEditMode) => {
   if (isEditMode) {
-    return [
-      { key: 'configuration', label: 'Configuration' },
-    ]
+    return [{ key: 'configuration', label: 'Configuration' }];
   }
-  return [
-    { key: 'overview', label: 'Overview' },
-  ]
-}
+  return [{ key: 'overview', label: 'Overview' }];
+};
 
 const getFormNavItems = (sections) => {
-  const requiredDocumentsSection = sections.find(section => section.type === 'required_documents')
-  const regularSections = sections.filter(section => section.type !== 'required_documents')
+  const requiredDocumentsSection = sections.find(
+    (section) => section.type === 'required_documents'
+  );
+  const regularSections = sections.filter((section) => section.type !== 'required_documents');
 
-  const formNavItems = []
+  const formNavItems = [];
 
   if (requiredDocumentsSection) {
     formNavItems.push({
       key: 'required-documents',
       label: 'Required Documents',
-    })
+    });
   }
 
   regularSections.forEach((section, index) => {
@@ -42,78 +47,85 @@ const getFormNavItems = (sections) => {
       formNavItems.push({
         key: 'lob-section',
         label: section.sectionName || 'Line of Business',
-      })
+      });
     } else {
       formNavItems.push({
         key: `section-${index}`,
         label: section.sectionName || `Section ${index + 1}`,
-      })
+      });
     }
-  })
+  });
 
-  return formNavItems
-}
+  return formNavItems;
+};
 
 export default function UnifiedBusinessPermitView() {
-  const [showAuditHistory, setShowAuditHistory] = useState(false)
-  const [activeTab, setActiveTab] = useState('overview')
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [permitForm, setPermitForm] = useState(null)
-  const [claimableDocuments, setClaimableDocuments] = useState([])
-  const [loadingPermitForm, setLoadingPermitForm] = useState(false)
-  const [loadingClaimableDocuments, setLoadingClaimableDocuments] = useState(false)
-  const screens = useBreakpoint()
-  const isMobile = !screens.lg
+  const [showAuditHistory, setShowAuditHistory] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [permitForm, setPermitForm] = useState(null);
+  const [claimableDocuments, setClaimableDocuments] = useState([]);
+  const [loadingPermitForm, setLoadingPermitForm] = useState(false);
+  const [loadingClaimableDocuments, setLoadingClaimableDocuments] = useState(false);
+  const screens = useBreakpoint();
+  const isMobile = !screens.lg;
 
   // Fetch permit form from API
   useEffect(() => {
     const fetchPermitForm = async () => {
       try {
-        setLoadingPermitForm(true)
-        const form = await getPermitFormByFormId('unified-business-permit')
+        setLoadingPermitForm(true);
+        const form = await getPermitFormByFormId('unified-business-permit');
         if (form) {
-          setPermitForm(form)
+          setPermitForm(form);
         }
       } catch (error) {
-        console.error('Failed to fetch permit form:', error)
+        console.error('Failed to fetch permit form:', error);
       } finally {
-        setLoadingPermitForm(false)
+        setLoadingPermitForm(false);
       }
-    }
-    fetchPermitForm()
-  }, [])
+    };
+    fetchPermitForm();
+  }, []);
 
   // Fetch claimable documents for permit form
   useEffect(() => {
     const fetchClaimableDocuments = async () => {
       if (permitForm?._id) {
         try {
-          setLoadingClaimableDocuments(true)
-          const documents = await getClaimableDocumentsByPermitFormId(permitForm._id)
-          setClaimableDocuments(documents)
+          setLoadingClaimableDocuments(true);
+          const documents = await getClaimableDocumentsByPermitFormId(permitForm._id);
+          setClaimableDocuments(documents);
         } catch (error) {
-          console.error('Failed to fetch claimable documents:', error)
+          console.error('Failed to fetch claimable documents:', error);
         } finally {
-          setLoadingClaimableDocuments(false)
+          setLoadingClaimableDocuments(false);
         }
       }
-    }
-    fetchClaimableDocuments()
-  }, [permitForm?._id])
+    };
+    fetchClaimableDocuments();
+  }, [permitForm?._id]);
 
   // Use audit hook for permit form
-  const { auditLogs, auditLoading, refresh } = useAudit('permit-form', permitForm?._id, !!permitForm?._id)
+  const { auditLogs, auditLoading, refresh } = useAudit(
+    'permit-form',
+    permitForm?._id,
+    !!permitForm?._id
+  );
 
   // Use permit form hook
-  const initialValues = useMemo(() => ({
-    _id: permitForm?._id,
-    formId: permitForm?.formId || 'unified-business-permit',
-    name: permitForm?.name || '',
-    description: permitForm?.description || '',
-    sections: permitForm?.sections || [],
-    notes: permitForm?.notes || '',
-    isActive: permitForm?.isActive !== undefined ? permitForm.isActive : true,
-  }), [permitForm])
+  const initialValues = useMemo(
+    () => ({
+      _id: permitForm?._id,
+      formId: permitForm?.formId || 'unified-business-permit',
+      name: permitForm?.name || '',
+      description: permitForm?.description || '',
+      sections: permitForm?.sections || [],
+      notes: permitForm?.notes || '',
+      isActive: permitForm?.isActive !== undefined ? permitForm.isActive : true,
+    }),
+    [permitForm]
+  );
 
   const {
     form,
@@ -125,72 +137,86 @@ export default function UnifiedBusinessPermitView() {
     resetChangeTracking,
     resetHistory,
     stepUpModal,
-  } = usePermitForm({ permitFormId: permitForm?._id, permitForm, initialValues, onSave: async () => {
-    // Refetch the form data to get latest changes
-    if (permitForm?.formId) {
-      const form = await getPermitFormByFormId(permitForm.formId)
-      if (form) {
-        setPermitForm(form)
+    handleConfirm,
+    ChangesSummary,
+  } = usePermitForm({
+    permitFormId: permitForm?._id,
+    permitForm,
+    initialValues,
+    onSave: async () => {
+      // Refetch the form data to get latest changes
+      if (permitForm?.formId) {
+        const form = await getPermitFormByFormId(permitForm.formId);
+        if (form) {
+          setPermitForm(form);
+        }
       }
-    }
-    refresh()
-  } })
+      refresh();
+    },
+  });
 
-  const loading = saving || loadingPermitForm || loadingClaimableDocuments
+  const loading = saving || loadingPermitForm || loadingClaimableDocuments;
 
   // Initialize form with values (only when in edit mode to avoid "form not connected" warning)
   useEffect(() => {
     if (permitForm && isEditMode) {
-      form.setFieldsValue(initialValues)
-      resetHistory(initialValues)
-      resetChangeTracking(initialValues)
+      form.setFieldsValue(initialValues);
+      resetHistory(initialValues);
+      resetChangeTracking(initialValues);
     }
-  }, [permitForm, form, initialValues, resetHistory, resetChangeTracking, isEditMode])
+  }, [permitForm, form, initialValues, resetHistory, resetChangeTracking, isEditMode]);
 
-  const formNavItems = isEditMode ? [] : getFormNavItems(initialValues.sections || [])
-  const mainNavItems = getMainNavItems(isEditMode)
+  const formNavItems = isEditMode ? [] : getFormNavItems(initialValues.sections || []);
+  const mainNavItems = getMainNavItems(isEditMode);
 
   const handleEnterEditMode = () => {
-    setIsEditMode(true)
-    setActiveTab('configuration')
-  }
+    setIsEditMode(true);
+    setActiveTab('configuration');
+  };
 
   const handleExitEditMode = () => {
-    setIsEditMode(false)
-    setActiveTab('overview')
-    form.setFieldsValue(initialValues)
-    resetHistory(initialValues)
-    resetChangeTracking(initialValues)
-  }
+    setIsEditMode(false);
+    setActiveTab('overview');
+    form.setFieldsValue(initialValues);
+    resetHistory(initialValues);
+    resetChangeTracking(initialValues);
+  };
 
   const handleShowAuditHistory = () => {
-    setShowAuditHistory(true)
-  }
+    setShowAuditHistory(true);
+  };
 
   const handleCloseAuditHistory = () => {
-    setShowAuditHistory(false)
-  }
+    setShowAuditHistory(false);
+  };
 
   const iconButtons = [
     { icon: <HistoryOutlined />, onClick: handleShowAuditHistory, title: 'History' },
-  ]
+  ];
 
-  const primaryButton = { 
-    text: 'Save', 
-    icon: <SaveOutlined />, 
-    onClick: handleSave, 
-    loading: saving, 
+  const primaryButton = {
+    text: 'Save',
+    icon: <SaveOutlined />,
+    onClick: handleSave,
+    loading: saving,
     type: 'primary',
-    disabled: !hasChanges 
-  }
+    disabled: !hasChanges,
+  };
 
   const actionButtons = isEditMode
-    ? [{ text: 'Exit Edit Mode', icon: <CloseOutlined />, onClick: handleExitEditMode, type: 'default' }]
-    : [{ text: 'Edit', icon: <EditOutlined />, onClick: handleEnterEditMode, type: 'default' }]
+    ? [
+        {
+          text: 'Exit Edit Mode',
+          icon: <CloseOutlined />,
+          onClick: handleExitEditMode,
+          type: 'default',
+        },
+      ]
+    : [{ text: 'Edit', icon: <EditOutlined />, onClick: handleEnterEditMode, type: 'default' }];
 
   const requiredDocumentsSection = (initialValues.sections || []).find(
-    section => section.type === 'required_documents'
-  )
+    (section) => section.type === 'required_documents'
+  );
 
   const renderContent = () => {
     switch (activeTab) {
@@ -203,13 +229,17 @@ export default function UnifiedBusinessPermitView() {
             lastUpdated={permitForm?.lastUpdated}
             version={permitForm?.version}
             notes={initialValues.notes}
-            feeId={typeof permitForm?.feeId === 'object' ? permitForm?.feeId?._id : permitForm?.feeId}
-            feeAmount={typeof permitForm?.feeId === 'object' ? permitForm?.feeId?.amount : undefined}
+            feeId={
+              typeof permitForm?.feeId === 'object' ? permitForm?.feeId?._id : permitForm?.feeId
+            }
+            feeAmount={
+              typeof permitForm?.feeId === 'object' ? permitForm?.feeId?.amount : undefined
+            }
             createdAt={permitForm?.createdAt}
             claimableDocuments={claimableDocuments}
             loading={loading}
           />
-        )
+        );
       case 'configuration':
         return (
           <UnifiedBusinessPermitConfiguration
@@ -221,7 +251,7 @@ export default function UnifiedBusinessPermitView() {
             sections={initialValues.sections}
             onSave={handleSave}
           />
-        )
+        );
       default:
         // Form sections - use FormPreviewContent for preview mode
         return (
@@ -234,9 +264,9 @@ export default function UnifiedBusinessPermitView() {
             activeTab={activeTab}
             disabled={true}
           />
-        )
+        );
     }
-  }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -261,11 +291,17 @@ export default function UnifiedBusinessPermitView() {
         ]}
       />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          overflow: 'hidden',
+        }}
+      >
         {isEditMode ? (
-          <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
-            {renderContent()}
-          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>{renderContent()}</div>
         ) : isMobile ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <FormNavigation
@@ -280,7 +316,15 @@ export default function UnifiedBusinessPermitView() {
             </div>
           </div>
         ) : (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', alignItems: 'stretch' }}>
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              minHeight: 0,
+              overflow: 'hidden',
+              alignItems: 'stretch',
+            }}
+          >
             <FormNavigation
               mainNavItems={mainNavItems}
               formNavItems={formNavItems}
@@ -288,23 +332,22 @@ export default function UnifiedBusinessPermitView() {
               onTabChange={setActiveTab}
               isMobile={isMobile}
             />
-            <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
-              {renderContent()}
-            </div>
+            <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>{renderContent()}</div>
           </div>
         )}
       </div>
 
       {stepUpModal}
+      <ChangesSummary onConfirm={handleConfirm} />
       <AuditHistoryModal
         open={showAuditHistory}
         onClose={handleCloseAuditHistory}
         auditLogs={auditLogs}
         loading={auditLoading}
         onRefresh={refresh}
-        eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('permit_form'))}
+        eventDescriptions={AUDIT_EVENT_INFO.filter((e) => e.event.startsWith('permit_form'))}
         DetailPanelComponent={AuditEventDetails}
       />
     </div>
-  )
+  );
 }

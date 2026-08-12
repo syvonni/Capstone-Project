@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Typography, Modal, Empty, message, theme, Grid, App } from 'antd'
 import { useAuthSession } from '@/features/authentication'
 import BookmarkService from '@/features/staffs/lgu-officer/services/bookmarkService'
@@ -34,6 +35,7 @@ const STATUS_CONFIG = {
 }
 
 export default function HelpRequestDetailPanel({ request, onRefresh, onReviewComplete, onBookmarkToggle }) {
+  const navigate = useNavigate()
   const { token } = theme.useToken()
   const { modal } = App.useApp()
   const { currentUser } = useAuthSession()
@@ -180,6 +182,7 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
             fetchDetail()
             onRefresh?.()
             onReviewComplete?.()
+            navigate('/staff/to-review')
           } catch (err) {
             if (err?.message !== 'Step-up cancelled') {
               message.error(err?.error?.message || 'Failed to claim')
@@ -205,6 +208,7 @@ export default function HelpRequestDetailPanel({ request, onRefresh, onReviewCom
             fetchDetail()
             onRefresh?.()
             onReviewComplete?.()
+            navigate('/staff/to-review')
           } catch (err) {
             if (err?.message !== 'Step-up cancelled') {
               message.error(err?.error?.message || 'Failed to claim')

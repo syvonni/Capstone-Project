@@ -99,10 +99,7 @@ export const variablesHandlers = [
       )
     }
 
-    return HttpResponse.json({
-      ok: true,
-      data: mockVariables
-    })
+    return HttpResponse.json(mockVariables)
   }),
 
   // GET /api/business/admin/variables/:id - Get single variable
@@ -112,49 +109,40 @@ export const variablesHandlers = [
 
     if (id === '507f1f77bcf86cd799439011') {
       return HttpResponse.json({
-        ok: true,
-        data: {
-          _id: '507f1f77bcf86cd799439011',
-          name: 'Building Height Fee',
-          description: 'Fee based on building height',
-          question: 'What is the building height?',
-          calculationMethod: 'bracketed',
-          unit: 'meter',
-          unitSingular: 'meter',
-          unitPlural: 'meters',
-          unitContextSingular: 'per meter',
-          unitContextPlural: 'per meters',
-          brackets: [
-            { minValue: 0, maxValue: 10, fixedAmount: 100 },
-            { minValue: 10, maxValue: 20, fixedAmount: 200 },
-            { minValue: 20, maxValue: null, fixedAmount: 300 }
-          ],
-          isActive: true,
-          version: 1,
-          createdAt: '2024-01-15T10:00:00Z',
-          updatedAt: '2024-01-15T10:00:00Z',
-          customId: 'VAR-BLD-001',
-          categories: ['CON']
-        }
+        _id: '507f1f77bcf86cd799439011',
+        name: 'Building Height Fee',
+        description: 'Fee based on building height',
+        question: 'What is the building height?',
+        calculationMethod: 'bracketed',
+        unit: 'meter',
+        unitSingular: 'meter',
+        unitPlural: 'meters',
+        unitContextSingular: 'per meter',
+        unitContextPlural: 'per meters',
+        brackets: [
+          { minValue: 0, maxValue: 10, fixedAmount: 100 },
+          { minValue: 10, maxValue: 20, fixedAmount: 200 },
+          { minValue: 20, maxValue: null, fixedAmount: 300 }
+        ],
+        isActive: true,
+        version: 1,
+        createdAt: '2024-01-15T10:00:00Z',
+        updatedAt: '2024-01-15T10:00:00Z',
+        customId: 'VAR-BLD-001',
+        categories: ['CON']
       })
     }
 
     if (id === 'not-found') {
       return HttpResponse.json({
-        ok: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Variable not found'
-        }
+        message: 'Variable not found',
+        code: 'NOT_FOUND'
       }, { status: 404 })
     }
 
     return HttpResponse.json({
-      ok: false,
-      error: {
-        code: 'INVALID_ID',
-        message: 'Invalid variable ID'
-      }
+      message: 'Invalid variable ID',
+      code: 'INVALID_ID'
     }, { status: 400 })
   }),
 
@@ -166,42 +154,30 @@ export const variablesHandlers = [
     // Validation errors
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json({
-        ok: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Name is required'
-        }
+        message: 'Name is required',
+        code: 'VALIDATION_ERROR'
       }, { status: 400 })
     }
 
     if (!body.question || body.question.trim() === '') {
       return HttpResponse.json({
-        ok: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Question is required'
-        }
+        message: 'Question is required',
+        code: 'VALIDATION_ERROR'
       }, { status: 400 })
     }
 
     if (!body.calculationMethod) {
       return HttpResponse.json({
-        ok: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Calculation method is required'
-        }
+        message: 'Calculation method is required',
+        code: 'VALIDATION_ERROR'
       }, { status: 400 })
     }
 
     // Duplicate name error
     if (body.name === 'Duplicate Variable') {
       return HttpResponse.json({
-        ok: false,
-        error: {
-          code: 'DUPLICATE',
-          message: 'Variable with this name already exists'
-        }
+        message: 'Variable with this name already exists',
+        code: 'DUPLICATE'
       }, { status: 409 })
     }
 
@@ -215,10 +191,7 @@ export const variablesHandlers = [
       updatedAt: new Date().toISOString()
     }
 
-    return HttpResponse.json({
-      ok: true,
-      data: newVariable
-    }, { status: 201 })
+    return HttpResponse.json(newVariable, { status: 201 })
   }),
 
   // PUT /api/business/admin/variables/:id - Update variable
@@ -229,22 +202,16 @@ export const variablesHandlers = [
 
     if (id === 'not-found') {
       return HttpResponse.json({
-        ok: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Variable not found'
-        }
+        message: 'Variable not found',
+        code: 'NOT_FOUND'
       }, { status: 404 })
     }
 
     // Version conflict error
     if (id === 'version-conflict') {
       return HttpResponse.json({
-        ok: false,
-        error: {
-          code: 'VERSION_CONFLICT',
-          message: 'Variable was modified by another user'
-        }
+        message: 'Variable was modified by another user',
+        code: 'VERSION_CONFLICT'
       }, { status: 409 })
     }
 
@@ -256,10 +223,7 @@ export const variablesHandlers = [
       updatedAt: new Date().toISOString()
     }
 
-    return HttpResponse.json({
-      ok: true,
-      data: updatedVariable
-    })
+    return HttpResponse.json(updatedVariable)
   }),
 
   // DELETE /api/business/admin/variables/:id - Delete variable
@@ -269,21 +233,15 @@ export const variablesHandlers = [
 
     if (id === 'not-found') {
       return HttpResponse.json({
-        ok: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Variable not found'
-        }
+        message: 'Variable not found',
+        code: 'NOT_FOUND'
       }, { status: 404 })
     }
 
     return HttpResponse.json({
-      ok: true,
-      data: {
-        _id: id,
-        isActive: false,
-        updatedAt: new Date().toISOString()
-      }
+      _id: id,
+      isActive: false,
+      updatedAt: new Date().toISOString()
     })
   }),
 
@@ -292,33 +250,30 @@ export const variablesHandlers = [
     await delay(100)
     const { id } = params
 
-    return HttpResponse.json({
-      ok: true,
-      data: [
-        {
-          _id: 'audit1',
-          eventType: 'variable_created',
-          entityType: 'variable',
-          entityId: id,
-          metadata: {
-            name: 'Building Height Fee',
-            userName: 'Admin User'
-          },
-          createdAt: '2024-01-15T10:00:00Z'
+    return HttpResponse.json([
+      {
+        _id: 'audit1',
+        eventType: 'variable_created',
+        entityType: 'variable',
+        entityId: id,
+        metadata: {
+          name: 'Building Height Fee',
+          userName: 'Admin User'
         },
-        {
-          _id: 'audit2',
-          eventType: 'variable_updated',
-          entityType: 'variable',
-          entityId: id,
-          metadata: {
-            name: 'Building Height Fee',
-            updatedByName: 'Admin User'
-          },
-          createdAt: '2024-01-20T10:00:00Z'
-        }
-      ]
-    })
+        createdAt: '2024-01-15T10:00:00Z'
+      },
+      {
+        _id: 'audit2',
+        eventType: 'variable_updated',
+        entityType: 'variable',
+        entityId: id,
+        metadata: {
+          name: 'Building Height Fee',
+          updatedByName: 'Admin User'
+        },
+        createdAt: '2024-01-20T10:00:00Z'
+      }
+    ])
   }),
 
   // GET /api/audit/variables - Get all variable audit logs
@@ -469,10 +424,7 @@ export const variablesHandlers = [
       filteredChecklists = mockChecklists.filter(c => c.isActive === true)
     }
 
-    return HttpResponse.json({
-      ok: true,
-      data: filteredChecklists
-    })
+    return HttpResponse.json(filteredChecklists)
   }),
 
   // GET /api/business/admin/validate-name - Validate variable name uniqueness
@@ -485,13 +437,12 @@ export const variablesHandlers = [
     // Return valid for all names except duplicates
     if (entityType === 'Variable' && (name === 'Duplicate Variable' || name === 'Existing Variable')) {
       return HttpResponse.json({
-        ok: false,
-        error: 'Name already exists'
+        message: 'Name already exists',
+        code: 'DUPLICATE'
       }, { status: 400 })
     }
 
     return HttpResponse.json({
-      ok: true,
       valid: true
     })
   })

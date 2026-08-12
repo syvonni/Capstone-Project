@@ -3,7 +3,7 @@ import { Empty, Spin } from 'antd'
 import { useSearchParams } from 'react-router-dom'
 import ListPanel from '@/shared/components/ListPanel'
 import PanelCard from '@/shared/components/PanelCard'
-import SplitLayout from '@/shared/components/SplitLayout'
+import ResponsiveSplitLayout from '@/shared/components/ResponsiveSplitLayout'
 import BookmarkService from '../../services/bookmarkService'
 import { PermitApplicationService } from '@/features/staffs/lgu-officer/services/permitApplicationService'
 import { getHelpRequestById } from '../../services/helpRequestService'
@@ -263,7 +263,7 @@ export default function OfficerBookmarks() {
 
   if (loading) {
     return (
-      <SplitLayout
+      <ResponsiveSplitLayout
         listContent={
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <Spin size="large" />
@@ -275,12 +275,57 @@ export default function OfficerBookmarks() {
           </div>
         }
         onDrawerClose={handleDrawerClose}
+        drawerOpen={false}
+        mobileDrawerPlacement="bottom"
       />
     )
   }
 
+  const drawerTitle = selectedItem
+    ? `${selectedItem.itemType ? selectedItem.itemType.charAt(0).toUpperCase() + selectedItem.itemType.slice(1) : 'Bookmark'} Detail`
+    : 'Bookmark Detail'
+
+  const detailContent = selectedItem ? (
+    detailsLoading ? (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <Spin size="large" />
+      </div>
+    ) : (
+      <>
+        {selectedItem.itemType === 'application' && itemData ? (
+          <ApplicationDetailPanel
+            application={itemData}
+            onReviewComplete={() => {}}
+            onBookmarkToggle={handleBookmarkToggle}
+            onClose={handleDrawerClose}
+          />
+        ) : selectedItem.itemType === 'help_request' && itemData ? (
+          <HelpRequestDetailPanel
+            request={itemData}
+            onReviewComplete={() => {}}
+            onBookmarkToggle={handleBookmarkToggle}
+          />
+        ) : selectedItem.itemType === 'business-owner' && itemData ? (
+          <BusinessOwnerDetailPanel
+            businessOwner={itemData}
+            onReviewComplete={() => {}}
+            onBookmarkToggle={handleBookmarkToggle}
+          />
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <Empty description="Details not available" />
+          </div>
+        )}
+      </>
+    )
+  ) : (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+      <Empty description="Select a bookmark to view details" />
+    </div>
+  )
+
   return (
-    <SplitLayout
+    <ResponsiveSplitLayout
       listContent={
         bookmarks.length === 0 ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -296,43 +341,11 @@ export default function OfficerBookmarks() {
           />
         )
       }
-      detailContent={
-        selectedItem ? (
-          detailsLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <Spin size="large" />
-            </div>
-          ) : (
-            <>
-              {selectedItem.itemType === 'application' && itemData ? (
-                <ApplicationDetailPanel
-                  application={itemData}
-                  onReviewComplete={() => {}}
-                  onBookmarkToggle={handleBookmarkToggle}
-                  onClose={handleDrawerClose}
-                />
-              ) : selectedItem.itemType === 'help_request' && itemData ? (
-                <HelpRequestDetailPanel
-                  request={itemData}
-                  onReviewComplete={() => {}}
-                  onBookmarkToggle={handleBookmarkToggle}
-                />
-              ) : selectedItem.itemType === 'business-owner' && itemData ? (
-                <BusinessOwnerDetailPanel
-                  businessOwner={itemData}
-                  onReviewComplete={() => {}}
-                  onBookmarkToggle={handleBookmarkToggle}
-                />
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  <Empty description="Details not available" />
-                </div>
-              )}
-            </>
-          )
-        ) : null
-      }
+      detailContent={detailContent}
       onDrawerClose={handleDrawerClose}
+      drawerOpen={!!selectedItem}
+      drawerTitle={drawerTitle}
+      mobileDrawerPlacement="bottom"
     />
   )
 }

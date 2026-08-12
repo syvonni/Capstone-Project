@@ -56,7 +56,7 @@ export const violationsHandlers = [
         version: 1,
       })
     }
-    return HttpResponse.json({ error: 'Violation not found' }, { status: 404 })
+    return HttpResponse.json({ message: 'Violation not found', code: 'NOT_FOUND' }, { status: 404 })
   }),
 
   // POST /api/business/admin/violations
@@ -95,7 +95,7 @@ export const violationsHandlers = [
 
   // GET /api/business/admin/violations/:id/audit
   http.get('/api/business/admin/violations/:id/audit', ({ params }) => {
-    const { id } = params
+    const { id: _id } = params
     return HttpResponse.json({
       logs: [
         {

@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
-import { useInspectionItemForm } from '../useInspectionItemForm'
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { useInspectionItemForm } from '../useInspectionItemForm';
 
 // Mock shared hooks
 vi.mock('@/shared/hooks/useStepUp', () => ({
@@ -8,15 +8,20 @@ vi.mock('@/shared/hooks/useStepUp', () => ({
     runWithStepUp: vi.fn((callback) => callback('mock-step-up-token')),
     stepUpModal: 'mock-step-up-modal',
   }),
-}))
+}));
 
 vi.mock('@/shared/hooks/useFormChangeTracking', () => ({
-  useFormChangeTracking: vi.fn((initialValues) => ({
+  useFormChangeTracking: vi.fn((_initialValues) => ({
     hasChanges: false,
+    changedFields: [],
     resetChangeTracking: vi.fn(),
     handleValuesChange: vi.fn(),
   })),
-}))
+}));
+
+vi.mock('@/shared/components/ChangesSummaryModal', () => ({
+  default: () => null,
+}));
 
 vi.mock('@/shared/hooks/useUndoRedo', () => ({
   default: () => ({
@@ -27,13 +32,13 @@ vi.mock('@/shared/hooks/useUndoRedo', () => ({
     canUndo: vi.fn(() => true),
     canRedo: vi.fn(() => true),
   }),
-}))
+}));
 
 // Mock services
 vi.mock('@/features/admin/services/inspectionItemService', () => ({
   createInspectionItem: vi.fn(() => Promise.resolve({ _id: 'new', name: 'New Item' })),
   updateInspectionItem: vi.fn(() => Promise.resolve({ _id: '1', name: 'Updated Item' })),
-}))
+}));
 
 // Mock Ant Design
 vi.mock('antd', () => ({
@@ -44,7 +49,7 @@ vi.mock('antd', () => ({
         setFieldsValue: vi.fn(),
         validateFields: vi.fn(() => Promise.resolve({ name: 'Test Item' })),
         resetFields: vi.fn(),
-      }
+      },
     ]),
   },
   message: {
@@ -58,7 +63,7 @@ vi.mock('antd', () => ({
       },
     }),
   },
-}))
+}));
 
 describe('useInspectionItemForm', () => {
   const mockInitialValues = {
@@ -68,13 +73,13 @@ describe('useInspectionItemForm', () => {
     legalBasis: [],
     violationId: '1',
     isActive: true,
-  }
+  };
 
-  const mockOnSave = vi.fn()
+  const mockOnSave = vi.fn();
 
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
   it('initializes form with correct values', () => {
     const { result } = renderHook(() =>
@@ -84,14 +89,14 @@ describe('useInspectionItemForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
-    expect(result.current).toHaveProperty('form')
-    expect(result.current).toHaveProperty('saving')
-    expect(result.current).toHaveProperty('hasChanges')
-    expect(result.current).toHaveProperty('canUndo')
-    expect(result.current).toHaveProperty('canRedo')
-  })
+    expect(result.current).toHaveProperty('form');
+    expect(result.current).toHaveProperty('saving');
+    expect(result.current).toHaveProperty('hasChanges');
+    expect(result.current).toHaveProperty('canUndo');
+    expect(result.current).toHaveProperty('canRedo');
+  });
 
   it('handles new inspection item mode correctly', () => {
     const { result } = renderHook(() =>
@@ -101,10 +106,10 @@ describe('useInspectionItemForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
-    expect(result.current.form).toBeDefined()
-  })
+    expect(result.current.form).toBeDefined();
+  });
 
   it('handles edit inspection item mode correctly', () => {
     const { result } = renderHook(() =>
@@ -114,10 +119,10 @@ describe('useInspectionItemForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
-    expect(result.current.form).toBeDefined()
-  })
+    expect(result.current.form).toBeDefined();
+  });
 
   it('handles undo functionality', () => {
     const { result } = renderHook(() =>
@@ -127,14 +132,14 @@ describe('useInspectionItemForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
     act(() => {
-      result.current.handleUndo()
-    })
+      result.current.handleUndo();
+    });
 
-    expect(result.current.form.setFieldsValue).toHaveBeenCalled()
-  })
+    expect(result.current.form.setFieldsValue).toHaveBeenCalled();
+  });
 
   it('handles redo functionality', () => {
     const { result } = renderHook(() =>
@@ -144,14 +149,14 @@ describe('useInspectionItemForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
     act(() => {
-      result.current.handleRedo()
-    })
+      result.current.handleRedo();
+    });
 
-    expect(result.current.form.setFieldsValue).toHaveBeenCalled()
-  })
+    expect(result.current.form.setFieldsValue).toHaveBeenCalled();
+  });
 
   it('handles status change with confirmation', async () => {
     const { result } = renderHook(() =>
@@ -161,15 +166,15 @@ describe('useInspectionItemForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
     await act(async () => {
-      await result.current.handleStatusChange('disabled')
-    })
+      await result.current.handleStatusChange('disabled');
+    });
 
     // Should have called modal.confirm and onOk
-    expect(result.current.stepUpModal).toBeDefined()
-  })
+    expect(result.current.stepUpModal).toBeDefined();
+  });
 
   it('handles save operation with step-up token', async () => {
     const { result } = renderHook(() =>
@@ -179,14 +184,14 @@ describe('useInspectionItemForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
     await act(async () => {
-      await result.current.handleSave()
-    })
+      await result.current.handleSave();
+    });
 
-    expect(mockOnSave).toHaveBeenCalled()
-  })
+    expect(mockOnSave).toHaveBeenCalled();
+  });
 
   it('resets change tracking after save', async () => {
     const { result } = renderHook(() =>
@@ -196,14 +201,14 @@ describe('useInspectionItemForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
     await act(async () => {
-      await result.current.handleSave()
-    })
+      await result.current.handleSave();
+    });
 
-    expect(result.current.resetChangeTracking).toHaveBeenCalled()
-  })
+    expect(result.current.resetChangeTracking).toHaveBeenCalled();
+  });
 
   it('returns step-up modal', () => {
     const { result } = renderHook(() =>
@@ -213,8 +218,8 @@ describe('useInspectionItemForm', () => {
         initialValues: mockInitialValues,
         onSave: mockOnSave,
       })
-    )
+    );
 
-    expect(result.current.stepUpModal).toBeDefined()
-  })
-})
+    expect(result.current.stepUpModal).toBeDefined();
+  });
+});

@@ -13,15 +13,11 @@ jest.mock(
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Violation",
 );
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee",
-);
+jest.mock("../../../../../shared/models/Fee");
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob",
 );
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument",
-);
+jest.mock("../../../../../shared/models/ClaimableDocument");
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/shared/lib/httpClient",
 );
@@ -36,9 +32,9 @@ const Checklist = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend
 const InspectionItem = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/InspectionItem");
 const PostRequirement = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/PostRequirement");
 const Violation = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Violation");
-const Fee = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const Lob = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob");
-const ClaimableDocument = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const {
   getUserInfo,
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/shared/lib/getUserInfo");
@@ -78,8 +74,8 @@ describe("ChecklistService", () => {
       const result = await ChecklistService.list({});
 
       expect(Checklist.find).toHaveBeenCalledWith({});
-      expect(result.data).toEqual(mockChecklists);
-      expect(result.total).toBe(2);
+      expect(result).toEqual(mockChecklists);
+      expect(result).toHaveLength(2);
     });
 
     it("should filter by isActive", async () => {

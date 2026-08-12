@@ -4,7 +4,8 @@ const {
   ok: respondOk,
   error: respondError,
 } = require("../../middleware/respond");
-const BusinessProfile = require("../../models/BusinessProfile");
+const Business = require("../../models/Business");
+const Application = require("../../models/Application");
 const Lob = require("../../models/Lob");
 const PostRequirement = require("../../models/PostRequirement");
 
@@ -17,42 +18,24 @@ router.get("/stats", async (req, res) => {
 
     const [registeredThisYear, processedThisYear, pendingResult] =
       await Promise.all([
-        BusinessProfile.aggregate([
-          { $unwind: "$businesses" },
-          {
-            $match: {
-              "businesses.businessStatus": "active",
-              "businesses.createdAt": { $gte: yearStart, $lt: yearEnd },
-            },
-          },
-          { $count: "count" },
-        ]),
-        BusinessProfile.aggregate([
-          { $unwind: "$businesses" },
-          {
-            $match: {
-              "businesses.applicationStatus": { $in: ["approved", "rejected"] },
-              "businesses.reviewedAt": { $gte: yearStart, $lt: yearEnd },
-            },
-          },
-          { $count: "count" },
-        ]),
-        BusinessProfile.aggregate([
-          { $unwind: "$businesses" },
-          {
-            $match: {
-              "businesses.applicationStatus": {
-                $in: ["submitted", "under_review"],
-              },
-            },
-          },
-          { $count: "count" },
-        ]),
+        Business.countDocuments({
+          businessStatus: "active",
+          createdAt: { $gte: yearStart, $lt: yearEnd },
+        }),
+        Application.countDocuments({
+          applicationStatus: { $in: ["approved", "rejected"] },
+          reviewedAt: { $gte: yearStart, $lt: yearEnd },
+        }),
+        Application.countDocuments({
+          applicationStatus: { $in: ["submitted", "under_review", "resubmit"] },
+        }),
       ]);
 
-    const totalRegisteredThisYear = registeredThisYear[0]?.count || 0;
-    const applicationsProcessedThisYear = processedThisYear[0]?.count || 0;
-    const pendingApplications = pendingResult[0]?.count || 0;
+    const totalRegisteredThisYear = registeredThisYear || 0;
+    const applicationsProcessedThisYear = processedThisYear || 0;
+    const pendingApplications = pendingResult || 0;
+
+
 
     return respondOk(res, 200, {
       totalRegisteredThisYear,

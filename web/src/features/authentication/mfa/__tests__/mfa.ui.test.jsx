@@ -14,7 +14,7 @@ vi.mock('@/features/authentication/hooks', () => ({
   useLoginVerificationForm: () => ({ form: undefined, handleFinish: () => {}, isSubmitting: false, prefillDevCode: () => {} }),
   useTotpVerificationForm: () => ({ code: '', setCode: () => {}, codeError: '', handleVerify: () => {}, isSubmitting: false }),
   useResendLoginCode: () => ({ isSending: false, handleResend: () => {}, isCooling: false, remaining: 0 }),
-  useMfaSetup: () => ({ loading: false, qrDataUrl: null, uri: null, secret: 'S3CR3T', code: '', setCode: () => {}, enabled: false, handleSetup: () => {}, handleVerify: () => {}, handleDisable: () => {}, markMfaComplete: () => {}, showSecret: false, toggleShowSecret: () => {}, confirmedSaved: false, setConfirmedSaved: () => {}, handleCopy: () => {} }),
+  useMfaSetup: () => ({ loading: false, qrDataUrl: null, uri: null, secret: null, code: '', setCode: () => {}, enabled: false, handleSetup: () => {}, handleVerify: () => {}, handleDisable: () => {}, markMfaComplete: () => {}, showSecret: false, toggleShowSecret: () => {}, confirmedSaved: false, setConfirmedSaved: () => {}, handleCopy: () => {} }),
   useConfirmLogoutModal: () => ({ open: false, show: () => {}, hide: () => {}, confirming: false, handleConfirm: () => {} }),
   useLoggedInMfaManager: vi.fn(() => ({
     currentUser: { email: 'jane@example.com', role: 'user' },
@@ -59,6 +59,8 @@ vi.mock('@/features/authentication/hooks', () => ({
   usePasswordChangeTotpVerification: () => ({ form: undefined, handleFinish: () => {}, isSubmitting: false }),
   useDeleteAccountTotpVerification: () => ({ form: undefined, handleFinish: () => {}, isSubmitting: false }),
   useResendSignupCode: () => ({ isSending: false, handleResend: () => {}, isCooling: false, remaining: 0 }),
+  useResendEmailChangeCode: () => ({ isSending: false, handleResend: () => {}, isCooling: false, remaining: 0 }),
+  useResendDeleteAccountCode: () => ({ isSending: false, handleResend: () => {}, isCooling: false, remaining: 0 }),
   useOtpCountdown: () => ({ remaining: null, isExpired: false }),
 }))
 
@@ -110,8 +112,8 @@ describe('MFA UI snapshots', () => {
 
   it('renders MfaSetup initial view', () => {
     const { getByText } = renderWithProviders(<MfaSetup />)
-    expect(getByText(/Security Setup/i)).toBeInTheDocument()
-    expect(getByText(/Protect your account with Two-Factor Authentication/i)).toBeInTheDocument()
+    expect(getByText(/Secure Your Account/i)).toBeInTheDocument()
+    expect(getByText(/Protect your account from unauthorized access/i)).toBeInTheDocument()
   })
 
   it('renders VerificationForm with resend button (login type)', () => {

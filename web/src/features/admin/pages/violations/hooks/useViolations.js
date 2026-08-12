@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   getViolations,
   getViolation,
@@ -7,20 +7,19 @@ import {
   disableViolation,
 } from '@/features/admin/services/violationService'
 
-export function useViolations(filters = {}) {
+const defaultFilters = {}
+
+export function useViolations(filters = defaultFilters) {
   const [selectedItemId, setSelectedItemId] = useState(null)
   const [violations, setViolations] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Memoize filters to prevent unnecessary re-renders
-  const stableFilters = useMemo(() => filters, [filters.category, filters.severity, filters.isActive])
-
   const fetchViolations = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const result = await getViolations(stableFilters)
+      const result = await getViolations(filters)
       setViolations(result || [])
     } catch (err) {
       setError(err)
@@ -29,7 +28,7 @@ export function useViolations(filters = {}) {
     } finally {
       setLoading(false)
     }
-  }, [stableFilters])
+  }, [filters])
 
   useEffect(() => {
     fetchViolations()
@@ -49,7 +48,7 @@ export function useViolations(filters = {}) {
   const refresh = async () => {
     setLoading(true)
     try {
-      const result = await getViolations(stableFilters)
+      const result = await getViolations(filters)
       setViolations(result || [])
     } catch (error) {
       console.error('Failed to refresh violations:', error)

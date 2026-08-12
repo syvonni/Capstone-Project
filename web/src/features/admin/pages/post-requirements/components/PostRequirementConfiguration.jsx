@@ -20,7 +20,7 @@ function createFieldKey() {
   return `field_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
-export default function PostRequirementConfiguration({ form, handleFormValuesChange, token }) {
+export default function PostRequirementConfiguration({ form, handleFormValuesChange, onFormattersChange, token }) {
   const [checklists, setChecklists] = useState([])
   const [loadingChecklists, setLoadingChecklists] = useState(false)
   const [expandedFields, setExpandedFields] = useState({})
@@ -35,6 +35,19 @@ export default function PostRequirementConfiguration({ form, handleFormValuesCha
       try {
         const items = await getChecklists({ isActive: true })
         setChecklists(items || [])
+
+        if (onFormattersChange) {
+          onFormattersChange({
+            formatters: {
+              checklistId: (value) => {
+                if (!value) return '(empty)';
+                const match = items?.find((c) => c._id === value || String(c._id) === String(value));
+                return match?.name || String(value);
+              },
+            },
+            fieldLabels: { checklistId: 'Checklist' },
+          });
+        }
       } catch (error) {
         console.error('Failed to fetch checklists:', error)
       } finally {
@@ -42,7 +55,7 @@ export default function PostRequirementConfiguration({ form, handleFormValuesCha
       }
     }
     fetchChecklists()
-  }, [])
+  }, [onFormattersChange])
   return (
     <Form 
       form={form} 
@@ -114,6 +127,7 @@ export default function PostRequirementConfiguration({ form, handleFormValuesCha
                     name={[field.name, 'title']}
                     label={<span>Title<span style={{ color: token.colorError, marginLeft: 4 }}>*</span></span>}
                     rules={[{ required: true, message: 'Title is required' }]}
+                    initialValue=""
                     style={{ marginBottom: 0 }}
                   >
                     <Input placeholder="e.g., RA 1234 - Law Name" />
@@ -121,6 +135,7 @@ export default function PostRequirementConfiguration({ form, handleFormValuesCha
                   <Form.Item
                     name={[field.name, 'description']}
                     label="Description"
+                    initialValue=""
                     style={{ marginBottom: 0 }}
                   >
                     <TextArea rows={2} placeholder="Brief description of the legal reference" />

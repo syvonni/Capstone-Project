@@ -7,7 +7,7 @@ import ApplicationProcessSection from '../components/ApplicationProcessSection'
 import OfficeLocationSection from '../components/OfficeLocationSection'
 import HomeFooter from '../components/HomeFooter'
 import useLandingData from '../hooks/useLandingData.jsx'
-import BlurFade from '@/shared/components/BlurFade.jsx'
+import BlurFade from '@/shared/components/animations/BlurFade.jsx'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 

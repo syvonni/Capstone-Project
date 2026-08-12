@@ -17,9 +17,6 @@ COPY services/audit-service/ ./
 # Copy shared directory to backend root
 COPY shared/ /backend/shared/
 
-# Create symlink for shared directory in service directory
-RUN ln -s /backend/shared ./shared
-
 # Create symlink for node_modules to enable shared/ to resolve axios
 RUN ln -s /backend/services/audit-service/node_modules /backend/node_modules
 

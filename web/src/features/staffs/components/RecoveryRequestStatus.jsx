@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Card, Tag, Typography, Alert, Space } from 'antd'
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
 import { getRecoveryStatus } from '../services/recoveryService.js'
 import { useNotifier } from '@/shared/notifications.js'
 

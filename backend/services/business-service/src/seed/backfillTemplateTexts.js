@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const ClaimableDocument = require("../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../shared/models/ClaimableDocument");
 const path = require("path");
 const dotenv = require("dotenv");
 

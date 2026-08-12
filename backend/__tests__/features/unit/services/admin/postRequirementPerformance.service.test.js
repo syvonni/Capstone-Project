@@ -1,11 +1,11 @@
-const PostRequirementPerformanceService = require("../../../../services/business-service/src/services/admin/postRequirementPerformance.service");
+const PostRequirementPerformanceService = require("../../../../../services/business-service/src/services/admin/postRequirementPerformance.service");
 
 // Mock the dependencies
 jest.mock(
-  "../../../../services/business-service/src/lib/performanceHelpers/postRequirementPerformanceHelper",
+  "../../../../../services/business-service/src/lib/performanceHelpers/postRequirementPerformanceHelper",
 );
 
-const PostRequirementPerformanceHelper = require("../../../../services/business-service/src/lib/performanceHelpers/postRequirementPerformanceHelper");
+const PostRequirementPerformanceHelper = require("../../../../../services/business-service/src/lib/performanceHelpers/postRequirementPerformanceHelper");
 
 describe("PostRequirementPerformanceService", () => {
   beforeEach(() => {

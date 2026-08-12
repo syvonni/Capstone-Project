@@ -1,4 +1,4 @@
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthSession, useMaintenanceStatus } from '@/features/authentication'
 import { getCurrentUser as getAuthEventCurrentUser, getIsLoggingOut, getLogoutNotification } from '@/features/authentication/lib/authEvents.js'

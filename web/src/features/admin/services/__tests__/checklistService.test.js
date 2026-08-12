@@ -35,7 +35,7 @@ describe('checklistService', () => {
 
   describe('getChecklists', () => {
     it('calls get with correct URL when no parameters provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getChecklists()
       
@@ -43,7 +43,7 @@ describe('checklistService', () => {
     })
 
     it('includes isActive parameter in URL when provided', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getChecklists({ isActive: true })
       
@@ -52,7 +52,7 @@ describe('checklistService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', name: 'Checklist 1' }]
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getChecklists()
       
@@ -61,7 +61,7 @@ describe('checklistService', () => {
 
     it('handles response with direct data property', async () => {
       const mockData = [{ _id: '1', name: 'Checklist 1' }]
-      get.mockResolvedValue({ data: mockData })
+      get.mockResolvedValue(mockData)
       
       const result = await getChecklists()
       
@@ -69,7 +69,7 @@ describe('checklistService', () => {
     })
 
     it('handles empty response', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       const result = await getChecklists()
       
@@ -77,7 +77,7 @@ describe('checklistService', () => {
     })
 
     it('request deduplication prevents duplicate calls', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       const promise1 = getChecklists()
       const promise2 = getChecklists()
@@ -90,7 +90,7 @@ describe('checklistService', () => {
 
   describe('getChecklist', () => {
     it('calls get with correct URL', async () => {
-      get.mockResolvedValue({ data: { data: null } })
+      get.mockResolvedValue(null)
       
       await getChecklist('1')
       
@@ -99,7 +99,7 @@ describe('checklistService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'Checklist 1' }
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getChecklist('1')
       
@@ -107,16 +107,15 @@ describe('checklistService', () => {
     })
 
     it('handles null nested data response', async () => {
-      get.mockResolvedValue({ data: null })
+      get.mockResolvedValue(null)
       
       const result = await getChecklist('1')
       
-      // The service now returns res directly
-      expect(result).toEqual({ data: null })
+      expect(result).toBeNull()
     })
 
     it('request deduplication prevents duplicate calls', async () => {
-      get.mockResolvedValue({ data: { data: { _id: '1' } } })
+      get.mockResolvedValue({ _id: '1' })
       
       const promise1 = getChecklist('1')
       const promise2 = getChecklist('1')
@@ -129,7 +128,7 @@ describe('checklistService', () => {
 
   describe('getChecklistsByInspectionItem', () => {
     it('calls get with correct URL', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       await getChecklistsByInspectionItem('item1')
       
@@ -138,7 +137,7 @@ describe('checklistService', () => {
 
     it('returns data from response', async () => {
       const mockData = [{ _id: '1', name: 'Checklist 1' }]
-      get.mockResolvedValue({ data: { data: mockData } })
+      get.mockResolvedValue(mockData)
       
       const result = await getChecklistsByInspectionItem('item1')
       
@@ -146,7 +145,7 @@ describe('checklistService', () => {
     })
 
     it('handles empty response', async () => {
-      get.mockResolvedValue({ data: { data: [] } })
+      get.mockResolvedValue([])
       
       const result = await getChecklistsByInspectionItem('item1')
       
@@ -156,7 +155,7 @@ describe('checklistService', () => {
 
   describe('createChecklist', () => {
     it('calls fetchJsonWithFallback with correct parameters', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'New Checklist', description: 'Test description' }
       await createChecklist(data)
@@ -171,7 +170,7 @@ describe('checklistService', () => {
     })
 
     it('includes step-up token in headers when provided', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'New Checklist' }
       await createChecklist(data, { stepUpToken: 'token123' })
@@ -187,7 +186,7 @@ describe('checklistService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'New Checklist' }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await createChecklist({ name: 'New Checklist' })
       
@@ -197,7 +196,7 @@ describe('checklistService', () => {
 
   describe('updateChecklist', () => {
     it('calls fetchJsonWithFallback with correct parameters', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'Updated Checklist' }
       await updateChecklist('1', data)
@@ -212,7 +211,7 @@ describe('checklistService', () => {
     })
 
     it('includes step-up token in headers when provided', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       const data = { name: 'Updated Checklist' }
       await updateChecklist('1', data, { stepUpToken: 'token123' })
@@ -228,7 +227,7 @@ describe('checklistService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', name: 'Updated Checklist' }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await updateChecklist('1', { name: 'Updated Checklist' })
       
@@ -238,7 +237,7 @@ describe('checklistService', () => {
 
   describe('disableChecklist', () => {
     it('calls fetchJsonWithFallback with DELETE method', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       await disableChecklist('1')
       
@@ -251,7 +250,7 @@ describe('checklistService', () => {
     })
 
     it('includes step-up token in headers when provided', async () => {
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: { _id: '1' } } })
+      fetchJsonWithFallback.mockResolvedValue({ _id: '1' })
       
       await disableChecklist('1', { stepUpToken: 'token123' })
       
@@ -265,7 +264,7 @@ describe('checklistService', () => {
 
     it('returns data from response', async () => {
       const mockData = { _id: '1', isActive: false }
-      fetchJsonWithFallback.mockResolvedValue({ data: { data: mockData } })
+      fetchJsonWithFallback.mockResolvedValue(mockData)
       
       const result = await disableChecklist('1')
       
@@ -302,7 +301,7 @@ describe('checklistService', () => {
 
   describe('getChecklistDataQuality', () => {
     it('calls get with correct URL', async () => {
-      get.mockResolvedValue({ data: [] })
+      get.mockResolvedValue([])
       
       await getChecklistDataQuality()
       
@@ -311,7 +310,7 @@ describe('checklistService', () => {
 
     it('returns data from response', async () => {
       const mockData = { issues: [], totalEntities: 0 }
-      get.mockResolvedValue({ data: mockData })
+      get.mockResolvedValue(mockData)
       
       const result = await getChecklistDataQuality()
       
@@ -321,7 +320,7 @@ describe('checklistService', () => {
 
   describe('getAllChecklistAudits', () => {
     it('calls get with correct URL when no params provided', async () => {
-      get.mockResolvedValue({ data: [] })
+      get.mockResolvedValue([])
       
       await getAllChecklistAudits()
       
@@ -329,7 +328,7 @@ describe('checklistService', () => {
     })
 
     it('includes query parameters when provided', async () => {
-      get.mockResolvedValue({ data: [] })
+      get.mockResolvedValue([])
       
       await getAllChecklistAudits({ page: 2, limit: 50 })
       
@@ -338,7 +337,7 @@ describe('checklistService', () => {
 
     it('returns data from response', async () => {
       const mockData = { logs: [{ _id: '1', eventType: 'create' }] }
-      get.mockResolvedValue({ data: mockData })
+      get.mockResolvedValue(mockData)
       
       const result = await getAllChecklistAudits()
       

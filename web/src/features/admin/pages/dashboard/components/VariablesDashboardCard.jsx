@@ -103,7 +103,7 @@ export default function VariablesDashboardCard() {
       {
         count: disabledVars,
         text: 'Disabled',
-        linkColor: disabledVars > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledVars > 0 ? {
           title: 'Disabled Variables',
           items: variables.filter(v => !v.isActive).map(v => ({

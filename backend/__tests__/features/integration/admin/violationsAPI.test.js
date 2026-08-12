@@ -16,14 +16,13 @@ const {
 const Violation = require("../../../../services/business-service/src/models/Violation");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -63,7 +62,7 @@ describe("Violations API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
 
     it("should return list of violations when violations exist", async () => {
@@ -81,7 +80,7 @@ describe("Violations API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -110,7 +109,7 @@ describe("Violations API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data._id).toBe(testViolation._id.toString());
+      expect(response.body._id).toBe(testViolation._id.toString());
     });
   });
 
@@ -150,7 +149,7 @@ describe("Violations API Integration Tests", () => {
         .send(violationData)
         .expect(201);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should validate missing name", async () => {
@@ -218,7 +217,7 @@ describe("Violations API Integration Tests", () => {
         .send({ name: "Updated Violation" })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should update description with step-up auth", async () => {
@@ -236,7 +235,7 @@ describe("Violations API Integration Tests", () => {
         .send({ description: "Updated description" })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should update severity with step-up auth", async () => {
@@ -254,7 +253,7 @@ describe("Violations API Integration Tests", () => {
         .send({ severity: "major" })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should update isActive with step-up auth", async () => {
@@ -272,7 +271,7 @@ describe("Violations API Integration Tests", () => {
         .send({ isActive: false })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -291,7 +290,7 @@ describe("Violations API Integration Tests", () => {
         .set(getStepUpHeaders(adminToken, adminUser))
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -319,7 +318,7 @@ describe("Violations API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should filter by severity", async () => {
@@ -345,7 +344,7 @@ describe("Violations API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -406,9 +405,9 @@ describe("Violations API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toHaveProperty("issues");
-      expect(response.body.data).toHaveProperty("totalEntities");
-      expect(response.body.data).toHaveProperty("totalIssues");
+      expect(response.body).toHaveProperty("issues");
+      expect(response.body).toHaveProperty("totalEntities");
+      expect(response.body).toHaveProperty("totalIssues");
     });
 
     it("should require admin role for data quality endpoint", async () => {
@@ -436,7 +435,7 @@ describe("Violations API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toHaveProperty("issues");
+      expect(response.body).toHaveProperty("issues");
     });
 
     it("should return 404 for non-existent violation", async () => {
@@ -457,9 +456,9 @@ describe("Violations API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toHaveProperty("avgResponseTime");
-      expect(response.body.data).toHaveProperty("errorRate");
-      expect(response.body.data).toHaveProperty("requestCount");
+      expect(response.body).toHaveProperty("avgResponseTime");
+      expect(response.body).toHaveProperty("errorRate");
+      expect(response.body).toHaveProperty("requestCount");
     });
 
     it("should support time range parameter", async () => {

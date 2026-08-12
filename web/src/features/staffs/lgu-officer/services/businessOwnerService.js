@@ -44,7 +44,7 @@ export default class BusinessOwnerService {
   async getBusinessOwnerBusinesses(_id) {
     // TODO: Implement proxy to business-service
     // For now, return empty array
-    return { data: [] }
+    return []
   }
 
   async registerBusinessOwner(data, options = {}) {

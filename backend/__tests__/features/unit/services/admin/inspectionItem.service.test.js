@@ -10,18 +10,14 @@ jest.mock(
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Checklist",
 );
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee",
-);
+jest.mock("../../../../../shared/models/Fee");
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/PostRequirement",
 );
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob",
 );
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument",
-);
+jest.mock("../../../../../shared/models/ClaimableDocument");
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/shared/lib/getUserInfo",
 );
@@ -32,10 +28,10 @@ jest.mock(
 const InspectionItem = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/InspectionItem");
 const Violation = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Violation");
 const Checklist = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Checklist");
-const Fee = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const PostRequirement = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/PostRequirement");
 const Lob = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob");
-const ClaimableDocument = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const {
   getUserInfo,
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/shared/lib/getUserInfo");
@@ -65,8 +61,8 @@ describe("InspectionItemService", () => {
       const result = await InspectionItemService.list({});
 
       expect(InspectionItem.find).toHaveBeenCalledWith({});
-      expect(result.data).toEqual(mockInspectionItems);
-      expect(result.total).toBe(2);
+      expect(result).toEqual(mockInspectionItems);
+      expect(result).toHaveLength(2);
     });
 
     it("should filter by violationId", async () => {

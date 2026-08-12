@@ -4,38 +4,11 @@
  * PURPOSE: Provides centralized audit logging for Permit Form entities using the audit infrastructure.
  * This follows the SOLID principles by separating audit logic from route handlers.
  *
- * USAGE EXAMPLE:
- * const { PermitFormAuditHelper } = require('../lib/auditHelpers/permitFormAuditHelper');
- * const userInfo = await getUserInfo(req._userId);
- * PermitFormAuditHelper.logCreated(req, req._userId, userInfo, form, "admin")
- *   .catch((err) => console.error("Failed to log audit event for permit form create", err));
+ * Callers should provide a userInfo object (e.g. `{ name, email }`) when calling
+ * the static log methods below.
  */
 
 const { logAuditEvent } = require("../auditClient");
-const User = require("../../models/User");
-
-// Local getUserInfo function using admin-service User model
-async function getUserInfo(userId) {
-  try {
-    const user = await User.findById(userId)
-      .select("firstName lastName email")
-      .lean();
-    const fullName =
-      user?.firstName && user?.lastName
-        ? `${user.firstName} ${user.lastName}`
-        : user?.email || userId;
-    return {
-      name: fullName,
-      email: user?.email || null,
-    };
-  } catch (err) {
-    console.error("Failed to fetch user info for audit:", err);
-    return {
-      name: userId,
-      email: null,
-    };
-  }
-}
 
 /**
  * Permit Form Audit Helper Class
@@ -69,14 +42,20 @@ class PermitFormAuditHelper {
         method: req.method,
         path: req.path,
         ip: req.ip,
-        userAgent: req.get('user-agent'),
+        userAgent: req.get("user-agent"),
       },
     };
 
-    return await logAuditEvent("permit_form_created", userId, "PermitForm", form._id, {
-      ...metadata,
-      role,
-    });
+    return await logAuditEvent(
+      "permit_form_created",
+      userId,
+      "PermitForm",
+      form._id,
+      {
+        ...metadata,
+        role,
+      },
+    );
   }
 
   /**
@@ -106,7 +85,7 @@ class PermitFormAuditHelper {
         method: req.method,
         path: req.path,
         ip: req.ip,
-        userAgent: req.get('user-agent'),
+        userAgent: req.get("user-agent"),
       },
       changes: {
         oldName: oldForm.name,
@@ -118,10 +97,16 @@ class PermitFormAuditHelper {
       },
     };
 
-    return await logAuditEvent("permit_form_updated", userId, "PermitForm", newForm._id, {
-      ...metadata,
-      role,
-    });
+    return await logAuditEvent(
+      "permit_form_updated",
+      userId,
+      "PermitForm",
+      newForm._id,
+      {
+        ...metadata,
+        role,
+      },
+    );
   }
 
   /**
@@ -139,7 +124,15 @@ class PermitFormAuditHelper {
    * @param {string} role - User role
    * @returns {Promise<object>} - Created audit log
    */
-  static async logVersionIncremented(req, userId, userInfo, form, oldVersion, newVersion, role) {
+  static async logVersionIncremented(
+    req,
+    userId,
+    userInfo,
+    form,
+    oldVersion,
+    newVersion,
+    role,
+  ) {
     const metadata = {
       userInfo,
       formId: form.formId,
@@ -150,14 +143,20 @@ class PermitFormAuditHelper {
         method: req.method,
         path: req.path,
         ip: req.ip,
-        userAgent: req.get('user-agent'),
+        userAgent: req.get("user-agent"),
       },
     };
 
-    return await logAuditEvent("permit_form_version_incremented", userId, "PermitForm", form._id, {
-      ...metadata,
-      role,
-    });
+    return await logAuditEvent(
+      "permit_form_version_incremented",
+      userId,
+      "PermitForm",
+      form._id,
+      {
+        ...metadata,
+        role,
+      },
+    );
   }
 
   /**
@@ -175,7 +174,15 @@ class PermitFormAuditHelper {
    * @param {string} role - User role
    * @returns {Promise<object>} - Created audit log
    */
-  static async logStatusChanged(req, userId, userInfo, form, oldStatus, newStatus, role) {
+  static async logStatusChanged(
+    req,
+    userId,
+    userInfo,
+    form,
+    oldStatus,
+    newStatus,
+    role,
+  ) {
     const metadata = {
       userInfo,
       formId: form.formId,
@@ -186,14 +193,20 @@ class PermitFormAuditHelper {
         method: req.method,
         path: req.path,
         ip: req.ip,
-        userAgent: req.get('user-agent'),
+        userAgent: req.get("user-agent"),
       },
     };
 
-    return await logAuditEvent("permit_form_status_changed", userId, "PermitForm", form._id, {
-      ...metadata,
-      role,
-    });
+    return await logAuditEvent(
+      "permit_form_status_changed",
+      userId,
+      "PermitForm",
+      form._id,
+      {
+        ...metadata,
+        role,
+      },
+    );
   }
 }
 

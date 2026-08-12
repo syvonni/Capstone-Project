@@ -6,7 +6,9 @@ import {
   updatePostRequirement,
 } from '@/features/admin/services/postRequirementService'
 
-export function usePostRequirements(filters = {}) {
+const defaultFilters = {}
+
+export function usePostRequirements(filters = defaultFilters) {
   const [selectedItemId, setSelectedItemId] = useState(null)
   const [postRequirements, setPostRequirements] = useState([])
   const [loading, setLoading] = useState(false)
@@ -25,7 +27,7 @@ export function usePostRequirements(filters = {}) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [filters])
 
   useEffect(() => {
     fetchPostRequirements()

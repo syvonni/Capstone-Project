@@ -79,17 +79,13 @@ export default function NotificationHistoryPage() {
     const style = { fontSize: size }
     switch (type) {
       case 'application_approved':
-      case 'renewal_approved':
       case 'retirement_accepted':
-      case 'edit_request_approved':
       case 'post_requirement_verified':
       case 'violation_resolved':
         return <CheckCircleOutlined style={{ color: token.colorSuccess, ...style }} />
       case 'application_rejected':
       case 'application_needs_revision':
-      case 'renewal_rejected':
       case 'retirement_rejected':
-      case 'edit_request_rejected':
         return <CloseCircleOutlined style={{ color: token.colorError, ...style }} />
       case 'violation_issued':
       case 'violation_escalated':
@@ -99,7 +95,6 @@ export default function NotificationHistoryPage() {
         return <DollarOutlined style={{ color: token.colorSuccess, ...style }} />
       case 'payment_due_reminder':
         return <DollarOutlined style={{ color: token.colorWarning, ...style }} />
-      case 'renewal_period_started':
       case 'post_requirement_due':
         return <CalendarOutlined style={{ color: token.colorWarning, ...style }} />
       case 'post_requirement_overdue':
@@ -114,7 +109,6 @@ export default function NotificationHistoryPage() {
       case 'inspection_completed':
       case 'reinspection_required':
         return <SolutionOutlined style={{ color: token.colorInfo, ...style }} />
-      case 'edit_request_received':
       case 'retirement_request_received':
         return <EditOutlined style={{ color: token.colorInfo, ...style }} />
       case 'application_review_started':

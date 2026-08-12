@@ -18,7 +18,7 @@ const Checklist = require("../../models/Checklist");
 const InspectionItem = require("../../models/InspectionItem");
 const PostRequirement = require("../../models/PostRequirement");
 const Variable = require("../../models/Variable");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 
 /**
  * Helper function to enrich single relationship with name
@@ -86,15 +86,21 @@ class ChecklistDataQualityHelper {
     const result = validateEntities("checklist", checklists);
 
     // Custom check for inspection item associations (requires cross-collection query)
-    const allInspectionItems = await InspectionItem.find({}).select("_id").lean();
-    const inspectionItemIdSet = new Set(allInspectionItems.map((i) => i._id.toString()));
+    const allInspectionItems = await InspectionItem.find({})
+      .select("_id")
+      .lean();
+    const inspectionItemIdSet = new Set(
+      allInspectionItems.map((i) => i._id.toString()),
+    );
 
     // Find checklists with invalid inspection item associations
     const checklistsWithInvalidItems = [];
     for (const checklist of checklists) {
       if (checklist.items && checklist.items.length > 0) {
         const hasInvalidItems = checklist.items.some(
-          (item) => item.inspectionItemId && !inspectionItemIdSet.has(item.inspectionItemId.toString())
+          (item) =>
+            item.inspectionItemId &&
+            !inspectionItemIdSet.has(item.inspectionItemId.toString()),
         );
         if (hasInvalidItems) {
           checklistsWithInvalidItems.push(checklist._id.toString());
@@ -155,16 +161,19 @@ class ChecklistDataQualityHelper {
    * @returns {Promise<object>} - Object with issues array
    */
   static async validateChecklistsWithRelations(checklistIds) {
-    const checklists = await Checklist.find({ _id: { $in: checklistIds } }).lean();
+    const checklists = await Checklist.find({
+      _id: { $in: checklistIds },
+    }).lean();
 
     // Enrich each checklist with relationship names
     const enrichedChecklists = await Promise.all(
       checklists.map(async (checklist) => {
-        const [postRequirementWithNames, variableWithNames, documentWithNames] = await Promise.all([
-          enrichSingleRelation(checklist.postRequirementId, PostRequirement),
-          enrichSingleRelation(checklist.variableId, Variable),
-          enrichSingleRelation(checklist.documentId, ClaimableDocument),
-        ]);
+        const [postRequirementWithNames, variableWithNames, documentWithNames] =
+          await Promise.all([
+            enrichSingleRelation(checklist.postRequirementId, PostRequirement),
+            enrichSingleRelation(checklist.variableId, Variable),
+            enrichSingleRelation(checklist.documentId, ClaimableDocument),
+          ]);
 
         return {
           ...checklist,

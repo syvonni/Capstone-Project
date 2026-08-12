@@ -21,6 +21,7 @@ services:
   business-service:
     environment:
       - MONGO_URI=mongodb://${MONGO_APP_USER:-capstone_app}:${MONGO_APP_PASSWORD:-devapppass}@mongodb:27017/capstone_project?authSource=admin&tls=true&tlsAllowInvalidCertificates=true
+      - ADMIN_SERVICE_URL=${DOCKER_ADMIN_SERVICE_URL}
 
   admin-service:
     environment:

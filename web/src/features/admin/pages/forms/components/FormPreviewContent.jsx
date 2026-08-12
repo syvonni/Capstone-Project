@@ -1,6 +1,6 @@
-import { Typography, Divider, Row, Col, Form, Input, theme } from 'antd'
+import { Typography, Divider, Form, Input, theme } from 'antd'
 import InfoGrid from '@/shared/components/InfoGrid'
-import { PreviewField, PreviewSection, LobSection } from '@/shared/components/formPreview'
+import { FormRenderer, LOBSection } from '@/shared/components/formPreview'
 
 const { Text } = Typography
 
@@ -152,40 +152,11 @@ export default function FormPreviewContent({ sections, title, description, lastU
       )
     }
     return (
-      <div>
-        {requiredDocumentsSection.description ? (
-          <>
-            <div style={{ color: token.colorTextTertiary }}>
-              Section description
-            </div>
-            <div style={{ marginBottom: 16, color: token.colorText }}>
-              {requiredDocumentsSection.description}
-            </div>
-          </>
-        ) : (
-          <div style={{ fontSize: 12, marginBottom: 4, color: token.colorTextSecondary }}>
-            Section description
-          </div>
-        )}
-        {requiredDocumentsSection.notes && (
-          <>
-            <div style={{ color: token.colorTextTertiary  }}>
-              Admin notes (Hidden)
-            </div>
-            <Text style={{ display: 'block', marginBottom: 12 }}>
-              {requiredDocumentsSection.notes}
-            </Text>
-          </>
-        )}
-        <Divider />
-        <Row gutter={[8, 8]}>
-          {requiredDocumentsSection.items?.map((item, idx) => (
-            <Col key={idx} span={item.span || 24}>
-              <PreviewField field={item} disabled={disabled} />
-            </Col>
-          ))}
-        </Row>
-      </div>
+      <FormRenderer
+        section={requiredDocumentsSection}
+        mode="preview"
+        disabled={disabled}
+      />
     )
   }
 
@@ -226,7 +197,7 @@ export default function FormPreviewContent({ sections, title, description, lastU
           </>
         )}
         <Divider />
-        <LobSection isEditMode={false} />
+        <LOBSection isEditMode={false} />
       </div>
     )
   }
@@ -244,8 +215,10 @@ export default function FormPreviewContent({ sections, title, description, lastU
   }
 
   return (
-    <div>
-      <PreviewSection section={section} index={sectionIndex} disabled={disabled} />
-    </div>
+    <FormRenderer
+      section={section}
+      mode="preview"
+      disabled={disabled}
+    />
   )
 }

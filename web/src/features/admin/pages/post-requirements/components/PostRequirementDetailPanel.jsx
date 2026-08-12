@@ -1,35 +1,51 @@
-import { useState, useMemo, useEffect } from 'react'
-import { theme } from 'antd'
-import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons'
-import DetailHeader from '@/shared/components/DetailHeader'
-import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
-import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
-import PostRequirementOverview from './PostRequirementOverview'
-import PostRequirementConfiguration from './PostRequirementConfiguration'
-import { usePostRequirementForm } from '../hooks/usePostRequirementForm'
-import { usePostRequirementDependencies } from '../hooks/usePostRequirementDependencies'
-import { useAudit } from '@/shared/audit/hooks/useAudit'
-import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { theme } from 'antd';
+import { SaveOutlined, HistoryOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons';
+import DetailHeader from '@/shared/components/DetailHeader';
+import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal';
+import AuditEventDetails from '@/shared/audit/components/AuditEventDetails';
+import PostRequirementOverview from './PostRequirementOverview';
+import PostRequirementConfiguration from './PostRequirementConfiguration';
+import { usePostRequirementForm } from '../hooks/usePostRequirementForm';
+import { usePostRequirementDependencies } from '../hooks/usePostRequirementDependencies';
+import { useAudit } from '@/shared/audit/hooks/useAudit';
+import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes';
 
 export default function PostRequirementDetailPanel({ postRequirementId, postRequirement, onSave }) {
-  const { token } = theme.useToken()
-  const [historyModalOpen, setHistoryModalOpen] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
+  const { token } = theme.useToken();
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [summaryFormatters, setSummaryFormatters] = useState({});
+  const [summaryFieldLabels, setSummaryFieldLabels] = useState({});
 
-  const isNew = postRequirementId === 'new' || !postRequirement
+  const isNew = postRequirementId === 'new' || !postRequirement;
 
-  const { auditLogs, auditLoading, refresh } = useAudit('post-requirement', postRequirementId, !isNew)
+  const { auditLogs, auditLoading, refresh } = useAudit(
+    'post-requirement',
+    postRequirementId,
+    !isNew
+  );
 
-  const initialValues = useMemo(() => ({
-    name: postRequirement?.name || '',
-    description: postRequirement?.description || '',
-    notes: postRequirement?.notes || '',
-    legalBasis: postRequirement?.legalBasis || [],
-    checklistId: postRequirement?.checklistId?._id || postRequirement?.checklistId || null,
-    version: postRequirement?.version || 1,
-  }), [postRequirement])
+  const initialValues = useMemo(
+    () => ({
+      name: postRequirement?.name || '',
+      description: postRequirement?.description || '',
+      notes: postRequirement?.notes || '',
+      legalBasis: (postRequirement?.legalBasis || []).map((item) => ({
+        url: item?.url || '',
+        title: item?.title ?? '',
+        description: item?.description ?? '',
+      })),
+      checklistId: postRequirement?.checklistId?._id || postRequirement?.checklistId || null,
+      version: postRequirement?.version || 1,
+    }),
+    [postRequirement]
+  );
 
-  const { dependencies, loading: loadingDependencies } = usePostRequirementDependencies(postRequirementId, isNew)
+  const { dependencies, loading: loadingDependencies } = usePostRequirementDependencies(
+    postRequirementId,
+    isNew
+  );
   const {
     form,
     saving,
@@ -41,29 +57,36 @@ export default function PostRequirementDetailPanel({ postRequirementId, postRequ
     handleFormValuesChange,
     handleStatusChange,
     handleSave,
+    handleConfirm,
     resetChangeTracking,
     stepUpModal,
-  } = usePostRequirementForm({ postRequirementId, postRequirement, initialValues, onSave })
+    ChangesSummary,
+  } = usePostRequirementForm({ postRequirementId, postRequirement, initialValues, onSave });
 
-  const loading = saving || loadingDependencies
+  const loading = saving || loadingDependencies;
+
+  const handleFormattersChange = useCallback(({ formatters, fieldLabels }) => {
+    setSummaryFormatters(formatters);
+    setSummaryFieldLabels(fieldLabels);
+  }, []);
 
   const handleEnterEditMode = () => {
-    setIsEditMode(true)
-  }
+    setIsEditMode(true);
+  };
 
   const handleExitEditMode = () => {
-    setIsEditMode(false)
-    form.setFieldsValue(initialValues)
-    resetChangeTracking(initialValues)
-  }
+    setIsEditMode(false);
+    form.setFieldsValue(initialValues);
+    resetChangeTracking(initialValues);
+  };
 
   // Reset form when post requirement changes
   useEffect(() => {
     if (postRequirement && !isNew) {
-      form.setFieldsValue(initialValues)
-      resetChangeTracking(initialValues)
+      form.setFieldsValue(initialValues);
+      resetChangeTracking(initialValues);
     }
-  }, [postRequirementId, postRequirement, initialValues, form, resetChangeTracking, isNew])
+  }, [postRequirementId, postRequirement, initialValues, form, resetChangeTracking, isNew]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -85,42 +108,81 @@ export default function PostRequirementDetailPanel({ postRequirementId, postRequ
         iconButtons={[
           { icon: <HistoryOutlined />, onClick: () => setHistoryModalOpen(true), title: 'History' },
         ]}
-        actionButtons={isEditMode
-          ? [{ text: 'Exit Edit Mode', icon: <CloseOutlined />, onClick: handleExitEditMode, type: 'default' }]
-          : [{ text: 'Edit', icon: <EditOutlined />, onClick: handleEnterEditMode, type: 'default' }]}
+        actionButtons={
+          isEditMode
+            ? [
+                {
+                  text: 'Exit Edit Mode',
+                  icon: <CloseOutlined />,
+                  onClick: handleExitEditMode,
+                  type: 'default',
+                },
+              ]
+            : [
+                {
+                  text: 'Edit',
+                  icon: <EditOutlined />,
+                  onClick: handleEnterEditMode,
+                  type: 'default',
+                },
+              ]
+        }
         instructionSlotId="admin-post-requirements"
-        selectFields={!isNew ? [
-          {
-            label: 'Status',
-            value: postRequirement?.isActive ? 'active' : 'disabled',
-            onChange: handleStatusChange,
-            width: 120,
-            disabled: dependencies.length > 0,
-            tooltip: dependencies.length > 0 ? 'Cannot change status - post requirement has dependent items' : undefined,
-            options: [
-              { value: 'active', label: 'Active' },
-              { value: 'disabled', label: 'Disabled' },
-            ],
-          },
-        ] : []}
+        selectFields={
+          !isNew
+            ? [
+                {
+                  label: 'Status',
+                  value: postRequirement?.isActive ? 'active' : 'disabled',
+                  onChange: handleStatusChange,
+                  width: 120,
+                  disabled: dependencies.length > 0,
+                  tooltip:
+                    dependencies.length > 0
+                      ? 'Cannot change status - post requirement has dependent items'
+                      : undefined,
+                  options: [
+                    { value: 'active', label: 'Active' },
+                    { value: 'disabled', label: 'Disabled' },
+                  ],
+                },
+              ]
+            : []
+        }
       />
       <AuditHistoryModal
         open={historyModalOpen}
         onClose={() => setHistoryModalOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
-        eventDescriptions={AUDIT_EVENT_INFO.filter(e => e.event.startsWith('post_requirement_'))}
+        eventDescriptions={AUDIT_EVENT_INFO.filter((e) => e.event.startsWith('post_requirement_'))}
         DetailPanelComponent={AuditEventDetails}
         onRefresh={refresh}
       />
       {stepUpModal}
+      <ChangesSummary
+        onConfirm={handleConfirm}
+        formatters={summaryFormatters}
+        fieldLabels={summaryFieldLabels}
+      />
       <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
         {isEditMode ? (
-          <PostRequirementConfiguration form={form} handleFormValuesChange={handleFormValuesChange} token={token} />
+          <PostRequirementConfiguration
+            form={form}
+            handleFormValuesChange={handleFormValuesChange}
+            onFormattersChange={handleFormattersChange}
+            token={token}
+          />
         ) : (
-          <PostRequirementOverview postRequirement={postRequirement} initialValues={initialValues} dependencies={dependencies} token={token} loading={loading} />
+          <PostRequirementOverview
+            postRequirement={postRequirement}
+            initialValues={initialValues}
+            dependencies={dependencies}
+            token={token}
+            loading={loading}
+          />
         )}
       </div>
     </div>
-  )
+  );
 }

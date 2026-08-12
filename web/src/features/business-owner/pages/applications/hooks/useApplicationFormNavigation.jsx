@@ -57,15 +57,15 @@ export function useApplicationFormNavigation({
 
   // Create main navigation items (Overview, FAQ)
   const mainNavItems = useMemo(() => [
-    { key: 'overview', label: <span><FileTextOutlined /> <span style={{ marginLeft: 8 }}>Overview</span></span> },
-    { key: 'faq', label: <span><BookOutlined /> <span style={{ marginLeft: 8 }}>FAQs</span></span> },
+    { key: 'overview', label: 'Overview', icon: <FileTextOutlined /> },
+    { key: 'faq', label: 'FAQs', icon: <BookOutlined /> },
   ], [])
 
   // Create form navigation items from visible sections
   const formNavItems = useMemo(() => 
     visibleSections.map((section, idx) => ({
       key: `section-${idx}`,
-      label: section.category || `Section ${idx + 1}`,
+      label: section.sectionName || section.category || `Section ${idx + 1}`,
     })),
     [visibleSections]
   )

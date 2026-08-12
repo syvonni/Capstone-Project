@@ -9,7 +9,9 @@ const correlationIdMiddleware = require("./middleware/correlationId");
 const {
   performanceMonitorMiddleware,
 } = require("./middleware/performanceMonitor");
-const { entityPerformanceMiddleware } = require("./middleware/entityPerformanceMiddleware");
+const {
+  entityPerformanceMiddleware,
+} = require("./middleware/entityPerformanceMiddleware");
 const { securityMonitorMiddleware } = require("./middleware/securityMonitor");
 const errorHandlerMiddleware = require("./middleware/errorHandler");
 const http = require("http");
@@ -161,13 +163,12 @@ app.get("/api/health", (req, res) => {
 // Load models to ensure they're registered with mongoose
 require("./models/Role");
 require("./models/User");
-require("./models/BusinessProfile");
 require("./models/LGU");
 require("./models/FormGroup");
 require("./models/PenaltyConfiguration");
 require("./models/Notification");
 require("./models/ApplicationProcess");
-require("./models/PermitForm");
+require("../../../shared/models/PermitForm");
 
 // Admin routes
 const adminRouter = require("./routes/approvals");

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { Typography, Space, theme, Empty, App, Grid, Modal, Form } from 'antd'
-import { generateTestDataForDefinition, formDataWithDayjs } from '@/features/business-owner/utils/businessFormUtils'
+import { Typography, Space, theme, Empty, App, Form, Modal, Grid } from 'antd'
 import { FileTextOutlined } from '@ant-design/icons'
 import { useStepUp } from '@/shared/hooks/useStepUp'
 import { PermitApplicationService } from '@/features/staffs/lgu-officer/services/permitApplicationService'
@@ -8,11 +7,14 @@ import { filterSectionsByFormValues } from '@/features/business-owner/utils/form
 import {
   LOB_FIELD_DESCRIPTION,
   getReviewableFieldKeys,
+  getFieldKey,
+  getLobActivityFieldKey,
 } from '@/features/staffs/lgu-officer/utils/fieldKeyUtils'
 import { useAuthSession } from '@/features/authentication'
-import DocumentPreviewModal from '@/shared/components/DocumentPreviewModal'
+import DocumentPreviewModal from '@/shared/components/document/DocumentPreviewModal'
+import FormRenderer from '@/shared/components/formPreview/FormRenderer'
+import FieldDecisionControl from './ApplicationFieldDecisionControl'
 import ReviewTabContent from './ApplicationReviewTabContent'
-import { createSectionTabs } from './ApplicationSectionTabs'
 import ApplicationDetailPanelContent from './ApplicationDetailPanelContent'
 import { useApplicationStatus } from '../hooks/useApplicationStatus'
 import { useApplicationModals } from '../hooks/useApplicationModals'
@@ -29,6 +31,7 @@ import { useApplicationFieldActions } from '../hooks/useApplicationFieldActions'
 import { useApplicationPendingActions } from '../hooks/useApplicationPendingActions'
 import { useApplicationActions } from '../hooks/useApplicationActions'
 import { useApplicationHandlers } from '../hooks/useApplicationHandlers'
+import { useApplicationTestData } from '@/features/business-owner/pages/applications/hooks/useApplicationTestData'
 import RejectApplicationModal from './modals/ApplicationRejectApplicationModal'
 import RejectAppealModal from './modals/ApplicationRejectAppealModal'
 import CompleteReviewModal from './modals/ApplicationCompleteReviewModal'
@@ -51,14 +54,14 @@ export default function ApplicationDetailPanel({
   onBookmarkToggle,
   onClose,
 }) {
-  console.log('[AUTOSAVE] ApplicationDetailPanel rendered - applicationId:', initialApplication?.applicationId || initialApplication?._id)
+
   const [startingReview, setStartingReview] = useState(false)
-  const [activeTab, setActiveTab] = useState('review')
+  const [activeTab, setActiveTab] = useState('overview')
   const { token } = theme.useToken()
-  const { message } = App.useApp()
-  const { currentUser } = useAuthSession()
   const screens = Grid.useBreakpoint()
   const isMobile = !screens.lg
+  const { message } = App.useApp()
+  const { currentUser } = useAuthSession()
   const [documentCids, setDocumentCids] = useState({})
   const [_formValues, setFormValues] = useState({})
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -158,40 +161,29 @@ export default function ApplicationDetailPanel({
   const formDefId = application?.formDefinitionId
   const formType = application?.formType || 'permit'
   const businessType = application?.businessRegistration?.businessType || application?.organizationType || null
-  console.log('[AUTOSAVE][HOOK-CALL] Before useFormDefinition - appIdentifier:', appIdentifier)
   const { formDefinition, formDefLoading } = useFormDefinition(appIdentifier, formDefId, formType, businessType)
-  console.log('[AUTOSAVE][HOOK-CALL] After useFormDefinition - formDefinition:', !!formDefinition)
 
-  const handleFillTestData = useCallback(async () => {
-    if (!formDefinition) {
-      message.error('Form definition not loaded yet. Please wait a moment and try again.')
-      return
-    }
-
-    // Generate test data based on form definition (same as business owner)
-    const testData = generateTestDataForDefinition(formDefinition, application?.category)
-    const processedTestData = formDataWithDayjs(testData, formDefinition)
-
-    // Update form directly first
-    form.setFieldsValue(processedTestData)
-
-    // Save to backend
-    try {
-      await permitService.updateFormData(application.applicationId || application._id, {
-        formData: processedTestData
-      })
-      message.success('Test data filled successfully')
-    } catch {
-      message.error('Failed to save test data')
-    }
-  }, [formDefinition, application, form, permitService, message])
-  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationClaim')
+  // Test data hook (shared with business owner)
+  const { doFillTestData } = useApplicationTestData({
+    formDefinition,
+    generalPermitCategory: application?.category,
+    form,
+    setFormValues: (values) => {
+      form.setFieldsValue(values)
+    },
+    isEditing: true,
+    draftBusinessId: null,
+    setDraftBusinessId: () => {},
+    registrationType: application?.formType,
+    message,
+    mode: 'update',
+    updateFn: permitService.updateFormData,
+    applicationId: application.applicationId || application._id,
+  })
   const { handleClaim, handleRelease, isClaimed, stepUpModal: claimStepUpModal } = useApplicationClaim(application, loadApplicationDetails, onReviewComplete, isClaimedByMe)
-  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationFieldActions')
-  const { handleFieldDecision, handleSaveLob } = useApplicationFieldActions(application, setApplication)
+  const { handleFieldDecision } = useApplicationFieldActions(application, setApplication)
 
   // Use extracted hooks - must call useApplicationModals first to get setters
-  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationModals')
   const {
     documentModal, setDocumentModal,
     documentPreview, setDocumentPreview,
@@ -212,7 +204,6 @@ export default function ApplicationDetailPanel({
     returnRequestOther, setReturnRequestOther,
   } = useApplicationModals()
 
-  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationPendingActions')
   const {
     handleReturnConfirm,
     handleRejectClick,
@@ -244,12 +235,10 @@ export default function ApplicationDetailPanel({
     setReturnRequestOther,
     setReturnModalOpen
   )
-  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationBookmarks')
   const { isBookmarked, _bookmarkId, handleBookmarkToggle } = useApplicationBookmarks(application, onBookmarkToggle)
-  console.log('[AUTOSAVE][HOOK-CALL] Before useAudit')
   const appId = application?.applicationId || application?.businessId || application?._id
   const { auditLogs, auditLoading, refresh } = useAudit('application', appId, !!application)
-  
+
   // Transform audit logs to match shared component format
   const transformedLogs = useMemo(() => {
     return auditLogs.map(audit => ({
@@ -274,15 +263,12 @@ export default function ApplicationDetailPanel({
     return user.toLowerCase().includes(searchLower) || eventType.toLowerCase().includes(searchLower)
   }, [])
 
-  console.log('[AUTOSAVE][HOOK-CALL] Before useApplicationAppeals')
   const { latestAppeal, _getActiveAppeal } = useApplicationAppeals(application)
 
-
   useEffect(() => {
-    console.log('[AUTOSAVE][EFFECT-242] initialApplication changed -> setApplication + setActiveTab(review)')
     if (initialApplication) {
       setApplication(initialApplication)
-      setActiveTab('review')
+      setActiveTab('overview')
     }
   }, [initialApplication])
 
@@ -327,41 +313,32 @@ export default function ApplicationDetailPanel({
   const formData = application?.formData && typeof application.formData === 'object' ? application.formData : {}
   const sections = formDefinition ? filterSectionsByFormValues(formDefinition.sections || [], formData) : []
 
-  // Initialize form with existing formData for officer drafts
+  // Initialize form with existing formData for rendering and officer drafts
   // Only run when application is fully loaded (not just the initial prop from parent)
   useEffect(() => {
-    console.log('[AUTOSAVE][EFFECT-292] form-init effect fired (application.formData ref changed)')
-    if (isOfficerDraft && application?.formData && application?.applicationId) {
+    if (application?.formData && application?.applicationId) {
       form.setFieldsValue(application.formData)
       setFormValues(application.formData)
     }
-  }, [isOfficerDraft, application?.applicationId, application?.formData, form])
+  }, [application?.applicationId, application?.formData, form])
 
   // Auto-save for officer drafts with debouncing
   const savingRef = useRef(false)
   const triggerAutoSave = useCallback(async () => {
-    console.log('[AUTOSAVE] triggerAutoSave called - isOfficerDraft:', isOfficerDraft, 'applicationId:', application?.applicationId || application?._id, 'isClaimedByMe:', isClaimedByMe)
-    if (!isOfficerDraft || !application?.applicationId && !application?._id) {
-      console.log('[AUTOSAVE] Aborting: not officer draft or no application ID')
+    if (!isOfficerDraft || (!application?.applicationId && !application?._id)) {
       return
     }
     if (savingRef.current) {
-      console.log('[AUTOSAVE] Aborting: already saving')
       return
     }
     if (!isClaimedByMe) {
-      console.log('[AUTOSAVE] Aborting: not claimed by current officer')
       return
     }
 
-    console.log('[AUTOSAVE] Starting auto-save for application:', application?.applicationId || application?._id)
-
     try {
       savingRef.current = true
-      console.log('[AUTOSAVE] Setting saving state to true')
       setSaving(true)
       const values = form.getFieldsValue(true)
-      console.log('[AUTOSAVE] Got form values:', values)
 
       // Extract CIDs from file fields
       const allFields = (formDefinition?.sections || []).flatMap(s => s.items || [])
@@ -387,17 +364,13 @@ export default function ApplicationDetailPanel({
         formData: cleanedValues,
         documentCids: mergedCids,
       }
-      console.log('[AUTOSAVE] Calling permitService.updateFormData with payload:', payload)
 
       await permitService.updateFormData(application.applicationId || application._id, payload)
-      console.log('[AUTOSAVE] updateFormData succeeded, setting hasUnsavedChanges to false')
       setHasUnsavedChanges(false)
-      console.log('[AUTOSAVE] Auto-save completed successfully')
     } catch (err) {
-      console.error('[AUTOSAVE] Auto-save failed:', err)
+      console.error('Auto-save failed:', err)
       message.error('Failed to save draft')
     } finally {
-      console.log('[AUTOSAVE] Setting saving state to false')
       savingRef.current = false
       setSaving(false)
     }
@@ -405,22 +378,21 @@ export default function ApplicationDetailPanel({
 
   // Handle form values change (for unsaved changes tracking with debounced auto-save)
   const saveTimeoutRef = useRef(null)
-  const handleFormValuesChange = useCallback((changedValues, allValues) => {
-    console.log('[AUTOSAVE] handleFormValuesChange called - changedValues:', changedValues, 'allValues:', allValues)
+  const handleFormValuesChange = useCallback(() => {
+    if (!isOfficerDraft) {
+      return
+    }
+
     setHasUnsavedChanges(true)
-    console.log('[AUTOSAVE] Setting hasUnsavedChanges to true')
 
     // Debounced auto-save on form change
     if (saveTimeoutRef.current) {
-      console.log('[AUTOSAVE] Clearing existing timeout')
       clearTimeout(saveTimeoutRef.current)
     }
-    console.log('[AUTOSAVE] Setting new 5-second timeout for auto-save')
     saveTimeoutRef.current = setTimeout(() => {
-      console.log('[AUTOSAVE] 5-second timeout elapsed, triggering auto-save')
       triggerAutoSave()
     }, 5000) // Save after 5 seconds of inactivity
-  }, [triggerAutoSave])
+  }, [isOfficerDraft, triggerAutoSave])
 
   // Section-based auto-save (like business owner)
   const previousSectionRef = useRef(-1)
@@ -429,8 +401,6 @@ export default function ApplicationDetailPanel({
     if (!hasUnsavedChanges) return
     if (previousSectionRef.current === activeTab) return
     if (saving) return
-
-    console.log('[Officer Draft Auto-save] Section change detected, triggering auto-save from', previousSectionRef.current, 'to', activeTab)
 
     // Auto-save when switching sections
     const autoSave = async () => {
@@ -464,10 +434,73 @@ export default function ApplicationDetailPanel({
   // Other form fields (business info, address, etc.) are owner-controlled and
   // can only be changed via the Edit Request workflow.
   const { keys: allFieldKeys = [], lobSectionIndex } = getReviewableFieldKeys(sections, formData)
-  const fieldReviewDecisions = application?.fieldReviewDecisions && typeof application.fieldReviewDecisions === 'object' ? application.fieldReviewDecisions : {}
+  const fieldReviewDecisions = useMemo(() => {
+    return application?.fieldReviewDecisions && typeof application.fieldReviewDecisions === 'object' ? application.fieldReviewDecisions : {}
+  }, [application?.fieldReviewDecisions])
   const decidedCount = allFieldKeys.filter((k) => fieldReviewDecisions[k]?.status).length
   const allFieldsReviewed = allFieldKeys.length > 0 && decidedCount >= allFieldKeys.length
   const rejectedFields = allFieldKeys.filter((k) => fieldReviewDecisions[k]?.status === 'rejected')
+
+  const isFinalState = isFinalDecision || isWaitingForApplicant || !!pendingAction
+  const isResubmit = application?.status === 'resubmit' || application?.applicationStatus === 'resubmit'
+  const reviewLocked = !isActiveReviewState
+
+  const handleAccept = useCallback((fieldKey, payload = { status: 'accepted' }) => {
+    if (handleFieldDecision) handleFieldDecision(fieldKey, payload)
+  }, [handleFieldDecision])
+
+  const handleReject = useCallback((fieldKey, payload) => {
+    if (handleFieldDecision) handleFieldDecision(fieldKey, payload)
+  }, [handleFieldDecision])
+
+  const renderFieldActions = useCallback((context) => {
+    if (isOfficerDraft) return null
+    const { field, sectionIndex, rowIndex } = context || {}
+    if (sectionIndex === undefined) return null
+    const fieldKey = rowIndex !== undefined
+      ? getFieldKey(sectionIndex, field, rowIndex)
+      : getFieldKey(sectionIndex, field)
+    const decision = fieldReviewDecisions[fieldKey]
+    return (
+      <FieldDecisionControl
+        fieldKey={fieldKey}
+        decision={decision}
+        onAccept={handleAccept}
+        onReject={handleReject}
+        token={token}
+        disabled={reviewLocked}
+        isMobile={isMobile}
+        isFinalState={isFinalState}
+        isResubmit={isResubmit}
+      />
+    )
+  }, [isOfficerDraft, fieldReviewDecisions, handleAccept, handleReject, token, reviewLocked, isMobile, isFinalState, isResubmit])
+
+  const renderLineActions = useCallback((taxCode, lineName) => {
+    if (isOfficerDraft) return null
+    if (!handleFieldDecision && reviewLocked) return null
+    const activities = Array.isArray(formData?.businessActivities) ? formData.businessActivities : []
+    const index = activities.findIndex((activity) => {
+      const line = activity.detailedLine || activity.detailedLineOfBusiness || activity.lineOfBusiness
+      return activity.taxCode === taxCode && line === lineName
+    })
+    if (index === -1) return null
+    const fieldKey = getLobActivityFieldKey(index)
+    const decision = fieldReviewDecisions[fieldKey]
+    return (
+      <FieldDecisionControl
+        fieldKey={fieldKey}
+        decision={decision}
+        onAccept={handleAccept}
+        onReject={handleReject}
+        token={token}
+        disabled={reviewLocked}
+        isMobile={false}
+        isFinalState={isFinalState}
+        hideRequest={true}
+      />
+    )
+  }, [isOfficerDraft, handleFieldDecision, reviewLocked, formData?.businessActivities, fieldReviewDecisions, handleAccept, handleReject, token, isFinalState])
 
   // Helper to get section and field name from fieldKey
   const getFieldDisplayName = (fieldKey) => {
@@ -478,7 +511,7 @@ export default function ApplicationDetailPanel({
     const section = sections[sectionIdx]
     if (!section) return fieldKey
 
-    const sectionName = section?.label || section?.title || `Section ${sectionIdx + 1}`
+    const sectionName = section?.sectionName || section?.label || section?.title || section?.category || `Section ${sectionIdx + 1}`
 
     // Find the field in the section items
     const item = section?.items?.find((item) => item.key === fieldKeyPart || item.label === fieldKeyPart)
@@ -517,95 +550,101 @@ export default function ApplicationDetailPanel({
     isOfficerDraft,
     handleFinishApplication,
     handleDeleteDraft,
-    handleFillTestData,
+    doFillTestData,
     hasUnsavedChanges,
     saving
   )
 
   if (!initialApplication) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 24 }}>
-        <Empty
-          image={<FileTextOutlined style={{ fontSize: 48, color: token.colorTextQuaternary }} />}
-          styles={{ image: { height: 60 } }}
-          description={<Text type="secondary">Select an application to view details</Text>}
-        />
-      </div>
+      <>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 24 }}>
+          <Empty
+            image={<FileTextOutlined style={{ fontSize: 48, color: token.colorTextQuaternary }} />}
+            styles={{ image: { height: 60 } }}
+            description={<Text type="secondary">Select an application to view details</Text>}
+          />
+        </div>
+        <Form form={form} style={{ display: 'none' }} />
+      </>
     )
   }
 
 
 
 
-  const sectionTabs = createSectionTabs(
-    sections,
-    lobSectionIndex,
-    formDefLoading,
-    formData,
-    fieldReviewDecisions,
-    isActiveReviewState,
-    handleFieldDecision,
-    handleSaveLob,
-    token,
-    false, // savingLob - not used in current implementation
-    businessReg,
-    application,
-    setDocumentModal,
-    isFinalDecision || isWaitingForApplicant || !!pendingAction, // isFinalState when in final decision state, waiting for applicant, or has pending action
-    (application?.status === 'resubmit' || application?.applicationStatus === 'resubmit'), // isResubmit
-    isOfficerDraft,
-    isOfficerDraft ? form : null,
-    handleDocumentCid,
-    handleFormValuesChange,
-    isClaimedByMe
-  )
-
-  const reviewTab = {
-    key: 'review',
-    label: (
-      <Space>
-        <FileTextOutlined />
-        <span>Review</span>
-      </Space>
-    ),
-    children: (
-      <ReviewTabContent
-        application={application}
-        formDefLoading={formDefLoading}
-        formDefinition={formDefinition}
-        ownerName={ownerName}
-        token={token}
-        canReview={canReview}
-        allFieldKeys={allFieldKeys}
-        decidedCount={decidedCount}
-        allFieldsReviewed={allFieldsReviewed}
-        _rejectedFields={rejectedFields}
-        fieldReviewDecisions={fieldReviewDecisions}
-        sections={sections}
-        _isWaitingForApplicant={isWaitingForApplicant}
-        _isFinalDecision={isFinalDecision}
-        isDraft={isDraft}
-        _isOfficerDraft={isOfficerDraft}
-        _loadApplicationDetails={loadApplicationDetails}
-        _message={message}
-        ownerIdentity={ownerIdentity}
-        businessReg={businessReg}
-        onShowAppRejectionModal={() => setShowAppRejectionModal(true)}
-        onShowAppealRejectionModal={() => setShowAppealRejectionModal(true)}
-        onShowAppealLetterModal={() => setShowAppealLetterModal(true)}
-        onShowApprovalCommentModal={() => setShowApprovalCommentModal(true)}
-      />
-    ),
-  }
-
-  const tabItems = [
-    reviewTab,
-    ...sectionTabs
+  const mainNavItems = [
+    {
+      key: 'overview',
+      label: (
+        <Space>
+          <FileTextOutlined />
+          <span>Overview</span>
+        </Space>
+      ),
+    },
   ]
 
-  const navItems = tabItems.map((t) => ({ key: t.key, label: t.label }))
-  const mainNavItems = navItems.slice(0, 1)
-  const formNavItems = navItems.slice(1)
+  const formNavItems = sections.map((section, idx) => ({
+    key: `section-${idx}`,
+    label: section.sectionName || section.label || section.title || section.category || `Section ${idx + 1}`,
+  }))
+
+  const activeSectionIndex = activeTab.startsWith('section-')
+    ? parseInt(activeTab.replace('section-', ''), 10)
+    : 0
+
+  const reviewContent = (
+    <ReviewTabContent
+      application={application}
+      formDefLoading={formDefLoading}
+      formDefinition={formDefinition}
+      ownerName={ownerName}
+      token={token}
+      canReview={canReview}
+      allFieldKeys={allFieldKeys}
+      decidedCount={decidedCount}
+      allFieldsReviewed={allFieldsReviewed}
+      _rejectedFields={rejectedFields}
+      fieldReviewDecisions={fieldReviewDecisions}
+      sections={sections}
+      _isWaitingForApplicant={isWaitingForApplicant}
+      _isFinalDecision={isFinalDecision}
+      isDraft={isDraft}
+      _isOfficerDraft={isOfficerDraft}
+      _loadApplicationDetails={loadApplicationDetails}
+      _message={message}
+      ownerIdentity={ownerIdentity}
+      businessReg={businessReg}
+      onShowAppRejectionModal={() => setShowAppRejectionModal(true)}
+      onShowAppealRejectionModal={() => setShowAppealRejectionModal(true)}
+      onShowAppealLetterModal={() => setShowAppealLetterModal(true)}
+      onShowApprovalCommentModal={() => setShowApprovalCommentModal(true)}
+    />
+  )
+
+  const sectionContent = (
+    <FormRenderer
+      definition={{ sections }}
+      form={form}
+      formValues={formData}
+      activeSectionIndex={activeSectionIndex}
+      readOnly={isOfficerDraft ? !isClaimedByMe : true}
+      applicationId={application?.applicationId || application?._id}
+      onDocumentCid={isOfficerDraft ? handleDocumentCid : undefined}
+      documents={application?.lguDocuments || {}}
+      fieldReviewDecisions={isOfficerDraft ? undefined : fieldReviewDecisions}
+      renderFieldActions={isOfficerDraft ? undefined : renderFieldActions}
+      renderLineActions={isOfficerDraft ? undefined : renderLineActions}
+      onViewDocument={setDocumentModal}
+      showAdminNotes={!isOfficerDraft}
+      isMobile={isMobile}
+      onLobChange={isOfficerDraft ? (businessActivities) => {
+        form.setFieldsValue({ businessActivities })
+        setFormValues((prev) => ({ ...prev, businessActivities }))
+      } : undefined}
+    />
+  )
 
   const getSectionStatus = (sectionIdx) => {
     const sectionKeys = sectionIdx === lobSectionIndex
@@ -619,10 +658,16 @@ export default function ApplicationDetailPanel({
     return 'pending'
   }
 
-  const activeContent = tabItems.find((t) => t.key === activeTab)?.children
+  const activeContent = activeTab === 'overview' ? reviewContent : sectionContent
 
   return (
-    <>
+    <Form
+      form={form}
+      onValuesChange={handleFormValuesChange}
+      layout="vertical"
+      requiredMark={false}
+      validateTrigger="onBlur"
+    >
       <ApplicationDetailPanelContent
         loading={loading}
         startingReview={startingReview}
@@ -664,10 +709,11 @@ export default function ApplicationDetailPanel({
       />
       <DocumentPreviewModal
         open={documentModal.open}
-        onClose={() => setDocumentModal({ open: false, url: null, label: '', type: 'other' })}
+        onClose={() => setDocumentModal({ open: false, url: null, label: '', type: 'other', isBlob: false })}
         url={documentModal.url}
         label={documentModal.label}
         type={documentModal.type}
+        isBlob={documentModal.isBlob}
       />
       <RejectApplicationModal
         open={rejectModalOpen}
@@ -749,21 +795,19 @@ export default function ApplicationDetailPanel({
       />
       <DocumentPreviewModal
         open={documentPreview.open}
-        onClose={() => setDocumentPreview({ open: false, url: null, label: '', type: 'other' })}
+        onClose={() => setDocumentPreview({ open: false, url: null, label: '', type: 'other', isBlob: false })}
         url={documentPreview.url}
         label={documentPreview.label}
         type={documentPreview.type}
+        isBlob={documentPreview.isBlob}
       />
       <ViewReasonModal
         open={viewReasonOpen}
         onClose={() => setViewReasonOpen(false)}
         pendingAction={pendingAction}
-        isMobile={isMobile}
       />
       {claimStepUpModal}
       {pendingActionsStepUpModal}
-      {/* Hidden Form to ensure form instance is always connected (prevents React warning) */}
-      <Form form={form} style={{ display: 'none' }} />
-    </>
+    </Form>
   )
 }

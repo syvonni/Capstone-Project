@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
-const Fee = require("../../models/Fee");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const Fee = require("../../../../../shared/models/Fee");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const PostRequirement = require("../../models/PostRequirement");
 const Violation = require("../../models/Violation");
 const Lob = require("../../models/Lob");
@@ -24,9 +24,8 @@ class ClaimableDocumentService {
 
     const documents = await ClaimableDocument.find(filter)
       .select(
-        "name notes category version createdAt updatedAt templateHtml templateImages templateTexts formIds feeId",
+        "name notes category version createdAt updatedAt templateHtml templateImages templateTexts formIds feeId checklistId",
       )
-      .populate("checklistId")
       .sort({ createdAt: -1 });
 
     // Manually populate feeId to avoid model loading issues
@@ -53,25 +52,23 @@ class ClaimableDocumentService {
    * Get document by ID
    */
   async getById(id) {
-    const document = await ClaimableDocument.findById(id)
-      .select(
-        "name notes category version createdAt updatedAt templateHtml templateImages templateTexts formIds feeId checklistId",
-      )
-      .populate("checklistId");
-    
+    const document = await ClaimableDocument.findById(id).select(
+      "name notes category version createdAt updatedAt templateHtml templateImages templateTexts formIds feeId checklistId",
+    );
+
     if (!document) {
       const error = new Error("Document not found");
       error.code = "NOT_FOUND";
       error.status = 404;
       throw error;
     }
-    
+
     // Manually populate feeId to avoid model loading issues
     if (document.feeId) {
       const fee = await Fee.findById(document.feeId);
       document.feeId = fee;
     }
-    
+
     return document;
   }
 
@@ -95,12 +92,9 @@ class ClaimableDocumentService {
       limit: parseInt(limit),
     };
 
-    const response = await auditClient.get(
-      `/api/audit/document/${id}`,
-      {
-        params,
-      },
-    );
+    const response = await auditClient.get(`/api/audit/document/${id}`, {
+      params,
+    });
 
     const logs = response.data.logs || [];
     const pagination = response.data.pagination || {};
@@ -146,12 +140,10 @@ class ClaimableDocumentService {
     } else {
       // Create new draft
       draft = new ClaimableDocument({
-        name:
-          name !== undefined ? String(name).trim() : originalDocument.name,
+        name: name !== undefined ? String(name).trim() : originalDocument.name,
         notes:
           notes !== undefined ? String(notes).trim() : originalDocument.notes,
-        category:
-          category !== undefined ? category : originalDocument.category,
+        category: category !== undefined ? category : originalDocument.category,
         templateHtml:
           templateHtml !== undefined
             ? templateHtml
@@ -283,9 +275,13 @@ class ClaimableDocumentService {
     ];
 
     for (const RelatedModel of relatedCollections) {
-      const existing = await RelatedModel.findOne({ name: String(name).trim() });
+      const existing = await RelatedModel.findOne({
+        name: String(name).trim(),
+      });
       if (existing) {
-        const error = new Error(`Name already exists in ${RelatedModel.modelName}`);
+        const error = new Error(
+          `Name already exists in ${RelatedModel.modelName}`,
+        );
         error.code = "DUPLICATE_NAME";
         error.status = 400;
         throw error;

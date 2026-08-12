@@ -3,9 +3,9 @@ const Lob = require("../../models/Lob");
 const TaxBracket = require("../../models/TaxBracket");
 const PostRequirement = require("../../models/PostRequirement");
 const Violation = require("../../models/Violation");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const Checklist = require("../../models/Checklist");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const InspectionItem = require("../../models/InspectionItem");
 const { auditClient } = require("../../../../../shared/lib/httpClient");
 const { getUserInfo } = require("../../../../../shared/lib/getUserInfo");
@@ -24,7 +24,6 @@ class LobService {
 
     const lobs = await Lob.find(filter)
       .populate("variables")
-      .populate("documents")
       .populate("postRequirements.required")
       .populate("postRequirements.conditional")
       .sort({ category: 1, name: 1 });
@@ -49,7 +48,6 @@ class LobService {
   async getById(id) {
     const lob = await Lob.findById(id)
       .populate("variables")
-      .populate("documents")
       .populate("postRequirements.required")
       .populate("postRequirements.conditional");
 
@@ -113,7 +111,9 @@ class LobService {
     for (const RelatedModel of relatedCollections) {
       const existing = await RelatedModel.findOne({ name });
       if (existing) {
-        const error = new Error(`Name already exists in ${RelatedModel.modelName}`);
+        const error = new Error(
+          `Name already exists in ${RelatedModel.modelName}`,
+        );
         error.code = "DUPLICATE_NAME";
         error.status = 400;
         throw error;
@@ -175,8 +175,8 @@ class LobService {
 
     const userInfo = await getUserInfo(userId);
 
-    LobAuditHelper.logCreated(req, userId, userInfo, lob, "admin").catch((err) =>
-      console.error("Failed to log audit event for LOB create", err),
+    LobAuditHelper.logCreated(req, userId, userInfo, lob, "admin").catch(
+      (err) => console.error("Failed to log audit event for LOB create", err),
     );
 
     return { lob, taxBrackets };
@@ -267,8 +267,15 @@ class LobService {
     oldLob.category = lob.category;
     oldLob.lineOfBusiness = lob.lineOfBusiness;
 
-    LobAuditHelper.logUpdated(req, userId, userInfo, oldLob, lob, "admin").catch(
-      (err) => console.error("Failed to log audit event for LOB update", err),
+    LobAuditHelper.logUpdated(
+      req,
+      userId,
+      userInfo,
+      oldLob,
+      lob,
+      "admin",
+    ).catch((err) =>
+      console.error("Failed to log audit event for LOB update", err),
     );
 
     return lob;

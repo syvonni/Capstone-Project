@@ -1,11 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { Form } from '@/shared/components/AppForm'
-import { MemoryRouter } from 'react-router-dom'
-import { App as AntdApp } from 'antd'
-import { fireEvent } from '@testing-library/react'
-import LoginForm from '../../login/LoginForm.jsx'
-import { renderWithProviders, screen, renderHook, waitFor, act } from '@/test/utils/renderWithProviders.jsx'
-import { ThemeProvider } from '@/shared/theme/ThemeProvider.jsx'
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { Form } from 'antd';
+import { MemoryRouter } from 'react-router-dom';
+import { App as AntdApp } from 'antd';
+import { fireEvent } from '@testing-library/react';
+import LoginForm from '../../login/LoginForm.jsx';
+import {
+  renderWithProviders,
+  screen,
+  renderHook,
+  waitFor,
+  act,
+} from '@/test/utils/renderWithProviders.jsx';
+import { ThemeProvider } from '@/shared/theme/ThemeProvider.jsx';
 
 const TestWrapper = ({ children }) => (
   <MemoryRouter initialEntries={['/']}>
@@ -13,10 +19,10 @@ const TestWrapper = ({ children }) => (
       <AntdApp>{children}</AntdApp>
     </ThemeProvider>
   </MemoryRouter>
-)
+);
 
-const mockNavigate = vi.fn()
-const mockHandleFinish = vi.fn()
+const mockNavigate = vi.fn();
+const mockHandleFinish = vi.fn();
 const mockUseLoginFlow = vi.fn(() => ({
   step: 'form',
   form: undefined,
@@ -25,26 +31,26 @@ const mockUseLoginFlow = vi.fn(() => ({
   verificationProps: null,
   serverLockedUntil: null,
   mfaRequired: false,
-}))
-const mockGetRememberedEmails = vi.fn(() => [])
-const mockGetAllRememberedEmailsWithDetails = vi.fn(() => [])
-const mockClearRememberedEmail = vi.fn()
+}));
+const mockGetRememberedEmails = vi.fn(() => []);
+const mockGetAllRememberedEmailsWithDetails = vi.fn(() => []);
+const mockClearRememberedEmail = vi.fn();
 
 vi.mock('@/features/authentication/utils/validations', () => ({
   loginEmailRules: [],
   loginPasswordRules: [],
-}))
+}));
 
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom')
+  const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
-  }
-})
+  };
+});
 
 vi.mock('@/features/authentication/hooks', async () => {
-  const actual = await vi.importActual('@/features/authentication/hooks')
+  const actual = await vi.importActual('@/features/authentication/hooks');
   return {
     ...actual,
     useLoginFlow: () => mockUseLoginFlow(),
@@ -59,8 +65,8 @@ vi.mock('@/features/authentication/hooks', async () => {
       login: vi.fn(),
       logout: vi.fn(),
     }),
-  }
-})
+  };
+});
 
 vi.mock('@/features/authentication/hooks/useWebAuthn.js', () => ({
   default: () => ({
@@ -68,7 +74,7 @@ vi.mock('@/features/authentication/hooks/useWebAuthn.js', () => ({
     registerPasskey: vi.fn(),
     authenticatePasskey: vi.fn(),
   }),
-}))
+}));
 
 vi.mock('@/shared/notifications.js', () => ({
   useNotifier: () => ({
@@ -80,42 +86,45 @@ vi.mock('@/shared/notifications.js', () => ({
   useAuthNotification: () => ({
     notificationError: null,
   }),
-}))
+}));
 
 vi.mock('@/features/authentication/components/PasskeySignInOptions.jsx', () => ({
   default: () => null,
-}))
+}));
 vi.mock('../PasskeySignInOptions.jsx', () => ({
   default: () => null,
-}))
+}));
 
 describe('LoginForm', () => {
   const getInputByTestId = (testId) => {
-    const container = screen.getByTestId(testId)
-    if (container?.tagName?.toLowerCase() === 'input') return container
-    return container?.querySelector('input')
-  }
+    const container = screen.getByTestId(testId);
+    if (container?.tagName?.toLowerCase() === 'input') return container;
+    return container?.querySelector('input');
+  };
   const waitForFormReset = async () => {
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 80))
-    })
-  }
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+  };
 
-  let form
+  let form;
 
   beforeEach(async () => {
-    mockGetRememberedEmails.mockClear()
-    mockGetAllRememberedEmailsWithDetails.mockClear()
-    mockClearRememberedEmail.mockClear()
-    mockHandleFinish.mockClear()
+    mockGetRememberedEmails.mockClear();
+    mockGetAllRememberedEmailsWithDetails.mockClear();
+    mockClearRememberedEmail.mockClear();
+    mockHandleFinish.mockClear();
     const { result } = renderHook(() => Form.useForm(), {
       wrapper: TestWrapper,
-    })
-    await waitFor(() => {
-      expect(result.current).toBeTruthy()
-      expect(result.current?.[0]).toBeTruthy()
-    }, { timeout: 5000 })
-    form = result.current[0]
+    });
+    await waitFor(
+      () => {
+        expect(result.current).toBeTruthy();
+        expect(result.current?.[0]).toBeTruthy();
+      },
+      { timeout: 5000 }
+    );
+    form = result.current[0];
     mockUseLoginFlow.mockReturnValue({
       step: 'form',
       form,
@@ -132,53 +141,53 @@ describe('LoginForm', () => {
       verificationProps: null,
       serverLockedUntil: null,
       mfaRequired: false,
-    })
-    mockNavigate.mockReset()
-  })
+    });
+    mockNavigate.mockReset();
+  });
 
   it('renders inputs and submits credentials', async () => {
-    const utils = renderWithProviders(<LoginForm />)
+    const utils = renderWithProviders(<LoginForm />);
 
     await waitFor(() => {
-      expect(getInputByTestId('login-email')).toBeTruthy()
-      expect(getInputByTestId('login-password')).toBeTruthy()
-    })
-    await waitForFormReset()
+      expect(getInputByTestId('login-email')).toBeTruthy();
+      expect(getInputByTestId('login-password')).toBeTruthy();
+    });
+    await waitForFormReset();
 
-    const emailInput = getInputByTestId('login-email')
-    const passwordInput = getInputByTestId('login-password')
+    const emailInput = getInputByTestId('login-email');
+    const passwordInput = getInputByTestId('login-password');
 
-    fireEvent.change(emailInput, { target: { value: 'user@example.com' } })
-    fireEvent.change(passwordInput, { target: { value: 'StrongP@ssw0rd' } })
+    fireEvent.change(emailInput, { target: { value: 'user@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'StrongP@ssw0rd' } });
 
-    expect(emailInput.value).toBe('user@example.com')
-    expect(passwordInput.value).toBe('StrongP@ssw0rd')
+    expect(emailInput.value).toBe('user@example.com');
+    expect(passwordInput.value).toBe('StrongP@ssw0rd');
 
     // Cleanup explicitly to avoid lingering timers
-    utils.unmount()
-  }, 10000)
+    utils.unmount();
+  }, 10000);
 
   it('navigates to forgot password on link click', async () => {
-    renderWithProviders(<LoginForm />)
+    renderWithProviders(<LoginForm />);
 
-    fireEvent.click(screen.getByTestId('login-forgot'))
+    fireEvent.click(screen.getByTestId('login-forgot'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/forgot-password')
-  })
+    expect(mockNavigate).toHaveBeenCalledWith('/forgot-password');
+  });
 
   it('handles remember me checkbox', async () => {
-    const utils = renderWithProviders(<LoginForm />)
+    const utils = renderWithProviders(<LoginForm />);
 
     await waitFor(() => {
-      expect(getInputByTestId('login-email')).toBeTruthy()
-    })
-    await waitForFormReset()
+      expect(getInputByTestId('login-email')).toBeTruthy();
+    });
+    await waitForFormReset();
 
-    const rememberCheckbox = screen.getByTestId('login-remember')
-    expect(rememberCheckbox).toBeInTheDocument()
+    const rememberCheckbox = screen.getByTestId('login-remember');
+    expect(rememberCheckbox).toBeInTheDocument();
 
-    utils.unmount()
-  })
+    utils.unmount();
+  });
 
   it('disables submit button during submission', async () => {
     mockUseLoginFlow.mockReturnValue({
@@ -190,17 +199,17 @@ describe('LoginForm', () => {
       verificationProps: null,
       serverLockedUntil: null,
       mfaRequired: false,
-    })
+    });
 
-    renderWithProviders(<LoginForm />)
+    renderWithProviders(<LoginForm />);
 
     await waitFor(() => {
-      expect(getInputByTestId('login-email')).toBeTruthy()
-    })
+      expect(getInputByTestId('login-email')).toBeTruthy();
+    });
 
-    const submitButton = screen.getByTestId('login-submit')
-    expect(submitButton).toBeInTheDocument()
-  })
+    const submitButton = screen.getByTestId('login-submit');
+    expect(submitButton).toBeInTheDocument();
+  });
 
   it('handles server lockout state', async () => {
     mockUseLoginFlow.mockReturnValue({
@@ -212,14 +221,14 @@ describe('LoginForm', () => {
       initialValues: { email: '', password: '', rememberMe: false },
       verificationProps: null,
       mfaRequired: false,
-    })
+    });
 
-    renderWithProviders(<LoginForm />)
+    renderWithProviders(<LoginForm />);
 
     await waitFor(() => {
-      expect(getInputByTestId('login-email')).toBeTruthy()
-    })
-  })
+      expect(getInputByTestId('login-email')).toBeTruthy();
+    });
+  });
 
   it('handles MFA required state', async () => {
     mockUseLoginFlow.mockReturnValue({
@@ -231,12 +240,12 @@ describe('LoginForm', () => {
       initialValues: { email: '', password: '', rememberMe: false },
       verificationProps: null,
       serverLockedUntil: null,
-    })
+    });
 
-    renderWithProviders(<LoginForm />)
+    renderWithProviders(<LoginForm />);
 
     await waitFor(() => {
-      expect(getInputByTestId('login-email')).toBeTruthy()
-    })
-  })
-})
+      expect(getInputByTestId('login-email')).toBeTruthy();
+    });
+  });
+});

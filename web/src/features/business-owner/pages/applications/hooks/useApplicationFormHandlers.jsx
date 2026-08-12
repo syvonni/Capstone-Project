@@ -1,25 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
+import { markWelcomeComplete } from '@/features/authentication/services/authService'
 
 /**
  * Hook for managing form-related handlers
  * @param {Object} params
- * @param {Object} business - Current business/application
- * @param {Object} dashboardState - Dashboard state for managing businesses
+ * @param {Object} application - Current application
+ * @param {Object} dashboardState - Dashboard state for managing applications
  * @param {Object} message - Ant Design message API
  * @returns {Object} Form handlers and state
  */
 export function useApplicationFormHandlers({
-  business,
+  application,
   dashboardState,
   message,
 }) {
-  const [currentFormData, setCurrentFormData] = useState(business?.formData || {})
+  const [currentFormData, setCurrentFormData] = useState(application?.formData || {})
   const formRef = useRef(null)
 
-  // Reset form data when business changes
+  // Reset form data when application changes
   useEffect(() => {
-    setCurrentFormData(business?.formData || {})
-  }, [business?.businessId, business?._id, business?.formData])
+    setCurrentFormData(application?.formData || {})
+  }, [application?.applicationId, application?._id, application?.formData])
 
   const handleFormDataChanged = (newFormDataOrResponse) => {
     // If it's a response from save, extract the formData
@@ -36,55 +37,85 @@ export function useApplicationFormHandlers({
 
   const handleFormSubmitted = (response) => {
     message.success('Application submitted successfully')
-    if (response?.businesses?.length) {
-      dashboardState.setBusinesses(response.businesses)
+
+    const submittedApplication =
+      response?.applicationes?.[0] ||
+      response?.application ||
+      response?.data?.application
+
+    if (submittedApplication) {
+      const appId = submittedApplication.applicationId || submittedApplication._id
+
+      // Merge formData and documents so the response doesn't wipe out values
+      // the backend didn't echo back (e.g., category upload selections).
+      const mergedApplication = {
+        ...application,
+        ...submittedApplication,
+        formData: {
+          ...(application?.formData || {}),
+          ...(submittedApplication?.formData || {}),
+        },
+        lguDocuments: {
+          ...(application?.lguDocuments || {}),
+          ...(submittedApplication?.lguDocuments || submittedApplication?.documents || {}),
+        },
+      }
+
+      dashboardState.setApplications((prev) =>
+        prev.map((app) =>
+          (app.applicationId || app._id) === appId ? { ...app, ...mergedApplication } : app
+        )
+      )
+
+      if (application) {
+        // Viewing/editing an existing draft: keep the panel open but update the app object
+        dashboardState.setEditingApplication(mergedApplication)
+      } else {
+        // Creating a new application: close the add form and select the submitted app
+        dashboardState.setShowAddForm(false)
+        dashboardState.setSelectedApplicationId(appId)
+        dashboardState.setEditingApplication(null)
+      }
+    } else if (application) {
+      // Final submit response did not include the updated application, but we know it was submitted.
+      // The backend uses 'pending_review' as the post-submit status, so mirror that locally
+      // so the form becomes read-only right away.
+      const appId = application.applicationId || application._id
+      const updatedApp = {
+        ...application,
+        applicationStatus: 'pending_review',
+        permitStatus: 'pending_review',
+      }
+      dashboardState.setApplications((prev) =>
+        prev.map((app) =>
+          (app.applicationId || app._id) === appId ? { ...app, ...updatedApp } : app
+        )
+      )
+      dashboardState.setEditingApplication(updatedApp)
     } else {
-      dashboardState.fetchBusinesses()
-    }
-    // Only clear showAddForm if we were in add form mode (not viewing existing application)
-    if (dashboardState?.showAddForm && !business) {
+      // Creating a new application but the response did not include the submitted app.
+      // Close the form and refetch the list so the user sees the updated status.
       dashboardState.setShowAddForm(false)
+      dashboardState.setEditingApplication(null)
     }
+
+    dashboardState.fetchApplications()
   }
 
-  const handleDraftCreated = async (newBusiness) => {
-    dashboardState.setBusinesses(prev => [newBusiness, ...prev.filter(b => (b.businessId || b._id) !== (newBusiness.businessId || newBusiness._id))])
-    dashboardState.setEditingApplication(newBusiness)
-    dashboardState.setSelectedBusinessId(newBusiness.businessId || newBusiness._id)
-    dashboardState.fetchBusinesses()
+  const handleDraftCreated = async (newApplication) => {
+    dashboardState.setApplications(prev => [newApplication, ...prev.filter(app => (app.applicationId || app._id) !== (newApplication.applicationId || newApplication._id))])
+    dashboardState.setEditingApplication(newApplication)
+    dashboardState.setSelectedApplicationId(newApplication.applicationId || newApplication._id)
+    dashboardState.fetchApplications()
 
     // Mark welcome as completed if this draft was created from the welcome modal
     if (dashboardState?.fromWelcomeModal) {
       try {
-        const { getCurrentUser } = await import('@/features/authentication/lib/authEvents')
-        const { authHeaders } = await import('@/lib/authHeaders')
-        const { fetchJsonWithFallback } = await import('@/lib/http')
-        const current = getCurrentUser()
-        const headers = authHeaders(current, null, { 'Content-Type': 'application/json' })
-        await fetchJsonWithFallback('/api/auth/welcome-complete', {
-          method: 'PATCH',
-          headers,
-        })
+        await markWelcomeComplete()
       } catch (err) {
         console.error('Failed to mark welcome as completed:', err)
         // Continue anyway - don't block the user
       }
-    }
-  }
-
-  const handleDeleteDraft = async () => {
-    const businessId = business?.businessId || business?._id
-    if (!businessId) return
-
-    try {
-      const { deleteBusiness } = await import('@/features/business-owner/services/businessProfileService')
-      await deleteBusiness(businessId)
-      dashboardState.setBusinesses(prev => prev.filter(b => (b.businessId || b._id) !== businessId))
-      dashboardState.setSelectedBusinessId(null)
-      message.success('Draft deleted successfully')
-    } catch (err) {
-      console.error('Failed to delete draft:', err)
-      message.error('Failed to delete draft')
     }
   }
 
@@ -95,6 +126,5 @@ export function useApplicationFormHandlers({
     handleFormRef,
     handleFormSubmitted,
     handleDraftCreated,
-    handleDeleteDraft,
   }
 }

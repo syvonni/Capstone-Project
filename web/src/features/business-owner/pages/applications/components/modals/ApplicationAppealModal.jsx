@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Modal, Form, Input, Upload, Typography, List, theme } from 'antd'
+import { Button, Form, Input, Upload, Typography, List, theme } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
-import DocumentPreviewModal from '@/shared/components/DocumentPreviewModal'
+import ResponsiveModal from '@/shared/components/ResponsiveModal'
+import DocumentPreviewModal from '@/shared/components/document/DocumentPreviewModal'
 
 const { Text } = Typography
 const { useToken } = theme
@@ -23,7 +24,7 @@ export default function AppealModal({ open, onCancel, onSubmit, submitting }) {
   const { token } = useToken()
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
       form.resetFields()
       setFileList([])
     }
@@ -66,15 +67,15 @@ export default function AppealModal({ open, onCancel, onSubmit, submitting }) {
 
   return (
     <>
-      <Modal
+      <ResponsiveModal
         title="File Appeal"
         open={open}
         onCancel={handleCancel}
-        onOk={handleOk}
-        okText="Continue to Payment"
-        confirmLoading={submitting}
-        destroyOnHidden
-        cancelButtonProps={{ style: { display: 'none' } }}
+        footer={
+          <Button type="primary" onClick={handleOk} loading={submitting}>
+            Continue to Payment
+          </Button>
+        }
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
           <Form.Item
@@ -126,7 +127,7 @@ export default function AppealModal({ open, onCancel, onSubmit, submitting }) {
             </Text>
           </div>
         </Form>
-      </Modal>
+      </ResponsiveModal>
       <DocumentPreviewModal
         open={previewModal.open}
         onClose={() => setPreviewModal({ open: false, url: null, label: '', type: 'other' })}

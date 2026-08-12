@@ -1,7 +1,7 @@
 const express = require("express");
 const respond = require("../middleware/respond");
 const logger = require("../lib/logger");
-const PermitForm = require("../models/PermitForm");
+const PermitForm = require("../../../../shared/models/PermitForm");
 
 const router = express.Router();
 
@@ -24,13 +24,19 @@ router.get("/", async (req, res) => {
 router.get("/grouped", async (req, res) => {
   try {
     const allForms = await PermitForm.find()
-      .select("formId name description formType category isActive createdAt updatedAt")
+      .select(
+        "formId name description formType category isActive createdAt updatedAt",
+      )
       .sort({ name: 1 })
       .lean();
 
     // Group forms by type
-    const regularPermit = allForms.find(f => f.formType === 'regular' || f.formId === 'unified-business-permit');
-    const temporaryPermitForms = allForms.filter(f => f.formType === 'temporary');
+    const regularPermit = allForms.find(
+      (f) => f.formType === "regular" || f.formId === "unified-business-permit",
+    );
+    const temporaryPermitForms = allForms.filter(
+      (f) => f.formType === "temporary",
+    );
 
     // Build temporary permit structure
     let temporaryPermit = null;
@@ -38,18 +44,18 @@ router.get("/grouped", async (req, res) => {
       // Create parent temporary permit entry
       temporaryPermit = {
         parent: {
-          formId: 'temporary-permit',
-          name: 'Temporary Permit',
-          description: 'For short-term, seasonal, or special event operations',
-          isActive: temporaryPermitForms.some(f => f.isActive),
+          formId: "temporary-permit",
+          name: "Temporary Permit",
+          description: "For short-term, seasonal, or special event operations",
+          isActive: temporaryPermitForms.some((f) => f.isActive),
         },
-        categories: temporaryPermitForms.map(form => ({
+        categories: temporaryPermitForms.map((form) => ({
           formId: form.formId,
           name: form.name,
           description: form.description,
           category: form.category,
           isActive: form.isActive,
-        }))
+        })),
       };
     }
 
@@ -61,7 +67,12 @@ router.get("/grouped", async (req, res) => {
     respond.success(res, 200, result);
   } catch (error) {
     logger.error("Error fetching grouped permit forms:", error);
-    respond.error(res, 500, "fetch_failed", "Failed to fetch grouped permit forms");
+    respond.error(
+      res,
+      500,
+      "fetch_failed",
+      "Failed to fetch grouped permit forms",
+    );
   }
 });
 

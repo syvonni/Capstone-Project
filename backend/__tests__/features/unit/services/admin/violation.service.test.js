@@ -4,9 +4,7 @@ const ViolationService = require("/Users/pendiaz/Documents/my-Projects/Capstone/
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Violation",
 );
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee",
-);
+jest.mock("../../../../../shared/models/Fee");
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/InspectionItem",
 );
@@ -19,9 +17,7 @@ jest.mock(
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Checklist",
 );
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument",
-);
+jest.mock("../../../../../shared/models/ClaimableDocument");
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/shared/lib/getUserInfo",
 );
@@ -30,12 +26,12 @@ jest.mock(
 );
 
 const Violation = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Violation");
-const Fee = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const InspectionItem = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/InspectionItem");
 const PostRequirement = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/PostRequirement");
 const Lob = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob");
 const Checklist = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Checklist");
-const ClaimableDocument = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const {
   getUserInfo,
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/shared/lib/getUserInfo");
@@ -58,24 +54,20 @@ describe("ViolationService", () => {
         { name: "Violation 2", _id: "2" },
       ];
       Violation.find.mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          sort: jest.fn().mockResolvedValue(mockViolations),
-        }),
+        sort: jest.fn().mockResolvedValue(mockViolations),
       });
 
       const result = await ViolationService.list({});
 
       expect(Violation.find).toHaveBeenCalledWith({});
-      expect(result.data).toEqual(mockViolations);
-      expect(result.total).toBe(2);
+      expect(result).toEqual(mockViolations);
+      expect(result).toHaveLength(2);
     });
 
     it("should filter by severity", async () => {
       const mockViolations = [{ name: "Violation 1", _id: "1" }];
       Violation.find.mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          sort: jest.fn().mockResolvedValue(mockViolations),
-        }),
+        sort: jest.fn().mockResolvedValue(mockViolations),
       });
 
       await ViolationService.list({ severity: "minor" });
@@ -86,9 +78,7 @@ describe("ViolationService", () => {
     it("should filter by isActive", async () => {
       const mockViolations = [{ name: "Violation 1", _id: "1" }];
       Violation.find.mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          sort: jest.fn().mockResolvedValue(mockViolations),
-        }),
+        sort: jest.fn().mockResolvedValue(mockViolations),
       });
 
       await ViolationService.list({ isActive: "true" });
@@ -103,9 +93,7 @@ describe("ViolationService", () => {
         name: "Test Violation",
         _id: "507f1f77bcf86cd799439011",
       };
-      Violation.findById.mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockViolation),
-      });
+      Violation.findById.mockResolvedValue(mockViolation);
 
       const result = await ViolationService.getById("507f1f77bcf86cd799439011");
 
@@ -116,9 +104,7 @@ describe("ViolationService", () => {
     });
 
     it("should throw error when violation not found", async () => {
-      Violation.findById.mockReturnValue({
-        populate: jest.fn().mockResolvedValue(null),
-      });
+      Violation.findById.mockResolvedValue(null);
 
       await expect(
         ViolationService.getById("507f1f77bcf86cd799439011"),
@@ -236,9 +222,7 @@ describe("ViolationService", () => {
       };
 
       Violation.findById.mockResolvedValue(mockViolation);
-      Violation.findByIdAndUpdate.mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockViolation),
-      });
+      Violation.findByIdAndUpdate.mockResolvedValue(mockViolation);
 
       const result = await ViolationService.update(
         "507f1f77bcf86cd799439011",
@@ -260,9 +244,7 @@ describe("ViolationService", () => {
       };
 
       Violation.findById.mockResolvedValue(mockViolation);
-      Violation.findByIdAndUpdate.mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockViolation),
-      });
+      Violation.findByIdAndUpdate.mockResolvedValue(mockViolation);
 
       const result = await ViolationService.update(
         "507f1f77bcf86cd799439011",
@@ -285,9 +267,7 @@ describe("ViolationService", () => {
       };
 
       Violation.findById.mockResolvedValue(mockViolation);
-      Violation.findByIdAndUpdate.mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockViolation),
-      });
+      Violation.findByIdAndUpdate.mockResolvedValue(mockViolation);
 
       const result = await ViolationService.update(
         "507f1f77bcf86cd799439011",
@@ -354,6 +334,7 @@ describe("ViolationService", () => {
         { name: "Item 2", _id: "2" },
       ];
 
+      Violation.findById.mockResolvedValue({ _id: "507f1f77bcf86cd799439011" });
       InspectionItem.find.mockReturnValue({
         populate: jest.fn().mockResolvedValue(mockInspectionItems),
       });
@@ -362,8 +343,8 @@ describe("ViolationService", () => {
         "507f1f77bcf86cd799439011",
       );
 
-      expect(result.data).toEqual(mockInspectionItems);
-      expect(result.total).toBe(2);
+      expect(result).toEqual(mockInspectionItems);
+      expect(result).toHaveLength(2);
     });
   });
 });

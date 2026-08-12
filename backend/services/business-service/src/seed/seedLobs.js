@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Lob = require("../models/Lob");
 const Variable = require("../models/Variable");
-const ClaimableDocument = require("../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../shared/models/ClaimableDocument");
 const PostRequirement = require("../models/PostRequirement");
 const {
   variableFeeRules: REFERENCE_VARIABLE_FEE_RULES,
@@ -1095,10 +1095,10 @@ async function seed() {
   console.log("Starting LOB seed...");
 
   // Read LOB data from frontend constants (we'll need to inline this since backend can't import frontend)
-  const LINE_OF_BUSINESS = [
+  const INDUSTRY_CATEGORIES = [
     {
       taxCode: "RET",
-      lineOfBusiness: "retail",
+      industryCategory: "retail",
       detailedLines: [
         {
           name: "Sari-sari store",
@@ -1174,7 +1174,7 @@ async function seed() {
     },
     {
       taxCode: "WHL",
-      lineOfBusiness: "wholesale",
+      industryCategory: "wholesale",
       detailedLines: [
         {
           name: "Agricultural raw materials",
@@ -1206,7 +1206,7 @@ async function seed() {
     },
     {
       taxCode: "FDS",
-      lineOfBusiness: "food_service",
+      industryCategory: "food_service",
       detailedLines: [
         {
           name: "Restaurant / eatery",
@@ -1242,7 +1242,7 @@ async function seed() {
     },
     {
       taxCode: "ACM",
-      lineOfBusiness: "accommodation",
+      industryCategory: "accommodation",
       detailedLines: [
         {
           name: "Hotel / resort",
@@ -1261,7 +1261,7 @@ async function seed() {
     },
     {
       taxCode: "MFG",
-      lineOfBusiness: "manufacturing",
+      industryCategory: "manufacturing",
       detailedLines: [
         {
           name: "Food processing",
@@ -1304,7 +1304,7 @@ async function seed() {
     },
     {
       taxCode: "SVC",
-      lineOfBusiness: "services",
+      industryCategory: "services",
       detailedLines: [
         {
           name: "Salon / barbershop",
@@ -1378,7 +1378,7 @@ async function seed() {
     },
     {
       taxCode: "FIN",
-      lineOfBusiness: "financial",
+      industryCategory: "financial",
       detailedLines: [
         {
           name: "Bank",
@@ -1426,7 +1426,7 @@ async function seed() {
     },
     {
       taxCode: "RES",
-      lineOfBusiness: "real_estate",
+      industryCategory: "real_estate",
       detailedLines: [
         {
           name: "Real estate brokerage",
@@ -1445,7 +1445,7 @@ async function seed() {
     },
     {
       taxCode: "TRN",
-      lineOfBusiness: "transportation",
+      industryCategory: "transportation",
       detailedLines: [
         {
           name: "Trucking / hauling",
@@ -1485,7 +1485,7 @@ async function seed() {
     },
     {
       taxCode: "AGR",
-      lineOfBusiness: "agriculture",
+      industryCategory: "agriculture",
       detailedLines: [
         {
           name: "Crop farming",
@@ -1516,7 +1516,7 @@ async function seed() {
     },
     {
       taxCode: "CON",
-      lineOfBusiness: "construction",
+      industryCategory: "construction",
       detailedLines: [
         {
           name: "General contractor",
@@ -1548,7 +1548,7 @@ async function seed() {
     },
     {
       taxCode: "MIN",
-      lineOfBusiness: "mining",
+      industryCategory: "mining",
       detailedLines: [
         {
           name: "Sand & gravel quarrying",
@@ -1566,7 +1566,7 @@ async function seed() {
     },
     {
       taxCode: "UTL",
-      lineOfBusiness: "utilities",
+      industryCategory: "utilities",
       detailedLines: [
         {
           name: "Water distribution",
@@ -1592,7 +1592,7 @@ async function seed() {
   let updatedCount = 0;
   let lineIndex = 1;
 
-  for (const category of LINE_OF_BUSINESS) {
+  for (const category of INDUSTRY_CATEGORIES) {
     for (const detailedLine of category.detailedLines) {
       const lobName = detailedLine.name;
       const lobDescription = detailedLine.description;
@@ -1639,7 +1639,7 @@ async function seed() {
         const updateData = {
           description: lobDescription,
           notes,
-          lineOfBusiness: category.lineOfBusiness,
+          lineOfBusiness: category.industryCategory,
           variables,
           documents,
           postRequirements,
@@ -1663,7 +1663,7 @@ async function seed() {
           description: lobDescription,
           notes,
           category: category.taxCode,
-          lineOfBusiness: category.lineOfBusiness,
+          lineOfBusiness: category.industryCategory,
           variables,
           documents,
           postRequirements,

@@ -103,7 +103,7 @@ export default function ChecklistsDashboardCard() {
       {
         count: disabledChecklists,
         text: 'Disabled',
-        linkColor: disabledChecklists > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledChecklists > 0 ? {
           title: 'Disabled Checklists',
           items: checklists.filter(c => !c.isActive).map(c => ({
@@ -143,7 +143,7 @@ export default function ChecklistsDashboardCard() {
     })
 
     return links
-  }, [checklists, dataQualityIssues, lastActivity])
+  }, [checklists, lastActivity])
 
   // Issues link - single link with detailed modal
   const issuesLink = useMemo(() => {
@@ -226,7 +226,7 @@ export default function ChecklistsDashboardCard() {
       links.push(performanceLink)
     }
     return links
-  }, [statusLinks, issuesLink, performanceLink, lastActivity])
+  }, [statusLinks, issuesLink, performanceLink])
 
   useEffect(() => {
     fetchAllData()

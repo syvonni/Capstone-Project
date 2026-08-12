@@ -14,5 +14,13 @@ export function getFileUrlFromFormValue(value) {
       console.log('Debug - file object structure:', first)
     }
   }
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    // Handle a single file object (e.g. { cid, url, response })
+    const cid = value.cid || value.ipfsCid || value.response?.cid || value.response?.ipfsCid
+    const url = value.url || value.response?.url
+    if (url && typeof url === 'string') return url
+    if (cid && typeof cid === 'string') return cid
+    console.log('Debug - single file object structure:', value)
+  }
   return ''
 }

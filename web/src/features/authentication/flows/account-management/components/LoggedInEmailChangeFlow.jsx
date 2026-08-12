@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Result, Button, Typography, Alert } from 'antd'
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
 import { ChangeEmailForm, VerificationForm, EmailChangeGracePeriod } from "@/features/authentication"
 import { useLoggedInEmailChangeFlow } from "../hooks/useLoggedInEmailChangeFlow.js"
 import { useSendCodeForCurrentUserConfirm } from "../hooks/useSendCodeForCurrentUserConfirm.js"

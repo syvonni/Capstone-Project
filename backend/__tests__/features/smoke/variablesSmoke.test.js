@@ -16,15 +16,14 @@ const Variable = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/
 
 // Helper function to validate standard response shape
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 // Helper function to validate error response shape
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -64,7 +63,7 @@ describe("Variables Smoke Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(Array.isArray(response.body)).toBe(true);
     });
 
     it("should reject without auth", async () => {

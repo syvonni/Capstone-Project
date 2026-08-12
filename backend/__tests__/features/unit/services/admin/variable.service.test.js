@@ -2,9 +2,7 @@
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Variable",
 );
-jest.mock(
-  "/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Fee",
-);
+jest.mock("../../../../../shared/models/Fee");
 jest.mock(
   "/Users/pendiaz/Documents/my-Projects/Capstone/backend/shared/lib/getUserInfo",
 );
@@ -51,7 +49,6 @@ describe("VariableService", () => {
         { name: "Variable 2", _id: "2" },
       ];
       Variable.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue(mockVariables),
       });
 
@@ -64,7 +61,6 @@ describe("VariableService", () => {
     it("should filter by calculationMethod", async () => {
       const mockVariables = [{ name: "Variable 1", _id: "1" }];
       Variable.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue(mockVariables),
       });
 
@@ -78,7 +74,6 @@ describe("VariableService", () => {
     it("should filter by isActive", async () => {
       const mockVariables = [{ name: "Variable 1", _id: "1" }];
       Variable.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue(mockVariables),
       });
 
@@ -90,7 +85,6 @@ describe("VariableService", () => {
     it("should filter by categories", async () => {
       const mockVariables = [{ name: "Variable 1", _id: "1" }];
       Variable.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue(mockVariables),
       });
 
@@ -109,9 +103,7 @@ describe("VariableService", () => {
         _id: "507f1f77bcf86cd799439011",
       };
       Variable.findById.mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          populate: jest.fn().mockResolvedValue(mockVariable),
-        }),
+        populate: jest.fn().mockResolvedValue(mockVariable),
       });
 
       const result = await VariableService.getById("507f1f77bcf86cd799439011");
@@ -136,9 +128,7 @@ describe("VariableService", () => {
 
     it("should throw error when variable not found", async () => {
       Variable.findById.mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          populate: jest.fn().mockResolvedValue(null),
-        }),
+        populate: jest.fn().mockResolvedValue(null),
       });
 
       await expect(
@@ -157,7 +147,6 @@ describe("VariableService", () => {
     it("should return variables by valid fee ID", async () => {
       const mockVariables = [{ name: "Variable 1", _id: "1" }];
       Variable.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue(mockVariables),
       });
 
@@ -188,7 +177,6 @@ describe("VariableService", () => {
     it("should return variables by valid variable fee rule ID", async () => {
       const mockVariables = [{ name: "Variable 1", _id: "1" }];
       Variable.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue(mockVariables),
       });
 

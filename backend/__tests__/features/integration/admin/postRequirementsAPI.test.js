@@ -16,14 +16,13 @@ const {
 const PostRequirement = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/PostRequirement");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -63,7 +62,7 @@ describe("Post Requirements API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
 
     it("should return list of post requirements when post requirements exist", async () => {
@@ -80,7 +79,7 @@ describe("Post Requirements API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -108,7 +107,7 @@ describe("Post Requirements API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data._id).toBe(testPostRequirement._id.toString());
+      expect(response.body._id).toBe(testPostRequirement._id.toString());
     });
   });
 
@@ -169,7 +168,7 @@ describe("Post Requirements API Integration Tests", () => {
         .send(postData);
 
       expect(response.status).toBe(201);
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should validate missing name", async () => {
@@ -238,7 +237,7 @@ describe("Post Requirements API Integration Tests", () => {
         .send({ notes: "Updated notes" })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should update description field", async () => {
@@ -255,7 +254,7 @@ describe("Post Requirements API Integration Tests", () => {
         .send({ description: "Updated description" })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should update isActive field", async () => {
@@ -272,7 +271,7 @@ describe("Post Requirements API Integration Tests", () => {
         .send({ isActive: false })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -292,7 +291,7 @@ describe("Post Requirements API Integration Tests", () => {
         .set(getStepUpHeaders(adminToken, adminUser))
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
   });
 

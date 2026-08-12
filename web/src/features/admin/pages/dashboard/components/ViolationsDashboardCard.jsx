@@ -103,7 +103,7 @@ export default function ViolationsDashboardCard() {
       {
         count: disabledViolations,
         text: 'Disabled',
-        linkColor: disabledViolations > 0 ? 'warning' : 'gray',
+        linkColor: 'gray',
         modalContent: disabledViolations > 0 ? {
           title: 'Disabled Violations',
           items: violations.filter(v => !v.isActive).map(v => ({
@@ -143,7 +143,7 @@ export default function ViolationsDashboardCard() {
     })
 
     return links
-  }, [violations, dataQualityIssues, lastActivity])
+  }, [violations, lastActivity])
 
   // Issues link - single link with detailed modal
   const issuesLink = useMemo(() => {
@@ -226,7 +226,7 @@ export default function ViolationsDashboardCard() {
       links.push(performanceLink)
     }
     return links
-  }, [statusLinks, issuesLink, performanceLink, lastActivity])
+  }, [statusLinks, issuesLink, performanceLink])
 
   useEffect(() => {
     fetchAllData()

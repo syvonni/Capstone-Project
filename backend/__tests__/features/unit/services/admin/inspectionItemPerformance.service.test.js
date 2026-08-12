@@ -1,11 +1,11 @@
-const InspectionItemPerformanceService = require("../../../../services/business-service/src/services/admin/inspectionItemPerformance.service");
+const InspectionItemPerformanceService = require("../../../../../services/business-service/src/services/admin/inspectionItemPerformance.service");
 
 // Mock the dependencies
 jest.mock(
-  "../../../../services/business-service/src/lib/performanceHelpers/inspectionItemPerformanceHelper",
+  "../../../../../services/business-service/src/lib/performanceHelpers/inspectionItemPerformanceHelper",
 );
 
-const InspectionItemPerformanceHelper = require("../../../../services/business-service/src/lib/performanceHelpers/inspectionItemPerformanceHelper");
+const InspectionItemPerformanceHelper = require("../../../../../services/business-service/src/lib/performanceHelpers/inspectionItemPerformanceHelper");
 
 describe("InspectionItemPerformanceService", () => {
   beforeEach(() => {

@@ -17,7 +17,7 @@ dotenv.config({
   path: path.resolve(__dirname, "..", "..", "..", "..", ".env"),
 });
 
-const Fee = require("../models/Fee");
+const Fee = require("../../../../shared/models/Fee");
 const {
   generalApplicationFees,
   appealFees,

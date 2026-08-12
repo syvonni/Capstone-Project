@@ -71,13 +71,15 @@ class WalkInApplicationService {
       : "Officer";
 
     // Fetch active permit form
-    const PermitForm = require("../../models/PermitForm");
+    const PermitForm = require("../../../../../shared/models/PermitForm");
     const permitForm = await PermitForm.findOne({
       formType: permitType,
       isActive: true,
     });
     if (!permitForm) {
-      const error = new Error("No active permit form found for this permit type");
+      const error = new Error(
+        "No active permit form found for this permit type",
+      );
       error.code = "NOT_FOUND";
       error.status = 404;
       throw error;
@@ -148,7 +150,9 @@ class WalkInApplicationService {
     }
 
     if (application.applicationStatus !== "officer_draft") {
-      const error = new Error("Only officer draft applications can be finished");
+      const error = new Error(
+        "Only officer draft applications can be finished",
+      );
       error.code = "INVALID_STATUS";
       error.status = 400;
       throw error;
@@ -162,8 +166,13 @@ class WalkInApplicationService {
     }
 
     // Validate that form is complete (basic check - formData should not be empty)
-    if (!application.formData || Object.keys(application.formData).length === 0) {
-      const error = new Error("Application form must be completed before finishing");
+    if (
+      !application.formData ||
+      Object.keys(application.formData).length === 0
+    ) {
+      const error = new Error(
+        "Application form must be completed before finishing",
+      );
       error.code = "FORM_INCOMPLETE";
       error.status = 400;
       throw error;
@@ -195,7 +204,10 @@ class WalkInApplicationService {
 
     // Send approval email (fire and forget)
     try {
-      await applicationEmailService.sendApplicationEmail(application, "approved");
+      await applicationEmailService.sendApplicationEmail(
+        application,
+        "approved",
+      );
     } catch (err) {
       console.error("Failed to send approval email:", err);
     }

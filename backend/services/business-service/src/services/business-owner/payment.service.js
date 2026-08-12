@@ -1,30 +1,74 @@
 const mongoose = require("mongoose");
 const Payment = require("../../models/Payment");
-const BusinessProfile = require("../../models/BusinessProfile");
+const Business = require("../../models/Business");
+const Application = require("../../models/Application");
 const { logAuditEvent } = require("../../lib/auditClient");
 
 class PaymentService {
   /**
-   * Helper: build query that matches either businessId or subdoc _id
+   * Helper: resolve the entity an identifier points to.
+   * The identifier may be a Business._id, Business.businessId,
+   * Application._id or Application.applicationId.
+   * Returns { type, id, userId } or null.
    */
-  buildBusinessLookupQuery(identifier) {
+  async _resolveEntity(identifier, userId) {
     const target = String(identifier || "");
-    const clauses = [{ "businesses.businessId": target }];
-    if (mongoose.Types.ObjectId.isValid(target)) {
-      clauses.push({ "businesses._id": new mongoose.Types.ObjectId(target) });
-    }
-    return clauses.length === 1 ? clauses[0] : { $or: clauses };
-  }
+    if (!target) return null;
 
-  /**
-   * Helper: find business in profile by either businessId or subdoc _id
-   */
-  findBusinessInProfile(profile, identifier) {
-    if (!profile?.businesses) return null;
-    const target = String(identifier);
-    return profile.businesses.find(
-      (b) => b.businessId === target || String(b._id) === target,
-    );
+    const isObjectId = mongoose.Types.ObjectId.isValid(target);
+
+    // 1. Try Business by _id
+    if (isObjectId) {
+      const business = await Business.findById(target).lean();
+      if (business) {
+        return { type: "business", id: business._id, userId: business.userId };
+      }
+    }
+
+    // 2. Try Business by businessId string
+    const business = await Business.findOne({ businessId: target }).lean();
+    if (business) {
+      return { type: "business", id: business._id, userId: business.userId };
+    }
+
+    // 3. Try Application by _id
+    if (isObjectId) {
+      const application = await Application.findById(target).lean();
+      if (application) {
+        return {
+          type: "application",
+          id: application._id,
+          userId: application.userId,
+        };
+      }
+    }
+
+    // 4. Try Application by applicationId string
+    const application = await Application.findOne({ applicationId: target }).lean();
+    if (application) {
+      return {
+        type: "application",
+        id: application._id,
+        userId: application.userId,
+      };
+    }
+
+    // 5. Optional owner-wide fallback: if a userId is supplied, search their applications
+    if (userId) {
+      const ownerApplication = await Application.findOne({
+        userId,
+        $or: [{ _id: target }, { applicationId: target }],
+      }).lean();
+      if (ownerApplication) {
+        return {
+          type: "application",
+          id: ownerApplication._id,
+          userId: ownerApplication.userId,
+        };
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -41,40 +85,32 @@ class PaymentService {
    * List all payments for the authenticated user
    */
   async list(userId, query) {
-    const { page = 1, limit = 20, status, paymentType, businessId } = query;
-    const filter = businessId
-      ? { businessId: String(businessId) }
-      : { userId };
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      paymentType,
+      businessId,
+      applicationId,
+    } = query;
+    const filter = { userId };
 
-    // businessId can be either businesses.businessId or the business subdocument _id,
-    // depending on which module generated the payment record. Resolve both aliases so
-    // owners and officers see the same payment rows regardless of identifier form.
     if (businessId) {
-      const targetBusinessId = String(businessId);
-      let profile = await BusinessProfile.findOne(
-        this.buildBusinessLookupQuery(targetBusinessId),
-      )
-        .select("businesses.businessId businesses._id")
-        .lean();
-
-      // Fallback for business owners: if direct lookup misses, load owner's profile and
-      // resolve aliases from the decrypted in-memory businesses list.
-      if (!profile && userId) {
-        profile = await BusinessProfile.findOne({ userId })
-          .select("businesses.businessId businesses._id")
-          .lean();
+      const entity = await this._resolveEntity(businessId, userId);
+      if (entity?.type === "business") {
+        filter.businessId = entity.id;
+      } else if (entity?.type === "application") {
+        filter.applicationId = entity.id;
+      } else if (mongoose.Types.ObjectId.isValid(businessId)) {
+        // Legacy / direct id fallback
+        filter.businessId = new mongoose.Types.ObjectId(businessId);
       }
+    }
 
-      if (profile) {
-        const business = this.findBusinessInProfile(profile, targetBusinessId);
-        const aliases = new Set([targetBusinessId]);
-        if (business?.businessId) aliases.add(String(business.businessId));
-        if (business?._id) aliases.add(String(business._id));
-
-        const aliasList = Array.from(aliases);
-        filter.businessId =
-          aliasList.length > 1 ? { $in: aliasList } : aliasList[0];
-      }
+    if (applicationId) {
+      filter.applicationId = mongoose.Types.ObjectId.isValid(applicationId)
+        ? new mongoose.Types.ObjectId(applicationId)
+        : applicationId;
     }
 
     if (status) filter.status = status;
@@ -126,13 +162,36 @@ class PaymentService {
    * Payment history with filters
    */
   async getHistory(userId, query) {
-    const { page = 1, limit = 20, dateFrom, dateTo, businessId } = query;
+    const {
+      page = 1,
+      limit = 20,
+      dateFrom,
+      dateTo,
+      businessId,
+      applicationId,
+    } = query;
     const filter = {
       userId,
       status: { $in: ["paid", "refunded"] },
     };
 
-    if (businessId) filter.businessId = businessId;
+    if (businessId) {
+      const entity = await this._resolveEntity(businessId, userId);
+      if (entity?.type === "business") {
+        filter.businessId = entity.id;
+      } else if (entity?.type === "application") {
+        filter.applicationId = entity.id;
+      } else if (mongoose.Types.ObjectId.isValid(businessId)) {
+        filter.businessId = new mongoose.Types.ObjectId(businessId);
+      }
+    }
+
+    if (applicationId) {
+      filter.applicationId = mongoose.Types.ObjectId.isValid(applicationId)
+        ? new mongoose.Types.ObjectId(applicationId)
+        : applicationId;
+    }
+
     if (dateFrom || dateTo) {
       filter.paidAt = {};
       if (dateFrom) filter.paidAt.$gte = new Date(dateFrom);
@@ -188,7 +247,7 @@ class PaymentService {
       metadata,
     } = paymentData;
 
-    if (!businessId || !paymentType || !amount) {
+    if (businessId == null || paymentType == null || amount == null) {
       const error = new Error(
         "businessId, paymentType, and amount are required",
       );
@@ -204,50 +263,38 @@ class PaymentService {
       throw error;
     }
 
-    // Find business profile - try by businessId/subdoc _id first (works for both owner and officer)
-    let profile = await BusinessProfile.findOne(
-      this.buildBusinessLookupQuery(businessId),
-    );
-
-    // Fallback: try by current user (business owner case where businessId doesn't match)
-    if (!profile) {
-      profile = await BusinessProfile.findOne({ userId });
-    }
-
-    if (!profile) {
-      const error = new Error("Business profile not found");
-      error.code = "PROFILE_NOT_FOUND";
+    const entity = await this._resolveEntity(businessId, userId);
+    if (!entity) {
+      const error = new Error("Business or application not found");
+      error.code = "ENTITY_NOT_FOUND";
       error.status = 404;
       throw error;
     }
 
-    const business = this.findBusinessInProfile(profile, businessId);
-    if (!business) {
-      const error = new Error("Business not found");
-      error.code = "BUSINESS_NOT_FOUND";
-      error.status = 404;
-      throw error;
+    const paymentPayload = {
+      paymentId: await this.generatePaymentId(),
+      userId: entity.userId, // Use the entity owner, not the current user
+      paymentType,
+      description: description || "",
+      amount,
+      dueDate: dueDate ? new Date(dueDate) : null,
+      relatedEntityType: relatedEntityType || null,
+      relatedEntityId: relatedEntityId || "",
+      breakdown: breakdown || {},
+      feeBreakdown: feeBreakdown || [],
+      metadata: metadata || {},
+      status: "pending",
+    };
+
+    if (entity.type === "business") {
+      paymentPayload.businessId = entity.id;
+    } else {
+      paymentPayload.applicationId = entity.id;
     }
 
-    const id = await this.generatePaymentId();
     let payment;
     try {
-      payment = await Payment.create({
-        paymentId: id,
-        userId: profile.userId, // Use the business owner's userId, not the current user
-        businessId,
-        businessProfileId: profile._id,
-        paymentType,
-        description: description || "",
-        amount,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        relatedEntityType: relatedEntityType || null,
-        relatedEntityId: relatedEntityId || "",
-        breakdown: breakdown || {},
-        feeBreakdown: feeBreakdown || [],
-        metadata: metadata || {},
-        status: "pending",
-      });
+      payment = await Payment.create(paymentPayload);
     } catch (err) {
       // Handle duplicate key error (E11000) - payment already exists
       if (err.code === 11000 || err.message?.includes("E11000")) {
@@ -401,6 +448,7 @@ class PaymentService {
       amount: payment.amount,
       paidAt: payment.paidAt,
       businessId: payment.businessId,
+      applicationId: payment.applicationId,
       description: payment.description,
       paymentMethod: payment.paymentMethod,
     };
@@ -416,9 +464,11 @@ class PaymentService {
       fees = [],
       transactionName = "Business Permit Application",
       paymentType = "registration_fee",
+      receiptNumber: requestedReceiptNumber,
+      paymentId: requestedPaymentId,
     } = mockData;
 
-    if (!businessId || !amount) {
+    if (businessId == null || amount == null) {
       const error = new Error("businessId and amount are required");
       error.code = "VALIDATION_ERROR";
       error.status = 400;
@@ -432,27 +482,16 @@ class PaymentService {
       throw error;
     }
 
-    // Find business profile
-    let profile = await BusinessProfile.findOne(
-      this.buildBusinessLookupQuery(businessId),
-    );
-
-    // Fallback: try by current user
-    if (!profile) {
-      profile = await BusinessProfile.findOne({ userId });
+    const entity = await this._resolveEntity(businessId, userId);
+    if (!entity) {
+      const error = new Error("Business or application not found");
+      error.code = "ENTITY_NOT_FOUND";
+      error.status = 404;
+      throw error;
     }
 
-    // If no profile exists, create one for the user (for draft applications)
-    if (!profile) {
-      profile = await BusinessProfile.create({ userId });
-    }
-
-    const business = this.findBusinessInProfile(profile, businessId);
-    // For draft applications, business may not exist yet - that's okay
-    // We'll create the payment record without a business reference
-
-    const id = await this.generatePaymentId();
-    const receiptNumber = `RCP-${Date.now()}`;
+    const id = requestedPaymentId || await this.generatePaymentId();
+    const receiptNumber = requestedReceiptNumber || `RCP-${Date.now()}`;
 
     // Map fee breakdown to payment model format
     const feeBreakdown = fees.map((fee) => ({
@@ -461,33 +500,39 @@ class PaymentService {
       type: fee.type || "other",
     }));
 
+    const paymentPayload = {
+      paymentId: id,
+      userId: entity.userId,
+      paymentType,
+      description: transactionName,
+      amount,
+      status: "paid",
+      paymentMethod: "demo_auto",
+      paidAt: new Date(),
+      receiptNumber,
+      breakdown: {
+        baseFee: amount,
+        surcharge: 0,
+        penalty: 0,
+        discount: 0,
+        tax: 0,
+      },
+      feeBreakdown,
+      metadata: {
+        isMockPayment: true,
+        transactionName,
+      },
+    };
+
+    if (entity.type === "business") {
+      paymentPayload.businessId = entity.id;
+    } else {
+      paymentPayload.applicationId = entity.id;
+    }
+
     let payment;
     try {
-      payment = await Payment.create({
-        paymentId: id,
-        userId: profile.userId,
-        businessId,
-        businessProfileId: profile._id,
-        paymentType,
-        description: transactionName,
-        amount,
-        status: "paid",
-        paymentMethod: "demo_auto",
-        paidAt: new Date(),
-        receiptNumber,
-        breakdown: {
-          baseFee: amount,
-          surcharge: 0,
-          penalty: 0,
-          discount: 0,
-          tax: 0,
-        },
-        feeBreakdown,
-        metadata: {
-          isMockPayment: true,
-          transactionName,
-        },
-      });
+      payment = await Payment.create(paymentPayload);
 
       logAuditEvent(
         "mock_payment_recorded",

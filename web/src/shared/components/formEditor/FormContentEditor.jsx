@@ -1,5 +1,5 @@
 import { useState, useImperativeHandle, forwardRef, useEffect, useCallback, useRef } from 'react'
-import { Button, theme } from 'antd'
+import { Button, theme, Modal } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { createId } from './utils'
 import SectionPanel from './SectionPanel'
@@ -23,6 +23,7 @@ function hydrateFromApi(apiSections) {
       label: item.label || '',
       type: item.type || 'file',
       key: item.key || '',
+      isBusinessName: item.isBusinessName ?? false,
       required: item.required ?? true,
       helpText: item.helpText || item.notes || '',
       placeholder: item.placeholder || '',
@@ -72,6 +73,7 @@ function dehydrateForApi(editorSections) {
           label: item.label,
           type: item.type || 'file',
           key: item.key || '',
+          isBusinessName: item.isBusinessName ?? false,
           required: item.required,
           notes: item.helpText || '',
           helpText: item.helpText || '',
@@ -138,6 +140,9 @@ const FormContentEditor = forwardRef(function FormContentEditor({ initialSection
     }
     return []
   })
+
+  // Track pending business-name change for confirmation modal
+  const [businessNameConfirm, setBusinessNameConfirm] = useState(null)
 
   // Keep onChange ref up to date
   useEffect(() => {
@@ -206,6 +211,66 @@ const FormContentEditor = forwardRef(function FormContentEditor({ initialSection
     ])
   }, [])
 
+  const findBusinessNameField = useCallback(() => {
+    for (let sIdx = 0; sIdx < sections.length; sIdx++) {
+      const section = sections[sIdx]
+      for (let iIdx = 0; iIdx < (section.items || []).length; iIdx++) {
+        if (section.items[iIdx].isBusinessName) {
+          return { sectionIdx: sIdx, itemIdx: iIdx, field: section.items[iIdx] }
+        }
+      }
+    }
+    return null
+  }, [sections])
+
+  const applyBusinessNameChange = useCallback((sectionIdx, itemIdx, isBusinessName, current) => {
+    setSections((prev) => {
+      const next = [...prev]
+      // Clear existing business name field if switching
+      if (current && (current.sectionIdx !== sectionIdx || current.itemIdx !== itemIdx)) {
+        const prevSection = { ...next[current.sectionIdx], items: [...next[current.sectionIdx].items] }
+        prevSection.items[current.itemIdx] = { ...prevSection.items[current.itemIdx], isBusinessName: false }
+        next[current.sectionIdx] = prevSection
+      }
+      // Set new value
+      const newSection = { ...next[sectionIdx], items: [...next[sectionIdx].items] }
+      newSection.items[itemIdx] = { ...newSection.items[itemIdx], isBusinessName }
+      next[sectionIdx] = newSection
+      return next
+    })
+  }, [])
+
+  const handleBusinessNameChange = useCallback((sectionIdx, itemIdx, isBusinessName) => {
+    const current = findBusinessNameField()
+
+    if (!isBusinessName) {
+      applyBusinessNameChange(sectionIdx, itemIdx, false, current)
+      return
+    }
+
+    if (!current || (current.sectionIdx === sectionIdx && current.itemIdx === itemIdx)) {
+      applyBusinessNameChange(sectionIdx, itemIdx, true, current)
+      return
+    }
+
+    setBusinessNameConfirm({
+      sectionIdx,
+      itemIdx,
+      currentSectionIdx: current.sectionIdx,
+      currentItemIdx: current.itemIdx,
+      currentLabel: current.field.label || 'another field',
+      newLabel: sections[sectionIdx]?.items?.[itemIdx]?.label || 'this field',
+    })
+  }, [findBusinessNameField, applyBusinessNameChange, sections])
+
+  const handleConfirmBusinessNameChange = useCallback(() => {
+    if (!businessNameConfirm) return
+    const { sectionIdx, itemIdx } = businessNameConfirm
+    const current = findBusinessNameField()
+    applyBusinessNameChange(sectionIdx, itemIdx, true, current)
+    setBusinessNameConfirm(null)
+  }, [businessNameConfirm, findBusinessNameField, applyBusinessNameChange])
+
   return (
     <div>
       {sections.map((section, idx) => (
@@ -214,6 +279,7 @@ const FormContentEditor = forwardRef(function FormContentEditor({ initialSection
           section={section}
           sectionIndex={idx}
           onUpdate={(updated) => updateSection(idx, updated)}
+          onBusinessNameChange={handleBusinessNameChange}
           onDelete={() => deleteSection(idx)}
           onMoveUp={() => moveSection(idx, -1)}
           onMoveDown={() => moveSection(idx, 1)}
@@ -235,6 +301,23 @@ const FormContentEditor = forwardRef(function FormContentEditor({ initialSection
           Add section
         </Button>
       )}
+
+      <Modal
+        title="Change business name field?"
+        open={!!businessNameConfirm}
+        onOk={handleConfirmBusinessNameChange}
+        onCancel={() => setBusinessNameConfirm(null)}
+        okText="Switch business name field"
+        cancelText="Cancel"
+      >
+        <p>Only one field can be used as the business name.</p>
+        {businessNameConfirm && (
+          <p>
+            This will replace <strong>{businessNameConfirm.currentLabel}</strong> with{' '}
+            <strong>{businessNameConfirm.newLabel}</strong>.
+          </p>
+        )}
+      </Modal>
     </div>
   )
 })

@@ -10,7 +10,6 @@ const { useBreakpoint } = Grid
 export default function BaseSidebarLayout({
   children,
   sidebar,
-  viewNotificationsPath = '/notifications',
   hideNotifications = false,
   hideProfileSettings = false,
   showPageHeader = true,
@@ -73,7 +72,6 @@ export default function BaseSidebarLayout({
             <LayoutPageHeader
               pageTitle={pageTitle}
               pageIcon={pageIcon}
-              viewNotificationsPath={viewNotificationsPath}
               hideNotifications={hideNotifications}
               hideProfileSettings={hideProfileSettings}
               showPageHeader={showPageHeader}

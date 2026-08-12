@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useUndoRedo } from '@/shared/hooks/useUndoRedo'
+import useUndoRedo from '@/shared/hooks/useUndoRedo'
 import { useFormChangeTracking } from '@/shared/hooks/useFormChangeTracking'
 import { useAudit } from '@/shared/audit/hooks/useAudit'
 
@@ -25,7 +25,7 @@ export function useForms() {
   const [saving, setSaving] = useState(false)
 
   // Use shared hooks
-  const { canUndo, canRedo, undo, redo, pushToHistory } = useUndoRedo()
+  const { canUndo, canRedo, undo, redo, pushHistory } = useUndoRedo()
   const { hasUnsavedChanges, markAsDirty, markAsClean } = useFormChangeTracking()
   const { logAuditEvent } = useAudit()
 
@@ -35,9 +35,9 @@ export function useForms() {
         form.id === formId ? { ...form, ...updates } : form
       )
     )
-    pushToHistory(forms)
+    pushHistory(forms)
     markAsDirty()
-  }, [forms, pushToHistory, markAsDirty])
+  }, [forms, pushHistory, markAsDirty])
 
   const saveForm = useCallback(async (formId) => {
     setSaving(true)

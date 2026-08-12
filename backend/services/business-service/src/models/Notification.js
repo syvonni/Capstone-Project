@@ -41,7 +41,6 @@ const NotificationSchema = new mongoose.Schema(
       type: String,
       enum: [
         "business_application",
-        "business_renewal",
         "payment",
         "inspection",
         "system",

@@ -12,6 +12,7 @@ const ApplicationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
     businessId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -26,7 +27,7 @@ const ApplicationSchema = new mongoose.Schema(
     // Application workflow
     applicationType: {
       type: String,
-      enum: ["", "new", "renewal", "amendment", "additional"],
+      enum: ["", "new"],
       default: "new",
     },
     applicationStatus: {
@@ -338,6 +339,9 @@ const ApplicationSchema = new mongoose.Schema(
         retryCount: { type: Number, default: 0 },
         lastAttempt: { type: Date, default: null },
         lockUntil: { type: Date, default: null },
+        to: { type: String, default: null },
+        provider: { type: String, default: null },
+        error: { type: String, default: null },
       },
       resubmitted: {
         status: {
@@ -348,6 +352,9 @@ const ApplicationSchema = new mongoose.Schema(
         retryCount: { type: Number, default: 0 },
         lastAttempt: { type: Date, default: null },
         lockUntil: { type: Date, default: null },
+        to: { type: String, default: null },
+        provider: { type: String, default: null },
+        error: { type: String, default: null },
       },
       approved: {
         status: {
@@ -358,6 +365,9 @@ const ApplicationSchema = new mongoose.Schema(
         retryCount: { type: Number, default: 0 },
         lastAttempt: { type: Date, default: null },
         lockUntil: { type: Date, default: null },
+        to: { type: String, default: null },
+        provider: { type: String, default: null },
+        error: { type: String, default: null },
       },
       rejected: {
         status: {
@@ -368,6 +378,9 @@ const ApplicationSchema = new mongoose.Schema(
         retryCount: { type: Number, default: 0 },
         lastAttempt: { type: Date, default: null },
         lockUntil: { type: Date, default: null },
+        to: { type: String, default: null },
+        provider: { type: String, default: null },
+        error: { type: String, default: null },
       },
       returned: {
         status: {
@@ -378,6 +391,9 @@ const ApplicationSchema = new mongoose.Schema(
         retryCount: { type: Number, default: 0 },
         lastAttempt: { type: Date, default: null },
         lockUntil: { type: Date, default: null },
+        to: { type: String, default: null },
+        provider: { type: String, default: null },
+        error: { type: String, default: null },
       },
       appeal_denied: {
         status: {
@@ -388,6 +404,9 @@ const ApplicationSchema = new mongoose.Schema(
         retryCount: { type: Number, default: 0 },
         lastAttempt: { type: Date, default: null },
         lockUntil: { type: Date, default: null },
+        to: { type: String, default: null },
+        provider: { type: String, default: null },
+        error: { type: String, default: null },
       },
       appeal_approved: {
         status: {
@@ -398,6 +417,9 @@ const ApplicationSchema = new mongoose.Schema(
         retryCount: { type: Number, default: 0 },
         lastAttempt: { type: Date, default: null },
         lockUntil: { type: Date, default: null },
+        to: { type: String, default: null },
+        provider: { type: String, default: null },
+        error: { type: String, default: null },
       },
     },
   },

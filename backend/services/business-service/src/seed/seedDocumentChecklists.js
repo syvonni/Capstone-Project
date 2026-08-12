@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Checklist = require("../models/Checklist");
 const InspectionItem = require("../models/InspectionItem");
-const ClaimableDocument = require("../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../shared/models/ClaimableDocument");
 const { DOCUMENT_INSPECTION_ITEMS } = require("./seedDocumentInspectionItems");
 
 /**

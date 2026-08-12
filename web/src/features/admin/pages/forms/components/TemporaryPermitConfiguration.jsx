@@ -1,7 +1,7 @@
 import { Form, Input, Select, theme, Typography } from 'antd'
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { getDocuments } from '@/features/admin/services/documentService'
-import FormContentEditor from '@/shared/components/FormContentEditor'
+import FormContentEditor from '@/shared/components/formEditor/FormContentEditor'
 
 const { Text } = Typography
 

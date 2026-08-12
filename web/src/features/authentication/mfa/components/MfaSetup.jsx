@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Button, Input, Space, Tooltip, Typography, Alert, theme, Result } from 'antd'
-import LottieSpinner from '@/shared/components/LottieSpinner.jsx'
+import LottieSpinner from '@/shared/components/graphics/LottieSpinner.jsx'
 import {
   SafetyCertificateOutlined,
   MobileOutlined,
@@ -21,7 +21,7 @@ const { Title, Paragraph, Text } = Typography
  * @param {() => void} [props.onSkip] - Called when user skips MFA setup (for business owners).
  * @param {boolean} [props.allowSkip] - Whether to show the skip button (for business owners).
  */
-export default function MfaSetup({ onComplete, onSkip, allowSkip = false }) {
+export default function MfaSetup({ onComplete }) {
   const { token } = theme.useToken()
   const { currentUser, role, login } = useAuthSession()
   const {

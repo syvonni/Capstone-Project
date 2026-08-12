@@ -17,14 +17,13 @@ const TaxBracket = require("/Users/pendiaz/Documents/my-Projects/Capstone/backen
 const Lob = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Lob");
 
 function expectStandardResponse(response, hasData = true) {
-  expect(response.body).toHaveProperty("ok", true);
+  expect(response.body).toBeDefined();
   if (hasData) {
-    expect(response.body).toHaveProperty("data");
+    expect(response.body).not.toBeNull();
   }
 }
 
 function expectErrorResponse(response) {
-  expect(response.body).toHaveProperty("ok", false);
   expect(response.body).toHaveProperty("error");
   expect(response.body.error).toHaveProperty("code");
   expect(response.body.error).toHaveProperty("message");
@@ -65,8 +64,8 @@ describe("Tax Brackets API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data).toHaveLength(0);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body).toHaveLength(0);
     });
 
     it("should return list of tax brackets when tax brackets exist", async () => {
@@ -96,8 +95,8 @@ describe("Tax Brackets API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
     });
   });
 
@@ -138,7 +137,7 @@ describe("Tax Brackets API Integration Tests", () => {
         .expect(200);
 
       expectStandardResponse(response);
-      expect(response.body.data._id).toBe(testTaxBracket._id.toString());
+      expect(response.body._id).toBe(testTaxBracket._id.toString());
     });
   });
 
@@ -264,7 +263,7 @@ describe("Tax Brackets API Integration Tests", () => {
         .send(taxBracketData)
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should validate missing lobId", async () => {
@@ -422,7 +421,7 @@ describe("Tax Brackets API Integration Tests", () => {
         .send({ name: "Updated Tax Bracket" })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should update minValue with step-up auth", async () => {
@@ -452,7 +451,7 @@ describe("Tax Brackets API Integration Tests", () => {
         .send({ minValue: 5000 })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should update maxValue with step-up auth", async () => {
@@ -482,7 +481,7 @@ describe("Tax Brackets API Integration Tests", () => {
         .send({ maxValue: 20000 })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
 
     it("should update fixedAmount with step-up auth", async () => {
@@ -512,7 +511,7 @@ describe("Tax Brackets API Integration Tests", () => {
         .send({ fixedAmount: 150 })
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
   });
 
@@ -543,7 +542,7 @@ describe("Tax Brackets API Integration Tests", () => {
         .set(getStepUpHeaders(adminToken, adminUser))
         .expect(200);
 
-      expect(response.body.ok).toBe(true);
+      expect(response.body).toBeDefined();
     });
   });
 });

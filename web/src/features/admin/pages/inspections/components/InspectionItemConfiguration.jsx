@@ -11,7 +11,7 @@ import { getViolations } from '@/features/admin/services/violationService'
 const { Text } = Typography
 const { TextArea } = Input
 
-export default function InspectionItemConfiguration({ form, handleFormValuesChange, initialValues }) {
+export default function InspectionItemConfiguration({ form, handleFormValuesChange, onFormattersChange }) {
   const { token } = theme.useToken()
   const [violations, setViolations] = useState([])
   const [loadingViolations, setLoadingViolations] = useState(false)
@@ -22,7 +22,21 @@ export default function InspectionItemConfiguration({ form, handleFormValuesChan
         setLoadingViolations(true)
         const data = await getViolations({ isActive: true })
         // Show all violations for configuration tab (no filtering)
-        setViolations((data || []).sort((a, b) => a.name.localeCompare(b.name)))
+        const sorted = (data || []).sort((a, b) => a.name.localeCompare(b.name))
+        setViolations(sorted)
+
+        if (onFormattersChange) {
+          const formatViolation = (value) => {
+            if (!value) return '(empty)';
+            const match = sorted.find((v) => v._id === value || String(v._id) === String(value));
+            return match?.name || String(value);
+          };
+
+          onFormattersChange({
+            formatters: { violationId: formatViolation },
+            fieldLabels: { violationId: 'Violation' },
+          });
+        }
       } catch (error) {
         console.error('Failed to fetch violations:', error)
       } finally {
@@ -31,7 +45,7 @@ export default function InspectionItemConfiguration({ form, handleFormValuesChan
     }
 
     fetchViolations()
-  }, [])
+  }, [onFormattersChange])
 
   return (
     <Form form={form} layout="vertical" onValuesChange={handleFormValuesChange} requiredMark={false}>
@@ -104,6 +118,7 @@ export default function InspectionItemConfiguration({ form, handleFormValuesChan
                   <Form.Item
                     name={[field.name, 'title']}
                     label="Title"
+                    initialValue=""
                     style={{ marginBottom: 0 }}
                   >
                     <Input placeholder="e.g., NFPA 10 - Portable Fire Extinguishers" />
@@ -111,6 +126,7 @@ export default function InspectionItemConfiguration({ form, handleFormValuesChan
                   <Form.Item
                     name={[field.name, 'description']}
                     label="Description"
+                    initialValue=""
                     style={{ marginBottom: 0 }}
                   >
                     <TextArea rows={2} placeholder="Brief description of the legal reference" />

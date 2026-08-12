@@ -2,10 +2,10 @@ const mongoose = require("mongoose");
 const InspectionItem = require("../../models/InspectionItem");
 const Violation = require("../../models/Violation");
 const Checklist = require("../../models/Checklist");
-const Fee = require("../../models/Fee");
+const Fee = require("../../../../../shared/models/Fee");
 const PostRequirement = require("../../models/PostRequirement");
 const Lob = require("../../models/Lob");
-const ClaimableDocument = require("../../models/ClaimableDocument");
+const ClaimableDocument = require("../../../../../shared/models/ClaimableDocument");
 const { getUserInfo } = require("../../../../../shared/lib/getUserInfo");
 const InspectionItemAuditHelper = require("../../lib/auditHelpers/inspectionItemAuditHelper");
 
@@ -16,7 +16,7 @@ class InspectionItemService {
   async list(filters = {}) {
     const { isActive, violationId } = filters;
     const filter = {};
-    
+
     if (isActive !== undefined) filter.isActive = isActive === "true";
     if (violationId) filter.violationId = violationId;
 
@@ -38,7 +38,9 @@ class InspectionItemService {
       throw error;
     }
 
-    const inspectionItems = await InspectionItem.find({ violationId }).sort({ name: 1 });
+    const inspectionItems = await InspectionItem.find({ violationId }).sort({
+      name: 1,
+    });
 
     return inspectionItems;
   }
@@ -54,8 +56,9 @@ class InspectionItemService {
       throw error;
     }
 
-    const inspectionItem = await InspectionItem.findById(id).populate("violationId");
-    
+    const inspectionItem =
+      await InspectionItem.findById(id).populate("violationId");
+
     if (!inspectionItem) {
       const error = new Error("Inspection item not found");
       error.code = "NOT_FOUND";
@@ -125,7 +128,9 @@ class InspectionItemService {
     for (const RelatedModel of relatedCollections) {
       const existing = await RelatedModel.findOne({ name });
       if (existing) {
-        const error = new Error(`Name already exists in ${RelatedModel.modelName}`);
+        const error = new Error(
+          `Name already exists in ${RelatedModel.modelName}`,
+        );
         error.code = "DUPLICATE_NAME";
         error.status = 400;
         throw error;
@@ -150,7 +155,9 @@ class InspectionItemService {
 
     if (violationMode === "select") {
       if (!violationId) {
-        const error = new Error("Violation ID is required when selecting existing violation");
+        const error = new Error(
+          "Violation ID is required when selecting existing violation",
+        );
         error.code = "VALIDATION_ERROR";
         error.status = 400;
         throw error;
@@ -175,14 +182,18 @@ class InspectionItemService {
       finalViolationId = violationId;
     } else if (violationMode === "create") {
       if (!violationName) {
-        const error = new Error("Violation name is required when creating new violation");
+        const error = new Error(
+          "Violation name is required when creating new violation",
+        );
         error.code = "VALIDATION_ERROR";
         error.status = 400;
         throw error;
       }
 
       if (!violationSeverity) {
-        const error = new Error("Violation severity is required when creating new violation");
+        const error = new Error(
+          "Violation severity is required when creating new violation",
+        );
         error.code = "VALIDATION_ERROR";
         error.status = 400;
         throw error;
@@ -231,11 +242,21 @@ class InspectionItemService {
       updatedBy: userId,
     };
 
-    const createdInspectionItem = await InspectionItem.create(inspectionItemData);
+    const createdInspectionItem =
+      await InspectionItem.create(inspectionItemData);
 
     const userInfo = await getUserInfo(userId);
-    InspectionItemAuditHelper.logCreated(req, userId, userInfo, createdInspectionItem, "admin").catch((err) =>
-      console.error("Failed to log audit event for inspection item create", err),
+    InspectionItemAuditHelper.logCreated(
+      req,
+      userId,
+      userInfo,
+      createdInspectionItem,
+      "admin",
+    ).catch((err) =>
+      console.error(
+        "Failed to log audit event for inspection item create",
+        err,
+      ),
     );
 
     // Return populated inspection item
@@ -313,7 +334,8 @@ class InspectionItemService {
       (question !== undefined && question !== inspectionItem.question) ||
       (notes !== undefined && notes !== inspectionItem.notes) ||
       (legalBasis !== undefined &&
-        JSON.stringify(legalBasis) !== JSON.stringify(inspectionItem.legalBasis)) ||
+        JSON.stringify(legalBasis) !==
+          JSON.stringify(inspectionItem.legalBasis)) ||
       (violationId && violationId !== inspectionItem.violationId);
 
     if (definitionChanged) {
@@ -352,7 +374,10 @@ class InspectionItemService {
       updated,
       "admin",
     ).catch((err) =>
-      console.error("Failed to log audit event for inspection item update", err),
+      console.error(
+        "Failed to log audit event for inspection item update",
+        err,
+      ),
     );
 
     return updated;
@@ -399,8 +424,17 @@ class InspectionItemService {
     const oldInspectionItem = new InspectionItem(oldValues);
     oldInspectionItem._id = inspectionItem._id;
 
-    InspectionItemAuditHelper.logDisabled(req, userId, userInfo, oldInspectionItem, "admin").catch(
-      (err) => console.error("Failed to log audit event for inspection item delete", err),
+    InspectionItemAuditHelper.logDisabled(
+      req,
+      userId,
+      userInfo,
+      oldInspectionItem,
+      "admin",
+    ).catch((err) =>
+      console.error(
+        "Failed to log audit event for inspection item delete",
+        err,
+      ),
     );
 
     return { disabled: true };

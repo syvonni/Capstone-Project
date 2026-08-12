@@ -34,14 +34,7 @@ const DOWNLOADABLE_FORMS = [
         fileUrl: '#',
         description: 'Application form for Mayor\'s Permit'
       },
-      {
-        id: 'app-3',
-        label: 'Business Renewal Application Form',
-        fileType: 'pdf',
-        fileSize: 195000,
-        fileUrl: '#',
-        description: 'Form for renewing existing business permits'
-      },
+
     ]
   },
   {
@@ -56,14 +49,7 @@ const DOWNLOADABLE_FORMS = [
         fileUrl: '#',
         description: 'Example of a completed application form'
       },
-      {
-        id: 'sample-2',
-        label: 'Sample Filled Renewal Form',
-        fileType: 'pdf',
-        fileSize: 285000,
-        fileUrl: '#',
-        description: 'Example of a completed renewal application'
-      },
+
     ]
   },
   {
@@ -138,14 +124,7 @@ const DOWNLOADABLE_FORMS = [
         fileUrl: '#',
         description: 'Step-by-step guide for new applicants'
       },
-      {
-        id: 'guide-2',
-        label: 'Business Renewal Guidelines',
-        fileType: 'pdf',
-        fileSize: 480000,
-        fileUrl: '#',
-        description: 'Guide for renewing business permits'
-      },
+
       {
         id: 'guide-3',
         label: 'Line of Business Classification Guide',
@@ -168,14 +147,7 @@ const DOWNLOADABLE_FORMS = [
         fileUrl: '#',
         description: 'Required documents for new business applications'
       },
-      {
-        id: 'check-2',
-        label: 'Business Renewal Checklist',
-        fileType: 'pdf',
-        fileSize: 135000,
-        fileUrl: '#',
-        description: 'Required documents for permit renewal'
-      },
+
       {
         id: 'check-3',
         label: 'Document Requirements by Business Type',
