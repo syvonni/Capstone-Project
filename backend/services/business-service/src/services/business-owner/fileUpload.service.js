@@ -14,14 +14,6 @@ class FileUploadService {
       "uploads",
       "business-registration",
     );
-    this.renewalUploadsRoot = path.join(
-      __dirname,
-      "..",
-      "..",
-      "..",
-      "uploads",
-      "business-renewal",
-    );
     this.ownerIdUploadRoot = path.join(
       __dirname,
       "..",
@@ -96,34 +88,6 @@ class FileUploadService {
   }
 
   /**
-   * Get upload storage for renewal documents
-   */
-  getRenewalUploadStorage() {
-    return multer.diskStorage({
-      destination: (req, file, cb) => {
-        const { businessId, renewalId } = req.params;
-        const renewalDir = path.join(
-          this.renewalUploadsRoot,
-          businessId || "unknown",
-          renewalId || "unknown",
-        );
-        this.ensureDir(renewalDir);
-        cb(null, renewalDir);
-      },
-      filename: (req, file, cb) => {
-        const fieldName = (req.body?.fieldName || "file")
-          .toString()
-          .replace(/[^a-zA-Z0-9_-]/g, "");
-        const safeOriginal = path
-          .basename(file.originalname)
-          .replace(/[^a-zA-Z0-9._-]/g, "");
-        const stamp = Date.now();
-        cb(null, `${fieldName}_${stamp}_${safeOriginal}`);
-      },
-    });
-  }
-
-  /**
    * Get upload storage for owner ID
    */
   getOwnerIdUploadStorage() {
@@ -150,17 +114,6 @@ class FileUploadService {
   getUploadMiddleware() {
     return multer({
       storage: this.getUploadStorage(),
-      fileFilter: this.fileFilter.bind(this),
-      limits: { fileSize: this.MAX_FILE_SIZE },
-    });
-  }
-
-  /**
-   * Get multer upload middleware for renewal documents
-   */
-  getRenewalUploadMiddleware() {
-    return multer({
-      storage: this.getRenewalUploadStorage(),
       fileFilter: this.fileFilter.bind(this),
       limits: { fileSize: this.MAX_FILE_SIZE },
     });

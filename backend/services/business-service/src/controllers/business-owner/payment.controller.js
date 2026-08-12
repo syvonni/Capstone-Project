@@ -1,5 +1,5 @@
 const BaseController = require("../base.controller");
-const paymentService = require("../../services/business/payment.service");
+const paymentService = require("../../services/business-owner/payment.service");
 
 class PaymentController extends BaseController {
   constructor() {

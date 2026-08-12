@@ -1,6 +1,6 @@
 const express = require("express");
 const { requireJwt, requireRole } = require("../../middleware/auth");
-const paymentController = require("../../controllers/business/payment.controller");
+const paymentController = require("../../controllers/business-owner/payment.controller");
 
 const router = express.Router();
 

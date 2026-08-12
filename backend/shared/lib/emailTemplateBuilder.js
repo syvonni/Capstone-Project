@@ -43,9 +43,33 @@ function getEnvDefaults() {
   };
 }
 
-function buildHeader() {
+function buildHeader(appUrl) {
+  const url = appUrl || getEnvDefaults().appUrl;
+  let logoUrl =
+    process.env.EMAIL_LOGO_URL ||
+    process.env.EMAIL_LOGO_RAW_URL;
+
+  if (!logoUrl) {
+    let localLogoUrl;
+    try {
+      localLogoUrl = new URL("/BizClear.png", url).href;
+    } catch {
+      localLogoUrl = "";
+    }
+
+    // For dev (localhost), fall back to the public raw GitHub URL so Resend/
+    // email clients can fetch the asset. In production, the FRONTEND_URL logo
+    // is preferred because it doesn't depend on the repo being public.
+    const isLocalhost =
+      localLogoUrl.includes("://localhost") ||
+      localLogoUrl.includes("://127.0.0.1");
+    logoUrl = isLocalhost
+      ? "https://raw.githubusercontent.com/EnrWayneDev/Capstone/main/web/public/BizClear.png"
+      : localLogoUrl;
+  }
+
   return `<div style="background:${EMAIL_COLORS.bgWhite};padding:24px 32px;border-bottom:1px solid ${EMAIL_COLORS.border};display:flex;align-items:center;gap:20px;">
-  <img src="https://raw.githubusercontent.com/Waynenyarky/Capstone/main/web/public/BizClear.png" alt="BizClear Logo" width="40" height="40" style="display:block;border:none;flex-shrink:0;">
+  <img src="${logoUrl}" alt="BizClear Logo" width="40" height="40" style="display:block;border:none;flex-shrink:0;">
   <h1 style="margin:0;color:${EMAIL_COLORS.textPrimary};font-size:24px;font-weight:600;letter-spacing:0.5px;font-family:'Urbanist', 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;line-height:40px;">BizClear</h1>
 </div>`;
 }
@@ -162,7 +186,7 @@ function buildEmailHtml({ bodyContent, appUrl }) {
 </head>
 <body style="margin:0;padding:0;font-family:'Urbanist', 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;">
   <div style="max-width:100%;margin:0 auto;background:${EMAIL_COLORS.bgWhite};box-shadow:0 2px 8px rgba(0,0,0,0.08);overflow:hidden;">
-    ${buildHeader()}
+    ${buildHeader(url)}
     ${bodyContent}
     ${buildFooter(url)}
   </div>

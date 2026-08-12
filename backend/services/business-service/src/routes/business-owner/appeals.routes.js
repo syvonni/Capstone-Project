@@ -4,7 +4,7 @@ const {
   requireRole,
   requireAdminStepUp,
 } = require("../../middleware/auth");
-const appealController = require("../../controllers/business/appeal.controller");
+const appealController = require("../../controllers/business-owner/appeal.controller");
 const router = express.Router();
 
 // GET /api/business/appeals

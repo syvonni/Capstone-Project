@@ -32,8 +32,8 @@ class AppealService {
         ...metadata,
       };
 
-      // Import mailer functions dynamically to avoid circular dependency
-      const mailer = require("../../../auth-service/src/lib/mailer");
+      // Import mailer from auth-service lib
+      const mailer = require("../../../../services/auth-service/src/lib/mailer");
 
       switch (emailType) {
         case "appeal_submitted":

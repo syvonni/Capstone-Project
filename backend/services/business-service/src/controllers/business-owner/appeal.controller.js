@@ -1,5 +1,5 @@
 const BaseController = require("../base.controller");
-const appealService = require("../../services/business/appeal.service");
+const appealService = require("../../services/business-owner/appeal.service");
 
 class AppealController extends BaseController {
   constructor() {

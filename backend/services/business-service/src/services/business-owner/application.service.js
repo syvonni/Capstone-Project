@@ -2,8 +2,8 @@ const Application = require("../../models/Application");
 const Business = require("../../models/Business");
 const BusinessProfile = require("../../models/BusinessProfile");
 const User = require("../../models/User");
+const PermitForm = require("../../../../../shared/models/PermitForm");
 const { logAuditEvent } = require("../../lib/auditClient");
-const { createHttpClient } = require("../../../shared/lib/httpClient");
 
 class ApplicationService {
   /**
@@ -31,8 +31,8 @@ class ApplicationService {
         ...metadata,
       };
 
-      // Import mailer functions dynamically to avoid circular dependency
-      const mailer = require("../../auth-service/../../lib/mailer");
+      // Import mailer from auth-service lib
+      const mailer = require("../../../../services/auth-service/src/lib/mailer");
 
       switch (emailType) {
         case "submitted":
@@ -106,17 +106,21 @@ class ApplicationService {
     }
 
     // Fetch PermitForm version if formId is provided
-    let formVersion = 1
+    let formVersion = 1;
     if (applicationData.formId) {
-      try {
-        const adminClient = createHttpClient("admin");
-        const permitFormResponse = await adminClient.get(`/public/permit-forms/${applicationData.formId}`);
-        if (permitFormResponse.data && permitFormResponse.data.version) {
-          formVersion = permitFormResponse.data.version
-        }
-      } catch (err) {
-        console.error('Failed to fetch PermitForm version, defaulting to 1:', err.message)
+      const permitForm = await PermitForm.findOne({
+        formId: applicationData.formId,
+        isActive: true,
+      });
+      if (!permitForm) {
+        const error = new Error(
+          `Permit form with formId ${applicationData.formId} not found`,
+        );
+        error.code = "PERMIT_FORM_NOT_FOUND";
+        error.status = 404;
+        throw error;
       }
+      formVersion = permitForm.version || 1;
     }
 
     // Create application
@@ -143,6 +147,71 @@ class ApplicationService {
     });
 
     return { application };
+  }
+
+  /**
+   * Partial form data update for autosave
+   */
+  async patchFormData(id, patch, userId) {
+    // Resolve by custom applicationId or MongoDB _id (same as _findById)
+    const application = await this._findById(id);
+
+    if (!application) {
+      const error = new Error("Application not found");
+      error.code = "NOT_FOUND";
+      error.status = 404;
+      throw error;
+    }
+
+    if (String(application.userId) !== String(userId)) {
+      const error = new Error("You can only update your own applications");
+      error.code = "FORBIDDEN";
+      error.status = 403;
+      throw error;
+    }
+
+    const allowedFields = {};
+
+    if (patch.formData !== undefined) {
+      allowedFields.formData = patch.formData;
+    }
+    if (patch.businessName !== undefined) {
+      allowedFields.businessName = patch.businessName;
+    }
+
+    // Preserve updatedAt; only set if we have something to save
+    if (Object.keys(allowedFields).length === 0) {
+      return { application };
+    }
+
+    allowedFields.updatedAt = new Date();
+
+    const updatedApplication = await Application.findByIdAndUpdate(
+      application._id,
+      { $set: allowedFields },
+      { new: true, runValidators: true },
+    ).lean();
+
+    if (!updatedApplication) {
+      const error = new Error("Application not found");
+      error.code = "NOT_FOUND";
+      error.status = 404;
+      throw error;
+    }
+
+    // Fire-and-forget audit (do not block response)
+    logAuditEvent(
+      "application_autosaved",
+      userId,
+      "application",
+      updatedApplication.applicationId,
+      {
+        applicationId: updatedApplication.applicationId,
+        fields: Object.keys(allowedFields),
+      },
+    ).catch((err) => console.error("Failed to log audit event:", err));
+
+    return { application: updatedApplication };
   }
 
   /**
@@ -209,12 +278,36 @@ class ApplicationService {
   }
 
   /**
+   * Helper to find application by either applicationId or _id
+   */
+  async _findById(id) {
+    // Try applicationId first (string), then _id (ObjectId) if it looks valid
+    let application;
+    try {
+      application = await Application.findOne({ applicationId: id });
+    } catch (err) {
+      // If applicationId lookup fails, try _id
+    }
+
+    if (!application) {
+      // Only try _id if it looks like a valid ObjectId (24 hex chars)
+      if (/^[0-9a-fA-F]{24}$/.test(id)) {
+        try {
+          application = await Application.findById(id);
+        } catch (err) {
+          // Invalid ObjectId
+        }
+      }
+    }
+
+    return application;
+  }
+
+  /**
    * Get application details
    */
   async getById(id) {
-    const application = await Application.findOne({
-      $or: [{ applicationId: id }, { _id: id }],
-    });
+    const application = await this._findById(id);
 
     if (!application) {
       const error = new Error("Application not found");
@@ -266,9 +359,7 @@ class ApplicationService {
    * Update application
    */
   async update(id, updateData, userId) {
-    const application = await Application.findOne({
-      $or: [{ applicationId: id }, { _id: id }],
-    });
+    const application = await this._findById(id);
 
     if (!application) {
       const error = new Error("Application not found");
@@ -306,12 +397,78 @@ class ApplicationService {
   }
 
   /**
+   * Submit application (draft → submitted)
+   */
+  async submit(id, userId) {
+    const application = await this._findById(id);
+
+    if (!application) {
+      const error = new Error("Application not found");
+      error.code = "NOT_FOUND";
+      error.status = 404;
+      throw error;
+    }
+
+    // Only allow owner to submit their own applications
+    if (String(application.userId) !== String(userId)) {
+      const error = new Error("You can only submit your own applications");
+      error.code = "FORBIDDEN";
+      error.status = 403;
+      throw error;
+    }
+
+    // Only allow transition from draft or returned to submitted/resubmit
+    const currentStatus = application.applicationStatus;
+    if (currentStatus !== "draft" && currentStatus !== "returned") {
+      const error = new Error(
+        `Cannot submit application with status: ${currentStatus}`,
+      );
+      error.code = "INVALID_STATUS";
+      error.status = 400;
+      throw error;
+    }
+
+    // Set status and timestamp
+    application.applicationStatus =
+      currentStatus === "returned" ? "resubmit" : "submitted";
+    application.submittedAt = new Date();
+    application.submittedToLguOfficer = true;
+    application.isSubmitted = true;
+
+    // Generate reference number if missing
+    if (
+      !application.applicationReferenceNumber ||
+      String(application.applicationReferenceNumber).trim() === ""
+    ) {
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const randomSeq = Math.floor(1000 + Math.random() * 9000);
+      application.applicationReferenceNumber = `APP-${dateStr}-${randomSeq}`;
+    }
+
+    await application.save();
+
+    // Log audit event
+    await logAuditEvent(
+      "application_submitted",
+      userId,
+      "application",
+      application.applicationId,
+      {
+        applicationId: application.applicationId,
+        applicationReferenceNumber: application.applicationReferenceNumber,
+        submittedAt: application.submittedAt,
+        isResubmit: currentStatus === "returned",
+      },
+    ).catch((err) => console.error("Failed to log audit event:", err));
+
+    return { application };
+  }
+
+  /**
    * Claim an application for review
    */
   async claim(id, officerId) {
-    const application = await Application.findOne({
-      $or: [{ applicationId: id }, { _id: id }],
-    });
+    const application = await this._findById(id);
 
     if (!application) {
       const error = new Error("Application not found");
@@ -347,9 +504,7 @@ class ApplicationService {
    * Approve an application
    */
   async approve(id, officerId) {
-    const application = await Application.findOne({
-      $or: [{ applicationId: id }, { _id: id }],
-    });
+    const application = await this._findById(id);
 
     if (!application) {
       const error = new Error("Application not found");
@@ -359,7 +514,9 @@ class ApplicationService {
     }
 
     if (String(application.reviewedBy) !== String(officerId)) {
-      const error = new Error("You can only approve your own claimed applications");
+      const error = new Error(
+        "You can only approve your own claimed applications",
+      );
       error.code = "FORBIDDEN";
       error.status = 403;
       throw error;
@@ -439,7 +596,10 @@ class ApplicationService {
       officerId,
       "application",
       application.applicationId,
-      { applicationId: application.applicationId, businessId: business.businessId },
+      {
+        applicationId: application.applicationId,
+        businessId: business.businessId,
+      },
     ).catch((err) => console.error("Failed to log audit event:", err));
 
     // Send approval email (fire and forget)
@@ -454,9 +614,7 @@ class ApplicationService {
    * Reject an application
    */
   async reject(id, officerId, rejectionReason) {
-    const application = await Application.findOne({
-      $or: [{ applicationId: id }, { _id: id }],
-    });
+    const application = await this._findById(id);
 
     if (!application) {
       const error = new Error("Application not found");
@@ -466,7 +624,9 @@ class ApplicationService {
     }
 
     if (String(application.reviewedBy) !== String(officerId)) {
-      const error = new Error("You can only reject your own claimed applications");
+      const error = new Error(
+        "You can only reject your own claimed applications",
+      );
       error.code = "FORBIDDEN";
       error.status = 403;
       throw error;
@@ -490,7 +650,9 @@ class ApplicationService {
     ).catch((err) => console.error("Failed to log audit event:", err));
 
     // Send rejection email (fire and forget)
-    this.sendApplicationEmail(application, "rejected", { rejectionReason }).catch((err) => {
+    this.sendApplicationEmail(application, "rejected", {
+      rejectionReason,
+    }).catch((err) => {
       console.error("Failed to send rejection email:", err);
     });
 
@@ -501,9 +663,7 @@ class ApplicationService {
    * Return application for revision
    */
   async returnForRevision(id, officerId, reviewComments) {
-    const application = await Application.findOne({
-      $or: [{ applicationId: id }, { _id: id }],
-    });
+    const application = await this._findById(id);
 
     if (!application) {
       const error = new Error("Application not found");
@@ -513,7 +673,9 @@ class ApplicationService {
     }
 
     if (String(application.reviewedBy) !== String(officerId)) {
-      const error = new Error("You can only return your own claimed applications");
+      const error = new Error(
+        "You can only return your own claimed applications",
+      );
       error.code = "FORBIDDEN";
       error.status = 403;
       throw error;
@@ -521,7 +683,9 @@ class ApplicationService {
 
     // Check if return is exhausted (already returned once)
     if (application.returnExhausted) {
-      const error = new Error("This application has already been returned once. No further returns are allowed.");
+      const error = new Error(
+        "This application has already been returned once. No further returns are allowed.",
+      );
       error.code = "RETURN_EXHAUSTED";
       error.status = 400;
       throw error;
@@ -544,7 +708,9 @@ class ApplicationService {
     ).catch((err) => console.error("Failed to log audit event:", err));
 
     // Send returned email (fire and forget)
-    this.sendApplicationEmail(application, "returned", { reviewComments }).catch((err) => {
+    this.sendApplicationEmail(application, "returned", {
+      reviewComments,
+    }).catch((err) => {
       console.error("Failed to send returned email:", err);
     });
 
@@ -572,9 +738,7 @@ class ApplicationService {
       throw error;
     }
 
-    const application = await Application.findOne({
-      $or: [{ applicationId: id }, { _id: id }],
-    });
+    const application = await this._findById(id);
 
     if (!application) {
       const error = new Error("Application not found");
@@ -587,15 +751,22 @@ class ApplicationService {
     const emailStatus = application.emailSendStatus?.[emailType];
     const MAX_RETRIES = 3;
     if (emailStatus?.retryCount >= MAX_RETRIES) {
-      const error = new Error("Maximum retry attempts exceeded for this email type");
+      const error = new Error(
+        "Maximum retry attempts exceeded for this email type",
+      );
       error.code = "MAX_RETRIES_EXCEEDED";
       error.status = 400;
       throw error;
     }
 
     // Check if locked (rate limiting)
-    if (emailStatus?.lockUntil && new Date(emailStatus.lockUntil) > new Date()) {
-      const error = new Error("Email resend is temporarily locked. Please try again later.");
+    if (
+      emailStatus?.lockUntil &&
+      new Date(emailStatus.lockUntil) > new Date()
+    ) {
+      const error = new Error(
+        "Email resend is temporarily locked. Please try again later.",
+      );
       error.code = "RATE_LIMITED";
       error.status = 429;
       throw error;
@@ -620,9 +791,7 @@ class ApplicationService {
    * Delete application
    */
   async delete(id, userId) {
-    const application = await Application.findOne({
-      $or: [{ applicationId: id }, { _id: id }],
-    });
+    const application = await this._findById(id);
 
     if (!application) {
       const error = new Error("Application not found");
@@ -640,7 +809,10 @@ class ApplicationService {
     }
 
     // Only allow deletion of draft applications
-    if (application.applicationStatus !== "draft" && application.applicationStatus !== "officer_draft") {
+    if (
+      application.applicationStatus !== "draft" &&
+      application.applicationStatus !== "officer_draft"
+    ) {
       const error = new Error("Can only delete draft applications");
       error.code = "INVALID_STATE";
       error.status = 400;
@@ -671,24 +843,18 @@ class ApplicationService {
     // Reset welcomeCompleted flag on user
     await User.updateOne(
       { _id: userId },
-      { $set: { welcomeCompleted: false } }
+      { $set: { welcomeCompleted: false } },
     );
 
     // Log audit event
-    await logAuditEvent(
-      "debug_clear_applications",
-      userId,
-      "user",
-      userId,
-      { 
-        deletedCount: deleteResult.deletedCount,
-        resetWelcomeCompleted: true 
-      }
-    ).catch((err) => console.error("Failed to log audit event:", err));
+    await logAuditEvent("debug_clear_applications", userId, "user", userId, {
+      deletedCount: deleteResult.deletedCount,
+      resetWelcomeCompleted: true,
+    }).catch((err) => console.error("Failed to log audit event:", err));
 
-    return { 
+    return {
       message: "Applications cleared successfully",
-      deletedCount: deleteResult.deletedCount 
+      deletedCount: deleteResult.deletedCount,
     };
   }
 }

@@ -1,5 +1,6 @@
 const BaseController = require("../base.controller");
-const applicationService = require("../../services/business/application.service");
+const applicationService = require("../../services/business-owner/application.service");
+const fileUploadService = require("../../services/business-owner/fileUpload.service");
 
 class ApplicationController extends BaseController {
   constructor() {
@@ -19,6 +20,32 @@ class ApplicationController extends BaseController {
       },
       { successStatus: 201 },
     );
+  }
+
+  /**
+   * Submit application (draft → submitted)
+   */
+  async submit(req, res) {
+    return this.handleRequest(req, res, async (req, res) => {
+      return await this.service.submit(req.params.id, req._userId);
+    });
+  }
+
+  /**
+   * Upload document file for application
+   */
+  async uploadDocumentFile(req, res) {
+    return this.handleRequest(req, res, async (req, res) => {
+      if (!req.file) {
+        const error = new Error("No file uploaded");
+        error.code = "FILE_REQUIRED";
+        error.status = 400;
+        throw error;
+      }
+
+      const fieldName = req.body?.fieldName || "file";
+      return await fileUploadService.uploadBusinessDocument(req.params.id, req.file, fieldName);
+    });
   }
 
   /**
@@ -45,6 +72,15 @@ class ApplicationController extends BaseController {
   async update(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
       return await this.service.update(req.params.id, req.body, req._userId);
+    });
+  }
+
+  /**
+   * Partial form data update (autosave)
+   */
+  async patchFormData(req, res) {
+    return this.handleRequest(req, res, async (req, res) => {
+      return await this.service.patchFormData(req.params.id, req.body, req._userId);
     });
   }
 

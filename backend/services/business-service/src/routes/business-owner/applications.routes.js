@@ -2,9 +2,10 @@ const express = require("express");
 const {
   requireJwt,
   requireRole,
-  requireAdminStepUp,
 } = require("../../middleware/auth");
-const applicationController = require("../../controllers/business/application.controller");
+const { autosaveRateLimit } = require("../../middleware/rateLimit");
+const applicationController = require("../../controllers/business-owner/application.controller");
+const fileUploadService = require("../../services/business-owner/fileUpload.service");
 const router = express.Router();
 
 /**
@@ -16,6 +17,27 @@ router.post(
   requireJwt,
   requireRole(["business_owner", "lgu_officer", "staff"]),
   (req, res) => applicationController.create(req, res),
+);
+
+/**
+ * POST /api/business/applications/:id/submit - Submit application (draft → submitted)
+ */
+router.post(
+  "/applications/:id/submit",
+  requireJwt,
+  requireRole(["business_owner"]),
+  (req, res) => applicationController.submit(req, res),
+);
+
+/**
+ * POST /api/business/applications/:id/documents/upload-file - Upload a single file to IPFS and return CID
+ */
+router.post(
+  "/applications/:id/documents/upload-file",
+  requireJwt,
+  requireRole(["business_owner"]),
+  fileUploadService.getUploadMiddleware().single("file"),
+  (req, res) => applicationController.uploadDocumentFile(req, res),
 );
 
 /**
@@ -52,59 +74,15 @@ router.put(
 );
 
 /**
- * POST /api/business/applications/:id/claim
- * Claim an application for review
+ * PATCH /api/business/applications/:id/form-data
+ * Partial form data update for autosave
  */
-router.post(
-  "/applications/:id/claim",
+router.patch(
+  "/applications/:id/form-data",
   requireJwt,
-  requireRole(["lgu_officer", "staff"]),
-  (req, res) => applicationController.claim(req, res),
-);
-
-/**
- * PUT /api/business/applications/:id/approve
- * Approve an application
- */
-router.put(
-  "/applications/:id/approve",
-  requireJwt,
-  requireRole(["lgu_officer", "staff"]),
-  (req, res) => applicationController.approve(req, res),
-);
-
-/**
- * PUT /api/business/applications/:id/reject
- * Reject an application
- */
-router.put(
-  "/applications/:id/reject",
-  requireJwt,
-  requireRole(["lgu_officer", "staff"]),
-  (req, res) => applicationController.reject(req, res),
-);
-
-/**
- * PUT /api/business/applications/:id/return
- * Return application for revision
- */
-router.put(
-  "/applications/:id/return",
-  requireJwt,
-  requireRole(["lgu_officer", "staff"]),
-  (req, res) => applicationController.returnForRevision(req, res),
-);
-
-/**
- * POST /api/business/applications/:id/resend-email
- * Resend application email (with step-up authentication)
- */
-router.post(
-  "/applications/:id/resend-email",
-  requireJwt,
-  requireRole(["lgu_officer", "staff", "admin"]),
-  requireAdminStepUp,
-  (req, res) => applicationController.resendEmail(req, res),
+  requireRole(["business_owner"]),
+  autosaveRateLimit(),
+  (req, res) => applicationController.patchFormData(req, res),
 );
 
 /**
