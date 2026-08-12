@@ -68,7 +68,7 @@ function buildHeader(appUrl) {
       : localLogoUrl;
   }
 
-  return `<div style="background:${EMAIL_COLORS.bgWhite};padding:24px 32px;border-bottom:1px solid ${EMAIL_COLORS.border};display:flex;align-items:center;gap:20px;">
+  return `<div style="background:${EMAIL_COLORS.bgWhite};padding:24px 32px;border-bottom:1px solid ${EMAIL_COLORS.border};display:flex;align-items:center;gap:32px;">
   <img src="${logoUrl}" alt="BizClear Logo" width="40" height="40" style="display:block;border:none;flex-shrink:0;">
   <h1 style="margin:0;color:${EMAIL_COLORS.textPrimary};font-size:24px;font-weight:600;letter-spacing:0.5px;font-family:'Urbanist', 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;line-height:40px;">BizClear</h1>
 </div>`;
