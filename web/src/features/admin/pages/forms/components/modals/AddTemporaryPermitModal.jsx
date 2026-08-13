@@ -67,7 +67,6 @@ export default function AddTemporaryPermitModal({ open, onClose, onSuccess }) {
       sectionName: firstSection.sectionName,
       type: '',
       description: firstSection.description,
-      source: firstSection.source,
       notes: firstSection.notes,
       showWhen: null,
       items: firstSection.items.map(item => ({

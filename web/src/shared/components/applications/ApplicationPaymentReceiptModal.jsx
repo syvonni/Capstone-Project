@@ -2,7 +2,7 @@ import { Typography, Button, Space, Divider, List, theme } from 'antd'
 import { DownloadOutlined } from '@ant-design/icons'
 import ResponsiveModal from '@/shared/components/ResponsiveModal'
 
-const { Title, Text, Paragraph } = Typography
+const { Text } = Typography
 const { useToken } = theme
 
 export default function ApplicationPaymentReceiptModal({
@@ -19,10 +19,8 @@ export default function ApplicationPaymentReceiptModal({
   buttonText = 'Download Receipt and Continue',
 }) {
   const { token } = useToken()
-  // Use backend receipt number if available, otherwise fall back to frontend-generated receipt ID
   const displayReceiptId = receiptNumber || receiptId
 
-  // Format transaction date to user-friendly format
   const formatDate = (date) => {
     if (!date) return 'N/A'
     const d = new Date(date)
@@ -35,7 +33,6 @@ export default function ApplicationPaymentReceiptModal({
     })
   }
 
-  // Get payment type label
   const getPaymentTypeLabel = (type) => {
     const labels = {
       registration_fee: 'Application Fee',
@@ -51,12 +48,11 @@ export default function ApplicationPaymentReceiptModal({
     return labels[type] || type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Payment'
   }
 
-  const modalTitle = paymentType === 'appeal_fee' 
-    ? 'Appeal Payment Details' 
+  const modalTitle = paymentType === 'appeal_fee'
+    ? 'Appeal Payment Details'
     : 'Application Payment Details'
 
   const handleDownload = () => {
-    // Create a simple text receipt for download
     const receiptText = `
 PAYMENT RECEIPT
 ================
@@ -81,17 +77,12 @@ TOTAL: ₱${totalAmount.toFixed(2)}
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    // Close modal after download
     onClose()
   }
 
   return (
     <ResponsiveModal
-      title={
-        <Space>
-          <span>{modalTitle}</span>
-        </Space>
-      }
+      title={modalTitle}
       open={visible}
       onCancel={onClose}
       footer={
@@ -103,13 +94,9 @@ TOTAL: ₱${totalAmount.toFixed(2)}
       }
       width={520}
     >
-      <div style={{ padding: 16 }}>
-        
-        <div style={{ marginBottom: 16 }}>
-          <Text strong style={{ fontSize: 14 }}>Receipt Details</Text>
-        </div>
-
+      <div>
         <List
+          style={{ marginBottom: 12}}
           size="small"
           bordered
           dataSource={[
@@ -121,16 +108,11 @@ TOTAL: ₱${totalAmount.toFixed(2)}
           renderItem={(item) => (
             <List.Item style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Text type="secondary">{item.label}</Text>
-              <Text strong>{item.value}</Text>
+              <Text >{item.value}</Text>
             </List.Item>
           )}
         />
-
-        <Divider />
-
-        <div style={{ marginBottom: 12 }}>
-          <Text strong style={{ fontSize: 14 }}>Fee Breakdown</Text>
-        </div>
+        <Divider> <Text type="secondary" style={{fontSize: 12}}>Fee Breakdown</Text> </Divider>
 
         {fees && fees.length > 0 ? (
           <List
@@ -140,13 +122,13 @@ TOTAL: ₱${totalAmount.toFixed(2)}
             renderItem={(item) => (
               <List.Item style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Text>{item.label}</Text>
-                <Text strong>₱{(item.amount || 0).toFixed(2)}</Text>
+                <Text>₱{(item.amount || 0).toFixed(2)}</Text>
               </List.Item>
             )}
             footer={
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text strong>Total Amount Paid</Text>
-                <Text strong style={{ color: token.colorPrimary, fontSize: 16 }}>
+                <Text strong style={{ color: token.colorPrimary }}>
                   ₱{(totalAmount || 0).toFixed(2)}
                 </Text>
               </div>

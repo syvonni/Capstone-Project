@@ -158,7 +158,7 @@ export default function CategoryUploadField() {
                     label={previewableFile.name}
                     onViewDocument={({ url, label: docLabel, type, isBlob }) =>
                       onViewDocument
-                        ? onViewDocument({ url, label: docLabel, type, isBlob })
+                        ? onViewDocument({ open: true, url, label: docLabel, type, isBlob })
                         : setPreviewModal({ open: true, url, label: docLabel, type, isBlob })
                     }
                     isBlob={previewableFile.isBlob}

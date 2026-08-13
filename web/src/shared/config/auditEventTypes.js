@@ -107,7 +107,7 @@ export const EVENT_TYPE_LABELS = {
 
   // Field review events
   field_reviewed: 'Field Reviewed',
-  field_decisions_updated: 'Field Decisions Updated',
+  field_decisions_updated: 'Field Decisions Saved',
 
   // Pending action events
   pending_action_created: 'Pending Action Created',
@@ -275,8 +275,8 @@ export const AUDIT_EVENT_INFO = [
   { event: 'appeal_rejected', description: 'When an LGU officer rejects an appeal' },
 
   // Field review events
-  { event: 'field_reviewed', description: 'When an officer reviews and approves/rejects specific form fields' },
-  { event: 'field_decisions_updated', description: 'When field review decisions are updated' },
+  { event: 'field_reviewed', description: 'When an officer accepts a field or requests changes for a specific form field' },
+  { event: 'field_decisions_updated', description: 'When the officer saves updated field review decisions' },
 
   // Pending action events
   { event: 'pending_action_created', description: 'When a pending action is scheduled' },
@@ -329,6 +329,43 @@ export const AUDIT_EVENT_INFO = [
   { event: 'faq_updated', description: 'When FAQ content is updated' },
   { event: 'instruction_updated', description: 'When instruction content is updated' },
 ]
+
+// Application-specific audit event info shown in the officer application history modal.
+// This mirrors the backend audit-service applications event-type group (see
+// backend/services/audit-service/src/config/auditEventTypes.js) and filters out
+// admin-only / unrelated event types such as fees, payments, and LOBs.
+export const APPLICATION_AUDIT_EVENT_TYPES = [
+  'application_created',
+  'walkin_application_created',
+  'officer_draft_finished',
+  'application_autosaved',
+  'application_submitted',
+  'application_resubmitted',
+  'application_updated',
+  'application_claimed',
+  'application_released',
+  'application_transferred',
+  'field_reviewed',
+  'pending_action_created',
+  'pending_action_cancelled',
+  'pending_action_executed',
+  'application_returned',
+  'application_rejected',
+  'application_approved',
+  'application_status_reset',
+  'application_deleted',
+  'application_email_resent',
+  'application_email_status_reset',
+  'review_completed',
+  'decision_revoked',
+  'appeal_submitted',
+  'appeal_resolved',
+  'appeal_rejected',
+]
+
+export const APPLICATION_AUDIT_EVENT_INFO = AUDIT_EVENT_INFO.filter((e) =>
+  APPLICATION_AUDIT_EVENT_TYPES.includes(e.event)
+)
 
 // Helper function to get event type label
 export function getEventTypeLabel(eventType) {

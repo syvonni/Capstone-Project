@@ -217,8 +217,10 @@ export function calculateRevisionFieldKeys(fieldReviewDecisions) {
   if (!fieldReviewDecisions) return new Set()
   const normalized = new Set()
 
+  // Lock fields that have been accepted by the officer. Only fields marked
+  // 'request_changes' should remain editable when the applicant is revising.
   Object.entries(fieldReviewDecisions)
-    .filter(([, decision]) => decision?.status === 'rejected')
+    .filter(([, decision]) => decision?.status === 'accepted')
     .forEach(([fieldKey]) => {
       if (!fieldKey || typeof fieldKey !== 'string') return
 
@@ -229,9 +231,11 @@ export function calculateRevisionFieldKeys(fieldReviewDecisions) {
       const legacy = fieldKey.match(/^section_\d+_(.+)$/i)
       if (legacy?.[1]) normalized.add(legacy[1])
 
-      // Officer review format: "{sectionIdx}.{itemKey}" or "{sectionIdx}.{groupKey}.{rowIdx}"
+      // Officer review format: "{sectionIdx}.{itemKey}" locks the field key.
+      // Repeatable row keys like "{sectionIdx}.{groupKey}.{rowIdx}" are kept as-is
+      // so per-row locking can be handled by the group renderer.
       const parts = fieldKey.split('.')
-      if (parts.length >= 2 && /^\d+$/.test(parts[0])) {
+      if (parts.length === 2 && /^\d+$/.test(parts[0])) {
         normalized.add(parts[1])
       }
 

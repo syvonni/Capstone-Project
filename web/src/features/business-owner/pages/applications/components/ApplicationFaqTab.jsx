@@ -8,6 +8,7 @@ export default function ApplicationFaqTab({ application }) {
     <div>
       <DynamicFaqSection
         slotId={faqSlotId}
+        fallbackSlotId="business-owner-application-faq"
         hideWrapper
         hideHeader
       />

@@ -32,6 +32,22 @@ class FileUploadService {
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
+    this.ALLOWED_EXTENSIONS = [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".gif",
+      ".webp",
+      ".pdf",
+      ".doc",
+      ".docx",
+    ];
+    this.GENERIC_MIMETYPES = [
+      "application/octet-stream",
+      "application/x-ole-storage",
+      "application/vnd.ms-office",
+      "application/ms-office",
+    ];
     this.MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
     this.MAX_OWNER_ID_SIZE = 5 * 1024 * 1024; // 5 MB
   }
@@ -49,15 +65,26 @@ class FileUploadService {
    * File filter for multer
    */
   fileFilter(req, file, cb) {
-    if (!this.ALLOWED_MIMETYPES.includes(file.mimetype)) {
-      return cb(
-        new Error(
-          "File type not allowed. Accepted: JPEG, PNG, GIF, WebP, PDF, DOC, DOCX",
-        ),
-        false,
-      );
+    if (this.ALLOWED_MIMETYPES.includes(file.mimetype)) {
+      return cb(null, true);
     }
-    cb(null, true);
+
+    // Some browsers / operating systems report generic MIME types for DOC/DOCX
+    // and other office files. Accept them if the extension is in the allowed list.
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (
+      (this.GENERIC_MIMETYPES.includes(file.mimetype) || !file.mimetype) &&
+      this.ALLOWED_EXTENSIONS.includes(ext)
+    ) {
+      return cb(null, true);
+    }
+
+    return cb(
+      new Error(
+        "File type not allowed. Accepted: JPEG, PNG, GIF, WebP, PDF, DOC, DOCX",
+      ),
+      false,
+    );
   }
 
   /**

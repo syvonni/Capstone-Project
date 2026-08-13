@@ -5,7 +5,6 @@ import {
   SettingOutlined,
   LogoutOutlined,
   BellOutlined,
-  InfoCircleOutlined,
   SunOutlined,
   MoonOutlined,
   ReloadOutlined,
@@ -371,13 +370,6 @@ export default function LayoutPageHeader({
                 }}
                 loading={refreshing}
                 aria-label="Refresh"
-              />
-            )}
-            {infoSlotId && (
-              <Button
-                icon={<InfoCircleOutlined />}
-                onClick={() => setInfoOpen(true)}
-                aria-label="Info"
               />
             )}
             {currentUser && !hideNotifications && (

@@ -1,12 +1,5 @@
-import { getPayments } from '@/features/business-owner/services/paymentService'
+import { useCallback } from 'react'
 
-/**
- * Build a receipt info object from a payment record.
- * @param {Object} payment - Payment record from the backend
- * @param {Object} application - Business/application object
- * @param {string} [fallbackTransactionName] - Fallback transaction name
- * @returns {Object} Receipt info
- */
 export function buildReceiptInfoFromPayment(payment, application, fallbackTransactionName = 'Business Permit Application') {
   const fees = payment.feeBreakdown || []
   return {
@@ -21,14 +14,6 @@ export function buildReceiptInfoFromPayment(payment, application, fallbackTransa
   }
 }
 
-/**
- * Build a fallback receipt info object.
- * @param {Object} application - Business/application object
- * @param {Object} feeData - Fee data
- * @param {string} transactionName - Transaction name
- * @param {string} paymentType - Payment type
- * @returns {Object} Receipt info
- */
 export function buildFallbackReceiptInfo(application, feeData, transactionName, paymentType) {
   const submittedDate = application?.submittedAt ? new Date(application.submittedAt) : new Date()
   return {
@@ -42,34 +27,23 @@ export function buildFallbackReceiptInfo(application, feeData, transactionName, 
   }
 }
 
-/**
- * Hook for viewing a payment receipt.
- * @param {Object} params
- * @param {Object} params.application - Business/application object
- * @param {string} params.paymentType - Payment type filter
- * @param {Object} [params.feeData] - Fee data for fallback
- * @param {Object} [params.fallbackData] - Specific fallback receipt data
- * @param {Function} params.setReceiptData - Set receipt data state
- * @param {Function} params.setShowReceiptModal - Show receipt modal
- * @param {string} [params.transactionName] - Transaction name for fallback
- * @returns {Object} handleViewReceipt
- */
 export function useApplicationViewReceipt({
   application,
   paymentType,
   feeData,
   fallbackData,
+  getPayments,
   setReceiptData,
   setShowReceiptModal,
   transactionName = 'Business Permit Application',
 }) {
-  const handleViewReceipt = async () => {
+  const handleViewReceipt = useCallback(async () => {
     const applicationId = application?.applicationId || application?._id
     if (!applicationId) return
 
     try {
-      const res = await getPayments({ applicationId: applicationId, paymentType, status: 'paid', limit: 1 })
-      const payments = res || []
+      const res = await getPayments({ applicationId, paymentType, status: 'paid', limit: 1 })
+      const payments = Array.isArray(res) ? res : res?.payments || []
       if (payments.length > 0) {
         setReceiptData(buildReceiptInfoFromPayment(payments[0], application, transactionName))
         setShowReceiptModal(true)
@@ -85,7 +59,7 @@ export function useApplicationViewReceipt({
       setReceiptData(buildFallbackReceiptInfo(application, feeData, transactionName, paymentType))
     }
     setShowReceiptModal(true)
-  }
+  }, [application, paymentType, feeData, fallbackData, getPayments, setReceiptData, setShowReceiptModal, transactionName])
 
   return { handleViewReceipt }
 }

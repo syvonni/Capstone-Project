@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect } from 'react';
-import { Form } from 'antd';
+import { Form, ConfigProvider } from 'antd';
 import { Typography, Row, Col, Card, Divider, Tag, theme, Grid, App } from 'antd';
 import {
   filterSectionsByFormValues,
@@ -45,7 +45,7 @@ function DynamicField({
   onViewDocument,
 }) {
   const { message } = App.useApp();
-  const fieldName = field.key;
+  const fieldName = field.key || field.label;
   const [previewModal, setPreviewModal] = useState({
     open: false,
     url: null,
@@ -116,7 +116,7 @@ function DynamicField({
       <div>
         <Renderer />
         {fieldActions && (
-          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-start' }}>
             {fieldActions}
           </div>
         )}
@@ -162,6 +162,7 @@ function renderSectionContent(
         form={form}
         businessActivities={formValues?.businessActivities}
         renderLineActions={renderLineActions}
+        fieldReviewDecisions={fieldReviewDecisions}
       />
     );
   }
@@ -179,17 +180,12 @@ function renderSectionContent(
 
   return (
     <Fragment key={sIdx}>
-      {section.source && (
-        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-          Source: {section.source}
-        </Text>
-      )}
       {section.notes && showAdminNotes && (
         <>
-          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+          <Text style={{ fontSize: 12, display: 'block',  fontWeight: 500, color: token.colorTextSecondary }}>
             Notes
           </Text>
-          <Text style={{ display: 'block', marginBottom: 12, color: token.colorTextSecondary }}>
+          <Text style={{ display: 'block', marginBottom: 12 }}>
             {section.notes}
           </Text>
         </>
@@ -301,6 +297,16 @@ export default function FormRenderer({
   const effectiveDocuments = isPreview ? {} : documents;
   const effectiveReadOnly = readOnly || (isPreview ? disabled || !editable : false);
   const effectiveShowAdminNotes = showAdminNotes || isPreview;
+
+  const readOnlyTheme = effectiveReadOnly
+    ? {
+        token: {
+          colorBgContainerDisabled: token.colorBgContainer,
+          colorTextDisabled: token.colorText,
+          colorBorderDisabled: token.colorBorder,
+        },
+      }
+    : null;
 
   if (!definition && !section) {
     return (
@@ -426,12 +432,18 @@ export default function FormRenderer({
   const content = renderSections();
 
   if (!form) {
-    return (
+    return readOnlyTheme ? (
+      <ConfigProvider theme={readOnlyTheme}>
+        <Form validateTrigger="onBlur" form={localForm} layout="vertical" requiredMark={false}>
+          {content}
+        </Form>
+      </ConfigProvider>
+    ) : (
       <Form validateTrigger="onBlur" form={localForm} layout="vertical" requiredMark={false}>
         {content}
       </Form>
     );
   }
 
-  return content;
+  return readOnlyTheme ? <ConfigProvider theme={readOnlyTheme}>{content}</ConfigProvider> : content;
 }

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { isFieldComplete } from '@/features/business-owner/utils/formCompletion'
+import { getFieldDisplayName as getFieldDisplayNameFromUtils } from '@/features/staffs/lgu-officer/utils/fieldKeyUtils'
 
 export function useApplicationInfoCard(application, sections = [], formValues = null) {
   const [permitModalOpen, setPermitModalOpen] = useState(false)
@@ -42,33 +43,26 @@ export function useApplicationInfoCard(application, sections = [], formValues = 
   const approvalComment = safeApplication?.reviewComments || null
 
   // Helper to get section and field name from fieldKey
-  const getFieldDisplayName = useCallback((fieldKey) => {
-    const parts = fieldKey.split('.')
-    const sectionIdx = parseInt(parts[0], 10)
-    const fieldKeyPart = parts.slice(1).join('.')
+  const effectiveSections = useMemo(() => {
+    if (sections?.length > 0) return sections
+    return (
+      safeApplication?.formDefinition?.sections ||
+      safeApplication?.formData?.formDefinition?.sections ||
+      []
+    )
+  }, [
+    sections,
+    safeApplication?.formDefinition,
+    safeApplication?.formData?.formDefinition,
+  ])
 
-    const section = sections[sectionIdx]
-    if (!section) {
-      // Fallback: try to get field name from formDefinition if available
-      const formDef = safeApplication?.formDefinition || safeApplication?.formData?.formDefinition
-      if (formDef?.sections?.[sectionIdx]) {
-        const sec = formDef.sections[sectionIdx]
-        const secName = sec?.label || sec?.title || `Section ${sectionIdx + 1}`
-        const item = sec?.items?.find((item) => item.key === fieldKeyPart || item.name === fieldKeyPart)
-        const fieldName = item?.label || item?.name || fieldKeyPart
-        return `${secName} - ${fieldName}`
-      }
-      return fieldKey
-    }
-
-    const sectionName = section?.label || section?.title || `Section ${sectionIdx + 1}`
-
-    // Find the field in the section items - try both key and name
-    const item = section?.items?.find((item) => item.key === fieldKeyPart || item.name === fieldKeyPart)
-    const fieldName = item?.label || item?.name || fieldKeyPart
-
-    return `${sectionName} - ${fieldName}`
-  }, [sections, safeApplication?.formDefinition, safeApplication?.formData?.formDefinition])
+  const getFieldDisplayName = useCallback(
+    (fieldKey) => {
+      const formData = formValues || safeApplication?.formData || {}
+      return getFieldDisplayNameFromUtils(fieldKey, effectiveSections, formData)
+    },
+    [effectiveSections, formValues, safeApplication?.formData],
+  )
 
   // Calculate fields with request changes
   const fieldReviewDecisions = safeApplication?.fieldReviewDecisions || {}
@@ -80,12 +74,33 @@ export function useApplicationInfoCard(application, sections = [], formValues = 
       reason: decision?.requestOther || decision?.requestCode || 'No reason provided'
     }))
 
-  // Calculate form completion progress for draft mode.
+  // Build return history for display in the requested changes modal
+  const returnHistory = useMemo(() => {
+    const rawHistory = safeApplication?.returnHistory || []
+    return rawHistory.map((entry) => {
+      const fields = Object.entries(entry.fields || {})
+        .filter(([_, decision]) => decision?.status === 'request_changes')
+        .map(([fieldKey, decision]) => ({
+          fieldKey,
+          displayName: getFieldDisplayName(fieldKey),
+          reason: decision?.requestOther || decision?.requestCode || 'No reason provided'
+        }))
+      return {
+        returnNumber: entry.returnNumber,
+        returnedAt: entry.returnedAt,
+        returnedByName: entry.returnedByName,
+        reviewComments: entry.reviewComments,
+        fields,
+      }
+    })
+  }, [safeApplication?.returnHistory, getFieldDisplayName])
+
+  // Calculate form completion progress for draft and returned states.
   // When live formValues are provided (overview tab) we use the same helpers as
   // useApplicationSectionCompletion so metadata, category uploads and LOB are all checked.
   // Otherwise we fall back to the saved application.formData (stories, list view, etc.)
   const formProgress = useMemo(() => {
-    if (!isDraft || !sections.length) {
+    if ((!isDraft && !isReturned) || !sections.length) {
       return { completed: 0, total: 0, incompleteFields: [], isSectionLevel: false }
     }
 
@@ -102,8 +117,8 @@ export function useApplicationInfoCard(application, sections = [], formValues = 
         if (hasLob) {
           completedFields++
         } else {
-          const sectionName = `Section ${sectionIdx + 1}`
-          const fieldName = section?.label || section?.title || 'Line of Business'
+          const sectionName = section?.sectionName || section?.label || section?.title || `Section ${sectionIdx + 1}`
+          const fieldName = section?.sectionName || section?.label || section?.title || 'Line of Business'
           const fullPath = `${sectionIdx}.lob`
           if (!incompleteFieldsMap.has(fullPath)) {
             incompleteFieldsMap.set(fullPath, {
@@ -140,7 +155,7 @@ export function useApplicationInfoCard(application, sections = [], formValues = 
 
     const incompleteFields = Array.from(incompleteFieldsMap.values())
     return { completed: completedFields, total: totalFields, incompleteFields }
-  }, [isDraft, sections, safeApplication?.formData, getFieldDisplayName, formValues])
+  }, [isDraft, isReturned, sections, safeApplication?.formData, getFieldDisplayName, formValues])
 
   return {
     permitModalOpen,
@@ -160,6 +175,7 @@ export function useApplicationInfoCard(application, sections = [], formValues = 
     approvalComment,
     getFieldDisplayName,
     requestChangeFields,
+    returnHistory,
     formProgress,
   }
 }

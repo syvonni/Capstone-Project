@@ -10,6 +10,7 @@ import {
   getReviewableFieldKeys,
   getFieldKey,
   getLobActivityFieldKey,
+  getFieldDisplayName,
 } from '@/features/staffs/lgu-officer/utils/fieldKeyUtils'
 import { useAuthSession } from '@/features/authentication'
 import DocumentPreviewModal from '@/shared/components/document/DocumentPreviewModal'
@@ -21,10 +22,12 @@ import { useApplicationStatus } from '../hooks/useApplicationStatus'
 import { useApplicationModals } from '../hooks/useApplicationModals'
 import { useApplicationBookmarks } from '../hooks/useApplicationBookmarks'
 import { useApplicationAppeals } from '../hooks/useApplicationAudit'
+import { useApplicationViewReceipt } from '@/shared/hooks/useApplicationViewReceipt'
+import { getPayments } from '@/features/staffs/lgu-officer/services/paymentService'
 import { useAudit } from '@/shared/audit/hooks/useAudit'
 import AuditHistoryModal from '@/shared/audit/components/AuditHistoryModal'
 import AuditEventDetails from '@/shared/audit/components/AuditEventDetails'
-import { AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
+import { APPLICATION_AUDIT_EVENT_INFO } from '@/shared/config/auditEventTypes'
 import { usePendingActionCountdown } from '../hooks/usePendingActionCountdown'
 import { useFormDefinition } from '../hooks/useFormDefinition'
 import { useApplicationClaim } from '../hooks/useApplicationClaim'
@@ -39,9 +42,10 @@ import RejectAppealModal from './modals/ApplicationRejectAppealModal'
 import CompleteReviewModal from './modals/ApplicationCompleteReviewModal'
 import ReturnToApplicantModal from './modals/ApplicationReturnToApplicantModal'
 import DisabledReasonModal from './modals/ApplicationDisabledReasonModal'
-import ApplicationRejectionReasonModal from './modals/ApplicationRejectionReasonModal'
-import AppealRejectionReasonModal from './modals/ApplicationAppealRejectionReasonModal'
-import AppealLetterModal from './modals/ApplicationAppealLetterModal'
+import ApplicationRejectionReasonModal from '@/shared/components/applications/ApplicationRejectionReasonModal'
+import ApplicationAppealRejectionReasonModal from '@/shared/components/applications/ApplicationAppealRejectionReasonModal'
+import ApplicationAppealDetailsModal from '@/shared/components/applications/ApplicationAppealDetailsModal'
+import ApplicationPaymentReceiptModal from '@/shared/components/applications/ApplicationPaymentReceiptModal'
 import ApprovalCommentModal from './modals/ApplicationApprovalCommentModal'
 import ViewReasonModal from './modals/ApplicationViewReasonModal'
 
@@ -200,11 +204,33 @@ export default function ApplicationDetailPanel({
     showAppealRejectionModal, setShowAppealRejectionModal,
     showAppealLetterModal, setShowAppealLetterModal,
     showApprovalCommentModal, setShowApprovalCommentModal,
+    showReceiptModal, setShowReceiptModal,
+    receiptData, setReceiptData,
     rejectReason, setRejectReason,
     rejectAppealReason, setRejectAppealReason,
     completeReviewComment, setCompleteReviewComment,
     returnRequestOther, setReturnRequestOther,
   } = useApplicationModals()
+
+  const { handleViewReceipt } = useApplicationViewReceipt({
+    application,
+    paymentType: 'registration_fee',
+    getPayments,
+    setReceiptData,
+    setShowReceiptModal,
+    transactionName: 'Business Permit Application',
+  })
+
+  const { handleViewReceipt: handleViewAppealReceipt } = useApplicationViewReceipt({
+    application,
+    paymentType: 'appeal_fee',
+    getPayments,
+    setReceiptData,
+    setShowReceiptModal,
+    transactionName: 'Appeal Payment',
+  })
+
+  const handleCloseReceiptModal = () => setShowReceiptModal(false)
 
   const handleViewDocument = useCallback((doc) => {
     setDocumentModal({ ...doc, open: true })
@@ -250,7 +276,7 @@ export default function ApplicationDetailPanel({
     return auditLogs.map(audit => ({
       ...audit,
       timestamp: audit.createdAt,
-      userName: audit.metadata?.userName || 'Unknown',
+      userName: audit.metadata?.userName || null,
     }))
   }, [auditLogs])
 
@@ -258,7 +284,7 @@ export default function ApplicationDetailPanel({
   const searchFilter = useCallback((audit, searchValue) => {
     const searchLower = searchValue.toLowerCase()
     const metadata = audit.metadata || {}
-    const user = metadata.userName || 'Unknown'
+    const user = metadata.userName || audit.role || ''
     const eventType = audit.eventType || ''
     const name = metadata.name || ''
     const ref = metadata.applicationReferenceNumber || metadata.applicationId || ''
@@ -268,7 +294,7 @@ export default function ApplicationDetailPanel({
            ref.toLowerCase().includes(searchLower)
   }, [])
 
-  const { latestAppeal, _getActiveAppeal } = useApplicationAppeals(application)
+  const { latestAppeal } = useApplicationAppeals(application)
 
   useEffect(() => {
     if (initialApplication) {
@@ -535,21 +561,8 @@ export default function ApplicationDetailPanel({
   }, [isOfficerDraft, handleFieldDecision, reviewLocked, formData?.businessActivities, fieldReviewDecisions, handleAccept, handleReject, token, isFinalState])
 
   // Helper to get section and field name from fieldKey
-  const getFieldDisplayName = (fieldKey) => {
-    const parts = fieldKey.split('.')
-    const sectionIdx = parseInt(parts[0], 10)
-    const fieldKeyPart = parts.slice(1).join('.')
-
-    const section = sections[sectionIdx]
-    if (!section) return fieldKey
-
-    const sectionName = section?.sectionName || section?.label || section?.title || section?.category || `Section ${sectionIdx + 1}`
-
-    // Find the field in the section items
-    const item = section?.items?.find((item) => item.key === fieldKeyPart || item.label === fieldKeyPart)
-    const fieldName = item?.label || fieldKeyPart
-
-    return `${sectionName} - ${fieldName}`
+  const getFieldDisplayNameForKey = (fieldKey) => {
+    return getFieldDisplayName(fieldKey, sections, formData)
   }
 
   // Calculate fields with request changes
@@ -557,7 +570,7 @@ export default function ApplicationDetailPanel({
     .filter(([_, decision]) => decision?.status === 'request_changes')
     .map(([fieldKey, decision]) => ({
       fieldKey,
-      displayName: getFieldDisplayName(fieldKey),
+      displayName: getFieldDisplayNameForKey(fieldKey),
       reason: decision?.requestOther || decision?.requestCode || 'No reason provided'
     }))
 
@@ -652,6 +665,8 @@ export default function ApplicationDetailPanel({
       onShowAppealRejectionModal={() => setShowAppealRejectionModal(true)}
       onShowAppealLetterModal={() => setShowAppealLetterModal(true)}
       onShowApprovalCommentModal={() => setShowApprovalCommentModal(true)}
+      onViewReceipt={handleViewReceipt}
+      onViewAppealReceipt={handleViewAppealReceipt}
     />
   )
 
@@ -787,7 +802,7 @@ export default function ApplicationDetailPanel({
         onClose={() => setAuditModalOpen(false)}
         auditLogs={transformedLogs}
         loading={auditLoading}
-        eventDescriptions={AUDIT_EVENT_INFO}
+        eventDescriptions={APPLICATION_AUDIT_EVENT_INFO}
         customFilter={searchFilter}
         DetailPanelComponent={(props) => (
           <AuditEventDetails
@@ -802,7 +817,6 @@ export default function ApplicationDetailPanel({
               'role',
               'oldStatus',
               'newStatus',
-              'decision',
               'comments',
               'rejectionReason',
               'changedFields',
@@ -820,24 +834,39 @@ export default function ApplicationDetailPanel({
       />
       <ApplicationRejectionReasonModal
         open={showAppRejectionModal}
-        onClose={() => setShowAppRejectionModal(false)}
+        onCancel={() => setShowAppRejectionModal(false)}
         rejectionReason={application?.rejectionReason}
+        reviewedAt={application?.reviewedAt}
       />
-      <AppealRejectionReasonModal
+      <ApplicationAppealRejectionReasonModal
         open={showAppealRejectionModal}
-        onClose={() => setShowAppealRejectionModal(false)}
-        appealResolution={latestAppeal?.resolution}
+        onCancel={() => setShowAppealRejectionModal(false)}
+        reason={latestAppeal?.resolution}
+        resolvedAt={latestAppeal?.resolvedAt || latestAppeal?.updatedAt}
+        resolvedByName={latestAppeal?.reviewedByName}
       />
-      <AppealLetterModal
+      <ApplicationAppealDetailsModal
         open={showAppealLetterModal}
-        onClose={() => setShowAppealLetterModal(false)}
-        latestAppeal={latestAppeal}
-        setDocumentPreview={setDocumentPreview}
+        onCancel={() => setShowAppealLetterModal(false)}
+        appeal={latestAppeal}
+        onViewDocument={setDocumentPreview}
       />
       <ApprovalCommentModal
         open={showApprovalCommentModal}
         onClose={() => setShowApprovalCommentModal(false)}
         reviewComments={application?.reviewComments}
+      />
+      <ApplicationPaymentReceiptModal
+        visible={showReceiptModal}
+        onClose={handleCloseReceiptModal}
+        receiptId={receiptData?.receiptId}
+        receiptNumber={receiptData?.receiptNumber}
+        transactionDate={receiptData?.transactionDate}
+        transactionName={receiptData?.transactionName}
+        fees={receiptData?.fees}
+        totalAmount={receiptData?.totalAmount}
+        applicationReferenceNumber={receiptData?.applicationReferenceNumber}
+        paymentType={receiptData?.paymentType}
       />
       <DocumentPreviewModal
         open={documentPreview.open}

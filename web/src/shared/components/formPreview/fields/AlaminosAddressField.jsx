@@ -1,6 +1,7 @@
 import { Form, Typography } from 'antd';
 import AlaminosAddressFields from '@/shared/components/AlaminosAddressFields';
 import { useFieldContext } from './FieldContext';
+import { getRequestChangeReason } from './shared/useRequestChangeStyle';
 
 const { Text } = Typography;
 
@@ -20,12 +21,26 @@ function formatStoredAddress(value) {
 }
 
 export default function AlaminosAddressField() {
-  const { field, form, effectiveReadOnly, requestChangeBorder, fieldName } = useFieldContext();
+  const { field, form, effectiveReadOnly, requestChangeBorder, fieldName, mode, fieldReviewDecisions, token } = useFieldContext();
   const fieldValue = form.getFieldValue(fieldName);
-  const addressText = effectiveReadOnly ? formatStoredAddress(fieldValue) : null;
+  const addressText = effectiveReadOnly && mode === 'preview' ? formatStoredAddress(fieldValue) : null;
+  const reason = getRequestChangeReason(fieldName, field, fieldReviewDecisions);
 
   return (
     <div style={requestChangeBorder}>
+      {reason && (
+        <Text
+          type="secondary"
+          style={{
+            fontSize: 12,
+            display: 'block',
+            marginBottom: 8,
+            color: token.colorVolcano,
+          }}
+        >
+          Requested Change: {reason}
+        </Text>
+      )}
       {addressText ? (
         <Text>{addressText}</Text>
       ) : (

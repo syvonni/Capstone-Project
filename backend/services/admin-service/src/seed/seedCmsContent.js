@@ -11,6 +11,18 @@ const PageContent = require("../models/PageContent");
 const PageChapter = require("../models/PageChapter");
 const logger = require("../lib/logger");
 
+function buildFaqEntry(slotId, title, subtitle, items) {
+  return {
+    slotId,
+    title,
+    subtitle,
+    items,
+    isPublished: true,
+    draftData: { subtitle, items },
+    publishedData: { subtitle, items },
+  };
+}
+
 async function seedCmsContentIfEmpty() {
   const enabled =
     process.env.SEED_CMS === "true" || process.env.SEED_DEV === "true";
@@ -917,6 +929,117 @@ async function seedCmsContentIfEmpty() {
             ],
           },
         },
+        buildFaqEntry(
+          "business-owner-returned-faq",
+          "Frequently Asked Questions",
+          "Quick answers about your returned application.",
+          [
+            {
+              key: "returned-faq-1",
+              question: "Why was my application returned?",
+              answer:
+                "Your application was returned because the LGU officer identified issues that need to be addressed. This could be due to missing documents, incorrect information, or incomplete sections. The specific reasons are listed in the 'Issues Identified' section of your application. This is a normal part of the review process and gives you a chance to correct any issues before final approval.",
+            },
+            {
+              key: "returned-faq-2",
+              question: "What fields are locked and why?",
+              answer:
+                "Fields that have already been approved by the LGU officer are locked to prevent accidental changes. These fields contain information that has been verified and accepted. You can only edit fields that were flagged for revision. This ensures that approved information remains consistent while allowing you to fix the specific issues identified.",
+            },
+            {
+              key: "returned-faq-3",
+              question: "How do I know which fields need to be updated?",
+              answer:
+                "The fields that need revision are clearly marked in your application. Check the 'Issues Identified' section for specific feedback. When you navigate to the form sections, locked fields will be disabled and you won't be able to edit them. Only the fields that require changes will be editable.",
+            },
+            {
+              key: "returned-faq-4",
+              question: "Do I need to pay again when resubmitting?",
+              answer:
+                "No, you do not need to pay again. Your initial payment covers the entire application process, including revisions. Once you make the required changes and resubmit, your application will go back to the review queue without any additional fees.",
+            },
+            {
+              key: "returned-faq-5",
+              question: "How long will it take to review my resubmitted application?",
+              answer:
+                "Resubmitted applications are typically reviewed within 1-3 business days, faster than the initial review. Since only specific sections need to be checked, the process is quicker. Respond promptly to avoid delays in approval.",
+            },
+          ],
+        ),
+        buildFaqEntry(
+          "business-owner-appeal-pending-faq",
+          "Frequently Asked Questions",
+          "Quick answers about your pending appeal.",
+          [
+            {
+              key: "appeal-pending-faq-1",
+              question: 'What does "appeal pending" mean?',
+              answer:
+                'Appeal pending means your appeal has been submitted and is now being reviewed by a different officer or supervisor. The original rejection is on hold while the appeal is evaluated. You will be notified when a decision is made.',
+            },
+            {
+              key: "appeal-pending-faq-2",
+              question: "How long does the appeal review take?",
+              answer:
+                "Appeals are typically reviewed within 5-7 business days. You will receive email notifications for status changes. Appeal stages are: Submitted → Under Review → Decision. Follow up with the LGU if no update after 10 business days.",
+            },
+            {
+              key: "appeal-pending-faq-3",
+              question: "Can I edit my application while an appeal is pending?",
+              answer:
+                "No, you cannot edit the original application while an appeal is under review. The reviewing officer will make a decision based on the appeal documents and the original application. If the appeal is approved, you may be asked to make specific changes.",
+            },
+            {
+              key: "appeal-pending-faq-4",
+              question: "What happens if my appeal is approved?",
+              answer:
+                "If your appeal is approved, your application may be returned to the review queue for further processing or directly approved, depending on the officer's decision. You will receive instructions on the next steps and any required actions.",
+            },
+            {
+              key: "appeal-pending-faq-5",
+              question: "Can I submit a new application while an appeal is pending?",
+              answer:
+                "It is best to wait for the appeal decision before submitting a new application for the same business. Submitting a new application while an appeal is pending may create confusion. If the appeal is rejected, you can then submit a new application.",
+            },
+          ],
+        ),
+        buildFaqEntry(
+          "business-owner-appeal-rejected-faq",
+          "Frequently Asked Questions",
+          "Quick answers about your rejected appeal.",
+          [
+            {
+              key: "appeal-rejected-faq-1",
+              question: 'What does "appeal rejected" mean?',
+              answer:
+                'Appeal rejected means the reviewing officer or supervisor has decided that the original rejection of your application was correct and the appeal did not provide sufficient grounds to overturn it. The original rejection stands.',
+            },
+            {
+              key: "appeal-rejected-faq-2",
+              question: "Why was my appeal rejected?",
+              answer:
+                "Your appeal may have been rejected because the original rejection reasons were valid, the supporting evidence was insufficient, or the appeal did not meet the requirements. You can review the appeal decision notes for the specific reasons.",
+            },
+            {
+              key: "appeal-rejected-faq-3",
+              question: "Can I appeal the appeal decision?",
+              answer:
+                "No, appeal decisions are final and cannot be appealed again. However, you can submit a new application that addresses the issues that led to the original rejection and the appeal rejection.",
+            },
+            {
+              key: "appeal-rejected-faq-4",
+              question: "What are my options after an appeal is rejected?",
+              answer:
+                "You can submit a new application, contact the LGU for clarification on the decision, or consult with a business permit specialist. Make sure to address all the issues and provide complete, accurate information.",
+            },
+            {
+              key: "appeal-rejected-faq-5",
+              question: "Do I need to pay again to reapply?",
+              answer:
+                "A new application is treated as a new submission and may require payment of the applicable fees. Check the current fee schedule and payment instructions when you submit your new application.",
+            },
+          ],
+        ),
       ];
 
       await FaqSection.insertMany(faqEntries);

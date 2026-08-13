@@ -1,4 +1,4 @@
-import { Button, Typography } from 'antd'
+import { Typography } from 'antd'
 import ResponsiveModal from '@/shared/components/ResponsiveModal'
 
 const { Text } = Typography
@@ -11,11 +11,7 @@ export default function ViewReasonModal({ open, onClose, pendingAction }) {
       title="Reason"
       open={open}
       onCancel={onClose}
-      footer={[
-        <Button key="close" onClick={onClose}>
-          Close
-        </Button>,
-      ]}
+      footer={null}
     >
       <Text>{content}</Text>
     </ResponsiveModal>

@@ -8,46 +8,50 @@ export function hasValue(val) {
   if (typeof val === 'string') return val.trim() !== ''
   if (typeof val === 'boolean') return true
   if (typeof val === 'number') return true
+  if (val instanceof Date) return !isNaN(val.getTime())
   if (Array.isArray(val)) {
     if (val.length === 0) return false
-    return val.some(item => {
-      if (item === undefined || item === null) return false
-      if (typeof item === 'string') return item.trim() !== ''
-      if (typeof item === 'boolean') return true
-      if (typeof item === 'number') return true
-      if (typeof item === 'object' && item !== null) {
-        if (item.cid || item.url || item.ipfsCid) return true
-        const objValues = Object.values(item)
-        if (objValues.length === 0) return false
-        return objValues.some(v =>
-          v !== undefined && v !== null && v !== '' &&
-          !(typeof v === 'string' && v.trim() === '')
-        )
-      }
-      return false
-    })
+    return val.some(item => hasValue(item))
   }
   if (typeof val === 'object') {
-    if (typeof val.isValid === 'function' && !val.isValid()) return false
+    if (typeof val.isValid === 'function') return !!val.isValid()
     const values = Object.values(val)
-    if (values.length === 0) return false
-    return values.some(v => {
-      if (v === undefined || v === null) return false
-      if (typeof v === 'string') return v.trim() !== ''
-      if (typeof v === 'boolean') return true
-      if (typeof v === 'number') return true
-      if (Array.isArray(v)) return v.length > 0 && hasValue(v)
-      if (typeof v === 'object' && v !== null) {
-        if (typeof v.isValid === 'function' && !v.isValid()) return false
-        return Object.values(v).some(nested =>
-          nested !== undefined && nested !== null && nested !== '' &&
-          !(typeof nested === 'string' && nested.trim() === '')
-        )
-      }
-      return false
-    })
+    return values.some(v => hasValue(v))
   }
   return false
+}
+
+export function getDateRangeValue(formValues, fieldKey) {
+  if (!formValues || typeof formValues !== 'object') return null
+
+  const start = formValues[`${fieldKey}_start`]
+  const end = formValues[`${fieldKey}_end`]
+  if (start !== undefined || end !== undefined) {
+    return { start, end }
+  }
+
+  const legacy = formValues[fieldKey]
+  if (legacy == null) return null
+
+  if (Array.isArray(legacy) && legacy.length >= 2) {
+    return { start: legacy[0], end: legacy[1] }
+  }
+
+  if (typeof legacy === 'object' && !Array.isArray(legacy)) {
+    const startVal = legacy.startDate || legacy.start || legacy.start_date
+    const endVal = legacy.endDate || legacy.end || legacy.end_date
+    if (startVal !== undefined || endVal !== undefined) {
+      return { start: startVal, end: endVal }
+    }
+  }
+
+  return null
+}
+
+export function isDateRangeComplete(formValues, fieldKey) {
+  const range = getDateRangeValue(formValues, fieldKey)
+  if (!range) return false
+  return hasValue(range.start) && hasValue(range.end)
 }
 
 export function getActiveMetadataFields(field, fieldKey, formValues) {
@@ -56,7 +60,7 @@ export function getActiveMetadataFields(field, fieldKey, formValues) {
   }
 
   const categoryValue = formValues[`${fieldKey}_category`]
-  if (!categoryValue) return []
+  if (!hasValue(categoryValue)) return []
 
   const options = field.dropdownOptions || []
   const selectedOption = options.find(o =>
@@ -96,6 +100,10 @@ export function hasMainFieldValue(field, fieldKey, formValues) {
   if (field.type === 'category_upload') {
     const categoryValue = formValues[`${fieldKey}_category`]
     if (!hasValue(categoryValue)) return false
+  }
+
+  if (field.type === 'date_range') {
+    return isDateRangeComplete(formValues, fieldKey)
   }
 
   const val = formValues[fieldKey]

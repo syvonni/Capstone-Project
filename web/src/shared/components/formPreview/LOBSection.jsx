@@ -6,7 +6,7 @@
  * interface for LOB selection with category and classification options.
  */
 
-import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react'
+import { useState, useEffect, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react'
 import { Typography, Button, theme, Alert, Tooltip } from 'antd'
 import { useLOBData } from '@/features/admin/pages/forms/components/hooks/useLOBData'
 import { useIndustrySelection } from '@/features/admin/pages/forms/components/hooks/useIndustrySelection'
@@ -23,7 +23,7 @@ import {
 
 const { Text } = Typography
 
-function LOBSection({ isEditMode = false, onCompleteChange = null, onLobChange = null, form = null, businessActivities = null }, ref) {
+function LOBSection({ isEditMode = false, onCompleteChange = null, onLobChange = null, form = null, businessActivities = null, renderLineActions = null, reviewMode = false, fieldReviewDecisions = null }, ref) {
   const { token } = theme.useToken()
 
   // Custom hooks
@@ -344,55 +344,143 @@ function LOBSection({ isEditMode = false, onCompleteChange = null, onLobChange =
     })
   }
 
+  // Determine which LOB lines/industries have a 'request_changes' field decision
+  // and collect their reasons, so the LOB card can be highlighted and labelled
+  // like a regular field that has requested changes.
+  const industryReasons = useMemo(() => {
+    const reasons = {}
+    const activities = Array.isArray(businessActivities) ? businessActivities : []
+    activities.forEach((activity, index) => {
+      const taxCode = activity?.taxCode
+      const lineName = activity?.detailedLine || activity?.detailedLineOfBusiness || activity?.lineOfBusiness
+      if (!taxCode || !lineName) return
+      const fieldKey = `businessActivities.${index}`
+      const decision = fieldReviewDecisions?.[fieldKey]
+      if (decision?.status === 'request_changes') {
+        if (!reasons[taxCode]) reasons[taxCode] = []
+        reasons[taxCode].push({
+          lineName,
+          reason: decision?.requestOther || decision?.requestCode || '',
+        })
+      }
+    })
+    return reasons
+  }, [businessActivities, fieldReviewDecisions])
+
+  // Lock lines that have been marked as accepted by the officer. Approved lines
+  // should not be editable when the applicant is fixing requested changes.
+  const { disabledLineKeys, lockedIndustryTaxCodes } = useMemo(() => {
+    const disabledLineKeys = new Set()
+    const lockedIndustryTaxCodes = new Set()
+    const activities = Array.isArray(businessActivities) ? businessActivities : []
+
+    activities.forEach((activity, index) => {
+      const taxCode = activity?.taxCode
+      const lineName = activity?.detailedLine || activity?.detailedLineOfBusiness || activity?.lineOfBusiness
+      if (!taxCode || !lineName) return
+
+      const fieldKey = `businessActivities.${index}`
+      const decision = fieldReviewDecisions?.[fieldKey]
+      if (decision?.status === 'accepted') {
+        disabledLineKeys.add(`${taxCode}-${lineName}`)
+        lockedIndustryTaxCodes.add(taxCode)
+      }
+    })
+
+    return { disabledLineKeys, lockedIndustryTaxCodes }
+  }, [businessActivities, fieldReviewDecisions])
+
+  const requestChangeBorder = {
+    border: `1px dashed ${token.colorVolcano}`,
+    padding: 12,
+    borderRadius: 8,
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 8 }}>
         {lobsError ? (
           <Alert
-            message="Error"
+            title="Error"
             description={lobsError}
             type="error"
             showIcon
             style={{ marginBottom: 16 }}
           />
         ) : (
-          <>
+          <div>
             <Text style={{ display: 'block', marginBottom: 8 }}>
               {Object.values(industryDetailedLines).flat().length <= 1 ? 'What is your line of business?' : 'What are your lines of business?'} <span style={{ color: token.colorError }}>*</span>
             </Text>
-            {selectedIndustryTaxCodes.map((taxCode) => (
-              <IndustryCard
-                key={taxCode}
-                taxCode={taxCode}
-                lobs={lobs}
-                industryDetailedLines={industryDetailedLines}
-                lobAllocatedCapital={lobAllocatedCapital}
-                savedVariableInputs={savedVariableInputs}
-                allVariables={allVariables}
-                taxBrackets={taxBrackets}
-                token={token}
-                onRemoveIndustry={handleRemoveIndustryWithSync}
-                onRemoveLineOfBusiness={handleRemoveLineOfBusinessWithCleanup}
-                onAddLineOfBusiness={handleAddLineOfBusiness}
-                onEditLineOfBusiness={handleEditLineOfBusiness}
-                getClassificationForCapital={getClassificationForCapital}
-                isEditMode={isEditMode}
-              />
-            ))}
-          </>
+            {selectedIndustryTaxCodes.map((taxCode, index) => {
+              const industryReasonList = industryReasons[taxCode] || []
+              const hasIndustryRequestChange = industryReasonList.length > 0
+              const requestChangeLabel = industryReasonList
+                .map(({ lineName, reason }) => (industryReasonList.length > 1 ? `${lineName}: ${reason}` : reason))
+                .join('; ')
+
+              return (
+                <div key={taxCode} style={{ marginTop: index > 0 ? 8 : 0 }}>
+                  <div style={hasIndustryRequestChange ? requestChangeBorder : {}}>
+                    {hasIndustryRequestChange && (
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          display: 'block',
+                          marginBottom: 4,
+                          color: token.colorVolcano,
+                        }}
+                      >
+                        Requested Change: {requestChangeLabel}
+                      </Text>
+                    )}
+                    <IndustryCard
+                      taxCode={taxCode}
+                      lobs={lobs}
+                      industryDetailedLines={industryDetailedLines}
+                      lobAllocatedCapital={lobAllocatedCapital}
+                      savedVariableInputs={savedVariableInputs}
+                      allVariables={allVariables}
+                      taxBrackets={taxBrackets}
+                      token={token}
+                      onRemoveIndustry={handleRemoveIndustryWithSync}
+                      onRemoveLineOfBusiness={handleRemoveLineOfBusinessWithCleanup}
+                      onAddLineOfBusiness={handleAddLineOfBusiness}
+                      onEditLineOfBusiness={handleEditLineOfBusiness}
+                      getClassificationForCapital={getClassificationForCapital}
+                      isEditMode={isEditMode}
+                      reviewMode={reviewMode}
+                      disabledLineKeys={disabledLineKeys}
+                      lockedIndustryTaxCodes={lockedIndustryTaxCodes}
+                    />
+                  </div>
+                  {renderLineActions && (
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {(industryDetailedLines[taxCode] || []).map((lineName) => (
+                        <div key={lineName}>
+                          {renderLineActions(taxCode, lineName)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
 
-      <Tooltip title={isEditMode ? "Line of Business selection is editable in edit mode" : "Line of Business selection is not editable in view mode"}>
-        <Button
-          type="dashed"
-          onClick={() => setIndustryModalOpen(true)}
-          block
-          disabled={!isEditMode}
-        >
-          {selectedIndustryTaxCodes.length === 0 ? '+ Select line of business' : '+ Add another industry'}
-        </Button>
-      </Tooltip>
+      {isEditMode && !reviewMode && disabledLineKeys.size === 0 && (
+        <Tooltip title="Line of Business selection is editable in edit mode">
+          <Button
+            type="dashed"
+            onClick={() => setIndustryModalOpen(true)}
+            block
+          >
+            {selectedIndustryTaxCodes.length === 0 ? '+ Select line of business' : '+ Add another industry'}
+          </Button>
+        </Tooltip>
+      )}
 
       <IndustrySelectionModal
         open={industryModalOpen}

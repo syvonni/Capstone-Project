@@ -68,7 +68,6 @@ const RESERVED_WORDS = new Set([
   "effectiveDate",
   "notes",
   "description",
-  "source",
   "showWhen",
   "formData",
   "applicationId",

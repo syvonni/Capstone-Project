@@ -184,9 +184,9 @@ export default function BusinessOwnerMasterView({
     handleAddApplication()
   }
 
-  const handleApplicationTypeSelectWrapper = (formId) => {
+  const handleApplicationTypeSelectWrapper = async (formId) => {
     setShowSettings(false)
-    handleApplicationTypeSelect(formId)
+    await handleApplicationTypeSelect(formId)
   }
 
   const selectedApplication = applications.find(app => (app.applicationId || app._id) === selectedApplicationId)

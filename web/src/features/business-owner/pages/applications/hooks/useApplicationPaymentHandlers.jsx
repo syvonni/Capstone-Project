@@ -1,5 +1,5 @@
-import { createPaymentRecord } from '@/features/business-owner/services/paymentService.js'
-import { useApplicationViewReceipt } from './useApplicationViewReceipt'
+import { createPaymentRecord, getPayments } from '@/features/business-owner/services/paymentService.js'
+import { useApplicationViewReceipt } from '@/shared/hooks/useApplicationViewReceipt'
 import { isApplicationEditable } from './useApplicationStatus'
 
 /**
@@ -116,6 +116,7 @@ export function useApplicationPaymentHandlers({
     application,
     paymentType: 'registration_fee',
     feeData,
+    getPayments,
     setReceiptData,
     setShowReceiptModal,
     transactionName: 'Business Permit Application',

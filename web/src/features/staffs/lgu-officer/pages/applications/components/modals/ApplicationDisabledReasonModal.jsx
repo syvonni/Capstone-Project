@@ -1,4 +1,4 @@
-import { Button, Typography } from 'antd'
+import {  Typography } from 'antd'
 import ResponsiveModal from '@/shared/components/ResponsiveModal'
 
 const { Text } = Typography
@@ -9,11 +9,7 @@ export default function DisabledReasonModal({ open, onClose, message }) {
       title="Action Not Available"
       open={open}
       onCancel={onClose}
-      footer={[
-        <Button key="close" onClick={onClose}>
-          Close
-        </Button>,
-      ]}
+      footer={null}
     >
       <Text>{message}</Text>
     </ResponsiveModal>

@@ -101,6 +101,7 @@ function getProductionApiOrigin(path) {
   const authOrigin = auth.replace(/\/$/, '')
   if (path.startsWith('/api/admin') || path.startsWith('/api/maintenance') || path.startsWith('/api/lgu-officer') || path.startsWith('/api/lgus') || path.startsWith('/api/forms')) return adminOrigin
   if (path.startsWith('/api/business')) return businessOrigin
+  if (path.startsWith('/api/bookmarks')) return businessOrigin
   if (path.startsWith('/api/audit')) return auditOrigin
   return authOrigin
 }

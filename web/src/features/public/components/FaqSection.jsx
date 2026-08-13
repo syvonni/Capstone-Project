@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { Typography, Grid, theme, Card } from 'antd'
+import { Typography, Grid, theme } from 'antd'
 import { CustomerServiceOutlined } from '@ant-design/icons'
 import DynamicFaqSection from '@/shared/components/cms/DynamicFaqSection'
 import BlurFade from '@/shared/components/animations/BlurFade.jsx'
+import BentoBox from '@/shared/components/BentoBox.jsx'
 
 const { Title, Text } = Typography
 const { useBreakpoint } = Grid
@@ -10,9 +10,17 @@ const { useBreakpoint } = Grid
 export default function FaqSection() {
   const { token } = theme.useToken()
   const screens = useBreakpoint()
-  const [hoveredCard, setHoveredCard] = useState(null)
 
   const horizontalPadding = screens.xl ? '192px' : screens.lg ? '128px' : screens.md ? '64px' : '24px'
+
+  const helpCard = {
+    id: 'help',
+    icon: CustomerServiceOutlined,
+    title: 'Need More Help?',
+    description: 'Visit our Help Center for detailed guides and support',
+    link: '/help',
+    linkText: 'Get help →',
+  }
 
   return (
     <BlurFade delay={0.2} duration={0.5} onViewport>
@@ -69,68 +77,11 @@ export default function FaqSection() {
               hideHeader
             />
 
-            <Card
-              size="small"
-              style={{
-                background: token.colorBgContainer,
-                border: screens.lg && hoveredCard === 'help' ? `1px solid ${token.colorPrimary}` : `1px solid ${token.colorBorder}`,
-                borderRadius: token.borderRadiusLG,
-                cursor: 'pointer',
-                transition: screens.lg ? 'border-color 0.2s, box-shadow 0.2s, transform 0.2s' : 'none',
-                boxShadow: screens.lg && hoveredCard === 'help' ? token.boxShadowCard : 'none',
-                transform: screens.lg && hoveredCard === 'help' ? 'scale(1.02)' : 'scale(1)',
-              }}
-              styles={{
-                body: {
-                  padding: screens.lg ? 16 : 12,
-                  height: '100%',
-                  display: 'flex',
-                  paddingTop: screens.lg ? 90 : 48,
-                  flexDirection: 'column',
-                  justifyContent: 'flex-end',
-                  alignItems: 'flex-start',
-                }
-              }}
-              onMouseEnter={screens.lg ? () => setHoveredCard('help') : undefined}
-              onMouseLeave={screens.lg ? () => setHoveredCard(null) : undefined}
-              onClick={() => window.location.href = '/help'}
-            >
-              <CustomerServiceOutlined
-                style={{
-                  fontSize: screens.lg ? 24 : 20,
-                  color: token.colorTextSecondary,
-                  marginBottom: 8,
-                }}
-              />
-              <Title level={5} style={{ margin: 0, fontSize: 16 }}>
-                Need More Help?
-              </Title>
-              <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                Visit our Help Center for detailed guides and support
-              </Text>
-              <div
-                style={{
-                  maxHeight: screens.lg && hoveredCard === 'help' ? 30 : 0,
-                  overflow: 'hidden',
-                  transition: screens.lg ? 'max-height 0.15s ease-out' : 'none',
-                }}
-              >
-                <Text
-                  style={{
-                    display: 'block',
-                    marginTop: 8,
-                    color: token.colorPrimary,
-                    fontSize: 12,
-                    fontWeight: 500,
-                    opacity: screens.lg && hoveredCard === 'help' ? 1 : 0,
-                    transform: screens.lg && hoveredCard === 'help' ? 'translateY(0)' : 'translateY(10px)',
-                    transition: screens.lg ? 'opacity 0.15s ease-out, transform 0.15s ease-out' : 'none',
-                  }}
-                >
-                  Get help →
-                </Text>
-              </div>
-            </Card>
+            <BentoBox
+              card={helpCard}
+              animated={false}
+              bodyStyle={{ paddingTop: screens.lg ? 90 : 48 }}
+            />
           </div>
         </div>
       </div>

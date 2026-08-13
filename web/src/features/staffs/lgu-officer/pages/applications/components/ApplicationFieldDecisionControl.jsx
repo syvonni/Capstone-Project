@@ -1,29 +1,35 @@
 import { useState } from 'react'
 import { Typography, Space, Input, Button, Tooltip } from 'antd'
 import ResponsiveModal from '@/shared/components/ResponsiveModal'
-import { CheckOutlined, CloseOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons'
+import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 const { TextArea } = Input
 
-export default function FieldDecisionControl({ fieldKey, decision, onAccept, onReject, _token, disabled = false, isMobile = false, hideRequest = false, isFinalState = false, isResubmit = false }) {
+export default function FieldDecisionControl({ fieldKey, decision, onAccept, onReject, _token, disabled = false, isMobile = false, block = false, hideRequest = false, isFinalState = false, isResubmit = false }) {
   const [requestOpen, setRequestOpen] = useState(false)
   const [requestReason, setRequestReason] = useState('')
-  const [viewReasonOpen, setViewReasonOpen] = useState(false)
+
+  const shouldFill = isMobile || block
 
   // Format decision author info
   const getDecisionAuthorText = () => {
     if (!decision?.decidedAt) return null
     const decidedBy = decision?.decidedByName || decision?.decidedBy || 'Officer'
-    const time = new Date(decision.decidedAt).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
+    const decidedAt = new Date(decision.decidedAt)
+    const time = decidedAt.toLocaleString('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true,
+    })
+    const date = decidedAt.toLocaleString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
     })
 
     const actionText = decision.status === 'accepted' ? 'Approved' : decision.status === 'request_changes' ? 'Requested changes' : 'Decided'
-    return `${actionText} by ${decidedBy} at ${time}`
+    return `${actionText} by ${decidedBy} at ${time} on ${date}`
   }
 
   const handleConfirmRequest = () => {
@@ -51,13 +57,13 @@ export default function FieldDecisionControl({ fieldKey, decision, onAccept, onR
 
     if (isAccepted) {
       return authorText ? (
-        <Text type="secondary" style={{ fontSize: 11 }}>{authorText}</Text>
+        <Text type="secondary" style={{ display: 'block', fontSize: 11 }}>{authorText}</Text>
       ) : null
     }
 
     if (isRequestChange) {
       return authorText ? (
-        <Text type="secondary" style={{ fontSize: 11 }}>{authorText}</Text>
+        <Text type="secondary" style={{ display: 'block', fontSize: 11 }}>{authorText}</Text>
       ) : null
     }
 
@@ -98,7 +104,7 @@ export default function FieldDecisionControl({ fieldKey, decision, onAccept, onR
     const authorText = getDecisionAuthorText()
     if (!authorText) return null
     return (
-      <Text type="secondary" style={{ fontSize: 11 }}>{authorText}</Text>
+      <Text type="secondary" style={{ display: 'block', fontSize: 11 }}>{authorText}</Text>
     )
   }
 
@@ -106,69 +112,58 @@ export default function FieldDecisionControl({ fieldKey, decision, onAccept, onR
   if (isAccepted) {
     const authorText = getDecisionAuthorText()
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: shouldFill ? '100%' : 'auto' }}>
         <Tooltip title="Undo approval">
           <Button
             type="default"
+            block
             onClick={handleClearDecision}
             icon={<CloseOutlined />}
-            style={{ width: isMobile ? '100%' : 'auto' }}
+            style={{ width: shouldFill ? '100%' : 'auto' }}
           >
             Undo Approval
           </Button>
         </Tooltip>
         {authorText && (
-          <Text type="secondary" style={{ fontSize: 11 }}>{authorText}</Text>
+          <Text type="secondary" style={{ display: 'block', fontSize: 11 }}>{authorText}</Text>
         )}
       </div>
     )
   }
 
-  // When request changes, show undo and view reason buttons
+  // When request changes, show undo button
   if (isRequestChange) {
     const authorText = getDecisionAuthorText()
     return (
-      <>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <Space.Compact size={4} style={{ width: isMobile ? '100%' : 'auto' }}>
-            <Tooltip title="Undo request change">
-              <Button
-                type="default"
-                onClick={handleClearDecision}
-                icon={<CloseOutlined />}
-                style={{ flex: isMobile ? 1 : 'auto' }}
-              >
-                Undo Request Change
-              </Button>
-            </Tooltip>
-            <Tooltip title="View reason">
-              <Button
-                type="default"
-                onClick={() => setViewReasonOpen(true)}
-                icon={<EyeOutlined />}
-                style={{ flex: isMobile ? 1 : 'auto' }}
-              >
-                View Reason
-              </Button>
-            </Tooltip>
-          </Space.Compact>
-          {authorText && (
-            <Text type="secondary" style={{ fontSize: 11 }}>{authorText}</Text>
-          )}
-        </div>
-      </>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: shouldFill ? '100%' : 'auto' }}>
+        <Tooltip title="Undo request change">
+          <Button
+            type="default"
+            block
+            onClick={handleClearDecision}
+            icon={<CloseOutlined />}
+            style={{ width: shouldFill ? '100%' : 'auto' }}
+          >
+            Undo Request Change
+          </Button>
+        </Tooltip>
+        {authorText && (
+          <Text type="secondary" style={{ display: 'block', fontSize: 11 }}>{authorText}</Text>
+        )}
+      </div>
     )
   }
 
   return (
     <>
-      <Space.Compact size={4} style={{ width: isMobile ? '100%' : 'auto' }}>
+      <Space.Compact size={4} style={{ width: shouldFill ? '100%' : 'auto' }}>
         <Tooltip title="Accept field">
           <Button
             type="default"
+            block
             onClick={handleAcceptClick}
             icon={<CheckOutlined />}
-            style={{ flex: isMobile ? 1 : 'auto' }}
+            style={{ flex: shouldFill ? 1 : 'auto' }}
           >
             Accept
           </Button>
@@ -178,9 +173,10 @@ export default function FieldDecisionControl({ fieldKey, decision, onAccept, onR
             <Button
               type={isRequestChange ? 'primary' : 'default'}
               icon={<EditOutlined />}
+              block
               onClick={() => setRequestOpen(true)}
               disabled={isResubmit}
-              style={{ flex: isMobile ? 1 : 'auto' }}
+              style={{ flex: shouldFill ? 1 : 'auto' }}
             >
               Request
             </Button>
@@ -192,10 +188,7 @@ export default function FieldDecisionControl({ fieldKey, decision, onAccept, onR
         onCancel={handleCancelRequest}
         title="Request Changes"
         width={520}
-        footer={[
-          <Button key="cancel" onClick={handleCancelRequest}>
-            Cancel
-          </Button>,
+        footer={
           <Button
             key="confirm"
             type="primary"
@@ -203,19 +196,10 @@ export default function FieldDecisionControl({ fieldKey, decision, onAccept, onR
             disabled={!requestReason?.trim()}
           >
             Confirm Request
-          </Button>,
-        ]}
+          </Button>
+        }
       >
         {requestContent}
-      </ResponsiveModal>
-      <ResponsiveModal
-        open={viewReasonOpen}
-        onCancel={() => setViewReasonOpen(false)}
-        title="Request Change Reason"
-        width={520}
-        footer={<Button onClick={() => setViewReasonOpen(false)}>Close</Button>}
-      >
-        <Text>{decision?.requestOther || decision?.requestCode || 'No reason provided'}</Text>
       </ResponsiveModal>
     </>
   )

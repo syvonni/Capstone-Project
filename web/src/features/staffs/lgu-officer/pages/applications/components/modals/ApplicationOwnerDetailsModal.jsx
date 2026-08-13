@@ -73,10 +73,10 @@ export default function OwnerDetailsModal({ open, onClose, application, ownerIde
     if (!ownerId) return
     let cancelled = false
     setLoadingProfile(true)
-    get(`/api/lgu-officer/owner-profile/${ownerId}`)
+    get(`/api/auth/lgu-officer/users/${ownerId}`)
       .then((res) => {
         if (cancelled) return
-        setOwnerProfile(res.profile)
+        setOwnerProfile(res.user ?? res.profile ?? null)
       })
       .catch((err) => {
         console.error('Failed to fetch owner profile:', err)

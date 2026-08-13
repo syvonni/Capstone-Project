@@ -248,8 +248,7 @@ class ApplicationAuditHelper {
   static async logApproved(req, officerId, application, comments, oldApplication, role) {
     const diff = oldApplication ? diffApplication(oldApplication, application) : null;
     const metadata = await buildBaseMetadata(req, officerId, application, role, {
-      decision: "approved",
-      comments,
+      ...(comments ? { comments } : {}),
       reviewedAt: application?.reviewedAt,
       approvedAt: application?.reviewedAt,
       businessId: application?.businessId,
@@ -274,10 +273,10 @@ class ApplicationAuditHelper {
 
   static async logRejected(req, officerId, application, comments, rejectionReason, oldApplication, role) {
     const diff = oldApplication ? diffApplication(oldApplication, application) : null;
+    const shouldLogComments = comments && comments !== rejectionReason;
     const metadata = await buildBaseMetadata(req, officerId, application, role, {
-      decision: "rejected",
-      comments,
-      rejectionReason,
+      ...(shouldLogComments ? { comments } : {}),
+      ...(rejectionReason ? { rejectionReason } : {}),
       reviewedAt: application?.reviewedAt,
       rejectedAt: application?.reviewedAt,
       ...(diff
@@ -302,8 +301,7 @@ class ApplicationAuditHelper {
   static async logReturned(req, officerId, application, comments, oldApplication, role) {
     const diff = oldApplication ? diffApplication(oldApplication, application) : null;
     const metadata = await buildBaseMetadata(req, officerId, application, role, {
-      decision: "returned",
-      comments,
+      ...(comments ? { comments } : {}),
       reviewedAt: application?.reviewedAt,
       returnedAt: application?.reviewedAt,
       returnCount: application?.returnCount,
@@ -320,6 +318,83 @@ class ApplicationAuditHelper {
     });
     return fireAndForgetLog(
       "application_returned",
+      officerId,
+      getEntityType(application),
+      getEntityId(application),
+      metadata,
+    );
+  }
+
+  static async logAppealRejected(req, officerId, application, appealId, rejectionReason, oldApplication, role) {
+    const diff = oldApplication ? diffApplication(oldApplication, application) : null;
+    const metadata = await buildBaseMetadata(req, officerId, application, role, {
+      appealId,
+      ...(rejectionReason ? { rejectionReason } : {}),
+      reviewedAt: application?.reviewedAt,
+      rejectedAt: application?.reviewedAt,
+      outcome: 'rejected',
+      granted: false,
+      status: 'rejected',
+      ...(diff
+        ? {
+            changedFields: diff.changedFields,
+            changeCount: diff.changeCount,
+            changeSummary: diff.changeSummary,
+            oldStatus: diff.oldStatus,
+            newStatus: diff.newStatus,
+          }
+        : {}),
+    });
+    return fireAndForgetLog(
+      "appeal_rejected",
+      officerId,
+      getEntityType(application),
+      getEntityId(application),
+      metadata,
+    );
+  }
+
+  static async logAppealSubmitted(req, userId, application, appeal, role) {
+    const metadata = await buildBaseMetadata(req, userId, application, role, {
+      appealId: appeal?._id ? appeal._id.toString() : null,
+      appealType: appeal?.appealType,
+      businessId: appeal?.businessId,
+      applicationId: application?._id ? application._id.toString() : getEntityId(application),
+    });
+    return fireAndForgetLog(
+      "appeal_submitted",
+      userId,
+      getEntityType(application),
+      getEntityId(application),
+      metadata,
+    );
+  }
+
+  static async logAppealResolved(req, officerId, application, appeal, oldApplication, role) {
+    const diff = oldApplication ? diffApplication(oldApplication, application) : null;
+    const isGranted = appeal?.status === "approved" || appeal?.status === "granted";
+    const metadata = await buildBaseMetadata(req, officerId, application, role, {
+      appealId: appeal?._id ? appeal._id.toString() : null,
+      appealType: appeal?.appealType,
+      outcome: appeal?.status,
+      granted: isGranted,
+      status: appeal?.status,
+      resolvedAt: appeal?.resolvedAt,
+      ...(isGranted
+        ? { approvedAt: appeal?.resolvedAt }
+        : { rejectedAt: appeal?.resolvedAt }),
+      ...(diff
+        ? {
+            changedFields: diff.changedFields,
+            changeCount: diff.changeCount,
+            changeSummary: diff.changeSummary,
+            oldStatus: diff.oldStatus,
+            newStatus: diff.newStatus,
+          }
+        : {}),
+    });
+    return fireAndForgetLog(
+      "appeal_resolved",
       officerId,
       getEntityType(application),
       getEntityId(application),
@@ -346,17 +421,19 @@ class ApplicationAuditHelper {
   }
 
   static async logFieldDecisionsUpdated(req, officerId, application, decisions, oldDecisions, role) {
+    const validOldDecisions = (oldDecisions || []).filter(Boolean);
     const oldByField = Array.isArray(oldDecisions)
-      ? Object.fromEntries((oldDecisions || []).map((d) => [d.fieldKey, d]))
+      ? Object.fromEntries(validOldDecisions.map((d) => [d.fieldKey, d]))
       : oldDecisions || {};
 
-    const changedDecisions = (decisions || []).filter((d) => {
+    const validDecisions = (decisions || []).filter(Boolean);
+    const changedDecisions = validDecisions.filter((d) => {
       const old = oldByField[d.fieldKey];
       return !old || old.status !== d.status || old.reasonCode !== d.reasonCode || old.reasonOther !== d.reasonOther;
     });
 
     const metadata = await buildBaseMetadata(req, officerId, application, role, {
-      decisionsCount: decisions?.length || 0,
+      decisionsCount: validDecisions.length,
       changedDecisionsCount: changedDecisions.length,
       changedDecisions: changedDecisions.map((d) => ({
         fieldKey: d.fieldKey,

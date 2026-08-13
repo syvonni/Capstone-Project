@@ -5,6 +5,7 @@ const Application = require("../../models/Application");
 const Payment = require("../../models/Payment");
 const User = require("../../models/User");
 const { logAuditEvent } = require("../../lib/auditClient");
+const ApplicationAuditHelper = require("../../lib/auditHelpers/applicationAuditHelper");
 const { crossClaimForBusiness } = require("../../lib/crossClaimService");
 
 class AppealService {
@@ -276,6 +277,8 @@ class AppealService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
+        .populate("requestedBy", "firstName lastName")
+        .populate("reviewedBy", "firstName lastName")
         .lean(),
       Appeal.countDocuments(filter),
     ]);
@@ -296,8 +299,10 @@ class AppealService {
               return clauses;
             }),
           })
-          .select("businessId businessName registeredBusinessName formData.businessName")
-          .lean()
+            .select(
+              "businessId businessName registeredBusinessName formData.businessName",
+            )
+            .lean()
         : [],
       businessIds.length > 0
         ? Application.find({
@@ -309,8 +314,8 @@ class AppealService {
               return clauses;
             }),
           })
-          .select("applicationId businessName formData.businessName")
-          .lean()
+            .select("applicationId businessName formData.businessName")
+            .lean()
         : [],
     ]);
 
@@ -342,6 +347,16 @@ class AppealService {
         ...appeal,
         businessName: info?.name || null,
         _canonicalBusinessId: info?.canonicalId || null,
+        requestedByName:
+          appeal.requestedByName ||
+          (appeal.requestedBy &&
+            typeof appeal.requestedBy === "object" &&
+            `${appeal.requestedBy.firstName || ""} ${appeal.requestedBy.lastName || ""}`.trim()),
+        reviewedByName:
+          appeal.reviewedByName ||
+          (appeal.reviewedBy &&
+            typeof appeal.reviewedBy === "object" &&
+            `${appeal.reviewedBy.firstName || ""} ${appeal.reviewedBy.lastName || ""}`.trim()),
       };
     });
 
@@ -369,23 +384,149 @@ class AppealService {
       appeal.businessName = entity.name;
     }
 
+    // Fallback to user lookup for legacy appeals missing cached names
+    if (!appeal.requestedByName && appeal.requestedBy) {
+      const requester = await User.findById(appeal.requestedBy).select("firstName lastName");
+      if (requester) {
+        appeal.requestedByName = `${requester.firstName || ""} ${requester.lastName || ""}`.trim();
+      }
+    }
+    if (!appeal.reviewedByName && appeal.reviewedBy) {
+      const officer = await User.findById(appeal.reviewedBy).select("firstName lastName");
+      if (officer) {
+        appeal.reviewedByName = `${officer.firstName || ""} ${officer.lastName || ""}`.trim();
+      }
+    }
+
     return appeal;
+  }
+
+  /**
+   * Get appeals by business or application identifier.
+   * Resolves the identifier to an Application (or Business) and returns
+   * all matching appeals, newest first.
+   */
+  async getByBusiness(identifier, userId, userRole) {
+    const target = String(identifier || "");
+    if (!target) {
+      const error = new Error("Business or application identifier is required");
+      error.code = "VALIDATION_ERROR";
+      error.status = 400;
+      throw error;
+    }
+
+    const isObjectId = mongoose.Types.ObjectId.isValid(target);
+    const applicationIds = new Set();
+
+    // Try to resolve the identifier directly to an Application
+    const applicationClauses = [];
+    if (isObjectId) {
+      applicationClauses.push({ _id: new mongoose.Types.ObjectId(target) });
+    }
+    applicationClauses.push({ applicationId: target });
+    const application = await Application.findOne({
+      $or: applicationClauses,
+    }).lean();
+    if (application) {
+      applicationIds.add(String(application._id));
+    }
+
+    // If no application was found, the identifier may be a Business record;
+    // find the linked application(s) to use their _ids for the appeal lookup.
+    if (applicationIds.size === 0) {
+      let business = null;
+      if (isObjectId) {
+        business = await Business.findOne({
+          _id: new mongoose.Types.ObjectId(target),
+        }).lean();
+      }
+      if (!business) {
+        business = await Business.findOne({ businessId: target }).lean();
+      }
+
+      if (business) {
+        const linkedApplicationClauses = [{ businessId: business._id }];
+        if (business.approvedApplicationId) {
+          linkedApplicationClauses.push({
+            _id: business.approvedApplicationId,
+          });
+        }
+        const linkedApplications = await Application.find({
+          $or: linkedApplicationClauses,
+        }).lean();
+        for (const app of linkedApplications) {
+          applicationIds.add(String(app._id));
+        }
+        if (applicationIds.size === 0) {
+          return [];
+        }
+      }
+    }
+
+    if (applicationIds.size === 0) {
+      const error = new Error("Business or application not found");
+      error.code = "NOT_FOUND";
+      error.status = 404;
+      throw error;
+    }
+
+    const filter = {
+      $or: [
+        {
+          businessId: {
+            $in: Array.from(applicationIds).map(
+              (id) => new mongoose.Types.ObjectId(id),
+            ),
+          },
+        },
+        {
+          applicationId: {
+            $in: Array.from(applicationIds).map(
+              (id) => new mongoose.Types.ObjectId(id),
+            ),
+          },
+        },
+      ],
+    };
+
+    // Business owners may only view their own appeals
+    if (userRole === "business_owner") {
+      filter.requestedBy = userId;
+    }
+
+    const appeals = await Appeal.find(filter)
+      .sort({ createdAt: -1 })
+      .populate("requestedBy", "firstName lastName")
+      .populate("reviewedBy", "firstName lastName")
+      .lean();
+
+    return appeals.map((appeal) => ({
+      ...appeal,
+      requestedByName:
+        appeal.requestedByName ||
+        (appeal.requestedBy &&
+          typeof appeal.requestedBy === "object" &&
+          `${appeal.requestedBy.firstName || ""} ${appeal.requestedBy.lastName || ""}`.trim()),
+      reviewedByName:
+        appeal.reviewedByName ||
+        (appeal.reviewedBy &&
+          typeof appeal.reviewedBy === "object" &&
+          `${appeal.reviewedBy.firstName || ""} ${appeal.reviewedBy.lastName || ""}`.trim()),
+    }));
   }
 
   /**
    * Create appeal
    */
   async create(userId, appealData) {
-    const {
-      businessId,
-      applicationId,
-      appealType,
-      description,
-      evidence,
-    } = appealData;
+    const { businessId, applicationId, appealType, description, evidence } =
+      appealData;
 
-    if (!businessId || !appealType || !description) {
-      const error = new Error("businessId, appealType, and description are required");
+    const identifier = businessId || applicationId;
+    if (!identifier || !appealType || !description) {
+      const error = new Error(
+        "businessId or applicationId, appealType, and description are required",
+      );
       error.code = "VALIDATION_ERROR";
       error.status = 400;
       throw error;
@@ -393,7 +534,7 @@ class AppealService {
 
     // Verify the application exists and is rejected
     const application = await Application.findOne(
-      this.buildApplicationLookupQuery(businessId),
+      this.buildApplicationLookupQuery(identifier),
     );
     if (!application) {
       const error = new Error("Application not found");
@@ -403,7 +544,10 @@ class AppealService {
     }
 
     // Check if application is rejected (required for rejection_appeal)
-    if (appealType === "rejection_appeal" && application.applicationStatus !== "rejected") {
+    if (
+      appealType === "rejection_appeal" &&
+      application.applicationStatus !== "rejected"
+    ) {
       const error = new Error("Can only appeal rejected applications");
       error.code = "INVALID_APPLICATION_STATUS";
       error.status = 400;
@@ -427,9 +571,17 @@ class AppealService {
       }
     }
 
+    const canonicalId = application._id;
+
+    // Resolve requester name for metadata display
+    const requester = await User.findById(userId).select("firstName lastName");
+    const requestedByName = requester
+      ? `${requester.firstName} ${requester.lastName}`.trim()
+      : "";
+
     // Check if there's already a rejected appeal for this business (appeal exhausted)
     const rejectedAppeal = await Appeal.findOne({
-      businessId,
+      $or: [{ businessId: canonicalId }, { applicationId: canonicalId }],
       status: "rejected",
       appealType: { $in: ["rejection_appeal", "wrong_assessment"] },
     });
@@ -448,9 +600,9 @@ class AppealService {
     // Look up claiming officer on the business/application so the appeal is auto-assigned
     let claimingOfficerId = null;
     try {
-      const entity = await this._resolveEntity(businessId);
+      const entity = await this._resolveEntity(canonicalId);
       if (entity?.reviewedBy) {
-        claimingOfficerId = entity.reviewedBy;
+        claimingOfficerId = entity?.reviewedBy;
       }
     } catch (lookupErr) {
       console.error(
@@ -460,12 +612,13 @@ class AppealService {
     }
 
     const appeal = await Appeal.create({
-      businessId,
-      applicationId: applicationId || businessId,
+      businessId: canonicalId,
+      applicationId: canonicalId,
       appealType,
       description,
       evidence: evidence || [],
       requestedBy: userId,
+      requestedByName,
       status: "submitted",
       ...(claimingOfficerId ? { reviewedBy: claimingOfficerId } : {}),
     });
@@ -477,7 +630,7 @@ class AppealService {
       const payment = await Payment.create({
         paymentId,
         userId,
-        businessId,
+        applicationId: canonicalId,
         paymentType: "appeal_fee",
         description: "Appeal Fee",
         amount: appealFeeAmount,
@@ -513,13 +666,16 @@ class AppealService {
 
     // Update application to mark that an appeal is active and change status to appeal_pending
     try {
-      await Application.updateOne(this.buildApplicationLookupQuery(businessId), {
-        $set: {
-          hasActiveAppeal: true,
-          appealId: appeal._id.toString(),
-          applicationStatus: "appeal_pending",
+      await Application.updateOne(
+        { _id: canonicalId },
+        {
+          $set: {
+            hasActiveAppeal: true,
+            appealId: appeal._id.toString(),
+            applicationStatus: "appeal_pending",
+          },
         },
-      });
+      );
     } catch (updateErr) {
       console.error(
         "Failed to update application with appeal flag:",
@@ -544,10 +700,20 @@ class AppealService {
       appeal._id.toString(),
       {
         businessId: appeal.businessId,
-        businessName: appeal.businessName,
-        applicationReferenceNumber: appeal.applicationReferenceNumber,
+        businessName: application.businessName,
+        applicationReferenceNumber: application.applicationReferenceNumber,
       },
     ).catch((err) => console.error("Failed to log audit event:", err));
+
+    // Also log against the application entity so the timeline can render it
+    await ApplicationAuditHelper.logAppealSubmitted(
+      null,
+      userId,
+      application,
+      appeal,
+    ).catch((err) =>
+      console.error("Failed to log appeal submitted to application audit:", err),
+    );
 
     return appeal;
   }
@@ -590,6 +756,10 @@ class AppealService {
       appeal.status = normalizedStatus;
       if (normalizedStatus === "approved" || normalizedStatus === "rejected") {
         appeal.reviewedBy = userId;
+        const officer = await User.findById(userId).select("firstName lastName");
+        appeal.reviewedByName = officer
+          ? `${officer.firstName} ${officer.lastName}`.trim()
+          : "";
         appeal.resolution = resolution || "";
         appeal.resolvedAt = new Date();
 
@@ -601,6 +771,8 @@ class AppealService {
           );
 
           if (application) {
+            const oldApplication = application.toObject();
+
             // Send appeal email BEFORE clearing appealId
             const emailType =
               normalizedStatus === "approved"
@@ -645,6 +817,20 @@ class AppealService {
             }
 
             await application.save();
+
+            // Log appeal resolution against the application entity
+            await ApplicationAuditHelper.logAppealResolved(
+              null,
+              userId,
+              application,
+              appeal,
+              oldApplication,
+            ).catch((err) =>
+              console.error(
+                "Failed to log appeal resolved to application audit:",
+                err,
+              ),
+            );
           }
         } catch (appUpdateErr) {
           console.error(
@@ -735,7 +921,9 @@ class AppealService {
     }
 
     if (String(appeal.reviewedBy) !== String(userId)) {
-      const error = new Error("Only the claiming officer can release this appeal");
+      const error = new Error(
+        "Only the claiming officer can release this appeal",
+      );
       error.code = "FORBIDDEN";
       error.status = 403;
       throw error;
@@ -789,7 +977,9 @@ class AppealService {
       String(appeal.reviewedBy) !== String(userId) &&
       !isManagerOrAdmin
     ) {
-      const error = new Error("Only the claiming officer can transfer this appeal");
+      const error = new Error(
+        "Only the claiming officer can transfer this appeal",
+      );
       error.code = "FORBIDDEN";
       error.status = 403;
       throw error;
@@ -864,7 +1054,9 @@ class AppealService {
     // Check if retry count is exhausted
     const emailStatus = application.emailSendStatus?.[emailType];
     if (emailStatus && emailStatus.retryCount >= 3) {
-      const error = new Error("Maximum retry attempts reached. Please reset email status.");
+      const error = new Error(
+        "Maximum retry attempts reached. Please reset email status.",
+      );
       error.code = "RETRY_EXHAUSTED";
       error.status = 429;
       throw error;

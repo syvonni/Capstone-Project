@@ -1,12 +1,10 @@
-import React, { useState } from 'react'
 import { Typography, Grid, theme, Card } from 'antd'
 import { WarningOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
-import BizClearLogo from '@/shared/components/graphics/BizClearLogo.jsx'
 import BlurFade from '@/shared/components/animations/BlurFade.jsx'
 import ZipperReveal from '@/shared/components/graphics/MosaicArt.jsx'
 import PanAnimation from '@/shared/components/animations/PanAnimation.jsx'
 import AnnouncementsCard from '@/shared/components/cms/AnnouncementsCard.jsx'
+import BentoBox from '@/shared/components/BentoBox.jsx'
 import { BENTO_CARDS } from '@/features/public/constants/landing.constants.js'
 import dayjs from 'dayjs'
 
@@ -23,8 +21,6 @@ export default function HeroSection({
 }) {
   const { token } = theme.useToken()
   const screens = useBreakpoint()
-  const navigate = useNavigate()
-  const [hoveredCard, setHoveredCard] = useState(null)
 
   // Filter bento cards based on maintenance status
   const visibleBentoCards = BENTO_CARDS.filter(card => {
@@ -100,104 +96,7 @@ export default function HeroSection({
                 height: '100%',
               }}
             >
-              <BlurFade delay={index * 0.1} duration={0.5}>
-                <Card
-                size="small"
-                style={{
-                  height: '100%',
-                  background: token.colorBgContainer,
-                  border: (card.link || card.scrollTo) && screens.lg && hoveredCard === card.id
-                    ? `1px solid ${token.colorPrimary}`
-                    : `1px solid ${token.colorBorder}`,
-                  borderRadius: token.borderRadiusLG,
-                  cursor: (card.link || card.scrollTo) ? 'pointer' : 'default',
-                  transition: screens.lg ? 'border-color 0.2s, box-shadow 0.2s, transform 0.2s' : 'none',
-                  boxShadow: (card.link || card.scrollTo) && screens.lg && hoveredCard === card.id
-                    ? token.boxShadowCard
-                    : 'none',
-                  transform: (card.link || card.scrollTo) && screens.lg && hoveredCard === card.id ? 'scale(1.02)' : 'scale(1)',
-                }}
-                styles={{
-                  body: {
-                    padding: screens.lg ? 16 : 12,
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'flex-end',
-                    alignItems: 'flex-start',
-                  }
-                }}
-                onMouseEnter={screens.lg ? () => setHoveredCard(card.id) : undefined}
-                onMouseLeave={screens.lg ? () => setHoveredCard(null) : undefined}
-                onClick={() => {
-                  if (card.link) {
-                    navigate(card.link)
-                  } else if (card.scrollTo) {
-                    const element = document.getElementById(card.scrollTo)
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth' })
-                    }
-                  }
-                }}
-              >
-                {card.icon === 'bizclear' ? (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    transition: 'transform 0.3s ease-out',
-                  }}>
-                    <BizClearLogo width={screens.lg ? 32 : 28} style={{ marginBottom: 8 }} />
-                    <Title level={5} style={{ margin: 0, fontSize: screens.lg ? 20 : 18 }}>
-                      {card.title}
-                    </Title>
-                    <Text type="secondary" style={{ display: 'block', marginTop: 4, wordWrap: 'break-word', overflowWrap: 'break-word' }}>
-                      {card.description}
-                    </Text>
-                  </div>
-                ) : (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                  }}>
-                    {React.createElement(card.icon, {
-                      style: { fontSize: screens.lg ? 24 : 20, color: token.colorTextSecondary, marginBottom: 8 }
-                    })}
-                    <Title level={5} style={{ margin: 0 }}>
-                      {card.title}
-                    </Title>
-                    {card.description && (
-                      <Text type="secondary" style={{ display: 'block', marginTop: 4, wordWrap: 'break-word', overflowWrap: 'break-word' }}>
-                        {card.description}
-                      </Text>
-                    )}
-                    {(card.link || card.scrollTo) && (
-                      <div style={{
-                        maxHeight: screens.lg && hoveredCard === card.id ? 30 : 0,
-                        overflow: 'hidden',
-                        transition: screens.lg ? 'max-height 0.15s ease-out' : 'none',
-                      }}>
-                        <Text
-                          style={{
-                            display: 'block',
-                            marginTop: 8,
-                            color: token.colorPrimary,
-                            fontSize: 12,
-                            fontWeight: 500,
-                            opacity: screens.lg && hoveredCard === card.id ? 1 : 0,
-                            transform: screens.lg && hoveredCard === card.id ? 'translateY(0)' : 'translateY(10px)',
-                            transition: screens.lg ? 'opacity 0.15s ease-out, transform 0.15s ease-out' : 'none',
-                          }}
-                        >
-                          {card.linkText || 'Learn more →'}
-                        </Text>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </Card>
-              </BlurFade>
+              <BentoBox card={card} index={index} />
             </div>
           ))}
         </div>

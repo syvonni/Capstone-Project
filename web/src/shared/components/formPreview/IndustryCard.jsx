@@ -20,15 +20,18 @@ export default function IndustryCard({
   onEditLineOfBusiness,
   getClassificationForCapital,
   isEditMode = false,
-  renderLineActions = null,
   reviewMode = false,
+  disabledLineKeys = new Set(),
+  lockedIndustryTaxCodes = new Set(),
 }) {
   const categoryMapping = INDUSTRY_CATEGORIES_BY_TAX_CODE[taxCode];
   const categoryLabel = categoryMapping?.name || taxCode;
   const categoryDescription = categoryMapping?.description || '';
 
+  const lineNames = industryDetailedLines[taxCode] || [];
+
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div>
       <Card
         style={{
           border: `1px solid ${token.colorBorder}`,
@@ -60,7 +63,7 @@ export default function IndustryCard({
               {categoryDescription}
             </Text>
           </div>
-          {isEditMode && !reviewMode && (
+          {isEditMode && !reviewMode && !lockedIndustryTaxCodes.has(taxCode) && (
             <Tooltip title="Remove industry">
               <Button
                 icon={<DeleteOutlined />}
@@ -73,8 +76,9 @@ export default function IndustryCard({
         <Divider style={{ margin: '12px 0' }} />
         {(industryDetailedLines[taxCode] || []).length > 0 && (
           <div style={{ marginTop: 12 }}>
-            {(industryDetailedLines[taxCode] || []).map((lineName) => {
+            {lineNames.map((lineName) => {
               const capitalKey = `${taxCode}-${lineName}`;
+              const isLineDisabled = disabledLineKeys.has(capitalKey);
               const allocatedCapital = (lobAllocatedCapital || {})[capitalKey] || 0;
               const classification = getClassificationForCapital(taxCode, allocatedCapital);
 
@@ -163,8 +167,7 @@ export default function IndustryCard({
                       </Text>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {renderLineActions && renderLineActions(taxCode, lineName)}
-                      {isEditMode && !reviewMode && (
+                      {isEditMode && !reviewMode && !isLineDisabled && (
                         <Tooltip title="Edit line of business">
                           <Button
                             icon={<EditOutlined />}
@@ -174,7 +177,7 @@ export default function IndustryCard({
                           />
                         </Tooltip>
                       )}
-                      {isEditMode && !reviewMode && (industryDetailedLines[taxCode] || []).length > 1 && (
+                      {isEditMode && !reviewMode && !isLineDisabled && (industryDetailedLines[taxCode] || []).length > 1 && (
                         <Tooltip title="Remove line of business">
                           <Button
                             icon={<DeleteOutlined />}
@@ -190,7 +193,7 @@ export default function IndustryCard({
           </div>
         )}
 
-        {isEditMode && !reviewMode && (
+        {isEditMode && !reviewMode && !lockedIndustryTaxCodes.has(taxCode) && (
           <div>
             <Tooltip title="Add another line of business">
               <Button

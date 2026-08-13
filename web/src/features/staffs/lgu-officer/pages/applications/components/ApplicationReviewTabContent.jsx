@@ -29,9 +29,11 @@ export default function ReviewTabContent({
   onShowAppealRejectionModal,
   onShowAppealLetterModal,
   onShowApprovalCommentModal,
+  onViewReceipt,
+  onViewAppealReceipt,
 }) {
   return (
-    <div style={{ padding: 16, overflow: 'auto' }}>
+    <div style={{ overflow: 'auto' }}>
       {formDefLoading && (
         <div style={{ marginBottom: 16 }}>
           <LottieSpinner size="small" tip="Loading form sections..." />
@@ -39,7 +41,7 @@ export default function ReviewTabContent({
       )}
       {!formDefLoading && !formDefinition && (
         <Alert
-          message="Form definition not loaded"
+          title="Form definition not loaded"
           description="No active form definition is available for this application type. Section tabs will appear when an active form is published by the admin."
           type="info"
           showIcon
@@ -62,6 +64,8 @@ export default function ReviewTabContent({
         onShowAppealRejectionModal={onShowAppealRejectionModal}
         onShowAppealLetterModal={onShowAppealLetterModal}
         onShowApprovalCommentModal={onShowApprovalCommentModal}
+        onViewReceipt={onViewReceipt}
+        onViewAppealReceipt={onViewAppealReceipt}
       />
 
     </div>

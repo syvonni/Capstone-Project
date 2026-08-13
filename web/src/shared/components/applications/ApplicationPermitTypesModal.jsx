@@ -3,7 +3,6 @@ import { Typography, Divider } from 'antd'
 import SplitCard from '@/shared/components/SplitCard'
 import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { getPublicPermitFormsGrouped } from '@/shared/services/permitFormService'
-import { getIconForForm } from '@/shared/utils/permitIconMap'
 
 const { Text } = Typography
 
@@ -91,7 +90,7 @@ function ApplicationPermitTypesModal({ open, onCancel, selectedPermitType = 'reg
         onCancel={onCancel}
         width={800}
       >
-        <div style={{ padding: 24 }}>
+        <div>
           <Text type="secondary">No permit types available</Text>
         </div>
       </ResponsiveModal>
@@ -115,7 +114,6 @@ function ApplicationPermitTypesModal({ open, onCancel, selectedPermitType = 'reg
           {selectedForm && (
             <SplitCard
               title={selectedForm.name}
-              icon={getIconForForm(selectedForm.formId)}
               description={selectedForm.description}
               disableBorderBehavior={true}
             />
@@ -134,7 +132,6 @@ function ApplicationPermitTypesModal({ open, onCancel, selectedPermitType = 'reg
               <SplitCard
                 key={form.formId}
                 title={form.name}
-                icon={getIconForForm(form.formId)}
                 description={form.description}
                 disableBorderBehavior={true}
               />

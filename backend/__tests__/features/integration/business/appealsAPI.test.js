@@ -14,6 +14,8 @@ const {
   cleanupTestData,
 } = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/__tests__/helpers/cleanup");
 const Appeal = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Appeal");
+const Application = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Application");
+const Business = require("/Users/pendiaz/Documents/my-Projects/Capstone/backend/services/business-service/src/models/Business");
 
 function expectStandardResponse(response, hasData = true) {
   expect(response.body).toBeDefined();
@@ -33,13 +35,14 @@ describe("Appeals API Integration Tests", () => {
   let businessOwnerToken;
   let staffToken;
   let stepUpToken;
+  let users;
 
   beforeAll(async () => {
     setupTestEnvironment();
     await setupMongoDB();
     app = setupApp("business");
 
-    const users = await createTestUsers();
+    users = await createTestUsers();
     const tokens = getTestTokens(users);
     businessOwnerToken = tokens.businessOwnerToken;
     staffToken = tokens.staffToken;
@@ -53,6 +56,7 @@ describe("Appeals API Integration Tests", () => {
 
   beforeEach(async () => {
     await Appeal.deleteMany({});
+    await Application.deleteMany({});
   });
 
   describe("Smoke Tests", () => {
@@ -278,6 +282,63 @@ describe("Appeals API Integration Tests", () => {
             emailType: "appeal_submitted",
           })
           .expect(403);
+
+        expectErrorResponse(response);
+      });
+    });
+
+    describe("GET /api/business/appeals/by-business/:businessId", () => {
+      it("should return appeals for an application by applicationId", async () => {
+        const application = await Application.create({
+          applicationId: `APP-BY-BUSINESS-${Date.now()}`,
+          userId: users.businessOwner._id,
+          applicationStatus: "rejected",
+          businessName: "Test Business",
+        });
+
+        await Appeal.create({
+          businessId: application._id,
+          applicationId: application._id,
+          requestedBy: users.businessOwner._id,
+          appealType: "rejection_appeal",
+          description: "Test by-business appeal",
+          status: "submitted",
+        });
+
+        const response = await request(app)
+          .get(`/api/business/appeals/by-business/${application.applicationId}`)
+          .set("Authorization", `Bearer ${staffToken}`)
+          .expect(200);
+
+        expectStandardResponse(response);
+        expect(Array.isArray(response.body)).toBe(true);
+        expect(response.body.length).toBe(1);
+        expect(response.body[0].description).toBe("Test by-business appeal");
+      });
+
+      it("should return empty array for a business with no linked applications", async () => {
+        const business = await Business.create({
+          businessId: `BIZ-EMPTY-${Date.now()}`,
+          userId: users.businessOwner._id,
+          ownerProfileId: new mongoose.Types.ObjectId(),
+          businessName: "Empty Business",
+          businessRegistrationNumber: "REG-12345",
+        });
+
+        const response = await request(app)
+          .get(`/api/business/appeals/by-business/${business.businessId}`)
+          .set("Authorization", `Bearer ${staffToken}`)
+          .expect(200);
+
+        expect(Array.isArray(response.body)).toBe(true);
+        expect(response.body.length).toBe(0);
+      });
+
+      it("should return 404 when identifier does not resolve to any entity", async () => {
+        const response = await request(app)
+          .get("/api/business/appeals/by-business/nonexistent-id")
+          .set("Authorization", `Bearer ${staffToken}`)
+          .expect(404);
 
         expectErrorResponse(response);
       });

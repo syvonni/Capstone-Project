@@ -78,9 +78,6 @@ function item(label, type = 'file', opts = {}) {
   if (opts.showWhen) {
     base.showWhen = opts.showWhen
   }
-  if (opts.source) {
-    base.source = opts.source
-  }
   return base
 }
 

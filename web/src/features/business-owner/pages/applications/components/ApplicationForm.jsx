@@ -39,7 +39,7 @@ import { useApplicationAutosaveSectionChange } from '../hooks/useApplicationAuto
 import FormNavigation from '@/shared/components/FormNavigation';
 import ApplicationFaqTab from './ApplicationFaqTab';
 import ApplicationMockPaymentModal from './modals/ApplicationMockPaymentModal';
-import ApplicationPaymentReceiptModal from './modals/ApplicationPaymentReceiptModal';
+import ApplicationPaymentReceiptModal from '@/shared/components/applications/ApplicationPaymentReceiptModal';
 import ApplicationResubmitConfirmationModal from './modals/ApplicationResubmitConfirmationModal';
 
 const { Text } = Typography;

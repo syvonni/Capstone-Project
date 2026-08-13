@@ -1,4 +1,4 @@
-import { Card, Tag, Typography, theme, Badge } from 'antd'
+import { Card, Tag, Typography, theme } from 'antd'
 import { StarFilled } from '@ant-design/icons'
 
 const { Text } = Typography
@@ -21,6 +21,7 @@ export default function PanelCard({
       onClick={onClick}
       style={{
         cursor: 'pointer',
+        position: 'relative',
         background: token.colorBgContainer,
         boxShadow: selected ? `0 0 0 2px ${token.colorPrimaryBg}20, 0 2px 8px ${token.colorPrimary}15` : undefined,
         transition: 'border-color 0.2s',
@@ -32,8 +33,20 @@ export default function PanelCard({
         e.currentTarget.style.borderColor = ''
       }}
     >
+      {isBookmarked && (
+        <StarFilled
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            color: token.colorWarning,
+            fontSize: 12,
+            zIndex: 1,
+          }}
+        />
+      )}
       {title && (
-        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 8, color: token.colorText }}>
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 8, paddingRight: isBookmarked ? 20 : 0, color: token.colorText }}>
           {title}
         </div>
       )}
@@ -76,15 +89,5 @@ export default function PanelCard({
     </Card>
   )
 
-  if (!isBookmarked) return card
-
-  return (
-    <Badge.Ribbon
-      text={<StarFilled style={{ color: token.colorText, fontSize: 10 }} />}
-      color="yellow"
-      placement="end"
-    >
-      {card}
-    </Badge.Ribbon>
-  )
+  return card
 }

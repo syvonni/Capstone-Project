@@ -34,7 +34,7 @@ try {
 const app = express();
 
 // Disable ETag to prevent 304 responses (browser caching)
-app.disable('etag');
+app.disable("etag");
 
 const helmet = require("helmet");
 app.use(
@@ -105,7 +105,7 @@ app.use((req, res, next) => {
 // Preserve request body for all routes (to prevent middleware from stripping it)
 app.use((req, res, next) => {
   const originalSend = res.send;
-  res.send = function(data) {
+  res.send = function (data) {
     req._body = req.body;
     return originalSend.call(this, data);
   };
@@ -134,7 +134,11 @@ app.use(
   "/api/business",
   createCsrfMiddleware({
     cookieName: "csrf-token-business",
-    skipPaths: ["/api/business/csrf-token", "/api/business/payments/mock", "/api/business/applications"],
+    skipPaths: [
+      "/api/business/csrf-token",
+      "/api/business/payments/mock",
+      "/api/business/applications",
+    ],
     disabled: csrfDisabled,
   }),
 );
@@ -219,6 +223,10 @@ app.use("/api/business/admin", sensitiveOperationRateLimit(), adminRouter);
 // LGU Officer routes - Phase 1: Use feature aggregators
 const lguOfficerRouter = require("./routes/lgu-officer");
 app.use("/api/lgu-officer", lguOfficerRouter);
+
+// Bookmarks routes
+const bookmarksRouter = require("./routes/bookmarks.routes");
+app.use("/api/bookmarks", bookmarksRouter);
 
 // Public routes - Phase 1: Use feature aggregators
 const publicRouter = require("./routes/public");

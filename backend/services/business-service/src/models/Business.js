@@ -52,6 +52,7 @@ const BusinessSchema = new mongoose.Schema(
         "under_review",
         "approved",
         "rejected",
+        "returned",
       ],
       default: "draft",
     },

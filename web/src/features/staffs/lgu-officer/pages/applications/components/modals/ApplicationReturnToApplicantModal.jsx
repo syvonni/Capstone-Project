@@ -26,9 +26,10 @@ export default function ReturnToApplicantModal({ open, onClose, onConfirm, retur
             (() => {
               // Group fields by section
               const groupedBySection = requestChangeFields.reduce((acc, item) => {
-                const sectionMatch = item.displayName.match(/^Section \d+ - /)
-                const sectionName = sectionMatch ? item.displayName.split(' - ')[0] : 'Other'
-                const fieldName = sectionMatch ? item.displayName.replace(sectionMatch[0], '') : item.displayName
+                const parts = item.displayName.split(' - ')
+                const hasSection = parts.length > 1
+                const sectionName = hasSection ? parts[0] : 'Other'
+                const fieldName = hasSection ? parts.slice(1).join(' - ') : item.displayName
                 if (!acc[sectionName]) {
                   acc[sectionName] = []
                 }

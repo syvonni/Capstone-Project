@@ -8,15 +8,21 @@ const BASE_PATH = '/api/business/appeals'
  * @param {number} [params.page=1] - Page number
  * @param {number} [params.limit=20] - Items per page
  * @param {string} [params.status] - Filter by status
+ * @param {string} [params.businessId] - Filter by business/application id
+ * @param {string} [params.applicationId] - Filter by business/application id (legacy alias)
  */
-export async function getAppeals({ page = 1, limit = 20, status } = {}) {
+export async function getAppeals({ page = 1, limit = 20, status, businessId, applicationId } = {}) {
   const qs = new URLSearchParams()
   qs.set('page', String(page))
   qs.set('limit', String(limit))
   if (status) qs.set('status', status)
+  const entityId = businessId || applicationId
+  if (entityId) qs.set('businessId', entityId)
 
   const res = await get(`${BASE_PATH}?${qs.toString()}`)
-  return res || []
+  // Backend returns paginated results as { data, meta }
+  const appeals = res?.data || res || []
+  return appeals
 }
 
 /**

@@ -58,8 +58,6 @@ export function useApplicationPendingActions(
     try {
       await runWithStepUp(async (stepUpToken) => {
         await permitService.createPendingAction(appId, null, 'reject', {
-          decision: 'other',
-          comments: rejectReason,
           rejectionReason: rejectReason,
         }, 10, { stepUpToken })
       })

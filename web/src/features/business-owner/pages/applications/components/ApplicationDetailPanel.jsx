@@ -14,13 +14,13 @@ import { useApplicationFormHandlers } from '../hooks/useApplicationFormHandlers'
 import { useApplicationDelete } from '../hooks/useApplicationDelete'
 import ApplicationForm from './ApplicationForm'
 import ApplicationDetailHeader from './ApplicationDetailHeader'
-import ApplicationPaymentReceiptModal from './modals/ApplicationPaymentReceiptModal'
+import ApplicationPaymentReceiptModal from '@/shared/components/applications/ApplicationPaymentReceiptModal'
 import ApplicationMockPaymentModal from './modals/ApplicationMockPaymentModal'
-import ApplicationAppealDetailsModal from './modals/ApplicationAppealDetailsModal'
-import ApplicationRejectionReasonModal from './modals/ApplicationRejectionReasonModal'
-import ApplicationAppealRejectionReasonModal from './modals/ApplicationAppealRejectionReasonModal'
+import ApplicationAppealDetailsModal from '@/shared/components/applications/ApplicationAppealDetailsModal'
+import ApplicationRejectionReasonModal from '@/shared/components/applications/ApplicationRejectionReasonModal'
+import ApplicationAppealRejectionReasonModal from '@/shared/components/applications/ApplicationAppealRejectionReasonModal'
 import ApplicationApprovalCommentModal from './modals/ApplicationApprovalCommentModal'
-import ApplicationRequestedChangesModal from './modals/ApplicationRequestedChangesModal'
+import ApplicationRequestedChangesModal from '@/shared/components/applications/ApplicationRequestedChangesModal'
 import ApplicationProgressModal from '@/shared/components/applications/ApplicationProgressModal'
 import ApplicationAppealModal from './modals/ApplicationAppealModal'
 
@@ -79,6 +79,7 @@ export default function ApplicationDetailPanel({
   const {
     isDraft,
     isReturned,
+    isRejected,
     isReadOnly,
     hasLockedFields,
   } = statusFlags
@@ -166,6 +167,7 @@ export default function ApplicationDetailPanel({
     rejectionReason,
     approvalComment,
     requestChangeFields,
+    returnHistory,
   } = useApplicationInfoCard(
     { ...application, formData: currentFormData },
     sections
@@ -173,6 +175,7 @@ export default function ApplicationDetailPanel({
 
   const { allSectionsComplete, lockedFields } = useApplicationCompletionStatus({
     application,
+    formData,
     formAllSectionsComplete,
     isReturned,
     hasLockedFields,
@@ -196,7 +199,7 @@ export default function ApplicationDetailPanel({
         loadingAppealDetails={loadingAppealDetails}
         appealDetails={appealDetails}
         onShowAppRejectionModal={() => setShowAppRejectionModal(true)}
-        onShowAppealRejectionModal={() => setShowAppRejectionModal(true)}
+        onShowAppealRejectionModal={() => setShowAppealRejectionModal(true)}
         onShowApprovalCommentModal={() => setShowApprovalCommentModal(true)}
         onFormDataChanged={handleFormDataChanged}
         showAddForm={dashboardState?.showAddForm}
@@ -235,10 +238,12 @@ export default function ApplicationDetailPanel({
           application={application}
           isDraft={isDraft}
           isReturned={isReturned}
+          isRejected={isRejected}
           formSubmitting={false}
           isMobile={isMobile}
           onDeleteDraft={isDraft ? handleDeleteClick : undefined}
           onPaymentSuccess={isDraft || isReturned ? handlePaymentSuccess : undefined}
+          onAppealClick={handleAppealClick}
           onFillTestData={() => {
             formRef?.current?.fillTestData?.()
           }}
@@ -257,15 +262,17 @@ export default function ApplicationDetailPanel({
       </div>
 
       {/* Mobile actions footer */}
-      {isMobile && (isDraft || isReturned) && (
+      {isMobile && (isDraft || isReturned || (isRejected && !application?.hasActiveAppeal)) && (
         <ApplicationDetailHeader
           application={application}
           isDraft={isDraft}
           isReturned={isReturned}
+          isRejected={isRejected}
           formSubmitting={false}
           isMobile={isMobile}
           onDeleteDraft={isDraft ? handleDeleteClick : undefined}
           onPaymentSuccess={isDraft || isReturned ? handlePaymentSuccess : undefined}
+          onAppealClick={handleAppealClick}
           onFillTestData={() => {
             formRef?.current?.fillTestData?.()
           }}
@@ -301,17 +308,20 @@ export default function ApplicationDetailPanel({
       <ApplicationAppealDetailsModal
         open={showAppealDetailsModal}
         onCancel={() => setShowAppealDetailsModal(false)}
-        appealDetails={appealDetails}
+        appeal={appealDetails}
       />
       <ApplicationRejectionReasonModal
         open={showAppRejectionModal}
         onCancel={() => setShowAppRejectionModal(false)}
         rejectionReason={rejectionReason}
+        reviewedAt={application?.reviewedAt}
       />
       <ApplicationAppealRejectionReasonModal
         open={showAppealRejectionModal}
         onCancel={() => setShowAppealRejectionModal(false)}
-        reason={appealDetails?.rejectionReason}
+        reason={appealDetails?.resolution}
+        resolvedAt={appealDetails?.resolvedAt || appealDetails?.updatedAt}
+        resolvedByName={appealDetails?.reviewedByName}
       />
       <ApplicationApprovalCommentModal
         open={showApprovalCommentModal}
@@ -322,6 +332,7 @@ export default function ApplicationDetailPanel({
         open={changesModalOpen}
         onCancel={() => setChangesModalOpen(false)}
         requestChangeFields={requestChangeFields}
+        returnHistory={returnHistory}
       />
       <ApplicationProgressModal
         open={showProgressModal}

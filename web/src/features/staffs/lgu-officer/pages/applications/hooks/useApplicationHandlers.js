@@ -176,7 +176,9 @@ export function useApplicationHandlers(application, setApplication, onReview, on
       await loadApplicationDetails()
     } catch (error) {
       console.error('[handleResendEmail] ERROR:', error)
-      if (error?.message !== 'Step-up cancelled') {
+      if (error?.message === 'Step-up cancelled') {
+        message.warning('Step-up confirmation was cancelled')
+      } else {
         message.error(error?.message || 'Failed to resend email')
       }
     }
@@ -220,7 +222,9 @@ export function useApplicationHandlers(application, setApplication, onReview, on
       }
       await loadApplicationDetails()
     } catch (error) {
-      if (error?.message !== 'Step-up cancelled') {
+      if (error?.message === 'Step-up cancelled') {
+        message.warning('Step-up confirmation was cancelled')
+      } else {
         console.error('Failed to resend appeal email:', error)
         message.error(error?.message || 'Failed to resend appeal email')
       }

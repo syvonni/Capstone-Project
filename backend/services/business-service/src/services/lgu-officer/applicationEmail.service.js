@@ -27,6 +27,8 @@ class ApplicationEmailService {
       userId: application.userId,
       businessName: application.businessName,
     });
+    // Declared outside try so the catch block can access it for logging/status
+    let emailData
     try {
       const user = await User.findById(application.userId).select(
         "firstName lastName email",
@@ -40,10 +42,10 @@ class ApplicationEmailService {
         console.warn(
           `User or email not found for application ${application.applicationId}`,
         );
-        return;
+        return { success: false, error: "User or email not found" };
       }
 
-      const emailData = {
+      emailData = {
         to: user.email,
         firstName: user.firstName,
         lastName: user.lastName,

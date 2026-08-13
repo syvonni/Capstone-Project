@@ -214,8 +214,8 @@ const ENTITY_CONFIG = {
     eventTypes: getEventTypesByEntity('applications'),
     // Applications can be found in multiple metadata fields
     metadataFields: ['applicationId', 'entityId', 'businessId'],
-    // Broader permissions for applications
-    permissions: ['lgu_officer', 'staff', 'admin'],
+    // Broader permissions for applications (business owners can view their own)
+    permissions: ['lgu_officer', 'staff', 'admin', 'business_owner'],
     searchFields: ['userName', 'name', 'businessName', 'applicationReferenceNumber', 'applicationId', 'updatedByName', 'fieldKey'],
     responseFormat: 'standard',
     globalEndpoint: 'applications',

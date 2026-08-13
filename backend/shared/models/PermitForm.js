@@ -105,7 +105,6 @@ const SectionSchema = new mongoose.Schema(
     sectionName: { type: String, required: true },
     type: { type: String, default: "" },
     description: { type: String, default: "" },
-    source: { type: String, default: "" },
     items: [FormItemSchema],
     notes: { type: String, default: "" },
     showWhen: {

@@ -1,6 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { submitAppeal, getAppeals } from '@/features/business-owner/services/appealsService.js'
-import { useApplicationViewReceipt } from './useApplicationViewReceipt'
+import { getPayments } from '@/features/business-owner/services/paymentService.js'
+import { useApplicationViewReceipt } from '@/shared/hooks/useApplicationViewReceipt'
+import { useAuthSession } from '@/features/authentication'
 
 /**
  * Hook for managing appeal-related handlers
@@ -35,28 +37,79 @@ export function useApplicationAppealHandlers({
   feeData,
   dashboardState,
 }) {
-  // Auto-fetch appeal details when application is in appeal_rejected status
+  const { currentUser, isLoading: authLoading } = useAuthSession()
+  const fetchAttemptedRef = useRef({ userId: null, appId: null, attempted: false })
+
+  // Auto-fetch appeal details once when application is in appeal_rejected status.
+  // Track per-(user, app) attempt to avoid the request loop that made the
+  // "View Details" link flicker and hammer the API.
   useEffect(() => {
-    const fetchAppealDetailsIfNeeded = async () => {
-      const statusLower = application?.applicationStatus?.toLowerCase()
-      if (statusLower === 'appeal_rejected' && !appealDetails && !loadingAppealDetails) {
-        setLoadingAppealDetails(true)
-        try {
-          const applicationId = application.applicationId || application._id
-          const res = await getAppeals({ applicationId: applicationId, limit: 1 })
-          const appeals = res || []
-          if (appeals.length > 0) {
-            setAppealDetails(appeals[0])
-          }
-        } catch (err) {
-          console.error('Failed to fetch appeal details:', err)
-        } finally {
-          setLoadingAppealDetails(false)
-        }
+    if (authLoading) return
+
+    const userId = currentUser?.id || currentUser?._id
+    const statusLower = application?.applicationStatus?.toLowerCase()
+    const appId = application?._id
+    console.log('[useApplicationAppealHandlers] effect', {
+      authLoading,
+      userId,
+      statusLower,
+      appId,
+      appealDetails: !!appealDetails,
+      loadingAppealDetails,
+      ref: fetchAttemptedRef.current,
+    })
+
+    if (!userId) {
+      console.log('[useApplicationAppealHandlers] no userId, clearing appealDetails')
+      setAppealDetails(null)
+      return
+    }
+
+    if (statusLower !== 'appeal_rejected' || !appId) {
+      console.log('[useApplicationAppealHandlers] status not appeal_rejected or no appId')
+      setAppealDetails(null)
+      return
+    }
+
+    const ref = fetchAttemptedRef.current
+    if (ref.userId !== userId || ref.appId !== appId) {
+      fetchAttemptedRef.current = { userId, appId, attempted: false }
+      // If we still have details from a previous app, clear them and let the
+      // next effect run do the fetch; otherwise continue to fetch now.
+      if (appealDetails != null) {
+        console.log('[useApplicationAppealHandlers] app changed, clearing stale appealDetails')
+        setAppealDetails(null)
+        return
       }
     }
+
+    if (ref.attempted || loadingAppealDetails) {
+      console.log('[useApplicationAppealHandlers] already attempted or loading, skip')
+      return
+    }
+
+    const fetchAppealDetailsIfNeeded = async () => {
+      if (loadingAppealDetails) return
+      console.log('[useApplicationAppealHandlers] fetching appeals', { appId })
+      setLoadingAppealDetails(true)
+      try {
+        const res = await getAppeals({ businessId: appId, limit: 1 })
+        console.log('[useApplicationAppealHandlers] getAppeals res', res)
+        const appeals = res || []
+        const next = appeals[0] || null
+        console.log('[useApplicationAppealHandlers] setting appealDetails', next)
+        setAppealDetails(next)
+      } catch (err) {
+        console.error('[useApplicationAppealHandlers] getAppeals failed', err)
+        setAppealDetails(null)
+      } finally {
+        fetchAttemptedRef.current.attempted = true
+        setLoadingAppealDetails(false)
+      }
+    }
+
     fetchAppealDetailsIfNeeded()
-  }, [application?.applicationStatus, application?.applicationId, application?._id, appealDetails, loadingAppealDetails, setAppealDetails, setLoadingAppealDetails])
+  }, [application?.applicationStatus, application?._id, appealDetails, currentUser?.id, currentUser?._id, authLoading, setAppealDetails, setLoadingAppealDetails, loadingAppealDetails])
 
   const handleAppealClick = () => {
     setAppealModalOpen(true)
@@ -102,7 +155,8 @@ export function useApplicationAppealHandlers({
       }
 
       const res = await submitAppeal({
-        applicationId: applicationId,
+        businessId: applicationId,
+        applicationId,
         appealType: values.appealType,
         description: values.description,
         evidence: uploadedEvidence,
@@ -122,17 +176,22 @@ export function useApplicationAppealHandlers({
   }
 
   const handleViewAppealDetails = async () => {
+    console.log('[useApplicationAppealHandlers] handleViewAppealDetails clicked', { appId: application?._id })
     setLoadingAppealDetails(true)
     setShowAppealDetailsModal(true)
     try {
-      const applicationId = application.applicationId || application._id
-      const res = await getAppeals({ applicationId: applicationId, limit: 1 })
+      const res = await getAppeals({ businessId: application._id, limit: 1 })
+      console.log('[useApplicationAppealHandlers] handleViewAppealDetails getAppeals res', res)
       const appeals = res || []
       if (appeals.length > 0) {
         setAppealDetails(appeals[0])
+      } else {
+        console.log('[useApplicationAppealHandlers] no appeals found, setting null')
+        setAppealDetails(null)
       }
     } catch (err) {
-      console.error('Failed to fetch appeal details:', err)
+      console.error('[useApplicationAppealHandlers] handleViewAppealDetails failed', err)
+      setAppealDetails(null)
     } finally {
       setLoadingAppealDetails(false)
     }
@@ -142,6 +201,7 @@ export function useApplicationAppealHandlers({
     application,
     paymentType: 'appeal_fee',
     feeData,
+    getPayments,
     fallbackData: appealReceiptData,
     setReceiptData,
     setShowReceiptModal,

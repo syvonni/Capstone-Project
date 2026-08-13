@@ -63,13 +63,13 @@ export default function EmailStatusModal({
       },
       {
         key: 'rejected',
-        label: 'Application Rejection',
+        label: 'Rejected Application',
         canResend: isRejected,
         isAppeal: false,
       },
       {
         key: 'returned',
-        label: 'Application Return',
+        label: 'Returned Application',
         canResend: isReturned,
         isAppeal: false,
       },
@@ -93,7 +93,7 @@ export default function EmailStatusModal({
       },
       {
         key: 'approved',
-        label: 'Application Approval',
+        label: 'Approved Application',
         canResend: isApproved,
         isAppeal: false,
       },
@@ -166,37 +166,38 @@ export default function EmailStatusModal({
         const actionHandler = item.isAppeal ? onResendAppealEmail : onResendEmail
         const canAction = isClaimed && actionHandler && resendingKey === null
 
+        const statusLabel = item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1).toLowerCase() : ''
+
         const primaryText = (
-          <Space>
-            <Tag color={statusColor}>{item.status}</Tag>
-            <Text strong>{item.label}</Text>
+          <Space style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+            <Text>{item.label}</Text>
+            <Tag color={statusColor}>{statusLabel}</Tag>
           </Space>
         )
 
         const metaLines = [
           item.lastAttempt && (
-            <Text key="lastAttempt" type="secondary" style={{ fontSize: 12 }}>
+            <Text key="lastAttempt" type="secondary" style={{ display: 'block', fontSize: 12 }}>
               {item.status === 'sent' ? 'Sent' : 'Last attempt'}:
               {' '}{dayjs(item.lastAttempt).format('MMM D, YYYY h:mm A')}
             </Text>
           ),
           (item.retryCount > 0) && (
-            <Text key="retryCount" type="secondary" style={{ fontSize: 12 }}>
+            <Text key="retryCount" type="secondary" style={{ display: 'block', fontSize: 12 }}>
               Attempt {item.retryCount}
             </Text>
           ),
           (item.to || item.provider) && (
-            <Text key="toProvider" type="secondary" style={{ fontSize: 12 }}>
+            <Text key="toProvider" type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
               {item.to && `To: ${item.to}`}
               {item.to && item.provider && ' · '}
-              {item.provider && `via ${item.provider}`}
             </Text>
           ),
         ].filter(Boolean)
 
         const actionButton = (
           <Button
-            size="small"
+            block
             type={item.status === 'failed' ? 'primary' : 'default'}
             danger={item.status === 'failed'}
             loading={resendingKey === item.key}
@@ -211,14 +212,16 @@ export default function EmailStatusModal({
           <Card
             key={item.key}
             size="small"
-            extra={actionButton}
             style={{ width: '100%' }}
           >
-            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={2} style={{ width: '100%' }}>
               {primaryText}
-              <Space size={16} wrap>
+              <div>
                 {metaLines}
-              </Space>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                {actionButton}
+              </div>
             </Space>
           </Card>
         )

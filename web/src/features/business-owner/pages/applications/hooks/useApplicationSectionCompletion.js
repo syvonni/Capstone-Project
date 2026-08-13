@@ -18,10 +18,10 @@ export function useApplicationSectionCompletion(visibleSections, formValues) {
       }
 
       const items = section.items || []
-      const requiredFields = items.filter((f) => f.required)
+      const requiredFields = items.filter((f) => f.required && (f.key || f.name || f.label))
       if (requiredFields.length > 0) {
         const allFilled = requiredFields.every((field) => {
-          const key = field.key
+          const key = field.key || field.name || field.label
           return isFieldComplete(field, key, formValues)
         })
         map[idx] = allFilled
@@ -36,7 +36,7 @@ export function useApplicationSectionCompletion(visibleSections, formValues) {
       }
       // Check if at least one field has a meaningful value
       const hasAtLeastOneValue = formFields.some((field) => {
-        const key = field.key
+        const key = field.key || field.name || field.label
         return hasMainFieldValue(field, key, formValues)
       })
       map[idx] = hasAtLeastOneValue

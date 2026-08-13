@@ -38,6 +38,10 @@ const AppealSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    requestedByName: {
+      type: String,
+      default: "",
+    },
     status: {
       type: String,
       enum: ["submitted", "under_review", "approved", "rejected"],
@@ -47,6 +51,10 @@ const AppealSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
+    },
+    reviewedByName: {
+      type: String,
+      default: "",
     },
     resolution: {
       type: String,

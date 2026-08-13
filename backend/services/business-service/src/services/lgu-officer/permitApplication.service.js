@@ -337,7 +337,20 @@ class PermitApplicationService {
    * @throws {Error} - If forbidden (code: FORBIDDEN)
    */
   async reviewApplication(id, officerId, reviewData, auditContext = {}) {
-    const { decision, comments, rejectionReason } = reviewData;
+    let { decision, comments, rejectionReason } = reviewData;
+
+    // Normalize decision values sent by the UI (approve/reject/request_changes)
+    // to the canonical status names (approved/rejected/returned)
+    const decisionMap = {
+      approve: "approved",
+      approved: "approved",
+      reject: "rejected",
+      rejected: "rejected",
+      request_changes: "returned",
+      returned: "returned",
+    };
+    decision = decisionMap[decision] || decision;
+
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     const application = await Application.findOne({
       $or: isObjectId
@@ -420,9 +433,23 @@ class PermitApplicationService {
         .sendApplicationEmail(application, "rejected", { rejectionReason })
         .catch((err) => console.error("Failed to send rejection email:", err));
     } else if (decision === "returned") {
+      const newReturnCount = (application.returnCount || 0) + 1;
+      const returnedAt = new Date();
+
       application.applicationStatus = "returned";
       application.reviewComments = comments;
-      application.reviewedAt = new Date();
+      application.reviewedAt = returnedAt;
+      application.returnCount = newReturnCount;
+      application.returnHistory.push({
+        returnNumber: newReturnCount,
+        returnedAt,
+        returnedBy: officerId,
+        returnedByName: application.reviewedByName || "",
+        reviewComments: comments,
+        fields: application.fieldReviewDecisions
+          ? JSON.parse(JSON.stringify(application.fieldReviewDecisions))
+          : {},
+      });
 
       await application.save();
 
@@ -749,9 +776,6 @@ class PermitApplicationService {
         ? { ...doc.fieldReviewDecisions }
         : {};
 
-    // Keep a snapshot of existing field decisions for the diff
-    const oldFieldDecisionsMap = { ...decisionsObj };
-
     // Process each decision
     for (const item of payload) {
       const {
@@ -819,33 +843,6 @@ class PermitApplicationService {
     const updatedApplication = await (doc.constructor.modelName === "Application"
       ? Application.findById(doc._id)
       : Business.findById(doc._id));
-
-    // Build audit-friendly decision arrays aligned by fieldKey
-    const normalizedDecisions = payload.map((item) => ({
-      fieldKey: item.fieldKey,
-      decision: item.status,
-      reasonCode: item.reasonCode || item.requestCode || null,
-      reasonOther: item.reasonOther || item.requestOther || null,
-    }));
-    const oldNormalizedDecisions = normalizedDecisions.map((d) => {
-      const old = oldFieldDecisionsMap[d.fieldKey];
-      return old
-        ? {
-            fieldKey: d.fieldKey,
-            decision: old.status,
-            reasonCode: old.requestCode || null,
-            reasonOther: old.requestOther || null,
-          }
-        : null;
-    });
-
-    await ApplicationAuditHelper.logFieldDecisionsUpdated(
-      auditContext?.req,
-      officerId,
-      updatedApplication,
-      normalizedDecisions,
-      oldNormalizedDecisions,
-    );
 
     return await this.enrichApplication(updatedApplication);
   }

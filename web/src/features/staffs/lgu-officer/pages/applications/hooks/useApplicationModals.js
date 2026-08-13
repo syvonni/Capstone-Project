@@ -28,6 +28,10 @@ export function useApplicationModals() {
   const [showAppealLetterModal, setShowAppealLetterModal] = useState(false)
   const [showApprovalCommentModal, setShowApprovalCommentModal] = useState(false)
 
+  // Payment receipt modal
+  const [showReceiptModal, setShowReceiptModal] = useState(false)
+  const [receiptData, setReceiptData] = useState(null)
+
   // Modal input states
   const [rejectReason, setRejectReason] = useState('')
   const [rejectAppealReason, setRejectAppealReason] = useState('')
@@ -70,6 +74,12 @@ export function useApplicationModals() {
     setShowAppealLetterModal,
     showApprovalCommentModal,
     setShowApprovalCommentModal,
+
+    // Payment receipt modal
+    showReceiptModal,
+    setShowReceiptModal,
+    receiptData,
+    setReceiptData,
 
     // Modal input states
     rejectReason,

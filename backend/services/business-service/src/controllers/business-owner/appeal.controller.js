@@ -26,6 +26,19 @@ class AppealController extends BaseController {
   }
 
   /**
+   * Get appeals by business or application identifier
+   */
+  async getByBusiness(req, res) {
+    return this.handleRequest(req, res, async (req, res) => {
+      return await this.service.getByBusiness(
+        req.params.businessId,
+        req._userId,
+        req._userRole,
+      );
+    });
+  }
+
+  /**
    * Create appeal
    */
   async create(req, res) {
@@ -71,7 +84,11 @@ class AppealController extends BaseController {
    */
   async transfer(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.transfer(req.params.id, req._userId, req.body.targetOfficerId);
+      return await this.service.transfer(
+        req.params.id,
+        req._userId,
+        req.body.targetOfficerId,
+      );
     });
   }
 
@@ -80,7 +97,11 @@ class AppealController extends BaseController {
    */
   async resendEmail(req, res) {
     return this.handleRequest(req, res, async (req, res) => {
-      return await this.service.resendEmail(req.params.id, req._userId, req.body.emailType);
+      return await this.service.resendEmail(
+        req.params.id,
+        req._userId,
+        req.body.emailType,
+      );
     });
   }
 }

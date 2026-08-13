@@ -100,7 +100,7 @@ export default function ApplicationDetailPanelContent({
             type="warning"
             showIcon
             banner
-            message="This business has been closed (cessation confirmed)."
+            title="This business has been closed (cessation confirmed)."
             style={{ flexShrink: 0 }}
           />
         )}
@@ -147,7 +147,7 @@ export default function ApplicationDetailPanelContent({
                 getItemStatus={getItemStatus}
                 isMobile={isMobile}
               />
-              <div style={{ flex: 1, overflow: 'auto' }}>
+              <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
                 {activeContent}
               </div>
             </div>
@@ -169,6 +169,7 @@ export default function ApplicationDetailPanelContent({
                   display: 'flex',
                   flexDirection: 'column',
                   overflow: 'auto',
+                  padding: 16,
                   background: token.colorBgContainer,
                 }}
               >

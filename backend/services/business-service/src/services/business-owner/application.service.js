@@ -699,11 +699,30 @@ class ApplicationService {
       throw error;
     }
 
+    const newReturnCount = (application.returnCount || 0) + 1;
+    const returnedAt = new Date();
+
+    const officer = await User.findById(officerId).select("firstName lastName");
+    const officerName = officer
+      ? `${officer.firstName} ${officer.lastName}`.trim()
+      : application.reviewedByName || "";
+
     application.applicationStatus = "needs_revision";
     application.reviewComments = reviewComments || "";
-    application.reviewedAt = new Date();
-    application.returnCount = (application.returnCount || 0) + 1;
+    application.reviewedAt = returnedAt;
+    application.reviewedByName = officerName;
+    application.returnCount = newReturnCount;
     application.returnExhausted = true; // Only allow one return
+    application.returnHistory.push({
+      returnNumber: newReturnCount,
+      returnedAt,
+      returnedBy: officerId,
+      returnedByName: officerName,
+      reviewComments: reviewComments || "",
+      fields: application.fieldReviewDecisions
+        ? JSON.parse(JSON.stringify(application.fieldReviewDecisions))
+        : {},
+    });
     await application.save();
 
     // Log audit event

@@ -30,7 +30,7 @@ const GeneralPermitSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["draft", "submitted", "under_review", "approved", "rejected"],
+      enum: ["draft", "submitted", "under_review", "approved", "rejected", "returned"],
       default: "draft",
     },
     applicantId: {

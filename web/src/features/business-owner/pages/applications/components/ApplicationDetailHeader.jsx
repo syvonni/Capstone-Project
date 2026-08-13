@@ -1,5 +1,5 @@
 import { Space, Button, Typography, Tag } from 'antd'
-import { ShopOutlined, BugOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { ShopOutlined, BugOutlined, DeleteOutlined, CheckCircleOutlined, FileTextOutlined } from '@ant-design/icons'
 import { getApplicationDisplayName, getSaveStatus } from '../utils/statusUtils'
 import ApplicationMockPaymentModal from './modals/ApplicationMockPaymentModal'
 import ApplicationResubmitConfirmationModal from './modals/ApplicationResubmitConfirmationModal'
@@ -11,10 +11,12 @@ export default function ApplicationDetailHeader({
   application,
   isDraft,
   isReturned = false,
+  isRejected = false,
   formSubmitting,
   isMobile = false,
   onDeleteDraft,
   onPaymentSuccess,
+  onAppealClick,
   onFillTestData,
   allSectionsComplete = false,
   token,
@@ -87,7 +89,7 @@ export default function ApplicationDetailHeader({
               {statusText}
             </Tag>
           )}
-          {showActions && (isDraft || isReturned) ? (
+          {showActions && (isDraft || isReturned || (isRejected && !application?.hasActiveAppeal)) ? (
             <>
               {isDraft && import.meta.env.DEV && (
                 <Button
@@ -108,16 +110,28 @@ export default function ApplicationDetailHeader({
                   Delete
                 </Button>
               )}
-              <Button
-                type="primary"
-                icon={<CheckCircleOutlined />}
-                iconPlacement="end"
-                onClick={() => handleSubmitAndPay(isReturned)}
-                loading={formSubmitting}
-                disabled={!allSectionsComplete}
-              >
-                {isReturned ? 'Resubmit' : 'Submit'}
-              </Button>
+              {(isDraft || isReturned) && (
+                <Button
+                  type="primary"
+                  icon={<CheckCircleOutlined />}
+                  iconPlacement="end"
+                  onClick={() => handleSubmitAndPay(isReturned)}
+                  loading={formSubmitting}
+                  disabled={!allSectionsComplete}
+                >
+                  {isReturned ? 'Resubmit' : 'Submit'}
+                </Button>
+              )}
+              {isRejected && !application?.hasActiveAppeal && (
+                <Button
+                  type="primary"
+                  icon={<FileTextOutlined />}
+                  iconPlacement="end"
+                  onClick={onAppealClick}
+                >
+                  Appeal Rejection
+                </Button>
+              )}
             </>
           ) : null}
         </Space>

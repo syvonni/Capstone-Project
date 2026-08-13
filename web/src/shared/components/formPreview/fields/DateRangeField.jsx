@@ -1,4 +1,4 @@
-import { Form, Typography } from 'antd';
+import { Form } from 'antd';
 import { DatePicker, Row, Col } from 'antd';
 import { useFieldContext } from './FieldContext';
 import {
@@ -9,8 +9,6 @@ import {
   createEndDateAfterStartValidator,
 } from './shared/dateHelpers';
 
-const { Text } = Typography;
-
 function getDateRangeObject(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const start = value.startDate || value.start || value.start_date || null;
@@ -19,18 +17,20 @@ function getDateRangeObject(value) {
   return null;
 }
 
-function formatRangeDate(value) {
-  if (!value) return '';
-  const parsed = parseDayjs(value);
-  return parsed ? parsed.format('YYYY-MM-DD') : String(value);
-}
-
 export default function DateRangeField() {
-  const { field, fieldName, form, effectiveReadOnly, requestChangeBorder } = useFieldContext();
+  const { field, fieldName, form, effectiveReadOnly, requestChangeBorder, label } = useFieldContext();
   const fieldValue = form.getFieldValue(fieldName);
-  const objectRange = getDateRangeObject(fieldValue);
   const startFieldName = `${fieldName}_start`;
   const endFieldName = `${fieldName}_end`;
+  // The form stores date ranges as split _start / _end fields. If the parent
+  // fieldName value is not set (preview / read-only modes), build the display
+  // range from the split values.
+  const objectRange =
+    getDateRangeObject(fieldValue) ||
+    getDateRangeObject({
+      start: form.getFieldValue(startFieldName),
+      end: form.getFieldValue(endFieldName),
+    });
 
   const dateRule = {
     validator: (_, value) => {
@@ -55,19 +55,9 @@ export default function DateRangeField() {
         { validator: createEndDateAfterStartValidator(startFieldName, form) },
       ];
 
-  if (effectiveReadOnly && objectRange) {
-    const startStr = formatRangeDate(objectRange.start);
-    const endStr = formatRangeDate(objectRange.end);
-    const display = startStr && endStr ? `${startStr} — ${endStr}` : startStr || endStr || '—';
-    return (
-      <div style={requestChangeBorder}>
-        <Text>{display}</Text>
-      </div>
-    );
-  }
-
   return (
     <div style={requestChangeBorder}>
+      <div style={{ marginBottom: 8 }}>{label}</div>
       <Row gutter={[8, 16]}>
         <Col span={12}>
           <Form.Item
@@ -77,6 +67,7 @@ export default function DateRangeField() {
             getValueFromEvent={fromDateEvent}
             normalize={parseDayjs}
             getValueProps={getDateValueProps}
+            initialValue={objectRange?.start}
             style={{ marginBottom: 0 }}
           >
             <DatePicker
@@ -96,6 +87,7 @@ export default function DateRangeField() {
             getValueFromEvent={fromDateEvent}
             normalize={parseDayjs}
             getValueProps={getDateValueProps}
+            initialValue={objectRange?.end}
             style={{ marginBottom: 0 }}
           >
             <DatePicker

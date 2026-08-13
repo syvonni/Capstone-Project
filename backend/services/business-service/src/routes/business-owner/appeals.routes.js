@@ -10,20 +10,33 @@ const router = express.Router();
 // GET /api/business/appeals
 router.get("/", requireJwt, (req, res) => appealController.list(req, res));
 
+// GET /api/business/appeals/by-business/:businessId
+router.get("/by-business/:businessId", requireJwt, (req, res) =>
+  appealController.getByBusiness(req, res),
+);
+
 // GET /api/business/appeals/:id
-router.get("/:id", requireJwt, (req, res) => appealController.getById(req, res));
+router.get("/:id", requireJwt, (req, res) =>
+  appealController.getById(req, res),
+);
 
 // POST /api/business/appeals
 router.post("/", requireJwt, (req, res) => appealController.create(req, res));
 
 // PUT /api/business/appeals/:id — resolve (LGU Manager/Officer)
-router.put("/:id", requireJwt, (req, res) => appealController.resolve(req, res));
+router.put("/:id", requireJwt, (req, res) =>
+  appealController.resolve(req, res),
+);
 
 // POST /api/business/appeals/:id/claim
-router.post("/:id/claim", requireJwt, (req, res) => appealController.claim(req, res));
+router.post("/:id/claim", requireJwt, (req, res) =>
+  appealController.claim(req, res),
+);
 
 // PUT /api/business/appeals/:id/release
-router.put("/:id/release", requireJwt, (req, res) => appealController.release(req, res));
+router.put("/:id/release", requireJwt, (req, res) =>
+  appealController.release(req, res),
+);
 
 // PUT /api/business/appeals/:id/transfer
 router.put(

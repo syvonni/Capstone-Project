@@ -1,20 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Typography, Grid, theme, Card, Statistic } from 'antd'
-import CountUp from 'react-countup'
+import { Typography, Grid, theme } from 'antd'
 import BlurFade from '@/shared/components/animations/BlurFade.jsx'
+import BentoBox from '@/shared/components/BentoBox.jsx'
 
 const { Title, Text } = Typography
 const { useBreakpoint } = Grid
-
-const countUpFormatter = (value) => (
-  <CountUp key={String(value)} end={Number(value)} separator="," duration={1.5} />
-)
 
 export default function TransparencyDashboard({ publicStats }) {
   const { token } = theme.useToken()
   const screens = useBreakpoint()
   const [inView, setInView] = useState(false)
-  const [hoveredCard, setHoveredCard] = useState(null)
   const ref = useRef(null)
 
   const sampleValues = [
@@ -106,45 +101,29 @@ export default function TransparencyDashboard({ publicStats }) {
             }}
           >
             {statCards.map((item, index) => (
-              <BlurFade key={item.label} delay={0.12 + index * 0.08} duration={0.35} fullHeight={false}>
-                <Card
-                  size="small"
-                  style={{
-                    flex: screens.md ? '1 1 0' : '1 1 100%',
-                    minWidth: screens.md ? 0 : '100%',
-                    width: '100%',
-                    background: token.colorBgContainer,
-                    borderRadius: token.borderRadiusLG,
-                    border: `1px solid ${token.colorBorder}`,
-                    cursor: 'default',
-                    transition: screens.md ? 'border-color 0.2s, box-shadow 0.2s, transform 0.2s' : 'none',
-                    boxShadow: screens.md && hoveredCard === index ? token.boxShadowCard : 'none',
-                    transform: screens.md && hoveredCard === index ? 'scale(1.02)' : 'scale(1)',
+              <BlurFade
+                key={item.label}
+                delay={0.12 + index * 0.08}
+                duration={0.35}
+                fullHeight={false}
+                style={{
+                  flex: screens.md ? '1 1 0' : '1 1 100%',
+                  minWidth: screens.md ? 0 : '100%',
+                  width: '100%',
+                }}
+              >
+                <BentoBox
+                  card={{
+                    id: item.label,
+                    title: item.label,
+                    value: item.value,
                   }}
-                  styles={{ body: { 
-                    padding: screens.md ? '96px 14px 12px' : '48px 12px 12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'flex-end',
-                    alignItems: 'flex-start',
-                    textAlign: 'left',
-                  } }}
-                  onMouseEnter={screens.md ? () => setHoveredCard(index) : undefined}
-                  onMouseLeave={screens.md ? () => setHoveredCard(null) : undefined}
-                >
-                  <Statistic
-                    title={<Text type="secondary" style={{ fontSize: 13, lineHeight: 1.5 }}>{item.label}</Text>}
-                    value={inView ? item.value : 0}
-                    formatter={countUpFormatter}
-                    valueStyle={{
-                      display: 'block',
-                      fontSize: screens.md ? 32 : 28,
-                      fontWeight: 700,
-                      color: token.colorTextHeading,
-                      lineHeight: 1.1,
-                    }}
-                  />
-                </Card>
+                  inView={inView}
+                  animated={false}
+                  bodyStyle={{
+                    paddingTop: screens.md ? 96 : 48,
+                  }}
+                />
               </BlurFade>
             ))}
           </div>

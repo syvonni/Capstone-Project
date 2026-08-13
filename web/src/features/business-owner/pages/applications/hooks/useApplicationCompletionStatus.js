@@ -1,9 +1,56 @@
 import { useMemo } from 'react'
+import { hasValue, getDateRangeValue, isDateRangeComplete } from '@/features/business-owner/utils/formCompletion'
+
+function resolveDateRangeOrValue(formData, fieldKey) {
+  const range = getDateRangeValue(formData, fieldKey)
+  if (range) {
+    return isDateRangeComplete(formData, fieldKey) ? range : undefined
+  }
+  return formData[fieldKey]
+}
+
+/**
+ * Resolve a field-review decision key to the actual form value.
+ * Handles normal fields, repeatable-group rows, LOB activities and the LOB description.
+ */
+function getValueAtFieldKey(key, formData = {}) {
+  if (!key) return undefined
+
+  // LOB activity line: "businessActivities.0"
+  if (key.startsWith('businessActivities.')) {
+    const idx = parseInt(key.split('.')[1], 10)
+    return formData.businessActivities?.[idx]
+  }
+
+  // LOB description key used by some form definitions
+  if (key === 'businessDescriptionText') {
+    return formData.businessDescriptionText
+  }
+
+  const parts = key.split('.')
+  const first = parts[0]
+
+  // Field-review keys normally start with a section index, e.g. "0.fieldKey" or "0.repeatable.1"
+  if (/^\d+$/.test(first)) {
+    const rest = parts.slice(1)
+    if (rest.length === 1) {
+      return resolveDateRangeOrValue(formData, rest[0])
+    }
+    if (rest.length === 2) {
+      const [groupKey, rowIndex] = rest
+      return formData[groupKey]?.[parseInt(rowIndex, 10)]
+    }
+    return undefined
+  }
+
+  return resolveDateRangeOrValue(formData, key)
+}
 
 /**
  * Hook for calculating application completion and locked field state.
  * @param {Object} params
  * @param {Object} params.application - Current application/application
+ * @param {Object} [params.formData] - Current form data (falls back to application.formData)
  * @param {boolean} params.formAllSectionsComplete - Whether all form sections are complete
  * @param {boolean} params.isReturned - Whether the application is in returned state
  * @param {boolean} params.hasLockedFields - Whether the application may have locked fields
@@ -11,6 +58,7 @@ import { useMemo } from 'react'
  */
 export function useApplicationCompletionStatus({
   application,
+  formData: formDataProp,
   formAllSectionsComplete,
   isReturned,
   hasLockedFields,
@@ -21,24 +69,27 @@ export function useApplicationCompletionStatus({
       return formAllSectionsComplete
     }
 
-    // Returned state: only requested fields need to be complete
+    // Returned state: requested-change fields must have values, and the overall form must be complete.
     const requestedFieldKeys = Object.entries(application?.fieldReviewDecisions || {})
-      .filter(([_key, decision]) => decision.status === 'request_changes')
+      .filter(([_key, decision]) => decision?.status === 'request_changes')
       .map(([key]) => key)
 
-    if (requestedFieldKeys.length === 0) return false
+    const formData = formDataProp ?? application?.formData ?? {}
 
-    // Check if all requested fields have values in formData
-    const formData = application?.formData || {}
-    const allRequestedComplete = requestedFieldKeys.every(key => {
-      // Handle section prefixes (e.g. "0.activityLocation" -> check formData for "activityLocation")
-      const fieldKey = key.includes('.') ? key.split('.').pop() : key
-      const value = formData[fieldKey]
-      return value !== undefined && value !== null && value !== ''
-    })
+    // If no field-level changes were requested, the resubmit button should still be
+    // governed by whether the whole form is complete.
+    if (requestedFieldKeys.length === 0) {
+      return formAllSectionsComplete
+    }
 
-    return allRequestedComplete
-  }, [application, formAllSectionsComplete, isReturned])
+    const allRequestedComplete = requestedFieldKeys.every(key =>
+      hasValue(getValueAtFieldKey(key, formData))
+    )
+
+    if (!allRequestedComplete) return false
+
+    return formAllSectionsComplete
+  }, [application, formDataProp, formAllSectionsComplete, isReturned])
 
   const lockedFields = useMemo(() => {
     if (!hasLockedFields || !application?.fieldReviewDecisions) return []

@@ -20,7 +20,7 @@ export default function RejectApplicationModal({ open, onClose, onConfirm, rejec
         </Button>,
       ]}
     >
-      <Space direction="vertical" style={{ width: '100%' }} size={16}>
+      <Space orientation="vertical" style={{ width: '100%' }} size={16}>
         <Text>
           Provide a reason for rejecting this application. The applicant will be notified of the rejection and the reason provided.
         </Text>

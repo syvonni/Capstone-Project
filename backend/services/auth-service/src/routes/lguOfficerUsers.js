@@ -122,7 +122,7 @@ const updateOwnerSchema = Joi.object({
 router.get(
   "/lgu-officer/users/:userId",
   requireJwt,
-  requireRole(["lgu_officer", "admin"]),
+  requireRole(["lgu_officer", "staff", "admin"]),
   async (req, res) => {
     try {
       const { userId } = req.params;

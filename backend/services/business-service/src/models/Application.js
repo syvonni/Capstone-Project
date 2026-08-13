@@ -45,8 +45,10 @@ const ApplicationSchema = new mongoose.Schema(
         "under_review",
         "approved",
         "rejected",
+        "returned",
         "needs_revision",
         "appeal_pending",
+        "appeal_rejected",
       ],
       default: "draft",
     },
@@ -114,6 +116,16 @@ const ApplicationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    returnHistory: [
+      {
+        returnNumber: { type: Number, default: 0 },
+        returnedAt: { type: Date, default: null },
+        returnedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+        returnedByName: { type: String, default: "" },
+        reviewComments: { type: String, default: "" },
+        fields: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+      },
+    ],
     fieldReviewDecisions: {
       type: mongoose.Schema.Types.Mixed,
       default: () => ({}),

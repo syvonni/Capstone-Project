@@ -92,7 +92,7 @@ export default function FileField() {
                   label={previewableFiles[0].name}
                   onViewDocument={({ url, label: docLabel, type, isBlob }) =>
                     onViewDocument
-                      ? onViewDocument({ url, label: docLabel, type, isBlob })
+                      ? onViewDocument({ open: true, url, label: docLabel, type, isBlob })
                       : setPreviewModal({ open: true, url, label: docLabel, type, isBlob })
                   }
                   isBlob={previewableFiles[0].isBlob}

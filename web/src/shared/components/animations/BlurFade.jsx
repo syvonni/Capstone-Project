@@ -7,6 +7,7 @@ export default function BlurFade({
   direction = 'down',
   blur = '6px',
   className = '',
+  style = {},
   fullHeight = true,
   onViewport = false,
   rootMargin = '0px 0px -20% 0px',
@@ -84,7 +85,16 @@ export default function BlurFade({
   }, [delay, duration, direction, effectiveBlur, onViewport, rootMargin])
 
   return (
-    <div ref={ref} className={className} style={{ height: fullHeight ? '100%' : 'auto', width: '100%', maxWidth: 'none' }}>
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        height: fullHeight ? '100%' : 'auto',
+        width: '100%',
+        maxWidth: 'none',
+        ...style,
+      }}
+    >
       {children}
     </div>
   )

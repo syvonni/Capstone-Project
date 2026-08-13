@@ -146,7 +146,6 @@ const EVENT_TYPES = {
     'application_released',
     'application_transferred',
     'field_reviewed',
-    'field_decisions_updated',
     'pending_action_created',
     'pending_action_cancelled',
     'pending_action_executed',
@@ -159,6 +158,11 @@ const EVENT_TYPES = {
     'application_email_status_reset',
     'review_completed',
     'decision_revoked',
+
+    // Appeal events that belong to the application timeline
+    'appeal_submitted',
+    'appeal_resolved',
+    'appeal_rejected',
   ],
 
   // Appeal events - used when appeals are submitted and resolved

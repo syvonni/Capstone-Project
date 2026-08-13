@@ -35,7 +35,7 @@ export function useStepUp() {
     pendingCallbackRef.current = null;
     setOpen(false);
     setStepUpMfaMethod(null);
-    resolveRef.current?.();
+    rejectRef.current?.(new Error('Step-up cancelled'));
   }, []);
 
   const runWithStepUp = useCallback(

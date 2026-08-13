@@ -12,8 +12,11 @@
 const Application = require("../../models/Application");
 const Business = require("../../models/Business");
 const GeneralPermit = require("../../models/GeneralPermit");
+const BusinessProfile = require("../../models/BusinessProfile");
 const ApplicationAuditHelper = require("../../lib/auditHelpers/applicationAuditHelper");
 const applicationEmailService = require("./applicationEmail.service");
+const businessCreationService = require("./businessCreation.service");
+const { getUserInfo } = require("../../../../../shared/lib/getUserInfo");
 
 class PendingActionService {
   /**
@@ -253,9 +256,16 @@ class PendingActionService {
       newStatus = "appeal_rejected";
     }
 
+    const now = new Date();
+    const officerInfo = await getUserInfo(officerId);
+    const officerName = officerInfo?.name || "";
+
     const updateData = {
       pendingAction: null,
-      updatedAt: new Date(),
+      reviewedBy: officerId,
+      reviewedByName: officerName,
+      reviewedAt: now,
+      updatedAt: now,
     };
 
     // Use appropriate status field based on model type
@@ -273,9 +283,42 @@ class PendingActionService {
         pendingAction.payload?.requestOther;
     }
 
-    // Store comments when approving
-    if (pendingAction.actionType === "complete_review") {
-      updateData.reviewComments = pendingAction.payload?.comments;
+    // Store comments when approving or returning
+    if (["complete_review", "return"].includes(pendingAction.actionType)) {
+      updateData.reviewComments =
+        pendingAction.payload?.requestOther ||
+        pendingAction.payload?.comments ||
+        "";
+    }
+
+    // Track return count and history for returns
+    let returnHistoryEntry = null;
+    if (pendingAction.actionType === "return") {
+      const newReturnCount = (doc.returnCount || 0) + 1;
+      updateData.returnCount = newReturnCount;
+      returnHistoryEntry = {
+        returnNumber: newReturnCount,
+        returnedAt: now,
+        returnedBy: officerId,
+        returnedByName: officerName,
+        reviewComments:
+          pendingAction.payload?.requestOther ||
+          pendingAction.payload?.comments ||
+          "",
+        fields: doc.fieldReviewDecisions
+          ? JSON.parse(JSON.stringify(doc.fieldReviewDecisions))
+          : {},
+      };
+    }
+
+    // Generate application reference number for approved applications if missing
+    if (
+      pendingAction.actionType === "complete_review" &&
+      !doc.applicationReferenceNumber
+    ) {
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+      const randomSeq = Math.floor(1000 + Math.random() * 9000);
+      updateData.applicationReferenceNumber = `APP-${dateStr}-${randomSeq}`;
     }
 
     // Handle appeal rejection - update appeal document
@@ -290,7 +333,7 @@ class PendingActionService {
               status: "rejected",
               resolution: pendingAction.payload?.rejectionReason || "",
               reviewedBy: officerId,
-              reviewedAt: new Date(),
+              reviewedAt: now,
             },
           },
         );
@@ -301,7 +344,11 @@ class PendingActionService {
 
     // Update based on collection type
     if (doc.constructor.modelName === "Application") {
-      await Application.updateOne({ _id: doc._id }, { $set: updateData });
+      const updateOps = { $set: updateData };
+      if (returnHistoryEntry) {
+        updateOps.$push = { returnHistory: returnHistoryEntry };
+      }
+      await Application.updateOne({ _id: doc._id }, updateOps);
     } else if (doc.constructor.modelName === "GeneralPermit") {
       await GeneralPermit.updateOne({ _id: doc._id }, { $set: updateData });
     } else {
@@ -315,16 +362,85 @@ class PendingActionService {
         ? GeneralPermit.findById(doc._id)
         : Business.findById(doc._id));
 
-    // Log audit event
-    await ApplicationAuditHelper.logPendingActionExecuted(
-      auditContext?.req,
-      officerId,
-      updatedDoc,
-      pendingAction.actionType,
-      newStatus,
-      pendingAction.payload,
-      oldDoc,
-    );
+    // Create business from approved application
+    if (
+      pendingAction.actionType === "complete_review" &&
+      doc.constructor.modelName === "Application"
+    ) {
+      try {
+        const businessProfile = await BusinessProfile.findOne({
+          userId: updatedDoc.userId,
+        });
+        if (businessProfile) {
+          await businessCreationService.createBusinessFromApplication(
+            updatedDoc,
+            businessProfile,
+          );
+        }
+      } catch (businessErr) {
+        console.error(
+          "[executePendingAction] Failed to create business from approved application:",
+          businessErr.message,
+        );
+      }
+    }
+
+    // Log the actual lifecycle audit event (approved/rejected/returned/appeal_rejected)
+    switch (pendingAction.actionType) {
+      case "complete_review":
+        await ApplicationAuditHelper.logApproved(
+          auditContext?.req,
+          officerId,
+          updatedDoc,
+          pendingAction.payload?.comments || "",
+          oldDoc,
+        );
+        break;
+      case "reject":
+        await ApplicationAuditHelper.logRejected(
+          auditContext?.req,
+          officerId,
+          updatedDoc,
+          pendingAction.payload?.comments ||
+            pendingAction.payload?.requestOther ||
+            "",
+          pendingAction.payload?.rejectionReason || "",
+          oldDoc,
+        );
+        break;
+      case "return":
+        await ApplicationAuditHelper.logReturned(
+          auditContext?.req,
+          officerId,
+          updatedDoc,
+          pendingAction.payload?.requestOther ||
+            pendingAction.payload?.comments ||
+            "",
+          oldDoc,
+        );
+        break;
+      case "reject_appeal":
+        await ApplicationAuditHelper.logAppealRejected(
+          auditContext?.req,
+          officerId,
+          updatedDoc,
+          pendingAction.payload?.appealId,
+          pendingAction.payload?.rejectionReason || "",
+          oldDoc,
+        );
+        break;
+      default:
+        // Fallback for any future action types that do not map to a lifecycle event
+        await ApplicationAuditHelper.logPendingActionExecuted(
+          auditContext?.req,
+          officerId,
+          updatedDoc,
+          pendingAction.actionType,
+          newStatus,
+          pendingAction.payload,
+          oldDoc,
+        );
+    }
 
     // Send the appropriate notification email for this final action
     if (doc.constructor.modelName === "Application" || doc.constructor.modelName === "GeneralPermit") {

@@ -5,7 +5,7 @@ import { formatDate } from '../utils/formatters.js'
 import ApplicationPermitTypesModal from '@/shared/components/applications/ApplicationPermitTypesModal'
 import ApplicationFieldProgressModal from '@/shared/components/applications/ApplicationFieldProgressModal'
 import { useApplicationInfoCard } from '../hooks/useApplicationInfoCard'
-import ApplicationRequestedChangesModal from './modals/ApplicationRequestedChangesModal'
+import ApplicationRequestedChangesModal from '@/shared/components/applications/ApplicationRequestedChangesModal'
 
 const { Text } = Typography
 
@@ -15,7 +15,6 @@ export default function ApplicationInfoCard({
   onViewReceipt,
   onViewAppealReceipt,
   onViewAppealDetails,
-  onAppealClick,
   loadingAppealDetails = false,
   appealDetails = null,
   onShowAppRejectionModal,
@@ -39,14 +38,46 @@ export default function ApplicationInfoCard({
     setProgressModalOpen,
     statusLower,
     isDraft,
-    isRejected,
+    isReturned,
     formType,
     permitTypeLabel,
     rejectionReason,
     approvalComment,
     requestChangeFields,
+    returnHistory,
     formProgress,
   } = useApplicationInfoCard(application, sections, formValues)
+
+  const changeFieldCount = returnHistory.length > 0
+    ? returnHistory[returnHistory.length - 1].fields.length
+    : requestChangeFields.length
+
+  const statusMessage = (() => {
+    switch (statusLower) {
+      case 'draft':
+        return 'Your application is saved as a draft. Complete the required sections and submit when ready. You\'ll need to pay application fees when you submit.'
+      case 'submitted':
+        return 'Your application has been submitted and will be assigned to a reviewer shortly.'
+      case 'under_review':
+        return 'Your application is now being reviewed. You will be notified once the review is complete.'
+      case 'needs_revision':
+        return 'Your application needs changes. Please review the requested updates below and resubmit.'
+      case 'returned':
+        return 'Your application has been returned for revision. Please review the officer\'s comments and update the required information.'
+      case 'resubmit':
+        return 'Your updated application has been resubmitted and is awaiting review.'
+      case 'approved':
+        return 'Congratulations! Your application has been approved. Please check the next steps for payment and permit issuance.'
+      case 'rejected':
+        return 'Your application was not approved. You can submit an appeal if you believe this decision was made in error. Note that an appeal fee applies when submitting.'
+      case 'appeal_pending':
+        return 'Your appeal has been submitted and is under review. You will be notified once a decision is made.'
+      case 'appeal_rejected':
+        return 'Your appeal was not granted. This is the final decision on your application. You may submit a new application if you wish to reapply.'
+      default:
+        return 'Track your application status and progress below.'
+    }
+  })()
 
   return (
     <>
@@ -63,9 +94,26 @@ export default function ApplicationInfoCard({
       }}
     >
       {/* Left Panel - Icon and Title */}
-      <div style={{ flex: screens.md ? '0 0 40%' : 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: screens.md ? '48px 16px 16px' : '96px 24px 16px' }}>
+      <div style={{ flex: screens.md ? '0 0 40%' : 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: screens.md ? '48px 24px 24px' : '96px 24px 24px' }}>
         <div>
-          <FileTextOutlined style={{ fontSize: 24, color: token.colorTextSecondary, marginBottom: 8 }} />
+          <div
+            style={{
+              fontSize: 16,
+              color: token.colorText,
+              border: '1px solid',
+              borderColor: token.colorBorder,
+              padding: 6,
+              height: 32,
+              width: 32,
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 8,
+            }}
+          >
+            <FileTextOutlined style={{ fontSize: 16 }} />
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Typography.Title level={5} style={{ margin: 0 }}>Application Details</Typography.Title>
             {application?.createdByOfficer && (
@@ -76,129 +124,96 @@ export default function ApplicationInfoCard({
           </div>
         </div>
         <Divider style={{ margin: '16px 0' }} />
-        <div>
+        <div style={{ width: '100%', marginBottom: 12 }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>Message</Text>
+          <Text style={{ display: 'block' }}>{statusMessage}</Text>
+        </div>
+        <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
           {statusLower === 'appeal_rejected' ? (
             <>
               {rejectionReason && (
-                <div style={{ marginBottom: 12 }}>
+                <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>Application Rejection Reason</Text>
                   <div>
                     <Button
                       type="link"
                       size="small"
                       onClick={onShowAppRejectionModal}
-                      style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                      style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                     >
                       View Details
                     </Button>
                   </div>
                 </div>
               )}
-              {rejectionReason && appealDetails?.resolution && (
-                <Divider style={{ margin: '12px 0' }} />
-              )}
               {appealDetails?.resolution && (
-                <div style={{ marginBottom: 12 }}>
+                <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>Appeal Rejection Reason</Text>
                   <div>
                     <Button
                       type="link"
                       size="small"
                       onClick={onShowAppealRejectionModal}
-                      style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                      style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                     >
                       View Details
                     </Button>
                   </div>
                 </div>
               )}
-              {(rejectionReason || appealDetails?.resolution) && (
-                <Divider style={{ margin: '12px 0' }} />
-              )}
-              <div style={{ marginBottom: 12 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Message</Text>
-                <Text style={{ marginTop: 4, display: 'block' }}>
-                  Your appeal was not granted. This is the final decision on your application. You may submit a new application if you wish to reapply.
-                </Text>
-              </div>
             </>
           ) : statusLower === 'appeal_pending' ? (
             <>
               {rejectionReason && (
-                <div style={{ marginBottom: 12 }}>
-                  <Text type="secondary" style={{ fontSize: 12 }}>Application Rejection Reason</Text>
+                <>
                   <div>
-                    <Button
-                      type="link"
-                      size="small"
-                      onClick={onShowAppRejectionModal}
-                      style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
-                    >
-                      View Details
-                    </Button>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Application Rejection Reason</Text>
+                    <div>
+                      <Button
+                        type="link"
+                        size="small"
+                        onClick={onShowAppRejectionModal}
+                        style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+                      >
+                        View Details
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                </>
               )}
-              {rejectionReason && (
-                <Divider style={{ margin: '12px 0' }} />
-              )}
-              <div style={{ marginBottom: 12 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Message</Text>
-                <Text style={{ marginTop: 4, display: 'block' }}>
-                  Your appeal has been submitted and is under review. You will be notified once a decision is made.
-                </Text>
-              </div>
             </>
           ) : statusLower === 'rejected' ? (
             <>
               {rejectionReason && (
-                <div style={{ marginBottom: 12 }}>
-                  <Text type="secondary" style={{ fontSize: 12 }}>Application Rejection Reason</Text>
+                <>
                   <div>
-                    <Button
-                      type="link"
-                      size="small"
-                      onClick={onShowAppRejectionModal}
-                      style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
-                    >
-                      View Details
-                    </Button>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Application Rejection Reason</Text>
+                    <div>
+                      <Button
+                        type="link"
+                        size="small"
+                        onClick={onShowAppRejectionModal}
+                        style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+                      >
+                        View Details
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                </>
               )}
-              <div style={{ marginBottom: 12 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Message</Text>
-                <Text style={{ marginTop: 4, display: 'block' }}>
-                  Your application was not approved. You can submit an appeal if you believe this decision was made in error. Note that an appeal fee applies when submitting.
-                </Text>
-              </div>
             </>
           ) : (
             <>
-              <div style={{ marginBottom: 12 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Message</Text>
-                <Text style={{ marginTop: 4, display: 'block' }}>
-                  {statusLower === 'draft' && 'Your application is saved as a draft. Complete the required sections and submit when ready. You\'ll need to pay application fees when you submit.'}
-                  {statusLower === 'submitted' && 'Your application has been submitted and will be assigned to a reviewer shortly.'}
-                  {statusLower === 'under_review' && 'Your application is now being reviewed. You will be notified once the review is complete.'}
-                  {statusLower === 'needs_revision' && 'Your application needs changes. Please review the requested updates below and resubmit.'}
-                  {statusLower === 'resubmit' && 'Your updated application has been resubmitted and is awaiting review.'}
-                  {statusLower === 'approved' && 'Congratulations! Your application has been approved. Please check the next steps for payment and permit issuance.'}
-                  {statusLower === 'returned' && 'Your application has been returned for revision. Please review the officer\'s comments and update the required information.'}
-                  {!['draft', 'submitted', 'under_review', 'needs_revision', 'resubmit', 'approved', 'returned'].includes(statusLower) && 'Track your application status and progress below.'}
-                </Text>
-              </div>
               {statusLower === 'approved' && approvalComment && (
                 <>
-                  <Divider style={{ margin: '12px 0' }} />
-                  <div style={{ marginBottom: 12 }}>
+                  <div>
                     <Text type="secondary" style={{ fontSize: 12 }}>Approval Comment</Text>
                     <div style={{ marginTop: 4 }}>
                       <Button
                         type="link"
                         size="small"
                         onClick={onShowApprovalCommentModal}
-                        style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                        style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                       >
                         View Details
                       </Button>
@@ -209,14 +224,14 @@ export default function ApplicationInfoCard({
               {((statusLower === 'approved' || statusLower === 'under_review' || statusLower === 'returned') && application?.hadAppealGranted && application?.originalRejectionReason) && (
                 <>
                   <Divider style={{ margin: '12px 0' }} />
-                  <div style={{ marginBottom: 12 }}>
+                  <div>
                     <Text type="secondary" style={{ fontSize: 12 }}>Original Rejection Reason (Appeal Granted)</Text>
                     <div style={{ marginTop: 4 }}>
                       <Button
                         type="link"
                         size="small"
                         onClick={onShowAppRejectionModal}
-                        style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                        style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                       >
                         View Details
                       </Button>
@@ -224,19 +239,18 @@ export default function ApplicationInfoCard({
                   </div>
                 </>
               )}
-              {requestChangeFields.length > 0 && (
+              {(requestChangeFields.length > 0 || returnHistory.length > 0) && (
                 <>
-                  <Divider style={{ margin: '12px 0' }} />
-                  <div style={{ marginBottom: 12 }}>
+                  <div>
                     <Text type="secondary" style={{ fontSize: 12 }}>Requested Changes</Text>
-                    <div style={{ marginTop: 4 }}>
+                    <div>
                       <Button
                         type="link"
                         size="small"
                         onClick={() => setChangesModalOpen(true)}
-                        style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                        style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                       >
-                        View Details ({requestChangeFields.length} Field{requestChangeFields.length !== 1 ? 's' : ''})
+                        View Details ({changeFieldCount} Field{changeFieldCount !== 1 ? 's' : ''})
                       </Button>
                     </div>
                   </div>
@@ -252,20 +266,7 @@ export default function ApplicationInfoCard({
               )}
             </>
           )}
-          {isRejected && !(application?.hasActiveAppeal || statusLower === 'appeal_pending' || statusLower === 'appeal_rejected') && (
-            <div style={{ marginTop: 8 }}>
-              <Button
-                type="link"
-                size="small"
-                onClick={onAppealClick}
-                style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
-              >
-                <span>
-                  Appeal Rejection
-                </span>
-              </Button>
-            </div>
-          )}
+
         </div>
       </div>
 
@@ -282,7 +283,7 @@ export default function ApplicationInfoCard({
                   onClick={onProgressClick}
                   style={{
                     padding: 0,
-                    height: 'auto',
+                    height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word',
                     fontWeight: 600,
                     textDecoration: 'underline',
                     textDecorationColor: statusLower === 'draft' ? token.colorText
@@ -361,7 +362,7 @@ export default function ApplicationInfoCard({
                 type="link"
                 size="small"
                 onClick={() => setPermitModalOpen(true)}
-                style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
               >
                 {permitTypeLabel}
               </Button>
@@ -373,7 +374,7 @@ export default function ApplicationInfoCard({
               <div><Text strong>{application.applicationReferenceNumber || 'Pending'}</Text></div>
             </div>
           )}
-          {isDraft && formProgress.total > 0 && (
+          {(isDraft || isReturned) && formProgress.total > 0 && (
             <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Form Progress</Text>
               <div>
@@ -381,7 +382,7 @@ export default function ApplicationInfoCard({
                   type="link"
                   size="small"
                   onClick={() => setProgressModalOpen(true)}
-                  style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                  style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                 >
                   {`${formProgress.completed}/${formProgress.total} Fields Completed`}
                 </Button>
@@ -397,7 +398,7 @@ export default function ApplicationInfoCard({
                   size="small"
                   onClick={onShowFeesModal}
                   disabled={!onShowFeesModal}
-                  style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                  style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                 >
                   <span>
                     {loadingFees ? 'Loading...' : feeData?.fees ? `₱${(feeData.total || 0).toFixed(2)}` : 'View Fees'}
@@ -414,7 +415,7 @@ export default function ApplicationInfoCard({
                   size="small"
                   onClick={onViewReceipt}
                   disabled={!onViewReceipt}
-                  style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                  style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                 >
                   <span>
                     View Receipt
@@ -432,7 +433,7 @@ export default function ApplicationInfoCard({
                   size="small"
                   onClick={onViewAppealReceipt}
                   disabled={!onViewAppealReceipt}
-                  style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                  style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                 >
                   <span>View Receipt</span>
                 </Button>
@@ -449,7 +450,7 @@ export default function ApplicationInfoCard({
                   onClick={onViewAppealDetails}
                   loading={loadingAppealDetails}
                   disabled={!onViewAppealDetails}
-                  style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                  style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                 >
                   <span>View Details</span>
                 </Button>
@@ -470,6 +471,7 @@ export default function ApplicationInfoCard({
       open={changesModalOpen}
       onCancel={() => setChangesModalOpen(false)}
       requestChangeFields={requestChangeFields}
+      returnHistory={returnHistory}
     />
 
     <ApplicationFieldProgressModal

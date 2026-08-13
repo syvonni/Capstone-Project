@@ -4,23 +4,37 @@ import { get } from '@/lib/http.js'
 
 const { Paragraph } = Typography
 
-export default function DynamicFaqSection({ slotId, style, hideWrapper = false, hideHeader = false }) {
+export default function DynamicFaqSection({ slotId, fallbackSlotId, style, hideWrapper = false, hideHeader = false }) {
   const [faqData, setFaqData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [currentSlotId, setCurrentSlotId] = useState(slotId)
   const { token } = theme.useToken()
+
+  useEffect(() => {
+    setCurrentSlotId(slotId)
+  }, [slotId])
 
   useEffect(() => {
     let cancelled = false
     const fetchFaq = async () => {
       try {
         setLoading(true)
-        const res = await get(`/api/cms/faq/${slotId}`)
+        const res = await get(`/api/cms/faq/${currentSlotId}`)
         if (!cancelled) {
-          setFaqData(res)
+          const hasItems = res?.items && res.items.length > 0
+          if (!hasItems && fallbackSlotId && currentSlotId !== fallbackSlotId) {
+            setCurrentSlotId(fallbackSlotId)
+          } else {
+            setFaqData(res)
+          }
         }
       } catch {
         if (!cancelled) {
-          setFaqData(null)
+          if (fallbackSlotId && currentSlotId !== fallbackSlotId) {
+            setCurrentSlotId(fallbackSlotId)
+          } else {
+            setFaqData(null)
+          }
         }
       } finally {
         if (!cancelled) {
@@ -30,7 +44,7 @@ export default function DynamicFaqSection({ slotId, style, hideWrapper = false, 
     }
     fetchFaq()
     return () => { cancelled = true }
-  }, [slotId])
+  }, [currentSlotId, fallbackSlotId])
 
   if (loading || !faqData) {
     return null

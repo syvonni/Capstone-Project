@@ -1,4 +1,4 @@
-import { Typography, Card, Divider, Grid, Button, Modal, Descriptions, theme } from 'antd'
+import { Typography, Card, Divider, Grid, Button, theme } from 'antd'
 import { useState, useEffect, useMemo } from 'react'
 import { formatDateTime } from '../utils/formatters'
 import { getStatusLabel } from '@/shared/utils/statusUtils'
@@ -6,15 +6,19 @@ import ApplicationPermitTypesModal from '@/shared/components/applications/Applic
 import DocumentPreviewModal from '@/shared/components/document/DocumentPreviewModal'
 import ApplicationProgressModal from '@/shared/components/applications/ApplicationProgressModal'
 import ApplicationFieldProgressModal from '@/shared/components/applications/ApplicationFieldProgressModal'
+import ApplicationRequestedChangesModal from '@/shared/components/applications/ApplicationRequestedChangesModal'
 import OwnerDetailsModal from './modals/ApplicationOwnerDetailsModal'
 
 import { getAppealsByBusiness } from '../../../services/appealsService'
 import { get } from '@/lib/http'
+import { getFieldDisplayName } from '@/features/staffs/lgu-officer/utils/fieldKeyUtils'
+import { useAuthSession } from '@/features/authentication'
+import { useApplicationStatus } from '../hooks/useApplicationStatus'
 
 const { Text } = Typography
 const { useBreakpoint } = Grid
 
-export default function ApplicationInfoCard({ application, ownerName, token, ownerIdentity, businessReg, decidedCount, allFieldKeys, fieldReviewDecisions = {}, sections = [], latestAppeal: propLatestAppeal, onShowAppRejectionModal, onShowAppealRejectionModal, onShowAppealLetterModal, onShowApprovalCommentModal }) {
+export default function ApplicationInfoCard({ application, ownerName, token, ownerIdentity, businessReg, decidedCount, allFieldKeys, fieldReviewDecisions = {}, sections = [], latestAppeal: propLatestAppeal, onShowAppRejectionModal, onShowAppealRejectionModal, onShowAppealLetterModal, onShowApprovalCommentModal, onViewReceipt, onViewAppealReceipt }) {
   const screens = useBreakpoint()
   const { token: themeToken } = theme.useToken()
   const [progressModalOpen, setProgressModalOpen] = useState(false)
@@ -26,16 +30,19 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
   const [permitModalOpen, setPermitModalOpen] = useState(false)
   const [ownerProfile, setOwnerProfile] = useState(null)
 
+  const { currentUser } = useAuthSession()
+  const { isActiveReviewState } = useApplicationStatus(application, currentUser)
+
   const ownerId = application?.userId
 
   // Fetch owner profile to get the actual name
   useEffect(() => {
     if (!ownerId) return
     let cancelled = false
-    get(`/api/lgu-officer/owner-profile/${ownerId}`)
+    get(`/api/auth/lgu-officer/users/${ownerId}`)
       .then((res) => {
         if (cancelled) return
-        setOwnerProfile(res.profile)
+        setOwnerProfile(res.user ?? res.profile ?? null)
       })
       .catch((err) => {
         console.error('Failed to fetch owner profile:', err)
@@ -103,21 +110,8 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
   const approvalComment = application?.reviewComments || application?.formData?.reviewComments || null
 
   // Helper to get section and field name from fieldKey
-  const getFieldDisplayName = (fieldKey) => {
-    const parts = fieldKey.split('.')
-    const sectionIdx = parseInt(parts[0], 10)
-    const fieldKeyPart = parts.slice(1).join('.')
-
-    const section = sections[sectionIdx]
-    if (!section) return fieldKey
-
-    const sectionName = section?.sectionName || section?.label || section?.title || section?.category || `Section ${sectionIdx + 1}`
-
-    // Find the field in the section items
-    const item = section?.items?.find((item) => item.key === fieldKeyPart || item.label === fieldKeyPart)
-    const fieldName = item?.label || fieldKeyPart
-
-    return `${sectionName} - ${fieldName}`
+  const getFieldDisplayNameForKey = (fieldKey) => {
+    return getFieldDisplayName(fieldKey, sections, application?.formData)
   }
 
   // Calculate fields with request changes
@@ -125,7 +119,7 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
     .filter(([_, decision]) => decision?.status === 'request_changes')
     .map(([fieldKey, decision]) => ({
       fieldKey,
-      displayName: getFieldDisplayName(fieldKey),
+      displayName: getFieldDisplayNameForKey(fieldKey),
       reason: decision?.requestOther || decision?.requestCode || 'No reason provided'
     }))
 
@@ -133,8 +127,30 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
   const pendingFields = (allFieldKeys || []).filter(fieldKey => !fieldReviewDecisions[fieldKey]?.status)
     .map(fieldKey => ({
       fieldKey,
-      displayName: getFieldDisplayName(fieldKey)
+      displayName: getFieldDisplayNameForKey(fieldKey)
     }))
+
+  // Build return history for the requested changes modal
+  const returnHistory = (application?.returnHistory || []).map((entry) => {
+    const fields = Object.entries(entry.fields || {})
+      .filter(([_, decision]) => decision?.status === 'request_changes')
+      .map(([fieldKey, decision]) => ({
+        fieldKey,
+        displayName: getFieldDisplayNameForKey(fieldKey),
+        reason: decision?.requestOther || decision?.requestCode || 'No reason provided'
+      }))
+    return {
+      returnNumber: entry.returnNumber,
+      returnedAt: entry.returnedAt,
+      returnedByName: entry.returnedByName,
+      reviewComments: entry.reviewComments,
+      fields,
+    }
+  })
+
+  const changeFieldCount = returnHistory.length > 0
+    ? returnHistory[returnHistory.length - 1].fields.length
+    : requestChangeFields.length
 
   const statusLower = (application?.status || application?.applicationStatus)?.toLowerCase() || 'unknown'
 
@@ -212,222 +228,211 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
       }}
     >
       {/* Left Panel - Key Information */}
-      <div style={{ flex: screens.xl ? '0 0 50%' : 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: screens.xl ? '20px 16px' : '96px 24px 16px' }}>
+      <div style={{ flex: screens.xl ? '0 0 50%' : 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: screens.xl ? '48px 24px 24px' : '96px 24px 24px'  }}>
         <div>
           <Text type="secondary" style={{ fontSize: 12 }}>Business Name</Text>
           <Typography.Title level={5} style={{ margin: 0 }}>{application?.businessName || application?.formData?.businessName || application?.formData?.registeredBusinessName || application?.formData?.activityName || application?.formData?.['Business / trade name'] || application?.formData?.businessTradeName || 'Unnamed Business'}</Typography.Title>
         </div>
-        <Divider style={{ margin: '16px 0' }} />
-        <div>
-          <Text type="secondary" style={{ fontSize: 12 }}>Applicant Name</Text>
+        <Divider style={{ width: '100%', margin: '16px 0' }} />
+        <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
           <div>
-            <Button
-              type="link"
-              size="small"
-              onClick={() => setOwnerModalOpen(true)}
-              style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
-            >
-              {displayOwnerName}
-            </Button>
-          </div>
-        </div>
-        {statusLower === 'rejected' && rejectionReason && (
-          <>
-            <Divider style={{ margin: '16px 0' }} />
+            <Text type="secondary" style={{ fontSize: 12 }}>Applicant Name</Text>
             <div>
-              <Text type="secondary" style={{ fontSize: 12 }}>Application Rejection Reason</Text>
-              <div style={{ marginTop: 4 }}>
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={onShowAppRejectionModal}
-                  style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
-                >
-                  View Details
-                </Button>
-              </div>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => setOwnerModalOpen(true)}
+                style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+              >
+                {displayOwnerName}
+              </Button>
             </div>
-          </>
-        )}
-        {statusLower === 'appeal_pending' && (rejectionReason || latestAppeal?.description) && (
-          <>
-            <Divider style={{ margin: '16px 0' }} />
-            {rejectionReason && (
-              <div style={{ marginBottom: 12 }}>
+          </div>
+          {statusLower === 'rejected' && rejectionReason && (
+            <>
+              <div>
                 <Text type="secondary" style={{ fontSize: 12 }}>Application Rejection Reason</Text>
-                <div style={{ marginTop: 4 }}>
+                <div>
                   <Button
                     type="link"
                     size="small"
                     onClick={onShowAppRejectionModal}
-                    style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                    style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                   >
                     View Details
                   </Button>
                 </div>
               </div>
-            )}
-            {rejectionReason && latestAppeal?.description && (
-              <Divider style={{ margin: '12px 0' }} />
-            )}
-            {latestAppeal?.description && (
-              <div style={{ marginBottom: 12 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Appeal Letter</Text>
-                <div style={{ marginTop: 4 }}>
+            </>
+          )}
+          {statusLower === 'appeal_pending' && (rejectionReason || latestAppeal?.description) && (
+            <>
+              {rejectionReason && (
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Application Rejection Reason</Text>
+                  <div>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={onShowAppRejectionModal}
+                      style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {latestAppeal?.description && (
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Appeal Letter</Text>
+                  <div>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={onShowAppealLetterModal}
+                      style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+          {statusLower === 'appeal_rejected' && (
+            <>
+              {rejectionReason && (
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Application Rejection Reason</Text>
+                  <div>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={onShowAppRejectionModal}
+                      style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              )}
+            
+              {latestAppeal?.resolution && (
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Appeal Rejection Reason</Text>
+                  <div>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={onShowAppealRejectionModal}
+                      style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {latestAppeal?.description && (
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Appeal Letter</Text>
+                  <div>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={onShowAppealLetterModal}
+                      style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+          {statusLower === 'approved' && approvalComment && (
+            <>
+              <div>
+                <Text type="secondary" style={{ fontSize: 12 }}>Approval Comment</Text>
+                <div>
                   <Button
                     type="link"
                     size="small"
-                    onClick={onShowAppealLetterModal}
-                    style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                    onClick={onShowApprovalCommentModal}
+                    style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                   >
                     View Details
                   </Button>
                 </div>
               </div>
-            )}
-          </>
-        )}
-        {statusLower === 'appeal_rejected' && (
-          <>
-            <Divider style={{ margin: '16px 0' }} />
-            {rejectionReason && (
-              <div style={{ marginBottom: 12 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Application Rejection Reason</Text>
-                <div style={{ marginTop: 4 }}>
+            </>
+          )}
+          {((statusLower === 'approved' || statusLower === 'under_review' || statusLower === 'returned') && application?.hadAppealGranted && application?.originalRejectionReason) && (
+            <>
+              <div>
+                <Text type="secondary" style={{ fontSize: 12 }}>Original Rejection Reason (Appeal Granted)</Text>
+                <div>
                   <Button
                     type="link"
                     size="small"
                     onClick={onShowAppRejectionModal}
-                    style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                    style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                   >
                     View Details
                   </Button>
                 </div>
               </div>
-            )}
-            {rejectionReason && latestAppeal?.resolution && (
-              <Divider style={{ margin: '12px 0' }} />
-            )}
-            {latestAppeal?.resolution && (
-              <div style={{ marginBottom: 12 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Appeal Rejection Reason</Text>
-                <div style={{ marginTop: 4 }}>
-                  <Button
-                    type="link"
-                    size="small"
-                    onClick={onShowAppealRejectionModal}
-                    style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
-                  >
-                    View Details
-                  </Button>
-                </div>
-              </div>
-            )}
-            {(rejectionReason || latestAppeal?.resolution) && latestAppeal?.description && (
-              <Divider style={{ margin: '12px 0' }} />
-            )}
-            {latestAppeal?.description && (
-              <div style={{ marginBottom: 12 }}>
+            </>
+          )}
+          {((statusLower === 'approved' || statusLower === 'under_review' || statusLower === 'returned') && application?.hadAppealGranted && latestAppeal?.description) && (
+            <>
+              <div>
                 <Text type="secondary" style={{ fontSize: 12 }}>Appeal Letter</Text>
-                <div style={{ marginTop: 4 }}>
+                <div>
                   <Button
                     type="link"
                     size="small"
                     onClick={onShowAppealLetterModal}
-                    style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                    style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                   >
                     View Details
                   </Button>
                 </div>
               </div>
-            )}
-          </>
-        )}
-        {statusLower === 'approved' && approvalComment && (
-          <>
-            <Divider style={{ margin: '16px 0' }} />
-            <div style={{ marginBottom: 12 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Approval Comment</Text>
-              <div style={{ marginTop: 4 }}>
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={onShowApprovalCommentModal}
-                  style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
-                >
-                  View Details
-                </Button>
+            </>
+          )}
+          {!createdByOfficer && !isActiveReviewState && (requestChangeFields.length > 0 || returnHistory.length > 0) && (
+            <>
+              <div>
+                <Text type="secondary" style={{ fontSize: 12 }}>Requested Changes</Text>
+                <div>
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={() => setChangesModalOpen(true)}
+                    style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+                  >
+                    View Details ({changeFieldCount} Field{changeFieldCount !== 1 ? 's' : ''})
+                  </Button>
+                </div>
               </div>
-            </div>
-          </>
-        )}
-        {((statusLower === 'approved' || statusLower === 'under_review' || statusLower === 'returned') && application?.hadAppealGranted && application?.originalRejectionReason) && (
-          <>
-            <Divider style={{ margin: '16px 0' }} />
-            <div style={{ marginBottom: 12 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Original Rejection Reason (Appeal Granted)</Text>
-              <div style={{ marginTop: 4 }}>
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={onShowAppRejectionModal}
-                  style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
-                >
-                  View Details
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-        {((statusLower === 'approved' || statusLower === 'under_review' || statusLower === 'returned') && application?.hadAppealGranted && latestAppeal?.description) && (
-          <>
-            <Divider style={{ margin: '16px 0' }} />
-            <div style={{ marginBottom: 12 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Appeal Letter</Text>
-              <div style={{ marginTop: 4 }}>
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={onShowAppealLetterModal}
-                  style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
-                >
-                  View Details
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-        {!createdByOfficer && requestChangeFields.length > 0 && (
-          <>
-            <Divider style={{ margin: '16px 0' }} />
-            <div style={{ marginBottom: 12 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Requested Changes</Text>
-              <div style={{ marginTop: 4 }}>
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => setChangesModalOpen(true)}
-                  style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
-                >
-                  View Details ({requestChangeFields.length} Field{requestChangeFields.length !== 1 ? 's' : ''})
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Right Panel - Details Grid */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: screens.xl ? '24px' : '16px 24px 24px', borderLeft: screens.xl ? `1px solid ${token.colorBorderSecondary}` : 'none', borderTop: screens.xl ? 'none' : `1px solid ${token.colorBorderSecondary}` }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-          <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+          <div>
             <Text type="secondary" style={{ fontSize: 12 }}>Status</Text>
             <div>
               <Button
                 type="link"
                 size="small"
                 onClick={() => setProgressModalOpen(true)}
-                style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline', textDecorationColor: statusColor }}
+                style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline', textDecorationColor: statusColor }}
               >
                 <span style={{ color: statusColor }}>
                   {statusLabel}
@@ -436,52 +441,83 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
             </div>
           </div>
           {!createdByOfficer && (
-            <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+            <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Reference Number</Text>
               <div><Text strong>{application?.applicationReferenceNumber || 'Pending'}</Text></div>
             </div>
           )}
-          <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+          <div>
             <Text type="secondary" style={{ fontSize: 12 }}>Business Type</Text>
             <div>
               <Button
                 type="link"
                 size="small"
                 onClick={() => setPermitModalOpen(true)}
-                style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
               >
                 {businessTypeLabel}
               </Button>
             </div>
           </div>
-          <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+          <div>
             <Text type="secondary" style={{ fontSize: 12 }}>{createdByOfficer ? 'Created On' : 'Submitted On'}</Text>
             <div><Text strong>{formatDateTime(createdByOfficer ? application?.createdAt : application?.submittedAt)}</Text></div>
           </div>
           {createdByOfficer && isApproved && application?.submittedAt && (
-            <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+            <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Submitted On</Text>
               <div><Text strong>{formatDateTime(application?.submittedAt)}</Text></div>
             </div>
           )}
-          <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+          {!createdByOfficer && application?.submittedAt && statusLower !== 'draft' && onViewReceipt && (
+            <div>
+              <Text type="secondary" style={{ fontSize: 12 }}>Application Payment Receipt</Text>
+              <div>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={onViewReceipt}
+                  style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+                >
+                  <span>View Receipt</span>
+                </Button>
+              </div>
+            </div>
+          )}
+          {(application?.hasActiveAppeal || statusLower === 'appeal_pending' || statusLower === 'appeal_rejected' || ((statusLower === 'approved' || statusLower === 'under_review' || statusLower === 'returned') && application?.hadAppealGranted)) && onViewAppealReceipt && (
+            <div>
+              <Text type="secondary" style={{ fontSize: 12 }}>Appeal Payment Receipt</Text>
+              <div>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={onViewAppealReceipt}
+                  disabled={!onViewAppealReceipt}
+                  style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
+                >
+                  <span>View Receipt</span>
+                </Button>
+              </div>
+            </div>
+          )}
+          <div>
             <Text type="secondary" style={{ fontSize: 12 }}>Last Reviewed</Text>
             <div><Text strong>{application?.reviewedAt ? formatDateTime(application.reviewedAt) : 'Not yet reviewed'}</Text></div>
           </div>
           {latestAppeal && (isAppealPending || isAppealRejected) && (
-            <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+            <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Appeal Submitted On</Text>
               <div><Text strong>{latestAppeal.createdAt ? formatDateTime(latestAppeal.createdAt) : 'Unknown'}</Text></div>
             </div>
           )}
           {isApproved && application?.hadAppealGranted && latestAppeal && (
-            <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+            <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Appeal Submitted On</Text>
               <div><Text strong>{latestAppeal.createdAt ? formatDateTime(latestAppeal.createdAt) : 'Unknown'}</Text></div>
             </div>
           )}
-          {!isApproved && (
-            <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+          {!isApproved && isActiveReviewState && (
+            <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Review Progress</Text>
               <div>
                 {decidedCount !== undefined && allFieldKeys?.length && pendingFields.length > 0 ? (
@@ -489,7 +525,7 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
                     type="link"
                     size="small"
                     onClick={() => setPendingFieldsModalOpen(true)}
-                    style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                    style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                   >
                     {`${decidedCount}/${allFieldKeys.length} Fields Completed`}
                   </Button>
@@ -499,18 +535,18 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
               </div>
             </div>
           )}
-          {!isApproved && !createdByOfficer && (
-            <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+          {!isApproved && !createdByOfficer && isActiveReviewState && (
+            <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Requested Changes</Text>
               <div>
-                {requestChangeFields.length > 0 ? (
+                {requestChangeFields.length > 0 || returnHistory.length > 0 ? (
                   <Button
                     type="link"
                     size="small"
                     onClick={() => setChangesModalOpen(true)}
-                    style={{ padding: 0, height: 'auto', fontWeight: 600, textDecoration: 'underline' }}
+                    style={{ padding: 0, height: 'auto', whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 600, textDecoration: 'underline' }}
                   >
-                    {requestChangeFields.length} Field{requestChangeFields.length !== 1 ? 's' : ''}
+                    {changeFieldCount} Field{changeFieldCount !== 1 ? 's' : ''}
                   </Button>
                 ) : (
                   <Text strong>0 Fields</Text>
@@ -519,12 +555,12 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
             </div>
           )}
           {application?.reviewedBy && (
-            <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+            <div>
               <Text type="secondary" style={{ fontSize: 12 }}>Currently Claimed By</Text>
               <div><Text strong>{reviewingOfficerName}</Text></div>
             </div>
           )}
-          <div style={{ minWidth: '100px', flex: '1 1 150px' }}>
+          <div>
             <Text type="secondary" style={{ fontSize: 12 }}>Reviewers</Text>
             <div><Text strong>{reviewers.length > 0 ? reviewers.join(', ') : 'None'}</Text></div>
           </div>
@@ -557,58 +593,12 @@ export default function ApplicationInfoCard({ application, ownerName, token, own
       type={previewModal.type}
     />
 
-    <Modal
-      title="Requested Changes"
+    <ApplicationRequestedChangesModal
       open={changesModalOpen}
       onCancel={() => setChangesModalOpen(false)}
-      footer={null}
-      width={600}
-    >
-      <div style={{ padding: 16 }}>
-        {requestChangeFields.length > 0 ? (
-          (() => {
-            // Group fields by section
-            const groupedBySection = requestChangeFields.reduce((acc, item) => {
-              const sectionMatch = item.displayName.match(/^Section \d+ - /)
-              const sectionName = sectionMatch ? item.displayName.split(' - ')[0] : 'Other'
-              const fieldName = sectionMatch ? item.displayName.replace(sectionMatch[0], '') : item.displayName
-              if (!acc[sectionName]) {
-                acc[sectionName] = []
-              }
-              acc[sectionName].push({ fieldName, reason: item.reason, fieldKey: item.fieldKey })
-              return acc
-            }, {})
-
-            return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                {Object.entries(groupedBySection)
-                  .sort(([a], [b]) => {
-                    // Sort "Other" to the end
-                    if (a === 'Other') return 1
-                    if (b === 'Other') return -1
-                    return a.localeCompare(b)
-                  })
-                  .map(([sectionName, fields]) => (
-                  <div key={sectionName}>
-                    <Text style={{ display: 'block', marginBottom: 12 }}>{sectionName}</Text>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {fields.map((field) => (
-                        <Descriptions key={field.fieldKey} column={1} bordered size="small" styles={{ label: { width: '120px' } }}>
-                          <Descriptions.Item label="Field Name">{field.fieldName}</Descriptions.Item>
-                          <Descriptions.Item label="Reason">{field.reason}</Descriptions.Item>
-                        </Descriptions>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          })()
-        ) : (
-          <Text type="secondary">No requested changes</Text>
-        )}
-      </div>
-    </Modal>
+      requestChangeFields={requestChangeFields}
+      returnHistory={returnHistory}
+    />
 
     <ApplicationFieldProgressModal
       open={pendingFieldsModalOpen}

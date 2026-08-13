@@ -1,16 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Typography, Divider } from 'antd'
-import { ShopOutlined, LinkOutlined } from '@ant-design/icons'
 import SplitCard from '@/shared/components/SplitCard'
 import ResponsiveModal from '@/shared/components/ResponsiveModal'
 import { getPublicPermitFormsGrouped } from '@/shared/services/permitFormService'
-import { getIconForForm } from '@/shared/utils/permitIconMap'
 
 const { Title, Text } = Typography
 
 export default function ApplicationTypeSelectorModal({ onSelect, title = 'Choose Application Type', onLinkExisting, open, onCancel }) {
   const [formsData, setFormsData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [creatingFormId, setCreatingFormId] = useState(null)
+  const isMountedRef = useRef(true)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     const fetchForms = async () => {
@@ -28,10 +36,36 @@ export default function ApplicationTypeSelectorModal({ onSelect, title = 'Choose
     fetchForms()
   }, [])
 
-  const handleSelectApplicationType = (formId) => {
+  const handleSelectApplicationType = async (formId) => {
     console.log('handleSelectApplicationType called with formId:', formId)
-    onSelect(formId)
-    onCancel()
+    setCreatingFormId(formId)
+    setCreating(true)
+    try {
+      await onSelect(formId)
+    } catch (error) {
+      console.error('Failed to create application draft:', error)
+    } finally {
+      if (isMountedRef.current) {
+        setCreating(false)
+        setCreatingFormId(null)
+      }
+    }
+  }
+
+  const handleLinkExisting = async () => {
+    setCreatingFormId('link-existing')
+    setCreating(true)
+    try {
+      await onLinkExisting?.()
+    } catch (error) {
+      console.error('Failed to link existing business:', error)
+    } finally {
+      if (isMountedRef.current) {
+        setCreating(false)
+        setCreatingFormId(null)
+      }
+      onCancel()
+    }
   }
 
   if (loading) {
@@ -43,10 +77,9 @@ export default function ApplicationTypeSelectorModal({ onSelect, title = 'Choose
         footer={null}
         width={700}
       >
-        <div style={{ padding: '24px', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
           <SplitCard
             title="Loading..."
-            icon={ShopOutlined}
             description="Loading permit forms..."
             loading={true}
           />
@@ -63,7 +96,7 @@ export default function ApplicationTypeSelectorModal({ onSelect, title = 'Choose
       footer={null}
       width={700}
     >
-      <div style={{ padding: '24px' }}>
+      <div>
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -73,10 +106,10 @@ export default function ApplicationTypeSelectorModal({ onSelect, title = 'Choose
           {formsData?.regularPermit && (
             <SplitCard
               title={formsData.regularPermit.name}
-              icon={getIconForForm(formsData.regularPermit.formId)}
               description={formsData.regularPermit.description}
-              clickable={formsData.regularPermit.isActive}
-              onClick={() => handleSelectApplicationType(formsData.regularPermit.formId)}
+              clickable={formsData.regularPermit.isActive && !creating}
+              onClick={!creating ? () => handleSelectApplicationType(formsData.regularPermit.formId) : undefined}
+              loading={creating && creatingFormId === formsData.regularPermit.formId}
               style={{
                 opacity: formsData.regularPermit.isActive ? 1 : 0.5,
                 pointerEvents: formsData.regularPermit.isActive ? 'auto' : 'none',
@@ -87,7 +120,7 @@ export default function ApplicationTypeSelectorModal({ onSelect, title = 'Choose
 
           <Divider>
             <Text type="secondary" style={{ fontSize: 13 }}>
-              Temporary Permits 
+              Temporary Permits
             </Text>
           </Divider>
 
@@ -96,10 +129,10 @@ export default function ApplicationTypeSelectorModal({ onSelect, title = 'Choose
             <SplitCard
               key={category.formId}
               title={category.name}
-              icon={getIconForForm(category.category)}
               description={category.description}
-              clickable={category.isActive}
-              onClick={() => handleSelectApplicationType(category.formId)}
+              clickable={category.isActive && !creating}
+              onClick={!creating ? () => handleSelectApplicationType(category.formId) : undefined}
+              loading={creating && creatingFormId === category.formId}
               style={{
                 opacity: category.isActive ? 1 : 0.5,
                 pointerEvents: category.isActive ? 'auto' : 'none',
@@ -117,13 +150,10 @@ export default function ApplicationTypeSelectorModal({ onSelect, title = 'Choose
           {/* Link Existing Business Option */}
           <SplitCard
             title="Link Existing Business"
-            icon={LinkOutlined}
             description="Already have a business registered with BPLO? Link it to your account."
-            clickable={true}
-            onClick={() => {
-              onLinkExisting()
-              onCancel()
-            }}
+            clickable={!creating}
+            onClick={!creating ? () => handleLinkExisting() : undefined}
+            loading={creating && creatingFormId === 'link-existing'}
           />
         </div>
       </div>

@@ -15,7 +15,6 @@ function hydrateFromApi(apiSections) {
     sectionName: s.sectionName || s.category || '',
     type: s.type || '',
     description: s.description || '',
-    source: s.source || '',
     notes: s.notes || '',
     showWhen: s.showWhen && typeof s.showWhen === 'object' && s.showWhen.field ? { ...s.showWhen } : null,
     items: (s.items || []).map((item) => ({
@@ -66,7 +65,6 @@ function dehydrateForApi(editorSections) {
       sectionName: s.sectionName,
       type: s.type,
       description: s.description,
-      source: s.source,
       notes: s.notes,
       items: s.items.map((item) => {
         const base = {
@@ -203,7 +201,6 @@ const FormContentEditor = forwardRef(function FormContentEditor({ initialSection
       {
         id: createId(),
         sectionName: '',
-        source: '',
         notes: '',
         showWhen: null,
         items: [],

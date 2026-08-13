@@ -1,6 +1,7 @@
 import { Form, Input, DatePicker } from 'antd'
 import PhilippineAddressFields from '@/shared/components/PhilippineAddressFields'
 import AlaminosAddressFields from '@/shared/components/AlaminosAddressFields'
+import { fromDateEvent, parseDayjs, getDateValueProps } from './dateHelpers'
 
 function makeName(metadataFieldName, key, label) {
   const safeKey = key || label
@@ -42,6 +43,7 @@ export default function MetadataFields({ form, token, metadataFieldName, metadat
             </div>
           )
         }
+        const isDate = metaField.type === 'date'
         return (
           <Form.Item
             key={metaIdx}
@@ -62,9 +64,12 @@ export default function MetadataFields({ form, token, metadataFieldName, metadat
                     ...(metaField.type === 'text' && metaField.validation ? [metaField.validation] : []),
                   ]
             }
+            getValueFromEvent={isDate ? fromDateEvent : undefined}
+            normalize={isDate ? parseDayjs : undefined}
+            getValueProps={isDate ? getDateValueProps : undefined}
             style={{ marginBottom: 8 }}
           >
-            {metaField.type === 'date' ? (
+            {isDate ? (
               <DatePicker style={{ width: '100%' }} disabled={effectiveReadOnly} />
             ) : (
               <Input placeholder={metaField.placeholder || ''} disabled={effectiveReadOnly} />
